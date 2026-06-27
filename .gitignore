@@ -21,9 +21,12 @@ test-results/
 !.env.example
 
 # Runtime data — generated SQLite databases, uploaded invoice files, etc.
-# Source data (the legal-text XML exports) is version-controlled under data/input/.
+# Version-controlled under data/: the legal-text XML exports (data/input/),
+# the fee-schedule JSON Schema (data/schema/) and the format example (data/examples/).
 /data/*
 !/data/input/
+!/data/schema/
+!/data/examples/
 *.sqlite
 *.sqlite3
 *.db

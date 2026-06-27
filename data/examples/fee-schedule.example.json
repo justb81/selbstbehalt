@@ -1,0 +1,168 @@
+{
+  "schema": "fee-schedule/v1",
+  "feeSchedule": "GOÄ",
+  "version": "1996-neugefasst",
+  "source": {
+    "law": "GOÄ 1982 (neugefasst 1996)",
+    "file": "data/input/goae/BJNR015220982.xml",
+    "doknr": "BJNR015220982",
+    "lawStatus": "zuletzt geändert durch Art. 3b G v. 19.7.2023 I Nr. 197",
+    "buildDate": "20260506174941"
+  },
+  "pointValueCents": 5.82873,
+  "currency": "EUR",
+  "multiplierLimits": {
+    "default": { "regelhoechstsatz": 2.3, "hoechstsatz": 3.5 },
+    "technical": { "regelhoechstsatz": 1.8, "hoechstsatz": 2.5 },
+    "lab": { "regelhoechstsatz": 1.15, "hoechstsatz": 1.3 },
+    "inpatient": { "regelhoechstsatz": 1.8, "hoechstsatz": 2.5 }
+  },
+  "entries": {
+    "1": {
+      "ziffer": "1",
+      "description": "Beratung, auch mittels Fernsprecher",
+      "points": 80,
+      "baseAmount": 4.66,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "section": { "code": "B I", "title": "Allgemeine Beratungen und Untersuchungen" },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": ["804", "806", "807", "812", "817", "835", "849", "861", "862", "863", "864", "870", "871", "886", "887"],
+          "sourceText": "Die Leistungen nach den Nummern 1, 3, 22, 30 und/oder 34 sind neben den Leistungen nach den Nummern 804 bis 812, 817, 835, 849, 861 bis 864, 870, 871, 886 sowie 887 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "4": {
+      "ziffer": "4",
+      "description": "Erhebung der Fremdanamnese über einen Kranken und/oder Unterweisung und Führung von Bezugspersonen",
+      "points": 220,
+      "baseAmount": 12.82,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "section": { "code": "B I", "title": "Allgemeine Beratungen und Untersuchungen" },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": ["30", "34", "801", "806", "807", "816", "817", "835"],
+          "sourceText": "Die Leistung nach Nummer 4 ist neben den Leistungen nach den Nummern 30, 34, 801, 806, 807, 816, 817 und/oder 835 nicht berechnungsfähig."
+        },
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "case",
+          "sourceText": "Die Leistung nach Nummer 4 ist im Behandlungsfall nur einmal berechnungsfähig."
+        }
+      ]
+    },
+    "5": {
+      "ziffer": "5",
+      "description": "Symptombezogene Untersuchung",
+      "points": 80,
+      "baseAmount": 4.66,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "section": { "code": "B I", "title": "Allgemeine Beratungen und Untersuchungen" },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": ["6", "7", "8"],
+          "sourceText": "Die Leistung nach Nummer 5 ist neben den Leistungen nach den Nummern 6 bis 8 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "K2": {
+      "ziffer": "K2",
+      "description": "Zuschlag zu den Leistungen nach den Nummern 5, 6, 7 oder 8 bei Kindern bis zum vollendeten 4. Lebensjahr",
+      "points": 80,
+      "baseAmount": 4.66,
+      "category": "default",
+      "maxMultiplier": 1.0,
+      "isSurcharge": true,
+      "section": { "code": "B II", "title": "Zuschläge zu Beratungen und Untersuchungen" },
+      "constraints": [
+        {
+          "type": "requires",
+          "anyOf": ["5", "6", "7", "8"],
+          "sourceText": "Zuschlag zu den Untersuchungen nach Nummer 5, 6, 7 oder 8 bei Kindern bis zum vollendeten 4. Lebensjahr"
+        },
+        {
+          "type": "ageLimit",
+          "maxAgeYears": 4,
+          "sourceText": "bei Kindern bis zum vollendeten 4. Lebensjahr"
+        },
+        {
+          "type": "fixedFactor",
+          "factor": 1.0,
+          "sourceText": "Die Zuschläge nach den Buchstaben A bis D sowie K 1 sind nur mit dem einfachen Gebührensatz berechnungsfähig."
+        }
+      ]
+    },
+    "34": {
+      "ziffer": "34",
+      "description": "Erörterung (Dauer mindestens 20 Minuten) der mit einer nachhaltig lebensverändernden oder lebensbedrohenden Erkrankung zusammenhängenden Fragen",
+      "points": 300,
+      "baseAmount": 17.49,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "section": { "code": "B I", "title": "Allgemeine Beratungen und Untersuchungen" },
+      "constraints": [
+        {
+          "type": "minDuration",
+          "minutes": 20,
+          "sourceText": "Erörterung (Dauer mindestens 20 Minuten) …"
+        },
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "occasion",
+          "sourceText": "… je Sitzung nur einmal berechnungsfähig."
+        }
+      ]
+    },
+    "270": {
+      "ziffer": "270",
+      "description": "Infusion, subkutan",
+      "points": 65,
+      "baseAmount": 3.79,
+      "category": "technical",
+      "maxMultiplier": 1.8,
+      "section": { "code": "C VIII", "title": "Punktionen / Infusionen" },
+      "notes": [
+        "Gegebenenfalls erforderliche Gefäßpunktionen sind Bestandteil der Leistungen nach den Nummern 270 bis 287 und mit den Gebühren abgegolten."
+      ]
+    },
+    "3500": {
+      "ziffer": "3500",
+      "description": "Blutbild und Blutbildbestandteile (Hämoglobin, Erythrozyten, Leukozyten …)",
+      "points": 60,
+      "baseAmount": 3.5,
+      "category": "lab",
+      "maxMultiplier": 1.15,
+      "section": { "part": "M", "title": "Laboratoriumsuntersuchungen" }
+    }
+  },
+  "constraintGroups": [
+    {
+      "id": "excl-271-276",
+      "type": "mutualExclusion",
+      "members": ["271", "272", "273", "274", "275", "276"],
+      "sourceText": "Die Leistungen nach den Nummern 271 bis 276 sind nicht nebeneinander berechnungsfähig."
+    },
+    {
+      "id": "excl-538-560-561-562",
+      "type": "mutualExclusion",
+      "members": ["538", "560", "561", "562"],
+      "sourceText": "Die Leistungen nach den Nummern 538, 560, 561 und 562 sind nicht nebeneinander berechnungsfähig."
+    },
+    {
+      "id": "hoechstwert-3630-3631",
+      "type": "maxAmount",
+      "members": ["3630", "3631"],
+      "amount": 11.66,
+      "scope": "case",
+      "sourceText": "Höchstwert für die Untersuchungen nach den Nummern 3630 und 3631, im Behandlungsfall"
+    }
+  ]
+}

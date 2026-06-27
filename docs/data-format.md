@@ -1,0 +1,205 @@
+# Gebührenordnungs-Datenformat (GOÄ / GOZ / GOT)
+
+> **Zweck:** Definition des generischen, versionierten JSON-Formats für die
+> Gebühren-Lookup-Tabellen, gegen die der Rechnungsparser (#16) jede Position
+> prüft. Ergänzt `docs/design.md` §4.4 und ist die maßgebliche Spezifikation
+> für Issue #15.
+>
+> **Status:** Format-Definition. Das Extraktionsskript (XML → JSON) und der
+> CI-Validator sind die nächsten Teilaufgaben von #15; sie erzeugen bzw. prüfen
+> Tabellen in genau diesem Format.
+
+Kanonische Definitionen:
+
+- **TypeScript-Typen:** `frontend/src/lib/data/fee-schedule.ts`
+- **JSON-Schema (CI-Validierung):** `data/schema/fee-schedule.schema.json`
+- **Annotiertes Beispiel (jeder Constraint-Typ mit echtem Gesetzeswortlaut):**
+  `data/examples/fee-schedule.example.json`
+
+## 1. Designziele
+
+1. **Ein Format für alle drei Gebührenordnungen.** GOÄ, GOZ und GOT
+   unterscheiden sich nur in Preisberechnung und Detailtiefe der Regeln, nicht
+   in der Struktur. Der Parser lädt für jede Ordnung dieselbe Tabellenform.
+2. **Abhängigkeiten zwischen Abrechnungsnummern sind erstklassige Daten.** Die
+   Gebührenordnungen verbieten, beschränken und verknüpfen Nummern in den
+   „Allgemeinen Bestimmungen" und in Inline-Hinweisen. Diese Regeln werden
+   maschinenprüfbar modelliert (`constraints` je Eintrag, `constraintGroups`
+   übergreifend), damit der Parser eine **ganze Rechnung** validieren kann –
+   nicht nur einzelne Zeilen.
+3. **Auditierbar & reproduzierbar.** Jeder Constraint trägt den
+   Original-Gesetzeswortlaut (`sourceText`); jede Tabelle trägt ihre Provenienz
+   (`source`). Re-Generierung erzeugt nachvollziehbare Diffs.
+4. **Keine Rückwärtskompatibilität nötig.** Die Tabellen werden ausschließlich
+   reproduzierbar erzeugt (siehe CLAUDE.md). Bei Formatänderungen wird die
+   `schema`-Version erhöht und alles neu generiert.
+
+## 2. Struktur der drei Quellen (Befund aus `data/input/`)
+
+Alle drei Quell-XML (`gesetze-im-internet.de`, `gii-norm.dtd`) betten das
+Gebührenverzeichnis als CALS-Tabellen ein. Spaltenlayout je Ordnung:
+
+| Ordnung | Spalten der Verzeichnis-Tabelle | Preisbasis |
+|---|---|---|
+| **GOÄ** | Nummer · Leistung · Punktzahl · ~~Gebühr in DM~~ | Punktzahl × **5,82873 ct** (§5 Abs. 1) |
+| **GOZ** | Nummer · Leistung · Punktzahl | Punktzahl × **5,62421 ct** (§5 Abs. 1) |
+| **GOT** | Nummer · Leistung · **Euro-Betrag** | Eurobetrag direkt (keine Punkte) |
+
+Wichtig:
+
+- Die GOÄ-Spalte **„Gebühr in DM" ist Altbestand und wird ignoriert** –
+  `baseAmount` wird immer aus `Punktzahl × Punktwert` berechnet.
+- Der **Punktwert ist versioniert/konfigurierbar** (`pointValueCents`), nicht
+  in die Beträge „eingebrannt", damit eine Punktwertänderung ohne Neu-Parsen
+  der Leistungstexte nachvollzogen werden kann.
+- GOT hat ein **anderes Faktorsystem** (kein §5-Schwellenwert wie 2,3) und
+  praktisch keine Nummern-Abhängigkeiten; es füllt nur die `default`-Kategorie.
+
+## 3. Top-Level-Schema
+
+```jsonc
+{
+  "schema": "fee-schedule/v1",
+  "feeSchedule": "GOÄ",                 // "GOÄ" | "GOZ" | "GOT"
+  "version": "1996-neugefasst",
+  "source": {                           // Provenienz, aus XML-Metadaten
+    "law": "GOÄ 1982 (neugefasst 1996)",
+    "file": "data/input/goae/BJNR015220982.xml",
+    "doknr": "BJNR015220982",
+    "lawStatus": "zuletzt geändert durch Art. 3b G v. 19.7.2023 I Nr. 197",
+    "buildDate": "20260506174941"
+  },
+  "pointValueCents": 5.82873,           // null bei GOT
+  "currency": "EUR",
+  "multiplierLimits": {                 // §5-Grenzen je Kategorie
+    "default":   { "regelhoechstsatz": 2.3,  "hoechstsatz": 3.5 },
+    "technical": { "regelhoechstsatz": 1.8,  "hoechstsatz": 2.5 },
+    "lab":       { "regelhoechstsatz": 1.15, "hoechstsatz": 1.3 },
+    "inpatient": { "regelhoechstsatz": 1.8,  "hoechstsatz": 2.5 }
+  },
+  "entries": { /* Ziffer → Eintrag */ },
+  "constraintGroups": [ /* nummernübergreifende Regeln */ ]
+}
+```
+
+## 4. Eintrag (`FeeEntry`)
+
+```jsonc
+"1": {
+  "ziffer": "1",
+  "description": "Beratung, auch mittels Fernsprecher",
+  "points": 80,                 // Punktzahl; null bei GOT
+  "baseAmount": 4.66,           // points × pointValueCents/100 bzw. Euro (GOT)
+  "category": "default",        // default | technical | lab | inpatient
+  "maxMultiplier": 2.3,         // Schwellenwert zum Flaggen (§5 Regelhöchstsatz)
+  "isSurcharge": false,         // true bei Zuschlägen
+  "section": { "part": "M", "code": "B I", "title": "…" },
+  "notes": ["frei-textliche Hinweise, die nicht als Constraint modellierbar sind"],
+  "constraints": [ /* siehe §5 */ ]
+}
+```
+
+- **`ziffer`** ist der Schlüssel des `entries`-Objekts und exakt wie gedruckt
+  (`"1"`, `"75"`, `"1829a"`, GOZ `"0010"`). Der Parser **normalisiert beim
+  Nachschlagen** (führende Nullen strippen), damit `"0001"` und `"1"` matchen.
+- **`category`** wird aus dem Abschnitt der Quelle abgeleitet (GOÄ Teil M →
+  `lab`, technische Abschnitte → `technical`, …) und mappt über
+  `multiplierLimits` auf die §5-Steigerungsgrenzen.
+- **`maxMultiplier`** ist der Wert, gegen den der Parser den
+  Steigerungsfaktor einer Position flaggt – i. d. R. der `regelhoechstsatz` der
+  Kategorie, in Sonderfällen ein gesetzlicher Eintrags-Override.
+
+## 5. Abhängigkeitsmodell — der Kern
+
+In den Quelldaten wurden folgende wiederkehrende Abhängigkeitsmuster gefunden
+(Häufigkeit GOÄ / GOZ / GOT):
+
+| Muster | Beispiel-Wortlaut | Modellierung | GOÄ | GOZ | GOT |
+|---|---|---|---|---|---|
+| Gerichteter Ausschluss | „Leistung nach Nr. 4 ist **neben** den Nummern 30, 34 … **nicht** berechnungsfähig" | `excludes` am Eintrag | ✓ | ✓ | – |
+| Gegenseitiger Ausschluss | „Nummern 271 bis 276 sind **nicht nebeneinander** berechnungsfähig" | `constraintGroups[mutualExclusion]` | ✓ | ✓ | – |
+| Zuschlag (benötigt Basis) | „**Zuschlag zu** den Leistungen nach Nummer 45, 46 …" | `requires` + `isSurcharge` | 109× | 20× | 1× |
+| Bestandteil von | „… ist **Bestandteil** der Leistungen nach den Nummern 270 bis 287" | `componentOf` | ✓ | ✓ | – |
+| Frequenzlimit | „**je Sitzung**" / „**je Behandlungstag**" / „**im Behandlungsfall**" / „**nur einmal**" | `maxFrequency` | ✓ | ✓ | 1× |
+| Höchstwert (Betragsdeckel) | „**Höchstwert** für Leistungen nach Nummer 393, je Tag" | `constraintGroups[maxAmount]` | 31× | – | – |
+| Mindestdauer | „**Mindestdauer** … 20 Min." | `minDuration` | 10× | 1× | – |
+| Altersbedingung | „bei **Kindern bis zum vollendeten 4. Lebensjahr**" | `ageLimit` | ✓ | ✓ | – |
+| Fester Gebührensatz | „nur mit dem **einfachen Gebührensatz** berechnungsfähig" | `fixedFactor` | ✓ | – | – |
+
+### 5.1 Constraint am Eintrag (`constraints[]`)
+
+Diskriminierte Union über `type`. Jeder Constraint trägt `sourceText` (Original).
+
+```jsonc
+// Nicht neben anderen Nummern abrechenbar (deckt "nebeneinander" und "neben … nicht")
+{ "type": "excludes", "ziffern": ["6","7","8"], "scope": "session"?, "sourceText": "…" }
+
+// Zuschlag/Add-on: nur zusammen mit mindestens einer Basisnummer
+{ "type": "requires", "anyOf": ["45","46","48"], "sourceText": "Zuschlag zu …" }
+
+// In einer anderen Leistung enthalten → nicht separat abrechenbar
+{ "type": "componentOf", "ziffern": ["270","287"], "sourceText": "… ist Bestandteil …" }
+
+// Höchstens count× je Zeitfenster
+{ "type": "maxFrequency", "count": 1, "scope": "case", "sourceText": "im Behandlungsfall nur einmal" }
+
+// Mindestdauer der Leistung
+{ "type": "minDuration", "minutes": 20, "sourceText": "Dauer mindestens 20 Minuten" }
+
+// Altersgrenze (typisch bei Zuschlägen)
+{ "type": "ageLimit", "maxAgeYears": 4, "sourceText": "bei Kindern bis zum vollendeten 4. Lebensjahr" }
+
+// Nur mit festem Gebührensatz (kein Steigerungsfaktor)
+{ "type": "fixedFactor", "factor": 1.0, "sourceText": "nur mit dem einfachen Gebührensatz" }
+```
+
+**`scope` (Zeitfenster)** für `maxFrequency`/`excludes`: `session` (je Sitzung),
+`day` (je Behandlungstag/Tag), `case` (im Behandlungsfall = dieselbe Erkrankung
+binnen eines Monats, §5 Allg. Best.), `occasion` (je Inanspruchnahme), `year`,
+`lifetime` — offen für seltene domänenspezifische Fenster.
+
+### 5.2 Nummernübergreifende Regeln (`constraintGroups[]`)
+
+Manche Regeln gehören keinem einzelnen Eintrag, sondern einer **Menge** von
+Nummern:
+
+```jsonc
+// Aus einer Gruppe ist nur eine Nummer abrechenbar
+{ "id": "excl-271-276", "type": "mutualExclusion",
+  "members": ["271","272","273","274","275","276"],
+  "sourceText": "Die Leistungen nach den Nummern 271 bis 276 sind nicht nebeneinander berechnungsfähig." }
+
+// Betragsdeckel über eine Gruppe je Zeitfenster (Höchstwert)
+{ "id": "hoechstwert-3630-3631", "type": "maxAmount",
+  "members": ["3630","3631"], "amount": 11.66, "scope": "case", "cappingZiffer": "3633",
+  "sourceText": "Höchstwert für die Untersuchungen nach den Nummern …" }
+```
+
+Der gerichtete Einzel-Ausschluss bleibt am Eintrag (`excludes`); der
+symmetrische Gruppen-Ausschluss steht als `mutualExclusion` zentral, damit er
+nicht an jedem Mitglied redundant gepflegt werden muss.
+
+## 6. Validierungsregeln (CI)
+
+Der (folgende) Validator prüft mindestens:
+
+1. **Schema-Konformität** gegen `data/schema/fee-schedule.schema.json`.
+2. **Eindeutigkeit** der Ziffern (Schlüssel == `entry.ziffer`).
+3. **Referenzielle Integrität:** jede in `constraints`/`constraintGroups`
+   referenzierte Ziffer existiert in `entries` (oder ist als bewusst externer
+   Verweis dokumentiert).
+4. **Preis-Plausibilität:** GOÄ/GOZ `baseAmount ≈ points × pointValueCents/100`
+   (Rundungstoleranz); GOT `points === null`; `baseAmount > 0`.
+5. **§5-Konsistenz:** `maxMultiplier` passt zur `category` bzw. ist ein
+   begründeter Override; `category` existiert in `multiplierLimits`.
+6. **Symmetrie-Heuristik:** Warnung, wenn ein `excludes`/`mutualExclusion` nur
+   einseitig vorkommt (Hinweis auf Extraktionslücke).
+
+## 7. Re-Generierungs-Workflow (Maintainer, @justb81)
+
+1. Quelle unter `data/input/<ordnung>/*.xml` aktualisieren.
+2. Extraktionsskript laufen lassen → erzeugt
+   `frontend/src/lib/data/{goae,goz,got}.json` (+ Provenienz im `source`-Block).
+3. Validator laufen lassen (lokal == CI).
+4. **Diff prüfen** und committen. Die Tabellen werden ausschließlich vom
+   Maintainer gepflegt (siehe CLAUDE.md / #7).
