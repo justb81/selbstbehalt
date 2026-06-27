@@ -3,3 +3,12 @@ packages:
   - 'backend'
   # Reserved for shared code (e.g. Zod schemas & types) extracted into its own package.
   - 'packages/*'
+
+# Supply-chain cooldown: a newly published version may only be resolved once it
+# is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
+# the Dependabot `cooldown` setting so manual `pnpm add`/`pnpm update` are held to
+# the same rule. Frozen-lockfile installs (CI) are unaffected.
+minimumReleaseAge: 10080
+
+onlyBuiltDependencies:
+  - esbuild

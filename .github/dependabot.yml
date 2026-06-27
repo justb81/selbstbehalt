@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+version: 2
+
+updates:
+  # npm / pnpm dependencies across the whole workspace (root + frontend + backend).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    # Supply-chain cooldown: never adopt a version until it has been published
+    # for at least 7 days. Guards against freshly-published compromised releases.
+    cooldown:
+      default-days: 7
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      prod-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  # GitHub Actions used by the CI workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

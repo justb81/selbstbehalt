@@ -6,10 +6,27 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"[frontend] dev server not scaffolded yet\"",
-    "build": "echo \"[frontend] no build step yet\"",
-    "lint": "echo \"[frontend] no linter configured yet\"",
-    "test": "echo \"[frontend] no tests yet\"",
-    "typecheck": "echo \"[frontend] no typecheck configured yet\""
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.4.2",
+    "@testing-library/user-event": "^14.6.1",
+    "jsdom": "^29.1.1",
+    "svelte": "^5.56.4",
+    "svelte-check": "^4.7.1",
+    "vite": "^8.1.0"
   }
 }

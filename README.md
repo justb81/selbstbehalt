@@ -56,17 +56,36 @@ Prerequisites: **Node.js 22 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**. Wit
 pnpm install        # install all workspace dependencies
 pnpm dev            # run frontend + backend dev servers (parallel)
 pnpm build          # build every workspace package
-pnpm lint           # lint every workspace package
-pnpm test           # test every workspace package
+pnpm lint           # ESLint across the whole monorepo
+pnpm format         # format with Prettier (format:check to verify only)
 pnpm typecheck      # type-check every workspace package
+pnpm test           # run unit/component tests (test:coverage for coverage)
+pnpm test:e2e       # run Playwright end-to-end tests (frontend)
 ```
 
-The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo. The root scripts are pass-throughs that fan out to the workspace packages:
+The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo:
 
-- [`frontend/`](frontend/) — SvelteKit PWA
+- [`frontend/`](frontend/) — Svelte 5 + Vite PWA (graduates to SvelteKit in a later issue)
 - [`backend/`](backend/) — Hono REST API + SQLite
 
-Both packages are currently placeholder scaffolds; their tooling (build, lint, test, type-check) is added in the follow-up Phase 0 / Phase 1 issues.
+Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
+
+### Git hooks
+
+[husky](https://typicode.github.io/husky/) installs hooks on `pnpm install` (via the `prepare` script):
+
+- **pre-commit** — runs [lint-staged](https://github.com/lint-staged/lint-staged): ESLint `--fix` + Prettier on staged files.
+- **commit-msg** — runs [commitlint](https://commitlint.js.org/) against the [Conventional Commits](https://www.conventionalcommits.org/) convention (e.g. `feat:`, `fix:`, `chore:`).
+
+### Continuous integration & branch protection
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull request, with a per-ref concurrency group that cancels superseded runs. It executes lint → format check → typecheck → test (with coverage) → build (matrixed over the active Node LTS), plus a separate Playwright E2E job that uploads its report on failure.
+
+`main` should be protected so these checks are **required** before merge. In **Settings → Branches → Branch protection rules** for `main`, enable _Require status checks to pass before merging_ and select **`Lint · Typecheck · Test · Build`** and **`E2E (Playwright)`**.
+
+### Dependency hygiene (supply-chain cooldown)
+
+To avoid pulling in freshly published — and potentially compromised — releases, a **7-day cooldown** applies everywhere: [Dependabot](.github/dependabot.yml) (`cooldown.default-days: 7`) and pnpm itself ([`minimumReleaseAge: 10080`](pnpm-workspace.yaml) minutes). A package version must be at least 7 days old before it is adopted by an update or a manual `pnpm add`/`pnpm update`. Frozen-lockfile installs (CI) are unaffected.
 
 ### License headers
 

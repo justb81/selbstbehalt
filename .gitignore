@@ -9,6 +9,12 @@ build/
 .output/
 *.tsbuildinfo
 
+# Test & coverage output
+coverage/
+playwright-report/
+test-results/
+.husky/_/
+
 # Environment
 .env
 .env.*

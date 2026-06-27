@@ -1,0 +1,20 @@
+# Generated output
+dist/
+build/
+.svelte-kit/
+.output/
+coverage/
+playwright-report/
+test-results/
+
+# Dependencies & lockfile
+node_modules/
+pnpm-lock.yaml
+
+# Source data (legal-text XML exports) and runtime data
+data/
+
+# Authored long-form German documentation (single source of truth — kept
+# hand-formatted, not reflowed by Prettier).
+docs/
+CLAUDE.md
