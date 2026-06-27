@@ -39,8 +39,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #10 | Geteilte Zod-Schemas & Typen | #2, #3 | ✅ |
 | #11 | Contracts-API (CRUD) | #8, #9, #10 | 🚧 |
 | #12 | Invoices-API (CRUD + Submit + Refund) | #8, #9, #10 | 🚧 |
-| #13 | Stats-API (Jahr + BRE) | #8, #9, #12, #17 | ⬜ |
-| #14 | Backup-API (Export/Import) | #8, #9 | ⬜ |
+| #13 | Stats-API (Jahr + BRE) | #8, #9, #12, #17 | 🚧 |
+| #14 | Backup-API (Export/Import) | #8, #9 | 🚧 |
 | #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ✅ |
 | #16 | GOÄ-Parser + Steigerungsfaktor-Validierung (§5) | #15, #4 | ✅ |
 | #17 | BRE-Helfer (Streak/Projektion) | #4, #10 | ⬜ |

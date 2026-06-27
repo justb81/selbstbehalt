@@ -12,9 +12,11 @@ import type { Config } from './config.js';
 import type { Database } from './db/client.js';
 import { apiKeyAuth } from './middleware/auth.js';
 import { onError, notFound } from './middleware/error.js';
+import { createBackupRoute } from './routes/backup.js';
 import { createContractsRoute } from './routes/contracts.js';
 import { createHealthRoute } from './routes/health.js';
 import { createInvoicesRoute } from './routes/invoices.js';
+import { createStatsRoute } from './routes/stats.js';
 
 export interface AppDeps {
   db: Database;
@@ -42,8 +44,10 @@ export function createApp({ db, config }: AppDeps) {
 
   app.route('/api/contracts', createContractsRoute(db));
   app.route('/api/invoices', createInvoicesRoute(db));
+  app.route('/api/stats', createStatsRoute(db));
 
-  // Future endpoints (#13 stats, #14 backup) are mounted here.
+  // Backup/restore lives at /api/export/db and /api/import/db (#14).
+  app.route('/api', createBackupRoute({ db, config }));
 
   app.notFound(notFound);
   app.onError(onError);

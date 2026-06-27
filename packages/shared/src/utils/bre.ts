@@ -97,6 +97,21 @@ function entitledLevel(breStructure: BREStructure, streakMonths: number): BRELev
 }
 
 /**
+ * Projected annual premium refund (in EUR) for a given number of claim-free
+ * months — the refund of the {@link entitledLevel} that streak entitles to, at
+ * the given monthly premium. Use this when the streak length is already known
+ * (e.g. the per-year `bre_periods.streak_months` in the Stats API, #13) instead
+ * of deriving it from a reference date.
+ */
+export function projectedBREForStreak(
+  breStructure: BREStructure,
+  monthlyPremium: number,
+  streakMonths: number,
+): number {
+  return levelAmount(entitledLevel(breStructure, streakMonths), monthlyPremium);
+}
+
+/**
  * Projected annual premium refund (in EUR) the member is on track to earn for
  * their current claim-free streak — the refund of the {@link entitledLevel} at
  * the given monthly premium. This is the value forfeited if the streak is reset
@@ -109,8 +124,11 @@ export function getProjectedBRE(
   monthlyPremium: number,
   asOf: DateInput = new Date(),
 ): number {
-  const streak = getCurrentStreakMonths(breStructure, asOf);
-  return levelAmount(entitledLevel(breStructure, streak), monthlyPremium);
+  return projectedBREForStreak(
+    breStructure,
+    monthlyPremium,
+    getCurrentStreakMonths(breStructure, asOf),
+  );
 }
 
 /** The upcoming staffel level and how many claim-free months remain to reach it. */

@@ -2,7 +2,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BREStructure } from '../schemas/contract.js';
-import { getCurrentStreakMonths, getNextLevel, getProjectedBRE } from './bre.js';
+import {
+  getCurrentStreakMonths,
+  getNextLevel,
+  getProjectedBRE,
+  projectedBREForStreak,
+} from './bre.js';
 
 /** The three-tier ladder from docs/design.md §3.2 (12/24/36 months → 1/2/3 months). */
 function ladder(currentStreakStart: string | null): BREStructure {
@@ -133,6 +138,28 @@ describe('getProjectedBRE', () => {
     };
     // 1 × 100.1 × 33.33% = 33.363330 → 33.36 (rounded to whole cents)
     expect(getProjectedBRE(odd, 100.1, '2024-01-01')).toBe(33.36);
+  });
+});
+
+describe('projectedBREForStreak', () => {
+  it('returns the entitled level refund for a given streak length', () => {
+    // Streak < 12 still aims at the first level (1× premium).
+    expect(projectedBREForStreak(ladder(null), 185, 0)).toBe(185);
+    expect(projectedBREForStreak(ladder(null), 185, 11)).toBe(185);
+    // Each threshold reached unlocks the next level.
+    expect(projectedBREForStreak(ladder(null), 185, 12)).toBe(185);
+    expect(projectedBREForStreak(ladder(null), 185, 24)).toBe(370);
+    expect(projectedBREForStreak(ladder(null), 185, 36)).toBe(555);
+    // Caps at the top level.
+    expect(projectedBREForStreak(ladder(null), 185, 120)).toBe(555);
+  });
+
+  it('agrees with getProjectedBRE for the streak it derives from a date', () => {
+    const structure = ladder('2024-01-01');
+    const streak = getCurrentStreakMonths(structure, '2026-01-01'); // 24 months
+    expect(projectedBREForStreak(structure, 185, streak)).toBe(
+      getProjectedBRE(structure, 185, '2026-01-01'),
+    );
   });
 });
 
