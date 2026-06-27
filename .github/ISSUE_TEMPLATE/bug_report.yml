@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Bug report
 description: Report something that is broken or behaving unexpectedly.
-labels: ["bug"]
+labels: ['bug']
 body:
   - type: markdown
     attributes:
