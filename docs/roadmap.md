@@ -24,7 +24,7 @@ Issues parallel bearbeitet werden.
 | #4 | Test-Infrastruktur (Vitest + Playwright + Coverage) | #2, #3 |
 | #5 | CI-Pipeline (Lint/Typecheck/Test/Build) | #2, #3, #4 |
 | #6 | Sicherheits-/Abhängigkeits-Automatisierung (CodeQL, Audit, Dependabot, SBOM) | #5 |
-| #7 | Repo-Meta (.env.example, CONTRIBUTING, Templates, GOÄ-Beitragsleitfaden) | #2 |
+| #7 | Repo-Meta (.env.example, CONTRIBUTING, Templates, CODEOWNERS) | #2 |
 
 ## Phase 1 — MVP: Backend, Domäne & Frontend
 

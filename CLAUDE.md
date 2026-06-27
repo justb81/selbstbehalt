@@ -89,7 +89,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 - Validate API payloads and forms with Zod.
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
-- Keep the GOÄ/GOZ lookup tables as static, versioned JSON so they can be updated via community contribution.
+- Keep the GOÄ/GOZ lookup tables as static, versioned JSON, regenerated reproducibly from the official source XML under `data/input/`. They are maintained exclusively by the maintainer (@justb81); errors can be reported as issues, and external PRs (code, data, or otherwise) are welcome but must be reviewed and merged by the maintainer.
 
 ## Repository hygiene & change policy
 
