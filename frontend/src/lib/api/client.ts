@@ -36,7 +36,10 @@ export interface RequestOptions<T> {
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryValue>): string {
-  const url = new URL(`${baseUrl}${path}`);
+  // Normalise so a base URL with a trailing slash doesn't produce a doubled
+  // slash (`http://host//api/...` resolves to a different, 404-ing path). Every
+  // caller benefits — not just the default instance whose store pre-trims.
+  const url = new URL(`${baseUrl.replace(/\/+$/, '')}${path}`);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
@@ -48,7 +51,9 @@ function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryVal
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const body: unknown = await response.json();
-    if (isApiErrorBody(body)) return body.error.message;
+    // An HTTPException thrown without a message yields an empty `message`; fall
+    // back to the status text so the UI never shows a blank error panel.
+    if (isApiErrorBody(body)) return body.error.message || fallback;
   } catch {
     // Non-JSON or empty error body — fall back to the status text.
   }

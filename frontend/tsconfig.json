@@ -1,19 +1,9 @@
 {
-  "extends": "./.svelte-kit/tsconfig.json",
-  "compilerOptions": {
-    // SvelteKit's generated config owns module/moduleResolution/paths; here we
-    // layer on the repo-wide strictness from ../tsconfig.base.json.
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "forceConsistentCasingInFileNames": true
-  },
+  // Inherit the repo-wide strictness from ../tsconfig.base.json first, then let
+  // SvelteKit's generated config own module/moduleResolution/paths/target/lib
+  // (extended last, so those win). Strict flags are intentionally NOT re-listed
+  // here so any future tightening in tsconfig.base.json reaches the frontend.
+  "extends": ["../tsconfig.base.json", "./.svelte-kit/tsconfig.json"],
   // Extend (rather than replace) SvelteKit's generated include with the root
   // config/test-setup files it leaves out, so they are type-checked too.
   // vitest-setup.ts registers the jest-dom matcher types used in component tests.

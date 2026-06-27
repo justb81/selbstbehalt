@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { HealthBody } from '@selbstbehalt/shared';
 import { Hono } from 'hono';
 
 import type { Database } from '../db/client.js';
 import { pingDatabase } from '../db/health.js';
-
-export interface HealthBody {
-  status: 'ok' | 'degraded';
-  service: string;
-  db: 'up' | 'down';
-}
 
 const SERVICE = 'selbstbehalt-backend';
 

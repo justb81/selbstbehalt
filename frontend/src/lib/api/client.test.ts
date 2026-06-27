@@ -30,6 +30,15 @@ describe('createApiClient', () => {
     expect(init.headers['Content-Type']).toBeUndefined();
   });
 
+  it('normalises a base URL with a trailing slash so the path joins cleanly', async () => {
+    const fetch = vi.fn().mockResolvedValue(jsonResponse({ id: 'a', n: 1 }));
+    const { request } = createApiClient({ baseUrl: 'http://api.test/', fetch });
+
+    await request('/api/thing', { schema });
+
+    expect(fetch.mock.calls[0]![0]).toBe('http://api.test/api/thing');
+  });
+
   it('appends query params and skips undefined/null values', async () => {
     const fetch = vi.fn().mockResolvedValue(jsonResponse({ id: 'a', n: 1 }));
     const { request } = createApiClient({ baseUrl: 'http://api.test', fetch });
@@ -88,6 +97,23 @@ describe('createApiClient', () => {
       name: 'ApiError',
       status: 404,
       message: 'Nicht gefunden',
+    });
+  });
+
+  it('falls back to the status text when the backend error message is empty', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(
+          { error: { status: 404, message: '' } },
+          { status: 404, statusText: 'Not Found' },
+        ),
+      );
+    const { request } = createApiClient({ baseUrl: 'http://api.test', fetch });
+
+    await expect(request('/x', { schema })).rejects.toMatchObject({
+      status: 404,
+      message: 'Not Found',
     });
   });
 

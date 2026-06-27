@@ -4,7 +4,7 @@
 // UI lands with #20; for now this owns the backend base-URL override that the
 // API client resolves on every request.
 
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 import { envApiBaseUrl, FALLBACK_API_BASE_URL } from '$lib/config.js';
 
@@ -35,11 +35,18 @@ function load(): Settings {
   }
 }
 
-/** Reactive settings store, hydrated from localStorage and persisted on change. */
+/** Reactive settings store, hydrated once from localStorage and persisted on change. */
 export const settings = writable<Settings>(load());
 
 if (hasStorage()) {
+  // Svelte invokes a subscriber synchronously on registration; that first call
+  // carries the value we just loaded, so skip it to avoid a redundant write.
+  let initialized = false;
   settings.subscribe((value) => {
+    if (!initialized) {
+      initialized = true;
+      return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     } catch {
@@ -55,9 +62,11 @@ function normalizeBaseUrl(url: string): string {
 
 /**
  * Resolve the effective backend base URL. Precedence: explicit user setting →
- * PUBLIC_API_URL (deploy-time env) → local-dev fallback.
+ * PUBLIC_API_URL (deploy-time env) → local-dev fallback. Defaults to the live
+ * store snapshot (hydrated once from localStorage) so each call is a cheap
+ * in-memory read, not a fresh synchronous localStorage parse.
  */
-export function resolveApiBaseUrl(current: Settings = load()): string {
+export function resolveApiBaseUrl(current: Settings = get(settings)): string {
   const candidate = current.apiUrl.trim() || envApiBaseUrl() || FALLBACK_API_BASE_URL;
   return normalizeBaseUrl(candidate);
 }
