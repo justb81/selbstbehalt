@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import { auditFields, isoDate, money, uuid } from '../common.js';
+import { includedBenefitsSchema } from './included-benefits.js';
 
 /**
  * One tier of a premium-refund (Beitragsrückerstattung) ladder: stay
@@ -20,9 +21,6 @@ export const breStructureSchema = z.object({
   levels: z.array(breLevelSchema).min(1, 'Mindestens eine Staffel-Stufe erforderlich'),
   current_streak_start: isoDate.nullish(),
 });
-
-/** Structured `insured_persons.included_benefits` (stored as JSON TEXT). */
-export const includedBenefitsSchema = z.array(z.string().min(1));
 
 /**
  * A versicherte Person on a contract — the link between `persons` and
@@ -55,7 +53,6 @@ export const insuredPersonUpdateSchema = insuredPersonCreateSchema.partial();
 
 export type BRELevel = z.infer<typeof breLevelSchema>;
 export type BREStructure = z.infer<typeof breStructureSchema>;
-export type IncludedBenefits = z.infer<typeof includedBenefitsSchema>;
 export type InsuredPersonCreate = z.infer<typeof insuredPersonCreateSchema>;
 export type InsuredPerson = z.infer<typeof insuredPersonSchema>;
 export type InsuredPersonUpdate = z.infer<typeof insuredPersonUpdateSchema>;

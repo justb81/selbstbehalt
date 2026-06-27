@@ -69,11 +69,16 @@ describe('POST /api/contracts/:id/insured', () => {
         levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
         current_streak_start: '2025-01-01',
       },
-      included_benefits: ['Ambulant', 'Zahn 80%'],
+      included_benefits: {
+        benefits: [
+          { category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'zahnersatz', tiers: [{ up_to: null, pct: 80 }] },
+        ],
+      },
     });
     const body = await res.json();
     expect(body.bre_structure.levels[0].bre_months).toBe(1);
-    expect(body.included_benefits).toEqual(['Ambulant', 'Zahn 80%']);
+    expect(body.included_benefits.benefits[1].tiers[0].pct).toBe(80);
   });
 
   it('rejects an insured person for a non-existent contract with 400', async () => {

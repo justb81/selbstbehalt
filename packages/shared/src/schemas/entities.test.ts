@@ -89,7 +89,12 @@ describe('insuredPersonCreateSchema', () => {
         levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
         current_streak_start: '2024-01-01',
       },
-      included_benefits: ['Ambulant', 'Zahn 80%'],
+      included_benefits: {
+        benefits: [
+          { category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'zahnersatz', tiers: [{ up_to: null, pct: 80 }] },
+        ],
+      },
     });
     expect(result.success).toBe(true);
   });

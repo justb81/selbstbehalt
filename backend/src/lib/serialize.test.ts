@@ -109,7 +109,9 @@ describe('insured-person mapping', () => {
         type: 'staffel',
         levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
       },
-      includedBenefits: ['Ambulant'],
+      includedBenefits: {
+        benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] }],
+      },
       startDate: '2024-01-01',
       endDate: '2030-01-01',
       notes: 'x',
@@ -166,7 +168,9 @@ describe('insured-person mapping', () => {
       monthly_premium: 500,
       self_retention: 300,
       bre_structure: null,
-      included_benefits: ['Zahn'],
+      included_benefits: {
+        benefits: [{ category: 'zahnersatz', tiers: [{ up_to: null, pct: 80 }] }],
+      },
       start_date: '2025-01-01',
       end_date: '2031-01-01',
       notes: 'n',

@@ -79,7 +79,14 @@ export function seed(handle: DbHandle): void {
         ],
         current_streak_start: '2025-07-01',
       },
-      includedBenefits: ['Ambulant', 'Stationär (Zweibettzimmer)', 'Zahn 80%'],
+      includedBenefits: {
+        benefits: [
+          { category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'stationaer', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'zahnbehandlung', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'zahnersatz', waiting_period_months: 8, tiers: [{ up_to: null, pct: 80 }] },
+        ],
+      },
     })
     .returning()
     .get();
@@ -94,7 +101,13 @@ export function seed(handle: DbHandle): void {
       monthlyPremium: 168.5,
       selfRetention: 0,
       startDate: '2024-01-01',
-      includedBenefits: ['Ambulant', 'Stationär (Zweibettzimmer)', 'Zahn 100%'],
+      includedBenefits: {
+        benefits: [
+          { category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'stationaer', tiers: [{ up_to: null, pct: 100 }] },
+          { category: 'zahnbehandlung', tiers: [{ up_to: null, pct: 100 }] },
+        ],
+      },
     })
     .run();
 

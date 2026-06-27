@@ -140,13 +140,19 @@ describe('entity chain', () => {
           levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
           current_streak_start: '2025-01-01',
         },
-        includedBenefits: ['Zahn 90%', 'Heilpraktiker'],
+        includedBenefits: {
+          benefits: [
+            { category: 'zahnbehandlung', tiers: [{ up_to: null, pct: 90 }] },
+            { category: 'heilmittel', tiers: [{ up_to: null, pct: 100 }] },
+          ],
+        },
       })
       .returning()
       .get();
 
     expect(insured.breStructure?.levels[0]?.bre_months).toBe(1);
-    expect(insured.includedBenefits).toEqual(['Zahn 90%', 'Heilpraktiker']);
+    expect(insured.includedBenefits?.benefits[0]?.category).toBe('zahnbehandlung');
+    expect(insured.includedBenefits?.benefits[1]?.tiers?.[0]?.pct).toBe(100);
   });
 
   it('cascades deletes from contract down to insured persons, invoices and positions', () => {
