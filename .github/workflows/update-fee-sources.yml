@@ -7,7 +7,7 @@ name: Update fee-schedule sources
 # merges (CODEOWNERS). See docs/data-format.md §7.
 on:
   schedule:
-    - cron: "17 5 3 * *" # monthly, 3rd at 05:17 UTC (off-peak, off the :00 mark)
+    - cron: '17 5 3 * *' # monthly, 3rd at 05:17 UTC (off-peak, off the :00 mark)
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: '22'
 
       - name: Refresh official XML sources
         run: node scripts/fetch-sources.mjs
