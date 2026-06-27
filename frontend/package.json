@@ -1,0 +1,15 @@
+{
+  "name": "@selbstbehalt/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SvelteKit PWA for selbstbehalt (PKV Manager).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"[frontend] dev server not scaffolded yet\"",
+    "build": "echo \"[frontend] no build step yet\"",
+    "lint": "echo \"[frontend] no linter configured yet\"",
+    "test": "echo \"[frontend] no tests yet\"",
+    "typecheck": "echo \"[frontend] no typecheck configured yet\""
+  }
+}

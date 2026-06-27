@@ -1,0 +1,5 @@
+packages:
+  - 'frontend'
+  - 'backend'
+  # Reserved for shared code (e.g. Zod schemas & types) extracted into its own package.
+  - 'packages/*'

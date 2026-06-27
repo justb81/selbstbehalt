@@ -48,6 +48,36 @@ Browser PWA  ──(JSON metadata only, no images)──>  REST API  ──>  SQ
 
 See [`docs/design.md`](docs/design.md) for the full data model, REST surface, OCR pipeline, and the Günstigerprüfung formula.
 
+## Getting started (development)
+
+Prerequisites: **Node.js 22 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**. With [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), the pinned pnpm version is used automatically.
+
+```bash
+pnpm install        # install all workspace dependencies
+pnpm dev            # run frontend + backend dev servers (parallel)
+pnpm build          # build every workspace package
+pnpm lint           # lint every workspace package
+pnpm test           # test every workspace package
+pnpm typecheck      # type-check every workspace package
+```
+
+The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo. The root scripts are pass-throughs that fan out to the workspace packages:
+
+- [`frontend/`](frontend/) — SvelteKit PWA
+- [`backend/`](backend/) — Hono REST API + SQLite
+
+Both packages are currently placeholder scaffolds; their tooling (build, lint, test, type-check) is added in the follow-up Phase 0 / Phase 1 issues.
+
+### License headers
+
+Source files carry an [SPDX](https://spdx.dev/) short-form identifier as the first line (the full text lives in [`LICENSE`](LICENSE)):
+
+```ts
+// SPDX-License-Identifier: Apache-2.0
+```
+
+Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->` for HTML/Svelte markup, etc.).
+
 ## License
 
 [Apache License 2.0](LICENSE).
