@@ -4,14 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is **greenfield**: there is no application code yet. The repo currently contains:
+The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Implemented so far:
 
-- `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth.
+- **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
+- **`backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
+- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, and the Günstigerprüfung engine. Most UI pages (contracts/invoices/dashboard/settings) and the OCR pipeline (Phase 2) are **not yet built** — see `docs/roadmap.md` and the open GitHub issues.
+
+Reference material:
+
+- `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth; follow it when implementing.
 - `docs/roadmap.md` — the phased implementation plan, mirroring the GitHub issues (phases, dependencies, label scheme).
 - `data/input/{goae,goz,got}/*.xml` — the official gesetze-im-internet.de legal-text exports of the GOÄ/GOZ/GOT fee schedules; build inputs from which the parser's JSON lookup tables are generated (not hand-maintained).
-- `README.md`, `LICENSE` (Apache 2.0), and `assets/` (logo + hero image).
 
-When implementing, follow `docs/design.md` as the authoritative spec. The directory layout, data model, API surface, and domain formulas below are all derived from it. Build commands (lint/test/run) do not exist yet — establish them as part of the initial scaffolding.
+### Commands
+
+Run from the repo root (pnpm workspaces); each fans out to the packages:
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` — CI gate (also `pnpm test:e2e` for Playwright).
+- `pnpm format:check` / `pnpm format` — Prettier.
+- `pnpm --filter @selbstbehalt/backend db:generate` / `db:migrate` / `db:seed` — Drizzle migrations + seed data.
+- `pnpm fees:build` / `pnpm fees:validate` — regenerate/validate the fee-schedule JSON from the source XML.
 
 ## What this is
 
@@ -25,7 +37,7 @@ The domain is German and insurance-specific. Keep entity/field names in German w
 
 ## Architecture (planned)
 
-Monorepo via **pnpm workspaces** — `frontend/` and `backend/`.
+Monorepo via **pnpm workspaces** — `frontend/`, `backend/`, and `packages/shared/` (shared Zod schemas, types and domain helpers).
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
