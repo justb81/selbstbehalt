@@ -130,6 +130,34 @@ Source files carry an [SPDX](https://spdx.dev/) short-form identifier as the fir
 
 Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->` for HTML/Svelte markup, etc.).
 
+## Running with Docker (self-hosting)
+
+The stack ships as two lean, non-root container images orchestrated by
+[`docker-compose.yml`](docker-compose.yml) — a Hono/SQLite backend and an
+nginx-served static PWA — sized for a home network (Proxmox LXC / NAS /
+Portainer). Prerequisite: Docker with the Compose v2 plugin.
+
+```bash
+cp .env.example .env          # then edit .env for your host (see below)
+docker compose up -d --build  # build images and start both services
+```
+
+- **Frontend** → `http://<host>:3000`, **backend API** → `http://<host>:8080`.
+- SQLite and any saved invoice files live in bind-mounted volumes
+  (`./data/db`, `./data/files`), so data survives `docker compose restart`,
+  `down`/`up`, and image rebuilds.
+- Set **`PUBLIC_API_URL`** in `.env` to the backend URL your **browser** can
+  reach (e.g. `http://nas.local:8080`) — it is baked into the frontend bundle
+  at build time, so re-run `docker compose build frontend` after changing it.
+  You can also override it at runtime in the app's settings.
+- Set **`PKV_API_KEY`** to require an `X-API-Key` header (for external/VPN
+  access); leave it empty when relying on a reverse proxy on a trusted LAN.
+
+The backend exposes an unauthenticated `/api/health` endpoint that drives the
+container healthcheck; the frontend only starts once the backend reports
+healthy (`depends_on: service_healthy`). Reverse-proxy/HTTPS hardening and a
+full self-hosting guide are tracked separately.
+
 ## Contributing
 
 Contributions — code, data, docs, or bug reports — are welcome. See

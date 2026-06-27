@@ -1,0 +1,52 @@
+# Docker build context is the repository root (see backend/ & frontend/
+# Dockerfile headers). Keep it small and reproducible: exclude installed
+# dependencies, build outputs and local runtime data — everything the images
+# need is installed/built fresh inside the build stage.
+
+# Dependencies — reinstalled from the lockfile in the build stage.
+**/node_modules
+.pnpm-store
+
+# Build outputs — recompiled in the build stage.
+**/dist
+**/build
+**/.svelte-kit
+**/.output
+*.tsbuildinfo
+
+# Local runtime data: generated SQLite DBs, uploaded files, fee-schedule build
+# inputs (the generated JSON tables live in frontend/src/lib/data and are kept).
+data
+*.sqlite
+*.sqlite3
+*.db
+
+# VCS, CI and tooling metadata — irrelevant to the image build.
+.git
+.github
+.husky
+.vscode
+.idea
+
+# Test, coverage and report artifacts.
+coverage
+playwright-report
+test-results
+**/*.test.ts
+
+# Environment files — never bake secrets into an image.
+.env
+.env.*
+!.env.example
+
+# Editor/OS noise and logs.
+.DS_Store
+Thumbs.db
+*.log
+
+# The images themselves and docs don't belong in the context.
+**/Dockerfile
+.dockerignore
+docker-compose.yml
+docs
+assets
