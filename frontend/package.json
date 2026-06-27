@@ -6,23 +6,27 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "prepare": "svelte-kit sync",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "svelte-kit sync && vitest run",
+    "test:watch": "svelte-kit sync && vitest",
+    "test:coverage": "svelte-kit sync && vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@selbstbehalt/shared": "workspace:*"
+    "@selbstbehalt/shared": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.66.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.4.2",
