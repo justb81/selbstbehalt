@@ -6,10 +6,19 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"[backend] dev server not scaffolded yet\"",
-    "build": "echo \"[backend] no build step yet\"",
-    "lint": "echo \"[backend] no linter configured yet\"",
-    "test": "echo \"[backend] no tests yet\"",
-    "typecheck": "echo \"[backend] no typecheck configured yet\""
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsx": "^4.22.4"
   }
 }
