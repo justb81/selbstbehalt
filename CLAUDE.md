@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is **greenfield**: there is no application code yet. The repo currently contains only:
+This repository is **greenfield**: there is no application code yet. The repo currently contains:
 
 - `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth.
+- `docs/roadmap.md` — the phased implementation plan, mirroring the GitHub issues (phases, dependencies, label scheme).
+- `data/input/{goae,goz,got}/*.xml` — the official gesetze-im-internet.de legal-text exports of the GOÄ/GOZ/GOT fee schedules; build inputs from which the parser's JSON lookup tables are generated (not hand-maintained).
 - `README.md`, `LICENSE` (Apache 2.0), and `assets/` (logo + hero image).
 
 When implementing, follow `docs/design.md` as the authoritative spec. The directory layout, data model, API surface, and domain formulas below are all derived from it. Build commands (lint/test/run) do not exist yet — establish them as part of the initial scaffolding.
