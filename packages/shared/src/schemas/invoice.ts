@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { auditFields, isoDate, money, uuid } from '../common.js';
 import { invoiceDecisionSchema, invoiceStatusSchema, providerTypeSchema } from '../enums.js';
+import { invoicePositionInputSchema, invoicePositionSchema } from './invoice-position.js';
 
 export const invoiceCreateSchema = z.object({
   contract_id: uuid,
@@ -22,6 +23,15 @@ export const invoiceCreateSchema = z.object({
   notes: z.string().nullish(),
 });
 
+/**
+ * `POST /api/invoices` body: an invoice plus its line items, persisted together
+ * in one transaction (§7.1). Positions omit `invoice_id` — it is assigned from
+ * the invoice the same request creates.
+ */
+export const invoiceCreatePayloadSchema = invoiceCreateSchema.extend({
+  positions: z.array(invoicePositionInputSchema).optional(),
+});
+
 export const invoiceSchema = invoiceCreateSchema.extend({
   ...auditFields,
   // Always present when read back (DB defaults applied).
@@ -29,8 +39,15 @@ export const invoiceSchema = invoiceCreateSchema.extend({
   status: invoiceStatusSchema,
 });
 
+/** Detail shape returned by `GET /api/invoices/:id` — the invoice with its lines. */
+export const invoiceWithPositionsSchema = invoiceSchema.extend({
+  positions: z.array(invoicePositionSchema),
+});
+
 export const invoiceUpdateSchema = invoiceCreateSchema.partial();
 
 export type InvoiceCreate = z.infer<typeof invoiceCreateSchema>;
+export type InvoiceCreatePayload = z.infer<typeof invoiceCreatePayloadSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
+export type InvoiceWithPositions = z.infer<typeof invoiceWithPositionsSchema>;
 export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;

@@ -37,8 +37,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #8 | Datenbank-Schicht (Drizzle + SQLite + Schema) | #2, #3 | 🚧 |
 | #9 | Backend-Grundgerüst (Hono + Middleware + Auth) | #2, #3 | 🚧 |
 | #10 | Geteilte Zod-Schemas & Typen | #2, #3 | 🚧 |
-| #11 | Contracts-API (CRUD) | #8, #9, #10 | ⬜ |
-| #12 | Invoices-API (CRUD + Submit + Refund) | #8, #9, #10 | ⬜ |
+| #11 | Contracts-API (CRUD) | #8, #9, #10 | 🚧 |
+| #12 | Invoices-API (CRUD + Submit + Refund) | #8, #9, #10 | 🚧 |
 | #13 | Stats-API (Jahr + BRE) | #8, #9, #12, #17 | ⬜ |
 | #14 | Backup-API (Export/Import) | #8, #9 | ⬜ |
 | #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ⬜ |

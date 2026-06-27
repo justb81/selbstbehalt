@@ -12,7 +12,9 @@ import type { Config } from './config.js';
 import type { Database } from './db/client.js';
 import { apiKeyAuth } from './middleware/auth.js';
 import { onError, notFound } from './middleware/error.js';
+import { createContractsRoute } from './routes/contracts.js';
 import { createHealthRoute } from './routes/health.js';
+import { createInvoicesRoute } from './routes/invoices.js';
 
 export interface AppDeps {
   db: Database;
@@ -38,8 +40,10 @@ export function createApp({ db, config }: AppDeps) {
   // Everything else under /api requires the API key when one is configured.
   app.use('/api/*', apiKeyAuth(config.apiKey));
 
-  // Future endpoints (#11 contracts, #12 invoices, #13 stats, #14 backup)
-  // are mounted here.
+  app.route('/api/contracts', createContractsRoute(db));
+  app.route('/api/invoices', createInvoicesRoute(db));
+
+  // Future endpoints (#13 stats, #14 backup) are mounted here.
 
   app.notFound(notFound);
   app.onError(onError);

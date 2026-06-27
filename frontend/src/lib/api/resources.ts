@@ -8,14 +8,16 @@ import {
   contractSchema,
   healthBodySchema,
   invoiceSchema,
+  invoiceWithPositionsSchema,
   submissionSchema,
   type Contract,
   type ContractCreate,
   type ContractUpdate,
   type HealthBody,
   type Invoice,
-  type InvoiceCreate,
+  type InvoiceCreatePayload,
   type InvoiceUpdate,
+  type InvoiceWithPositions,
   type Submission,
   type SubmissionInput,
   type SubmissionUpdate,
@@ -57,14 +59,14 @@ export function createResources(request: ApiRequester) {
     list: (filters?: Record<string, QueryValue>) =>
       request('/api/invoices', { query: filters, schema: invoiceListSchema }),
     get: (invoiceId: string) =>
-      request(`/api/invoices/${id(invoiceId)}`, { schema: invoiceSchema }),
-    create: (data: InvoiceCreate) =>
-      request('/api/invoices', { method: 'POST', body: data, schema: invoiceSchema }),
+      request(`/api/invoices/${id(invoiceId)}`, { schema: invoiceWithPositionsSchema }),
+    create: (data: InvoiceCreatePayload) =>
+      request('/api/invoices', { method: 'POST', body: data, schema: invoiceWithPositionsSchema }),
     update: (invoiceId: string, data: InvoiceUpdate) =>
       request(`/api/invoices/${id(invoiceId)}`, {
         method: 'PUT',
         body: data,
-        schema: invoiceSchema,
+        schema: invoiceWithPositionsSchema,
       }),
     remove: (invoiceId: string) => request(`/api/invoices/${id(invoiceId)}`, { method: 'DELETE' }),
     submit: (invoiceId: string, data: SubmissionInput) =>
@@ -85,4 +87,4 @@ export function createResources(request: ApiRequester) {
 }
 
 export type Resources = ReturnType<typeof createResources>;
-export type { Contract, Invoice, Submission };
+export type { Contract, Invoice, InvoiceWithPositions, Submission };
