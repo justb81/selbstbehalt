@@ -18,6 +18,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
+  "dependencies": {
+    "@selbstbehalt/shared": "workspace:*"
+  },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",

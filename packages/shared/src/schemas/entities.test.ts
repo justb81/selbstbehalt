@@ -1,0 +1,163 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, expect, it } from 'vitest';
+
+import { personRoleValues, invoiceStatusValues, goaeCategoryValues } from '../enums.js';
+import { personCreateSchema, personUpdateSchema } from './person.js';
+import { contractCreateSchema, breStructureSchema } from './contract.js';
+import { invoiceCreateSchema, invoiceSchema } from './invoice.js';
+import { invoicePositionCreateSchema } from './invoice-position.js';
+import { submissionCreateSchema } from './submission.js';
+import { brePeriodCreateSchema } from './bre-period.js';
+
+const UUID = '3f9a8c2e-1d4b-4c6a-9e2f-7b1c0d5e6a7f';
+
+describe('enums', () => {
+  it('expose the values from §3.2', () => {
+    expect(personRoleValues).toEqual(['primary', 'family_member']);
+    expect(invoiceStatusValues).toContain('selbst_gezahlt');
+    expect(goaeCategoryValues).toContain('GOÄ');
+  });
+});
+
+describe('personCreateSchema', () => {
+  it('requires a non-empty name', () => {
+    expect(personCreateSchema.safeParse({ name: '' }).success).toBe(false);
+    expect(personCreateSchema.safeParse({ name: 'Erika Mustermann' }).success).toBe(true);
+  });
+
+  it('rejects an unknown role', () => {
+    expect(personCreateSchema.safeParse({ name: 'X', role: 'boss' }).success).toBe(false);
+  });
+
+  it('partial update allows an empty object', () => {
+    expect(personUpdateSchema.safeParse({}).success).toBe(true);
+  });
+});
+
+describe('contractCreateSchema', () => {
+  const base = {
+    person_id: UUID,
+    insurer_name: 'DKV',
+    type: 'vollversicherung' as const,
+    start_date: '2024-01-01',
+    monthly_premium: 450,
+  };
+
+  it('accepts a minimal valid contract', () => {
+    expect(contractCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('rejects an unknown contract type', () => {
+    expect(contractCreateSchema.safeParse({ ...base, type: 'reise' }).success).toBe(false);
+  });
+
+  it('validates a nested bre_structure', () => {
+    const result = contractCreateSchema.safeParse({
+      ...base,
+      bre_structure: {
+        type: 'staffel',
+        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+        current_streak_start: '2024-01-01',
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a bre_structure with no levels', () => {
+    expect(breStructureSchema.safeParse({ type: 'staffel', levels: [] }).success).toBe(false);
+  });
+
+  it('rejects pct_of_premium above 100', () => {
+    expect(
+      breStructureSchema.safeParse({
+        type: 'staffel',
+        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 101 }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('invoiceCreateSchema', () => {
+  const base = {
+    contract_id: UUID,
+    invoice_date: '2026-06-01',
+    provider_name: 'Dr. Müller',
+    total_amount: 85,
+  };
+
+  it('accepts a minimal valid invoice and defaults stay omittable', () => {
+    expect(invoiceCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('rejects an unknown status', () => {
+    expect(invoiceCreateSchema.safeParse({ ...base, status: 'unterwegs' }).success).toBe(false);
+  });
+
+  it('read schema requires server-managed fields', () => {
+    expect(invoiceSchema.safeParse(base).success).toBe(false);
+    expect(
+      invoiceSchema.safeParse({
+        ...base,
+        id: UUID,
+        created_at: '2026-06-01T10:00:00Z',
+        self_paid_amount: 0,
+        status: 'neu',
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('invoicePositionCreateSchema', () => {
+  const base = {
+    invoice_id: UUID,
+    goae_number: '0340',
+    multiplier: 2.3,
+    base_amount: 20.11,
+    charged_amount: 46.25,
+  };
+
+  it('accepts a valid position', () => {
+    expect(invoicePositionCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('rejects a non-positive multiplier', () => {
+    expect(invoicePositionCreateSchema.safeParse({ ...base, multiplier: 0 }).success).toBe(false);
+  });
+});
+
+describe('submissionCreateSchema', () => {
+  it('accepts a submission with an ISO datetime', () => {
+    expect(
+      submissionCreateSchema.safeParse({
+        invoice_id: UUID,
+        submitted_at: '2026-06-02T09:00:00Z',
+        submitted_via: 'email',
+        expected_refund: 62.5,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an unknown submission channel', () => {
+    expect(
+      submissionCreateSchema.safeParse({ invoice_id: UUID, submitted_via: 'fax' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('brePeriodCreateSchema', () => {
+  it('accepts a valid period', () => {
+    expect(
+      brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 2026, streak_months: 11 }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an implausible year', () => {
+    expect(brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 1700 }).success).toBe(false);
+  });
+
+  it('rejects a non-integer year', () => {
+    expect(brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 2026.5 }).success).toBe(
+      false,
+    );
+  });
+});
