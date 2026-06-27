@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Fee-schedule data error (GOÄ/GOZ/GOT)
+description: Report a wrong amount, description, or category in a fee-schedule lookup table.
+labels: ["type:domain", "area:domain-logic"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The GOÄ/GOZ/GOT tables are generated from the official source XML and are
+        maintained **exclusively by the maintainer** — please **report** errors
+        here rather than editing the JSON in a PR (those edits get regenerated
+        away). Keep it simple: which code, expected vs. actual, and your source.
+  - type: dropdown
+    id: schedule
+    attributes:
+      label: Fee schedule
+      options:
+        - GOÄ (physicians)
+        - GOZ (dentists)
+        - GOT (veterinarians)
+    validations:
+      required: true
+  - type: input
+    id: code
+    attributes:
+      label: Code (Ziffer)
+      placeholder: e.g. 0340
+    validations:
+      required: true
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: Expected vs. actual
+      description: What does the table currently show, and what should it be?
+      placeholder: |
+        Field: baseAmount (or description / category / maxMultiplier)
+        Actual:   …
+        Expected: …
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Where does the correct value come from? (official GOÄ/GOZ/GOT text, section, date)
+      placeholder: e.g. GOÄ Anlage, Nr. 0340, Fassung 1996
+    validations:
+      required: true
