@@ -1,11 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Security
 
+# Dependency audit, licence check and SBOM only depend on the resolved
+# dependency graph and the licence allowlist script — so trigger on changes to
+# the manifests, lockfile, that script, or this workflow itself. The weekly
+# schedule below re-scans regardless, surfacing newly disclosed advisories.
 on:
   push:
     branches: [main]
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/check-licenses.mjs'
+      - '.github/workflows/security.yml'
   pull_request:
     branches: [main]
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/check-licenses.mjs'
+      - '.github/workflows/security.yml'
   schedule:
     # Weekly re-scan (Mondays 06:42 UTC) so newly disclosed advisories surface
     # even when no code changed.
