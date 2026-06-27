@@ -12,6 +12,13 @@
   <img src="assets/selbstbehalt-hero.png" alt="selbstbehalt" width="640" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/justb81/selbstbehalt/actions/workflows/ci.yml"><img src="https://github.com/justb81/selbstbehalt/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/justb81/selbstbehalt/actions/workflows/codeql.yml"><img src="https://github.com/justb81/selbstbehalt/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" /></a>
+  <a href="https://github.com/justb81/selbstbehalt/actions/workflows/security.yml"><img src="https://github.com/justb81/selbstbehalt/actions/workflows/security.yml/badge.svg" alt="Security" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
+</p>
+
 ---
 
 > **Status:** Early development. The complete technical and functional specification lives in [`docs/design.md`](docs/design.md) (German) and is the single source of truth. Application code is still being scaffolded.
@@ -86,6 +93,32 @@ Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`
 ### Dependency hygiene (supply-chain cooldown)
 
 To avoid pulling in freshly published — and potentially compromised — releases, a **7-day cooldown** applies everywhere: [Dependabot](.github/dependabot.yml) (`cooldown.default-days: 7`) and pnpm itself ([`minimumReleaseAge: 10080`](pnpm-workspace.yaml) minutes). A package version must be at least 7 days old before it is adopted by an update or a manual `pnpm add`/`pnpm update`. Frozen-lockfile installs (CI) are unaffected.
+
+### Security & supply-chain automation
+
+Because the app handles Art. 9 DSGVO health data and forbids runtime third-party
+dependencies, vulnerabilities and license/supply-chain risks are caught
+automatically. Two workflows run on every push to `main` and every pull request
+(plus a weekly schedule):
+
+- [`codeql.yml`](.github/workflows/codeql.yml) — GitHub **CodeQL** static analysis
+  for JavaScript/TypeScript (`security-and-quality` query suite); results appear
+  under the repository's **Security → Code scanning** tab.
+- [`security.yml`](.github/workflows/security.yml) — three jobs:
+  - **Dependency audit** — `pnpm audit --prod --audit-level high` fails the build
+    on any high/critical advisory in a production dependency (`pnpm audit` locally).
+  - **License compliance** — [`scripts/check-licenses.mjs`](scripts/check-licenses.mjs)
+    enforces an OSI-compatible allowlist over all production dependencies
+    (`pnpm licenses:check` locally); see [`docs/design.md`](docs/design.md) §10.
+  - **SBOM** — a [CycloneDX](https://cyclonedx.org/) SBOM (`sbom.cdx.json`) is
+    generated per build and uploaded as the `sbom-cyclonedx` artifact.
+
+[Dependabot](.github/dependabot.yml) keeps npm packages and GitHub Actions
+patched with grouped, cooldown-gated PRs (see above).
+
+**GitHub-side settings** (enable once, in **Settings → Code security**):
+**Secret scanning** and **Push protection** should be on so credentials cannot be
+committed or pushed. Report vulnerabilities via [`SECURITY.md`](SECURITY.md).
 
 ### License headers
 

@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly full scan (Mondays 06:17 UTC) to catch advisories published after a PR merged.
+    - cron: '17 6 * * 1'
+
+# Cancel superseded runs on the same ref (e.g. force-pushes to a PR branch).
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload results to the code-scanning dashboard.
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # JavaScript and TypeScript share a single CodeQL extractor.
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # `security-and-quality` adds maintainability/quality queries on top of
+          # the default security suite. Drop to `security-extended` if too noisy.
+          queries: security-and-quality
+
+      # No compiled languages here — JS/TS needs no build step, so analyze directly.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'
