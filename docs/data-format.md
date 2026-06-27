@@ -212,9 +212,11 @@ die ursprüngliche Regel-Identität (`id`/`sourceText`) erhalten.
 
 ## 6. Validierungsregeln (CI)
 
-Der (folgende) Validator prüft mindestens:
+Der Validator (`scripts/validate-fee-schedules.mjs`, dependency-frei) prüft:
 
-1. **Schema-Konformität** gegen `data/schema/fee-schedule.schema.json`.
+1. **Schema-Konformität** gegen `data/schema/fee-schedule.schema.json` (die
+   Prüfungen hier spiegeln dessen Invarianten; das Schema bleibt der
+   maßgebliche Vertrag und wird zusätzlich extern z. B. mit ajv geprüft).
 2. **Eindeutigkeit** der Ziffern (Schlüssel == `entry.ziffer`).
 3. **Referenzielle Integrität:** jede in `constraints`/`constraintGroups`
    referenzierte Ziffer existiert in `entries` (oder ist als bewusst externer
@@ -229,11 +231,38 @@ Der (folgende) Validator prüft mindestens:
    Konflikterkennung sie symmetrisch normalisiert (Self-Test: `(A,B)` wird aus
    `A.excludes=[B]` ebenso gefunden wie aus `B.excludes=[A]`).
 
-## 7. Re-Generierungs-Workflow (Maintainer, @justb81)
+## 7. Generierung & Tooling
+
+Beides ist dependency-frei (`node`, keine externen Pakete — wie
+`scripts/check-licenses.mjs`):
+
+- **`scripts/build-fee-schedules.mjs`** (`pnpm fees:build`) parst die CALS-
+  Tabellen unter `data/input/` und schreibt `frontend/src/lib/data/{goae,goz,
+  got}.json` inkl. `source`-Provenienz. Hilfsmodule: `scripts/lib/mini-xml.mjs`
+  (winziger XML-Parser), `scripts/lib/fee-constraints.mjs` (Constraint-Extraktion).
+- **`scripts/validate-fee-schedules.mjs`** (`pnpm fees:validate`) prüft die in
+  §6 genannten Regeln.
+
+CI (`.github/workflows/ci.yml`) baut die Tabellen neu, erzwingt per
+`git diff --exit-code`, dass die eingecheckten Tabellen reproduzierbar zur
+Quelle passen (keine veralteten/handeditierten Tabellen), und validiert sie.
+
+**Aktueller Stand der generierten Tabellen** (Richtwerte): GOÄ ~2.285 Ziffern,
+GOZ ~209, GOT ~1.006. Die Constraint-Extraktion ist hochpräzise, aber nicht
+vollständig: Sätze, die kein bekanntes Muster treffen, werden als `notes`
+(Freitext mit Wortlaut) erhalten — es geht nichts verloren. Reine
+Buchstaben-Zuschläge der GOÄ (A–K, Abschnitte A/B.II) sind **nicht** als
+Einträge enthalten (mehrdeutige, kollidierende Schlüssel); ihre numerischen
+Bezüge bleiben über die Zuschlags-Beschreibungen erhalten.
+
+**Bekannte Quell-Eigenheit:** GOÄ-Nr. **4114** kommt im amtlichen XML doppelt
+vor („Renin-Aldosteron-Suppressionstest" und „Lithium"); der Build meldet das
+als Warnung und behält deterministisch den zuletzt gelesenen Eintrag.
+
+### Re-Generierungs-Workflow (Maintainer, @justb81)
 
 1. Quelle unter `data/input/<ordnung>/*.xml` aktualisieren.
-2. Extraktionsskript laufen lassen → erzeugt
-   `frontend/src/lib/data/{goae,goz,got}.json` (+ Provenienz im `source`-Block).
-3. Validator laufen lassen (lokal == CI).
+2. `pnpm fees:build` → erzeugt die JSON-Tabellen neu.
+3. `pnpm fees:validate` (lokal == CI).
 4. **Diff prüfen** und committen. Die Tabellen werden ausschließlich vom
    Maintainer gepflegt (siehe CLAUDE.md / #7).
