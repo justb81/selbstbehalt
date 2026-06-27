@@ -175,9 +175,40 @@ Nummern:
   "sourceText": "Höchstwert für die Untersuchungen nach den Nummern …" }
 ```
 
-Der gerichtete Einzel-Ausschluss bleibt am Eintrag (`excludes`); der
-symmetrische Gruppen-Ausschluss steht als `mutualExclusion` zentral, damit er
-nicht an jedem Mitglied redundant gepflegt werden muss.
+#### 5.2.1 `excludes` vs. `mutualExclusion` — bewusst zwei Formen
+
+Beide drücken **dieselbe** Tatsache aus: „diese Nummern dürfen nicht zusammen
+abgerechnet werden", und diese Unverträglichkeit ist **immer symmetrisch**.
+Der Unterschied ist rein die **Form** der Beziehung, die jede kompakt abbildet:
+
+- **`excludes` = Stern.** Eine Nummer gegen eine Liste. Sagt **nichts** darüber
+  aus, ob die gelisteten Nummern untereinander kollidieren. Beispiel: „Nr. 4 ist
+  neben 30, 34, 801 … nicht berechnungsfähig" — verboten sind 4↔30, 4↔34, 4↔801;
+  30↔34 bleibt erlaubt.
+- **`mutualExclusion` = Clique.** Ein ganzer Block, in dem **jede** Nummer mit
+  **jeder** anderen kollidiert. Beispiel: „Nummern 271 bis 276 nicht
+  nebeneinander" — alle Paare innerhalb 271…276 sind verboten.
+
+Beide Formen kommen real in den Quelldaten vor und sind **nicht ineinander
+überführbar**, ohne Information zu verlieren oder zu erfinden: Eine Clique ließe
+sich zwar als `excludes` an jedem Mitglied schreiben (redundant), ein Stern aber
+**nicht** zu einer Clique zusammenfassen (das erfände das Verbot 30↔34).
+
+**Warum beide behalten** (statt alles auf `excludes`-Paare zu reduzieren):
+Ein `mutualExclusion`-Eintrag ist **ein** Gesetzessatz mit **einem** `id` und
+**einem** `sourceText`. Diese Klammer bleibt erhalten, damit die spätere Prüfung
+**genau diese eine Regel als „angewendet" ausweisen** kann (z. B. „Regel
+`excl-271-276`: Nummern 271–276 nicht nebeneinander → angewendet auf 271, 274"),
+statt einer anonymen Menge von Paaren. Würde man die Gruppe in per-Eintrag-Paare
+auflösen, ginge sowohl diese Nachvollziehbarkeit als auch die einfache,
+einmalige Pflege verloren.
+
+**Konsequenz für den Parser** (§6): `excludes` ist symmetrisch zu behandeln —
+ein `(4, 30)`-Konflikt ist ein Verstoß, egal ob die Kante an 4 oder an 30
+gespeichert ist (das Gesetz nennt sie meist nur einseitig). Für die reine
+Konflikterkennung normalisieren `excludes` und `mutualExclusion` zu derselben
+symmetrischen Inkompatibilitäts-Paarmenge (ein Prüfpfad); für die Anzeige bleibt
+die ursprüngliche Regel-Identität (`id`/`sourceText`) erhalten.
 
 ## 6. Validierungsregeln (CI)
 
@@ -192,8 +223,11 @@ Der (folgende) Validator prüft mindestens:
    (Rundungstoleranz); GOT `points === null`; `baseAmount > 0`.
 5. **§5-Konsistenz:** `maxMultiplier` passt zur `category` bzw. ist ein
    begründeter Override; `category` existiert in `multiplierLimits`.
-6. **Symmetrie-Heuristik:** Warnung, wenn ein `excludes`/`mutualExclusion` nur
-   einseitig vorkommt (Hinweis auf Extraktionslücke).
+6. **Symmetrie:** `excludes` darf einseitig sein — das ist **kein** Fehler (das
+   Gesetz nennt die Regel meist nur an einer Nummer, siehe §5.2.1). Der Validator
+   meldet einseitige Kanten daher **nicht**; er stellt nur sicher, dass die
+   Konflikterkennung sie symmetrisch normalisiert (Self-Test: `(A,B)` wird aus
+   `A.excludes=[B]` ebenso gefunden wie aus `B.excludes=[A]`).
 
 ## 7. Re-Generierungs-Workflow (Maintainer, @justb81)
 

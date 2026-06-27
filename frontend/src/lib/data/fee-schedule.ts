@@ -55,8 +55,13 @@ export type ConstraintScope =
  * human can audit the extraction.
  */
 export type Constraint =
-  /** Not billable alongside any of `ziffern` (covers both "nicht nebeneinander"
-   *  and "neben den Leistungen nach … nicht berechnungsfähig"). */
+  /** Not billable alongside any of `ziffern` ("neben den Leistungen nach …
+   *  nicht berechnungsfähig"). This is a *star*: it says nothing about whether
+   *  the listed numbers conflict with each other. Billing incompatibility is
+   *  symmetric, so the parser must treat a `(this, X)` conflict as a violation
+   *  regardless of which side stores the edge (the law usually states it once).
+   *  For a fully-connected block where every number excludes every other, use a
+   *  `mutualExclusion` {@link ConstraintGroup} instead — see docs/data-format.md §5.2.1. */
   | { type: 'excludes'; ziffern: string[]; scope?: ConstraintScope; sourceText: string }
   /** Surcharge / add-on: only billable together with at least one of `anyOf`. */
   | { type: 'requires'; anyOf: string[]; sourceText: string }
@@ -115,8 +120,17 @@ export interface FeeEntry {
 
 /**
  * A rule that spans a *set* of numbers rather than belonging to one entry —
- * e.g. a mutual-exclusion group ("Nummern 271 bis 276 nicht nebeneinander") or
- * a Höchstwert capping a group of lab numbers per day.
+ * e.g. a `mutualExclusion` clique ("Nummern 271 bis 276 nicht nebeneinander",
+ * i.e. every member excludes every other) or a `maxAmount` Höchstwert capping a
+ * group per period.
+ *
+ * Why this stays a group instead of being expanded into per-entry `excludes`
+ * pairs: it is one legal sentence with one `id` and one `sourceText`. Keeping
+ * that bracket lets the checker report exactly this rule as "applied"
+ * (e.g. "excl-271-276 → applied to 271, 274") rather than an anonymous pair set,
+ * and keeps the rule maintained in one place. For conflict *detection* a
+ * `mutualExclusion` normalises to the same symmetric incompatibility pairs as
+ * `excludes`; only the display identity differs. See docs/data-format.md §5.2.1.
  */
 export type ConstraintGroup =
   | {
