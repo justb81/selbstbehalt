@@ -257,77 +257,39 @@ async function recognizeImage(imageData: ImageData): Promise<OCRResult[]> {
 
 ### 4.3 GOÄ-Strukturparser
 
-Arztrechnungen nach §12 GOÄ folgen einem gesetzlich definierten Schema. Der Parser nutzt reguläre Ausdrücke für die Feldextraktion:
+Arztrechnungen nach §12 GOÄ folgen einem gesetzlich definierten Schema. Der
+Parser (`frontend/src/lib/utils/goae-parser.ts`) ist reiner, deterministischer
+Code (kein LLM) und die **Konsumentenseite** des `fee-schedule/v1`-Formats
+(siehe `docs/data-format.md`, `frontend/src/lib/data/fee-schedule.ts`). Er
+arbeitet in vier Schritten:
 
-```typescript
-// goae-parser.ts
-import goaeData from './data/goae-2024.json';  // Statische GOÄ-Lookup-Tabelle
+1. **Feld- und Positionsextraktion** per Regex aus dem (OCR-)Text: Datum
+   (→ ISO `YYYY-MM-DD`), Rechnungsnummer, Anbieter sowie die Positionszeilen.
+   Eine Positionszeile beginnt mit einer Ziffer und endet mit einem
+   Euro-Betrag; der abschließende Zahlen-Lauf wird von rechts als
+   `[… Anzahl] Faktor Betrag` gelesen (deutsche Dezimal-/Tausenderzeichen,
+   OCR-Rauschen tolerant). Eine explizite Mengenangabe (`2x`) wird erkannt.
+2. **Lookup** jeder Ziffer in der generierten Tabelle (`{goae,goz,got}.json`,
+   Typ `FeeScheduleTable`); die Ziffer wird beim Nachschlagen normalisiert
+   (führende Nullen gestrippt). `baseAmount`/`category`/`maxMultiplier` werden
+   aus dem `FeeEntry` übernommen, nicht neu berechnet. Unbekannte Ziffern werden
+   gekennzeichnet (kein Crash).
+3. **Validierung pro Position (§5)**: Der Steigerungsfaktor wird gegen
+   `maxMultiplier` des Eintrags (ersatzweise `multiplierLimits[category]`)
+   geprüft — **die Grenzen kommen ausschließlich aus den Daten, nicht
+   hartkodiert**. `fixedFactor`-Einträge werden gegen ihren festen
+   Gebührensatz geprüft. Ergebnis: `isValid` + `flags` (mit `flag_reason`).
+4. **Validierung über die ganze Rechnung** gegen das Abhängigkeitsmodell:
+   `excludes`/`mutualExclusion` (symmetrisch normalisierte Inkompatibilitäts-
+   Paare), `requires`, `componentOf`, `maxFrequency`, `maxAmount`,
+   `minDuration` und `ageLimit`. Jeder Verstoß weist die angewendete Regel
+   (`id`/`sourceText`) und die betroffenen Positionen aus. GOT hat keinen
+   §5-Schwellenwert und praktisch keine Nummern-Abhängigkeiten.
 
-interface ParsedInvoice {
-  invoiceDate: string;
-  invoiceNumber: string;
-  providerName: string;
-  positions: ParsedPosition[];
-  totalAmount: number;
-}
-
-interface ParsedPosition {
-  number: string;
-  multiplier: number;
-  chargedAmount: number;
-  baseAmount: number;
-  isValid: boolean;
-  flagReason?: string;
-}
-
-const GOAE_LINE_REGEX = /(\d{3,4}[A-Z]?)\s+([\d,]+)\s+(\d[,\d]*)\s+([\d,.]+)/g;
-
-// Regelsteigerungsgrenzen nach §5 GOÄ
-const MULTIPLIER_LIMITS: Record<string, number> = {
-  default: 2.3,     // Persönliche ärztliche Leistungen
-  technical: 1.8,   // Technische Leistungen
-  lab: 1.15,        // Labor (GOÄ Teil M)
-  inpatient: 1.8,   // Stationäre Behandlung
-};
-
-function parseInvoiceText(ocrText: string): ParsedInvoice {
-  // Datum-Extraktion
-  const dateMatch = ocrText.match(/(\d{2}\.\d{2}\.\d{4})/);
-  
-  // Positionen parsen
-  const positions: ParsedPosition[] = [];
-  let match;
-  while ((match = GOAE_LINE_REGEX.exec(ocrText)) !== null) {
-    const goaeNumber = match[^1];
-    const multiplier = parseFloat(match[^2].replace(',', '.'));
-    const chargedAmount = parseFloat(match[^4].replace('.', '').replace(',', '.'));
-    
-    const goaeEntry = goaeData[goaeNumber];
-    const baseAmount = goaeEntry?.baseAmount ?? 0;
-    const category = goaeEntry?.category ?? 'default';
-    const limit = MULTIPLIER_LIMITS[category] ?? MULTIPLIER_LIMITS.default;
-    
-    positions.push({
-      number: goaeNumber,
-      multiplier,
-      chargedAmount,
-      baseAmount,
-      isValid: multiplier <= limit,
-      flagReason: multiplier > limit
-        ? `Steigerungsfaktor ${multiplier} überschreitet Regelgrenze ${limit} (§5 GOÄ)`
-        : undefined,
-    });
-  }
-  
-  return {
-    invoiceDate: dateMatch?. ?? '',
-    invoiceNumber: extractInvoiceNumber(ocrText),
-    providerName: extractProviderName(ocrText),
-    positions,
-    totalAmount: positions.reduce((s, p) => s + p.chargedAmount, 0),
-  };
-}
-```
+Die zentralen Typen (`ParsedInvoice`, `ParsedPosition`, `ConstraintViolation`)
+und Funktionen (`parseInvoice`, `lookupPosition`, `validateInvoice`) sind im
+Quellmodul dokumentiert; die Validierungsregeln und Constraint-Typen in
+`docs/data-format.md` §5.
 
 ### 4.4 GOÄ-Lookup-Tabelle
 
