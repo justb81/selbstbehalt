@@ -1,11 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 name: CI
 
+# Docs-, asset- and licence-only changes can't affect lint/typecheck/test/build,
+# so skip the (expensive) pipeline for them. Any code, config, data or lockfile
+# change still triggers it.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'LICENSE'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'LICENSE'
 
 # Cancel superseded runs on the same ref (e.g. force-pushes to a PR branch).
 concurrency:
