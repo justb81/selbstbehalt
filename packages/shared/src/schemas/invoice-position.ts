@@ -5,11 +5,13 @@ import { money, uuid } from '../common.js';
 import { goaeCategorySchema } from '../enums.js';
 
 /**
- * A single billed line of an invoice (§3.2 `invoice_positions`). Note this
- * table carries no `created_at` — its only server-assigned field is `id`.
+ * Client-supplied fields of an invoice line (§3.2 `invoice_positions`), with no
+ * `invoice_id`. This is the shape used when positions are created nested inside
+ * their parent invoice (`POST /api/invoices`): the FK comes from the freshly
+ * inserted invoice, so a body-level `invoice_id` would be redundant — mirrors
+ * the submission input/create split.
  */
-export const invoicePositionCreateSchema = z.object({
-  invoice_id: uuid,
+export const invoicePositionInputSchema = z.object({
   goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
   goae_category: goaeCategorySchema.nullish(),
   description: z.string().nullish(),
@@ -23,10 +25,18 @@ export const invoicePositionCreateSchema = z.object({
   flag_reason: z.string().nullish(),
 });
 
+/** Full create payload, including the `invoice_id` FK the server persists. */
+export const invoicePositionCreateSchema = invoicePositionInputSchema.extend({ invoice_id: uuid });
+
+/**
+ * A persisted invoice line. Note this table carries no `created_at` — its only
+ * server-assigned field is `id`.
+ */
 export const invoicePositionSchema = invoicePositionCreateSchema.extend({ id: uuid });
 
-export const invoicePositionUpdateSchema = invoicePositionCreateSchema.partial();
+export const invoicePositionUpdateSchema = invoicePositionInputSchema.partial();
 
+export type InvoicePositionInput = z.infer<typeof invoicePositionInputSchema>;
 export type InvoicePositionCreate = z.infer<typeof invoicePositionCreateSchema>;
 export type InvoicePosition = z.infer<typeof invoicePositionSchema>;
 export type InvoicePositionUpdate = z.infer<typeof invoicePositionUpdateSchema>;
