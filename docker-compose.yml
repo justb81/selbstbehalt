@@ -1,0 +1,69 @@
+# docker-compose.yml — selbstbehalt (PKV Manager) self-hosting stack.
+# See docs/design.md §7.3. Before the first run, copy the env template and
+# adjust it for your host:
+#
+#     cp .env.example .env
+#     docker compose up -d --build
+#
+# The top-level `version:` key is intentionally omitted — it is obsolete in
+# Docker Compose v2 and only produces a warning.
+#
+# Build context is the repository root for both services (not ./frontend or
+# ./backend): the apps share the @selbstbehalt/shared workspace package and the
+# root pnpm-lock.yaml, which a per-app context could not resolve.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      # SQLite file on the mounted volume; survives container restarts.
+      DATABASE_PATH: /app/db/pkv.sqlite
+      PORT: '8080'
+      # Optional X-API-Key for external/VPN access; empty → disabled (§7.2).
+      API_KEY: ${PKV_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - ./data/db:/app/db # SQLite database — persisted across restarts
+      - ./data/files:/app/files # optional saved invoice files
+    # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
+    # container over the shared network. `expose` documents the internal port.
+    expose:
+      - '8080'
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Baked into the static bundle at build time — must be reachable from
+        # the user's BROWSER (not the in-network service name). See .env.example.
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+    # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
+    # container over the shared network. `expose` documents the internal port.
+    expose:
+      - '3000'
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--spider', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
