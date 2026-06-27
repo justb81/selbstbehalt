@@ -11,7 +11,10 @@ import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 import { schema, type Schema } from './schema.js';
 
-export type Database = BetterSQLite3Database<Schema>;
+// `drizzle()` returns the database augmented with `$client` (the underlying
+// better-sqlite3 connection). Keeping it on the alias lets backup/restore reach
+// `serialize()`/`ATTACH`/`PRAGMA`, which the query layer does not expose (#14).
+export type Database = BetterSQLite3Database<Schema> & { $client: BetterSqlite3.Database };
 
 export interface DbHandle {
   db: Database;
