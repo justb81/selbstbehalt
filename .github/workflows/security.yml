@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly re-scan (Mondays 06:42 UTC) so newly disclosed advisories surface
+    # even when no code changed.
+    - cron: '42 6 * * 1'
+
+# Cancel superseded runs on the same ref (e.g. force-pushes to a PR branch).
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Git hooks are pointless in CI and `prepare` would try to install them.
+  HUSKY: '0'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Dependency audit (fail on high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      # Audit the resolved dependency graph from the lockfile. No install needed,
+      # and it must run even on PRs that haven't yet refreshed node_modules.
+      # Fails the job when any production dependency has a high/critical advisory.
+      - name: pnpm audit
+        run: pnpm audit --prod --audit-level high
+
+  licenses:
+    name: License compliance (OSI-compatible only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Enforces the allowlist in scripts/check-licenses.mjs against the licenses
+      # of all production (redistributed) dependencies.
+      - name: Check production dependency licenses
+        run: node scripts/check-licenses.mjs
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Syft reads pnpm-lock.yaml / node_modules and emits a CycloneDX SBOM.
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          # We upload the artifact ourselves (below) for a stable name.
+          upload-artifact: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30

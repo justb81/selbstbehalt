@@ -28,6 +28,30 @@ Please include:
 - We'll keep you informed about the fix and coordinate a disclosure timeline.
 - With your consent, we're happy to credit you once the issue is resolved.
 
+## Automated security tooling
+
+Several automated checks guard the codebase and its supply chain. They run on
+every pull request and push to `main`, plus a weekly schedule:
+
+- **CodeQL** static analysis for JavaScript/TypeScript
+  ([`.github/workflows/codeql.yml`](.github/workflows/codeql.yml)) — findings
+  surface under **Security → Code scanning**.
+- **Dependency audit** (`pnpm audit`, production deps) — fails on any
+  high/critical advisory.
+- **License compliance** — production dependencies must use an OSI-compatible
+  license ([`scripts/check-licenses.mjs`](scripts/check-licenses.mjs)).
+- **SBOM** — a CycloneDX software bill of materials is produced per build and
+  retained as a downloadable artifact.
+- **Dependabot** ([`.github/dependabot.yml`](.github/dependabot.yml)) — grouped,
+  cooldown-gated updates for npm packages and GitHub Actions.
+
+These workflows live in [`.github/workflows/`](.github/workflows/) and are
+documented in the [README](README.md#security--supply-chain-automation).
+
+**Secret scanning** and **push protection** are expected to be enabled for the
+repository (**Settings → Code security**) so that credentials cannot be committed
+or pushed.
+
 ## Scope
 
 This is a self-hostable application. The most security-relevant areas are:
