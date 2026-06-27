@@ -1,11 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 name: CodeQL
 
+# Docs/assets carry no analysable JS/TS, so skip code scanning for changes that
+# only touch them. The weekly schedule below still performs a full scan
+# regardless of which paths changed.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'LICENSE'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'LICENSE'
   schedule:
     # Weekly full scan (Mondays 06:17 UTC) to catch advisories published after a PR merged.
     - cron: '17 6 * * 1'
