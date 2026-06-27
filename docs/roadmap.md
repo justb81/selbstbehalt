@@ -44,6 +44,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ✅ |
 | #16 | GOÄ-Parser + Steigerungsfaktor-Validierung (§5) | #15, #4 | ✅ |
 | #17 | BRE-Helfer (Streak/Projektion) | #4, #10 | ⬜ |
+| #65 | `included_benefits`-Schema (Tarif-Erstattungsregeln) | #8, #10 | ⬜ |
+| #66 | Erstattungs-Engine (`eligible_amount` aus Tarifbausteinen) | #65, #16, #4 | ⬜ |
 | #18 | Günstigerprüfung-Engine | #17, #4 | ⬜ |
 | #19 | SvelteKit-Grundgerüst + API-Client | #2, #3, #10 | ✅ |
 | #20 | Einstellungs-Seite | #19, #14 | ⬜ |
@@ -90,11 +92,13 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
     ├─ #8 ──┐
     ├─ #9 ──┼─ #11/#12/#13/#14
     ├─ #10 ─┘
-    ├─ #15 ── #16 ───────────────┐
+    ├─ #15 ── #16 ──┬────────────┐
+    │               └─ #66 ◀── #65,#16
     ├─ #17 ── #18 ──────────────┐│
+    ├─ #65 ── #66 ──────────────┤│   (Tarif-Schema → Erstattungs-Engine → R)
     └─ #19 ─┬─ #20 ── #22 ◀──────┘│
             ├─ #21 ◀── #11,#17    │
-            ├─ #22 ◀── #12,#16,#18,#20
+            ├─ #22 ◀── #12,#16,#18,#66,#20
             └─ #23 ◀── #21,#22,#13
 
 #19 ─┬─ #24 ─┐
@@ -110,4 +114,4 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 
 `#2 → #3 → {#8,#9,#10} → {#11,#12} → #19 → {#21,#22} → #23`
 
-Paralleler Domänen-Strang: `#15 → #16` und `#17 → #18`, der in #22 (Rechnungs-UI/GCPCard) einfließt.
+Paralleler Domänen-Strang: `#15 → #16`, `#17 → #18` und `#65 → #66`, die in #22 (Rechnungs-UI/GCPCard) einfließen.
