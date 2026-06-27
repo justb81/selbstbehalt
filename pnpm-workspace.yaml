@@ -1,7 +1,7 @@
 packages:
   - 'frontend'
   - 'backend'
-  # Reserved for shared code (e.g. Zod schemas & types) extracted into its own package.
+  # Shared code (Zod schemas & types) lives here, e.g. packages/shared.
   - 'packages/*'
 
 # Supply-chain cooldown: a newly published version may only be resolved once it
@@ -11,4 +11,5 @@ packages:
 minimumReleaseAge: 10080
 
 onlyBuiltDependencies:
+  - better-sqlite3
   - esbuild

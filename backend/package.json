@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-migrations.mjs",
     "start": "node dist/index.js",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -15,10 +15,24 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@selbstbehalt/shared": "workspace:*",
+    "better-sqlite3": "^11.8.1",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.6.16",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^26.0.1",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.4"
   }
 }
