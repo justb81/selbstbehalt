@@ -88,3 +88,8 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
 - Keep the GOÄ/GOZ lookup tables as static, versioned JSON so they can be updated via community contribution.
+
+## Repository hygiene & change policy
+
+- **No outdated content in the repo.** Code, docs, comments, examples, and configuration must always reflect the current state. When you change something, update everything it touches in the same change — never leave stale references, dead code, obsolete docs, or superseded files behind. If you find existing content that is out of date, fix or remove it.
+- **No backward-compatibility guarantee by default.** When changing an interface, API, schema, data format, or config, prefer the clean, correct result over preserving the old shape. Do not add compatibility shims, deprecation layers, dual-path handling, or migration fallbacks unless backward compatibility is explicitly requested. Update all call sites and consumers directly instead.
