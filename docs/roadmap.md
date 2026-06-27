@@ -9,11 +9,12 @@ Issues parallel bearbeitet werden.
 
 ## Label-Schema
 
-- **type:** `type:feature`, `type:domain`, `type:infra`, `type:ci-cd`, `type:test`, `type:security`, `type:docs`, `type:bug`
+- **type:** `type:feature`, `type:domain`, `type:infra`, `type:ci-cd`, `type:test`, `type:security`, `type:docs`
 - **area:** `area:frontend`, `area:backend`, `area:database`, `area:domain-logic`, `area:ocr`, `area:pwa`, `area:devops`
 - **phase:** `phase:0-foundation`, `phase:1-mvp`, `phase:2-ocr`, `phase:3-polish`, `phase:4-extensions`
 - **priority:** `priority:high`, `priority:medium`, `priority:low`
 - **sonstige:** `privacy` (Privacy-by-Design-relevant), `epic` (Meta/Übersicht)
+- **gemeldete Issues:** Über die Issue-Templates eingereichte Issues nutzen die GitHub-Standard-Labels (`bug`, `enhancement`, `documentation`, `question`, …); die obige `type:`/`area:`/`phase:`-Taxonomie ist primär für die geplanten Umsetzungs-Issues gedacht.
 
 ## Phase 0 — Fundament & DevEx
 
