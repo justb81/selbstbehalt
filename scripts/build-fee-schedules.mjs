@@ -12,7 +12,7 @@
 //
 // Run: node scripts/build-fee-schedules.mjs
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseXml, findAll, findFirst, isElement, text } from './lib/mini-xml.mjs';
@@ -54,7 +54,7 @@ const SCHEDULES = [
   {
     feeSchedule: 'GOÄ',
     version: '1996-neugefasst',
-    file: 'data/input/goae/BJNR015220982.xml',
+    dir: 'data/input/goae',
     out: 'goae.json',
     pointValueCents: 5.82873,
     multiplierLimits: GOAE_LIMITS,
@@ -66,7 +66,7 @@ const SCHEDULES = [
   {
     feeSchedule: 'GOZ',
     version: '1987',
-    file: 'data/input/goz/BJNR023160987.xml',
+    dir: 'data/input/goz',
     out: 'goz.json',
     pointValueCents: 5.62421,
     multiplierLimits: GOZ_LIMITS,
@@ -77,7 +77,7 @@ const SCHEDULES = [
   {
     feeSchedule: 'GOT',
     version: '2022',
-    file: 'data/input/got/BJNR140100022.xml',
+    dir: 'data/input/got',
     out: 'got.json',
     pointValueCents: null,
     multiplierLimits: GOT_LIMITS,
@@ -479,8 +479,20 @@ function dropDangling(result) {
   return result;
 }
 
+// Resolve the single legal-text XML inside a source directory. Globbing by
+// directory (rather than a hard-coded BJNR filename) keeps the build working
+// when an updated consolidation changes the file name (e.g. the monthly
+// refresh in .github/workflows/update-fee-sources.yml).
+function resolveSourceFile(dir) {
+  const xmls = readdirSync(join(ROOT, dir)).filter((f) => f.toLowerCase().endsWith('.xml'));
+  if (xmls.length !== 1)
+    throw new Error(`expected exactly one .xml in ${dir}, found ${xmls.length}`);
+  return `${dir}/${xmls[0]}`;
+}
+
 function build(schedule) {
-  const xml = readFileSync(join(ROOT, schedule.file), 'utf8');
+  const file = resolveSourceFile(schedule.dir);
+  const xml = readFileSync(join(ROOT, file), 'utf8');
   const root = parseXml(xml);
   const doc = findFirst(root, 'dokumente') || root;
   const buildDate = findFirst(root, 'norm')?.attrs?.builddate || doc.attrs?.builddate || 'unknown';
@@ -501,7 +513,7 @@ function build(schedule) {
     version: schedule.version,
     source: {
       law: schedule.law,
-      file: schedule.file,
+      file,
       doknr: doc.attrs?.doknr || 'unknown',
       lawStatus,
       buildDate,

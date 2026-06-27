@@ -259,9 +259,23 @@ Bezüge bleiben über die Zuschlags-Beschreibungen erhalten.
 vor („Renin-Aldosteron-Suppressionstest" und „Lithium"); der Build meldet das
 als Warnung und behält deterministisch den zuletzt gelesenen Eintrag.
 
-### Re-Generierungs-Workflow (Maintainer, @justb81)
+### Automatische monatliche Auffrischung
 
-1. Quelle unter `data/input/<ordnung>/*.xml` aktualisieren.
+`.github/workflows/update-fee-sources.yml` läuft monatlich (und per
+`workflow_dispatch`), lädt die amtlichen XML frisch von
+gesetze-im-internet.de (`scripts/fetch-sources.mjs`: `go__1982`, `goz_1987`,
+`got_2022`), baut + validiert die Tabellen neu und öffnet bei Änderungen einen
+PR auf Branch `automation/fee-schedule-update`. Der PR ist ein **Vorschlag** —
+der Maintainer (@justb81) reviewt und merged (CODEOWNERS).
+
+Hinweis: Der Default-`GITHUB_TOKEN` löst auf dem erzeugten PR **keine** CI aus
+(GitHub-Einschränkung). Für automatisch laufende Checks ein PAT als Secret
+`FEE_UPDATE_TOKEN` hinterlegen; sonst die Checks manuell anstoßen.
+
+### Re-Generierungs-Workflow (Maintainer, @justb81, manuell)
+
+1. Quelle unter `data/input/<ordnung>/*.xml` aktualisieren (oder
+   `node scripts/fetch-sources.mjs`).
 2. `pnpm fees:build` → erzeugt die JSON-Tabellen neu.
 3. `pnpm fees:validate` (lokal == CI).
 4. **Diff prüfen** und committen. Die Tabellen werden ausschließlich vom

@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Update fee-schedule sources
+
+# Refresh the official GOÄ/GOZ/GOT XML from gesetze-im-internet.de, regenerate
+# the JSON lookup tables, and open a PR if anything changed. Runs monthly and on
+# manual dispatch. The PR is a proposal — the maintainer (@justb81) reviews and
+# merges (CODEOWNERS). See docs/data-format.md §7.
+on:
+  schedule:
+    - cron: "17 5 3 * *" # monthly, 3rd at 05:17 UTC (off-peak, off the :00 mark)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-fee-sources
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Refresh sources and open PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Refresh official XML sources
+        run: node scripts/fetch-sources.mjs
+
+      - name: Rebuild and validate tables
+        run: |
+          node scripts/build-fee-schedules.mjs
+          node scripts/validate-fee-schedules.mjs
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet -- data/input/ frontend/src/lib/data/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No source or table changes — nothing to do."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- data/input/ frontend/src/lib/data/ | tail -30
+          fi
+
+      - name: Open or update pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          # Prefer a PAT so the PR triggers the normal CI checks; GITHUB_TOKEN
+          # works but its PRs do not trigger workflow runs (GitHub limitation).
+          GH_TOKEN: ${{ secrets.FEE_UPDATE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH=automation/fee-schedule-update
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$BRANCH"
+          git add data/input/ frontend/src/lib/data/
+          git commit -m "chore(data): refresh GOÄ/GOZ/GOT fee-schedule tables from source"
+          git push -f origin "$BRANCH"
+          BODY=$'Automated refresh of the official GOÄ/GOZ/GOT XML under `data/input/` and the regenerated lookup tables under `frontend/src/lib/data/`.\n\nProduced by `.github/workflows/update-fee-sources.yml` via `node scripts/fetch-sources.mjs` + `pnpm fees:build`; validated with `pnpm fees:validate`. Please review the diff (see docs/data-format.md §7).\n\nIf the checks did not run automatically, this PR was opened with the default `GITHUB_TOKEN` — re-run them from the Checks tab or set a `FEE_UPDATE_TOKEN` secret.'
+          if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -qx OPEN; then
+            echo "PR already open for $BRANCH — branch updated in place."
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(data): refresh GOÄ/GOZ/GOT fee-schedule tables" \
+              --body "$BODY"
+          fi
