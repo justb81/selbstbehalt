@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/justb81/selbstbehalt/data/schema/fee-schedule.schema.json",
+  "title": "selbstbehalt fee-schedule lookup table (v1)",
+  "description": "Generic, version-controlled lookup format shared by GOÄ, GOZ and GOT. Generated reproducibly from the official XML under data/input/. See docs/data-format.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "feeSchedule",
+    "version",
+    "source",
+    "pointValueCents",
+    "currency",
+    "multiplierLimits",
+    "entries",
+    "constraintGroups"
+  ],
+  "properties": {
+    "schema": { "const": "fee-schedule/v1" },
+    "feeSchedule": { "enum": ["GOÄ", "GOZ", "GOT"] },
+    "version": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["law", "file", "doknr", "lawStatus", "buildDate"],
+      "properties": {
+        "law": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "pattern": "^data/input/" },
+        "doknr": { "type": "string", "minLength": 1 },
+        "lawStatus": { "type": "string" },
+        "buildDate": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pointValueCents": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+    "currency": { "const": "EUR" },
+    "multiplierLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "technical", "lab", "inpatient"],
+      "patternProperties": {
+        "^(default|technical|lab|inpatient)$": { "$ref": "#/$defs/multiplierLimit" }
+      }
+    },
+    "entries": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    },
+    "constraintGroups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constraintGroup" }
+    }
+  },
+  "$defs": {
+    "ziffer": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "string",
+      "description": "Common windows: session, day, case, occasion, year, lifetime. Open for rare domain-specific ones."
+    },
+    "multiplierLimit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regelhoechstsatz", "hoechstsatz"],
+      "properties": {
+        "regelhoechstsatz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "hoechstsatz": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ziffer", "description", "points", "baseAmount", "category", "maxMultiplier"],
+      "properties": {
+        "ziffer": { "$ref": "#/$defs/ziffer" },
+        "description": { "type": "string", "minLength": 1 },
+        "points": { "type": ["number", "null"], "minimum": 0 },
+        "baseAmount": { "type": "number", "minimum": 0 },
+        "category": { "enum": ["default", "technical", "lab", "inpatient"] },
+        "maxMultiplier": { "type": "number", "exclusiveMinimum": 0 },
+        "isSurcharge": { "type": "boolean" },
+        "section": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "part": { "type": "string" },
+            "code": { "type": "string" },
+            "title": { "type": "string" }
+          }
+        },
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/constraint" } }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["type", "sourceText"],
+      "properties": {
+        "type": {
+          "enum": [
+            "excludes",
+            "requires",
+            "componentOf",
+            "maxFrequency",
+            "minDuration",
+            "ageLimit",
+            "fixedFactor"
+          ]
+        },
+        "sourceText": { "type": "string", "minLength": 1 }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "excludes" },
+            "ziffern": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ziffer" } },
+            "scope": { "$ref": "#/$defs/scope" },
+            "sourceText": {}
+          },
+          "required": ["ziffern"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "requires" },
+            "anyOf": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ziffer" } },
+            "sourceText": {}
+          },
+          "required": ["anyOf"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "componentOf" },
+            "ziffern": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ziffer" } },
+            "sourceText": {}
+          },
+          "required": ["ziffern"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "maxFrequency" },
+            "count": { "type": "integer", "minimum": 1 },
+            "scope": { "$ref": "#/$defs/scope" },
+            "sourceText": {}
+          },
+          "required": ["count", "scope"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "minDuration" },
+            "minutes": { "type": "number", "exclusiveMinimum": 0 },
+            "sourceText": {}
+          },
+          "required": ["minutes"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "ageLimit" },
+            "maxAgeYears": { "type": "number", "minimum": 0 },
+            "minAgeYears": { "type": "number", "minimum": 0 },
+            "sourceText": {}
+          },
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "fixedFactor" },
+            "factor": { "type": "number", "exclusiveMinimum": 0 },
+            "sourceText": {}
+          },
+          "required": ["factor"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "constraintGroup": {
+      "type": "object",
+      "required": ["id", "type", "members", "sourceText"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["mutualExclusion", "maxAmount"] },
+        "members": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ziffer" } },
+        "sourceText": { "type": "string", "minLength": 1 }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {}, "type": { "const": "mutualExclusion" }, "members": {}, "sourceText": {}
+          },
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "id": {},
+            "type": { "const": "maxAmount" },
+            "members": {},
+            "amount": { "type": "number", "minimum": 0 },
+            "scope": { "$ref": "#/$defs/scope" },
+            "cappingZiffer": { "$ref": "#/$defs/ziffer" },
+            "sourceText": {}
+          },
+          "required": ["amount"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

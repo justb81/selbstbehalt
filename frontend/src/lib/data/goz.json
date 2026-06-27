@@ -1,0 +1,2166 @@
+{
+  "schema": "fee-schedule/v1",
+  "feeSchedule": "GOZ",
+  "version": "1987",
+  "source": {
+    "law": "GOZ (Gebührenordnung für Zahnärzte, 1987)",
+    "file": "data/input/goz/BJNR023160987.xml",
+    "doknr": "BJNR023160987",
+    "lawStatus": "Zuletzt geändert durch Art. 1 V v. 5.12.2011 I 2661",
+    "buildDate": "20260506175028"
+  },
+  "pointValueCents": 5.62421,
+  "currency": "EUR",
+  "multiplierLimits": {
+    "default": {
+      "regelhoechstsatz": 2.3,
+      "hoechstsatz": 3.5
+    },
+    "technical": {
+      "regelhoechstsatz": 2.3,
+      "hoechstsatz": 3.5
+    },
+    "lab": {
+      "regelhoechstsatz": 2.3,
+      "hoechstsatz": 3.5
+    },
+    "inpatient": {
+      "regelhoechstsatz": 2.3,
+      "hoechstsatz": 3.5
+    }
+  },
+  "entries": {
+    "10": {
+      "ziffer": "10",
+      "description": "Eingehende Untersuchung zur Feststellung von Zahn-, Mund- und Kiefererkrankungen einschließlich Erhebung des Parodontalbefundes sowie Aufzeichnung des Befundes",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "30": {
+      "ziffer": "30",
+      "description": "Aufstellung eines schriftlichen Heil- und Kostenplans nach Befundaufnahme und gegebenenfalls Auswertung von Modellen",
+      "points": 200,
+      "baseAmount": 11.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "40": {
+      "ziffer": "40",
+      "description": "Aufstellung eines schriftlichen Heil- und Kostenplans bei kieferorthopädischer Behandlung oder bei funktionsanalytischen und funktionstherapeutischen Maßnahmen nach Befundaufnahme und Ausarbeitung einer Behandlungsplanung",
+      "points": 250,
+      "baseAmount": 14.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "50": {
+      "ziffer": "50",
+      "description": "Abformung oder Teilabformung eines Kiefers für ein Situationsmodell einschließlich Auswertung zur Diagnose oder Planung",
+      "points": 120,
+      "baseAmount": 6.75,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "60": {
+      "ziffer": "60",
+      "description": "Abformung beider Kiefer für Situationsmodelle und einfache Bissfixierung einschließlich Auswertung zur Diagnose oder Planung",
+      "points": 260,
+      "baseAmount": 14.62,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Nebeneinanderberechnung der Leistungen nach den Nummern 0050 und 0060 ist in der Rechnung zu begründen."
+      ]
+    },
+    "65": {
+      "ziffer": "65",
+      "description": "Optisch-elektronische Abformung einschließlich vorbereitender Maßnahmen, einfache digitale Bissregistrierung und Archivierung, je Kieferhälfte oder Frontzahnbereich",
+      "points": 80,
+      "baseAmount": 4.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Neben der Leistung nach der Nummer 0065 sind konventionelle Abformungen nach diesem Gebührenverzeichnis für dieselbe Kieferhälfte oder denselben Frontzahnbereich nicht berechnungsfähig."
+      ]
+    },
+    "70": {
+      "ziffer": "70",
+      "description": "Vitalitätsprüfung eines Zahnes oder mehrerer Zähne einschließlich Vergleichstest, je Sitzung",
+      "points": 50,
+      "baseAmount": 2.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "80": {
+      "ziffer": "80",
+      "description": "Intraorale Oberflächenanästhesie, je Kieferhälfte oder Frontzahnbereich",
+      "points": 30,
+      "baseAmount": 1.69,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "90": {
+      "ziffer": "90",
+      "description": "Intraorale Infiltrationsanästhesie",
+      "points": 60,
+      "baseAmount": 3.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "100": {
+      "ziffer": "100",
+      "description": "Intraorale Leitungsanästhesie",
+      "points": 70,
+      "baseAmount": 3.94,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Wird die Leistung nach der Nummer 0090 je Zahn mehr als einmal berechnet, ist dies in der Rechnung zu begründen.",
+        "Bei den Leistungen nach den Nummern 0090 und 0100 sind die Kosten der verwendeten Anästhetika gesondert berechnungsfähig."
+      ]
+    },
+    "110": {
+      "ziffer": "110",
+      "description": "Zuschlag für die Anwendung eines Operationsmikroskops bei den Leistungen nach den Nummern 2195, 2330, 2340, 2360, 2410, 2440, 3020, 3030, 3040, 3045, 3060, 3110, 3120, 3190, 3200, 4090, 4100, 4130, 4133, 9100, 9110, 9120, 9130 und 9170",
+      "points": 400,
+      "baseAmount": 22.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Der Zuschlag nach der Nummer 0110 ist je Behandlungstag nur einmal und nur mit dem einfachen Gebührensatz berechnungsfähig."
+        },
+        {
+          "type": "fixedFactor",
+          "factor": 1,
+          "sourceText": "Der Zuschlag nach der Nummer 0110 ist je Behandlungstag nur einmal und nur mit dem einfachen Gebührensatz berechnungsfähig."
+        },
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Zuschlag für die Anwendung eines Lasers bei den Leistungen nach den Nummern 2410, 3070, 3080, 3210, 3240, 4080, 4090, 4100, 4130, 4133 und 9160Der Zuschlag nach der Nummer 0120 beträgt 100 v. H. des einfachen Gebührensatzes der betreffenden Leistung, jedoch nicht mehr als 68 Euro.Der Zuschlag nach der Nummer 0120 ist je Behandlungstag nur einmal berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Leistungstext"
+      ]
+    },
+    "500": {
+      "ziffer": "500",
+      "description": "Zuschlag bei nichtstationärer Durchführung von zahnärztlich-chirurgischen Leistungen, die mit Punktzahlen von 250 bis 499 Punkten bewertet sind, oder zu den Leistungen nach den Nummern 4090 oder 4130",
+      "points": 400,
+      "baseAmount": 22.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "constraints": [
+        {
+          "type": "requires",
+          "anyOf": [
+            "4090",
+            "4130"
+          ],
+          "sourceText": "Zuschlag bei nichtstationärer Durchführung von zahnärztlich-chirurgischen Leistungen, die mit Punktzahlen von 250 bis 499 Punkten bewertet sind, oder zu den Leistungen nach den Nummern 4090 oder 4130"
+        },
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Der Zuschlag nach der Nummer 0500 ist je Behandlungstag nur einmal berechnungsfähig. Der Zuschlag nach der Nummer 0500 ist neben den Zuschlägen nach den Nummern 0510 bis 0530 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "510": {
+      "ziffer": "510",
+      "description": "Zuschlag bei nichtstationärer Durchführung von zahnärztlich-chirurgischen Leistungen, die mit Punktzahlen von 500 bis 799 Punkten bewertet sind",
+      "points": 750,
+      "baseAmount": 42.18,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Der Zuschlag nach der Nummer 0510 ist je Behandlungstag nur einmal berechnungsfähig. Der Zuschlag nach der Nummer 0510 ist neben den Zuschlägen nach den Nummern 0500, 0520 und/oder 0530 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "520": {
+      "ziffer": "520",
+      "description": "Zuschlag bei nichtstationärer Durchführung von zahnärztlich-chirurgischen Leistungen, die mit Punktzahlen von 800 bis 1199 Punkten bewertet sind",
+      "points": 1300,
+      "baseAmount": 73.11,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Der Zuschlag nach der Nummer 0520 ist je Behandlungstag nur einmal berechnungsfähig. Der Zuschlag nach der Nummer 0520 ist neben den Zuschlägen nach den Nummern 0500, 0510 und/oder 0530 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "530": {
+      "ziffer": "530",
+      "description": "Zuschlag bei nichtstationärer Durchführung von zahnärztlich-chirurgischen Leistungen, die mit Punktzahlen von 1200 und mehr Punkten bewertet sind",
+      "points": 2200,
+      "baseAmount": 123.73,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "day",
+          "sourceText": "Der Zuschlag nach der Nummer 0530 ist je Behandlungstag nur einmal berechnungsfähig. Der Zuschlag nach der Nummer 0530 ist neben den Zuschlägen nach den Nummern 0500 bis 0520 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "1000": {
+      "ziffer": "1000",
+      "description": "Erstellung eines Mundhygienestatus und eingehende Unterweisung zur Vorbeugung gegen Karies und parodontale Erkrankungen, Dauer mindestens 25 Minuten",
+      "points": 200,
+      "baseAmount": 11.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "1010": {
+      "ziffer": "1010",
+      "description": "Kontrolle des Übungserfolges einschließlich weiterer Unterweisung, Dauer mindestens 15 Minuten",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "1020": {
+      "ziffer": "1020",
+      "description": "Lokale Fluoridierung zur Verbesserung der Zahnhartsubstanz, zur Kariesvorbeugung und -behandlung, mit Lack oder Gel, je Sitzung",
+      "points": 50,
+      "baseAmount": 2.81,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 1000 ist innerhalb eines Jahres einmal, die Leistung nach der Nummer 1010 innerhalb eines Jahres dreimal berechnungsfähig.",
+        "Die Leistungen umfassen die Erhebung von Mundhygiene-Indizes, das Anfärben der Zähne, die praktische Unterweisung mit individuellen Übungen und die Motivierung des Patienten.",
+        "Im Zusammenhang mit den Leistungen nach den Nummern 1000 und 1010 sind Leistungen nach den Nummern 0010, 4000 und 8000 sowie Beratungen und Untersuchungen nach der Gebührenordnung für Ärzte nur dann berechnungsfähig, wenn diese Leistungen anderen Zwecken dienen und dies in der Rechnung begründet wird.",
+        "Die Leistung nach der Nummer 1020 ist innerhalb eines Jahres höchstens viermal berechnungsfähig."
+      ]
+    },
+    "1030": {
+      "ziffer": "1030",
+      "description": "Lokale Anwendung von Medikamenten zur Kariesvorbeugung oder initialen Kariesbehandlung mit einer individuell gefertigten Schiene als Medikamententräger, je Kiefer",
+      "points": 90,
+      "baseAmount": 5.06,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "1. Die Herstellung einer individuell angefertigten Schiene als Medikamententräger (z. B. Tiefziehschiene) ist gesondert berechnungsfähig.",
+        "2. Mit der Gebühr sind die Kosten für das verwendete Medikament abgegolten.",
+        "3. Die Anwendung eines konfektionierten Löffels als Medikamententräger erfüllt nicht den Inhalt der Leistung nach der Nummer 1030.",
+        "4. Bei Anwendung einer individuell gefertigten Schiene als Medikamententräger für Fluoridierungsmittel ist die mehr als viermalige Berechnung der Leistung nach der Nummer 1030 innerhalb eines Jahres in der Rechnung zu begründen."
+      ]
+    },
+    "1040": {
+      "ziffer": "1040",
+      "description": "Professionelle Zahnreinigung",
+      "points": 28,
+      "baseAmount": 1.57,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1020",
+            "4050",
+            "4055",
+            "4060",
+            "4070",
+            "4075",
+            "4090",
+            "4100"
+          ],
+          "sourceText": "Die Leistung nach der Nummer 1040 ist neben den Leistungen nach den Nummern 1020, 4050, 4055, 4060, 4070, 4075, 4090 und 4100 nicht berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Die Leistung umfasst das Entfernen der supragingivalen/gingivalen Beläge auf Zahn- und Wurzeloberflächen einschließlich Reinigung der Zahnzwischenräume, das Entfernen des Biofilms, die Oberflächenpolitur und geeignete Fluoridierungsmaßnahmen, je Zahn oder Implantat oder Brückenglied.",
+        "Leistungstext"
+      ]
+    },
+    "2000": {
+      "ziffer": "2000",
+      "description": "Versiegelung von kariesfreien Zahnfissuren mit aushärtenden Kunststoffen, auch Glattflächenversiegelung, je Zahn",
+      "points": 90,
+      "baseAmount": 5.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2010": {
+      "ziffer": "2010",
+      "description": "Behandlung überempfindlicher Zahnflächen, je Kiefer",
+      "points": 50,
+      "baseAmount": 2.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2020": {
+      "ziffer": "2020",
+      "description": "Temporärer speicheldichter Verschluss einer Kavität",
+      "points": 98,
+      "baseAmount": 5.51,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2030": {
+      "ziffer": "2030",
+      "description": "Besondere Maßnahmen beim Präparieren oder Füllen von Kavitäten (z. B. Separieren, Beseitigen störenden Zahnfleisches, Stillung einer übermäßigen Papillenblutung), je Kieferhälfte oder Frontzahnbereich",
+      "points": 65,
+      "baseAmount": 3.66,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "session",
+          "sourceText": "Die Leistung nach der Nummer 2030 ist je Sitzung für eine Kieferhälfte oder einen Frontzahnbereich höchstens einmal für besondere Maßnahmen beim Präparieren und höchstens einmal für besondere Maßnahmen beim Füllen von Kavitäten berechnungsfähig."
+        }
+      ]
+    },
+    "2040": {
+      "ziffer": "2040",
+      "description": "Anlegen von Spanngummi, je Kieferhälfte oder Frontzahnbereich",
+      "points": 65,
+      "baseAmount": 3.66,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2050": {
+      "ziffer": "2050",
+      "description": "Präparieren einer Kavität und Restauration mit plastischem Füllungsmaterial einschließlich Unterfüllung, Anlegen einer Matrize oder Benutzen anderer Hilfsmittel zur Formung der Füllung, einflächig",
+      "points": 213,
+      "baseAmount": 11.98,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2060": {
+      "ziffer": "2060",
+      "description": "Präparieren einer Kavität und Restauration mit Kompositmaterialien, in Adhäsivtechnik (Konditionieren), einflächig, gegebenenfalls einschließlich Mehrschichttechnik, einschließlich Polieren, gegebenenfalls einschließlich Verwendung von Inserts",
+      "points": 527,
+      "baseAmount": 29.64,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2070": {
+      "ziffer": "2070",
+      "description": "Präparieren einer Kavität und Restauration mit plastischem Füllungsmaterial einschließlich Unterfüllung, Anlegen einer Matrize oder Benutzen anderer Hilfsmittel zur Formung der Füllung, zweiflächig",
+      "points": 242,
+      "baseAmount": 13.61,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2080": {
+      "ziffer": "2080",
+      "description": "Präparieren einer Kavität und Restauration mit Kompositmaterialien, in Adhäsivtechnik (Konditionieren), zweiflächig, gegebenenfalls einschließlich Mehrschichttechnik, einschließlich Polieren, gegebenenfalls einschließlich Verwendung von Inserts",
+      "points": 556,
+      "baseAmount": 31.27,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2090": {
+      "ziffer": "2090",
+      "description": "Präparieren einer Kavität und Restauration mit plastischem Füllungsmaterial einschließlich Unterfüllung, Anlegen einer Matrize oder Benutzen anderer Hilfsmittel zur Formung der Füllung, dreiflächig",
+      "points": 297,
+      "baseAmount": 16.7,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2100": {
+      "ziffer": "2100",
+      "description": "Präparieren einer Kavität und Restauration mit Kompositmaterialien, in Adhäsivtechnik (Konditionieren), dreiflächig, gegebenenfalls einschließlich Mehrschichttechnik, einschließlich Polieren, gegebenenfalls einschließlich Verwendung von Inserts",
+      "points": 642,
+      "baseAmount": 36.11,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2110": {
+      "ziffer": "2110",
+      "description": "Präparieren einer Kavität und Restauration mit plastischem Füllungsmaterial einschließlich Unterfüllung, Anlegen einer Matrize oder Benutzen anderer Hilfsmittel zur Formung der Füllung, mehr als dreiflächig",
+      "points": 319,
+      "baseAmount": 17.94,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2120": {
+      "ziffer": "2120",
+      "description": "Präparieren einer Kavität und Restauration mit Kompositmaterialien, in Adhäsivtechnik (Konditionieren), mehr als dreiflächig, gegebenenfalls einschließlich Mehrschichttechnik, einschließlich Polieren, gegebenenfalls einschließlich Verwendung von Inserts",
+      "points": 770,
+      "baseAmount": 43.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2130": {
+      "ziffer": "2130",
+      "description": "Kontrolle, Finieren/Polieren einer Restauration in separater Sitzung, auch Nachpolieren einer vorhandenen Restauration",
+      "points": 104,
+      "baseAmount": 5.85,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2150": {
+      "ziffer": "2150",
+      "description": "Einlagefüllung, einflächig",
+      "points": 1141,
+      "baseAmount": 64.17,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2160": {
+      "ziffer": "2160",
+      "description": "Einlagefüllung, zweiflächig",
+      "points": 1356,
+      "baseAmount": 76.26,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2170": {
+      "ziffer": "2170",
+      "description": "Einlagefüllung, mehr als zweiflächig",
+      "points": 1709,
+      "baseAmount": 96.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2180": {
+      "ziffer": "2180",
+      "description": "Vorbereitung eines zerstörten Zahnes mit plastischem Aufbaumaterial zur Aufnahme einer Krone",
+      "points": 150,
+      "baseAmount": 8.44,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2150",
+            "2160",
+            "2170"
+          ],
+          "sourceText": "Die Leistungen nach den Nummern 2180, 2190 oder 2195 sind neben den Leistungen nach den Nummern 2150 bis 2170 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "2190": {
+      "ziffer": "2190",
+      "description": "Vorbereitung eines zerstörten Zahnes durch gegossenen Aufbau mit Stiftverankerung zur Aufnahme einer Krone",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2150",
+            "2160",
+            "2170"
+          ],
+          "sourceText": "Die Leistungen nach den Nummern 2180, 2190 oder 2195 sind neben den Leistungen nach den Nummern 2150 bis 2170 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "2195": {
+      "ziffer": "2195",
+      "description": "Vorbereitung eines zerstörten Zahnes durch einen Schraubenaufbau oder Glasfaserstift o. Ä. zur Aufnahme einer Krone",
+      "points": 300,
+      "baseAmount": 16.87,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2150",
+            "2160",
+            "2170"
+          ],
+          "sourceText": "Die Leistungen nach den Nummern 2180, 2190 oder 2195 sind neben den Leistungen nach den Nummern 2150 bis 2170 nicht berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Die Leistung nach der Nummer 2180 ist neben der Leistung nach der Nummer 2190 nicht berechnungsfähig.",
+        "Die Leistung nach der Nummer 2195 ist neben der Leistung nach der Nummer 2180 berechnungsfähig.",
+        "Die Leistungen nach den Nummern 2180, 2190 und/oder die Leistung nach der Nummer 2195 ist je Zahn nur jeweils einmal berechnungsfähig.",
+        "Die Kosten für die Verankerungselemente sind gesondert berechnungsfähig."
+      ]
+    },
+    "2197": {
+      "ziffer": "2197",
+      "description": "Adhäsive Befestigung (plastischer Aufbau, Stift, Inlay, Krone, Teilkrone, Veneer etc.)",
+      "points": 130,
+      "baseAmount": 7.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2200": {
+      "ziffer": "2200",
+      "description": "Versorgung eines Zahnes oder Implantats durch eine Vollkrone (Tangentialpräparation)",
+      "points": 1322,
+      "baseAmount": 74.35,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2210": {
+      "ziffer": "2210",
+      "description": "Versorgung eines Zahnes durch eine Vollkrone (Hohlkehl- oder Stufenpräparation)",
+      "points": 1678,
+      "baseAmount": 94.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2220": {
+      "ziffer": "2220",
+      "description": "Versorgung eines Zahnes durch eine Teilkrone mit Retentionsrillen oder -kästen oder mit Pinledges einschließlich Rekonstruktion der gesamten Kaufläche, auch Versorgung eines Zahnes durch ein Veneer",
+      "points": 2067,
+      "baseAmount": 116.25,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2200",
+            "2210",
+            "2220"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2200 bis 2220 sind die Leistungen nach den Nummern 2050 bis 2130 nicht berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Die Leistung nach der Nummer 2210 ist im Zusammenhang mit Implantaten nicht berechnungsfähig.",
+        "Durch die Leistungen nach den Nummern 2150 bis 2170 und 2200 bis 2220 sind folgende zahnärztliche Leistungen abgegolten: Präparieren des Zahnes oder Implantats, Relationsbestimmung, Abformungen, Einproben, provisorisches Eingliedern, festes Einfügen der Einlagefüllung oder der Krone oder der Teilkrone oder des Veneers, Nachkontrolle und Korrekturen.",
+        "Die Leistung nach der Nummer 2200 umfasst auch die Verschraubung und Abdeckung mit Füllungsmaterial.",
+        "Zu den Kronen nach den Nummern 2200 bis 2220 gehören Kronen (Voll- und Teilkronen) jeder zahntechnischen Ausführung.",
+        "Teilleistungen nach den Nummern 2200 bis 2220:",
+        "Enden die Leistungen mit der Präparation eines Zahnes oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
+        "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.Die Leistungen nach den Nummern 2230 oder 2240 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+      ]
+    },
+    "2250": {
+      "ziffer": "2250",
+      "description": "Eingliederung einer konfektionierten Krone in der pädiatrischen Zahnheilkunde",
+      "points": 210,
+      "baseAmount": 11.81,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Kosten für konfektionierte Kronen sind gesondert berechnungsfähig."
+      ]
+    },
+    "2260": {
+      "ziffer": "2260",
+      "description": "Provisorium im direkten Verfahren ohne Abformung, je Zahn oder Implantat, einschließlich Entfernung",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2270": {
+      "ziffer": "2270",
+      "description": "Provisorium im direkten Verfahren mit Abformung, je Zahn oder Implantat, einschließlich Entfernung",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Bei Verwendung eines konfektionierten Provisoriums sind die Kosten hierfür gesondert berechnungsfähig.",
+        "Das Wiedereingliedern desselben Provisoriums, gegebenenfalls auch mehrmals, einschließlich Entfernung, ist mit der Gebühr nach der Nummer 2260 oder 2270 abgegolten."
+      ]
+    },
+    "2290": {
+      "ziffer": "2290",
+      "description": "Entfernung einer Einlagefüllung, einer Krone, eines Brückenankers, Abtrennen eines Brückengliedes oder Steges oder Ähnliches",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2300": {
+      "ziffer": "2300",
+      "description": "Entfernung eines Wurzelstiftes",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2310": {
+      "ziffer": "2310",
+      "description": "Wiedereingliederung einer Einlagefüllung, einer Teilkrone, eines Veneers oder einer Krone oder Wiederherstellung einer Verblendschale an herausnehmbarem Zahnersatz",
+      "points": 145,
+      "baseAmount": 8.16,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2320": {
+      "ziffer": "2320",
+      "description": "Wiederherstellung einer Krone, einer Teilkrone, eines Veneers, eines Brückenankers, einer Verblendschale oder einer Verblendung an festsitzendem Zahnersatz, gegebenenfalls einschließlich Wiedereingliederung und Abformung",
+      "points": 350,
+      "baseAmount": 19.68,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2330": {
+      "ziffer": "2330",
+      "description": "Maßnahmen zur Erhaltung der vitalen Pulpa bei Caries profunda (Exkavieren, indirekte Überkappung), je Kavität",
+      "points": 110,
+      "baseAmount": 6.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2340": {
+      "ziffer": "2340",
+      "description": "Maßnahmen zur Erhaltung der freiliegenden vitalen Pulpa (Exkavieren, direkte Überkappung), je Kavität",
+      "points": 200,
+      "baseAmount": 11.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2350": {
+      "ziffer": "2350",
+      "description": "Amputation und Versorgung der vitalen Pulpa einschließlich Exkavieren",
+      "points": 290,
+      "baseAmount": 16.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2360": {
+      "ziffer": "2360",
+      "description": "Exstirpation der vitalen Pulpa einschließlich Exkavieren, je Kanal",
+      "points": 110,
+      "baseAmount": 6.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2380": {
+      "ziffer": "2380",
+      "description": "Amputation und endgültige Versorgung der avitalen Milchzahnpulpa",
+      "points": 160,
+      "baseAmount": 9,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2390": {
+      "ziffer": "2390",
+      "description": "Trepanation eines Zahnes, als selbstständige Leistung",
+      "points": 65,
+      "baseAmount": 3.66,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2400": {
+      "ziffer": "2400",
+      "description": "Elektrometrische Längenbestimmung eines Wurzelkanals",
+      "points": 70,
+      "baseAmount": 3.94,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 2,
+          "scope": "session",
+          "sourceText": "Die Leistung nach der Nummer 2400 ist je Wurzelkanal höchstens zweimal je Sitzung berechnungsfähig."
+        }
+      ]
+    },
+    "2410": {
+      "ziffer": "2410",
+      "description": "Aufbereitung eines Wurzelkanals auch retrograd, je Kanal, gegebenenfalls in mehreren Sitzungen",
+      "points": 392,
+      "baseAmount": 22.05,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 2410 ist für denselben Wurzelkanal nur dann erneut berechnungsfähig, wenn der Wurzelkanal nach der ersten Aufbereitung definitiv versorgt worden ist.",
+        "Wenn auf Grund anatomischer Besonderheiten eine Aufbereitung in einer Sitzung nicht erfolgen kann, ist die Leistung nach der Nummer 2410 für denselben Wurzelkanal erneut berechnungsfähig. Dies ist in der Rechnung zu begründen. Je Aufbereitung eines Wurzelkanals ist die Leistung in diesem Fall höchstens zweimal berechnungsfähig."
+      ]
+    },
+    "2420": {
+      "ziffer": "2420",
+      "description": "Zusätzliche Anwendung elektrophysikalisch-chemischer Methoden, je Kanal",
+      "points": 70,
+      "baseAmount": 3.94,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2430": {
+      "ziffer": "2430",
+      "description": "Medikamentöse Einlage in Verbindung mit Maßnahmen nach den Nummern 2360, 2380 und 2410, je Zahn und Sitzung",
+      "points": 204,
+      "baseAmount": 11.47,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "2440": {
+      "ziffer": "2440",
+      "description": "Füllung eines Wurzelkanals",
+      "points": 258,
+      "baseAmount": 14.51,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Leistungstext"
+      ]
+    },
+    "3000": {
+      "ziffer": "3000",
+      "description": "Entfernung eines einwurzeligen Zahnes oder eines enossalen Implantats",
+      "points": 70,
+      "baseAmount": 3.94,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3010": {
+      "ziffer": "3010",
+      "description": "Entfernung eines mehrwurzeligen Zahnes",
+      "points": 110,
+      "baseAmount": 6.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3020": {
+      "ziffer": "3020",
+      "description": "Entfernung eines tief frakturierten oder tief zerstörten Zahnes",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3030": {
+      "ziffer": "3030",
+      "description": "Entfernung eines Zahnes oder eines enossalen Implantats durch Osteotomie",
+      "points": 350,
+      "baseAmount": 19.68,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3040": {
+      "ziffer": "3040",
+      "description": "Entfernung eines retinierten, impaktierten oder verlagerten Zahnes durch Osteotomie",
+      "points": 540,
+      "baseAmount": 30.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3045": {
+      "ziffer": "3045",
+      "description": "Entfernen eines extrem verlagerten und/oder extrem retinierten Zahnes durch umfangreiche Osteotomie bei gefährdeten anatomischen Nachbarstrukturen",
+      "points": 767,
+      "baseAmount": 43.14,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3050": {
+      "ziffer": "3050",
+      "description": "Stillung einer übermäßigen Blutung im Mund- und/oder Kieferbereich, als selbstständige Leistung",
+      "points": 110,
+      "baseAmount": 6.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3060": {
+      "ziffer": "3060",
+      "description": "Stillung einer Blutung durch Abbinden oder Umstechen des Gefäßes oder durch Knochenbolzung",
+      "points": 140,
+      "baseAmount": 7.87,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3070": {
+      "ziffer": "3070",
+      "description": "Exzision von Schleimhaut oder Granulationsgewebe, als selbstständige Leistung",
+      "points": 45,
+      "baseAmount": 2.53,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3080": {
+      "ziffer": "3080",
+      "description": "Exzision einer Schleimhautwucherung größeren Umfangs (z. B. lappiges Fibrom, Epulis)",
+      "points": 150,
+      "baseAmount": 8.44,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3090": {
+      "ziffer": "3090",
+      "description": "Plastischer Verschluss einer eröffneten Kieferhöhle",
+      "points": 370,
+      "baseAmount": 20.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3100": {
+      "ziffer": "3100",
+      "description": "Plastische Deckung im Rahmen einer Wundversorgung einschließlich einer Periostschlitzung, je Operationsgebiet (Raum einer zusammenhängenden Schnittführung)",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 3100 ist für dasselbe Operationsgebiet nicht neben der Leistung nach der Nummer 3090 berechnungsfähig."
+      ]
+    },
+    "3110": {
+      "ziffer": "3110",
+      "description": "Resektion einer Wurzelspitze an einem Frontzahn",
+      "points": 460,
+      "baseAmount": 25.87,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3120": {
+      "ziffer": "3120",
+      "description": "Resektion einer Wurzelspitze an einem Seitenzahn",
+      "points": 580,
+      "baseAmount": 32.62,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Kosten für konfektionierte apikale Stiftsysteme sind gesondert berechnungsfähig."
+      ]
+    },
+    "3130": {
+      "ziffer": "3130",
+      "description": "Hemisektion und Teilextraktion eines mehrwurzeligen Zahnes",
+      "points": 280,
+      "baseAmount": 15.75,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3140": {
+      "ziffer": "3140",
+      "description": "Reimplantation eines Zahnes einschließlich einfacher Fixation",
+      "points": 550,
+      "baseAmount": 30.93,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3160": {
+      "ziffer": "3160",
+      "description": "Transplantation eines Zahnes einschließlich operativer Schaffung des Knochenbettes",
+      "points": 650,
+      "baseAmount": 36.56,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3190": {
+      "ziffer": "3190",
+      "description": "Operation einer Zyste durch Zystektomie in Verbindung mit einer Osteotomie oder Wurzelspitzenresektion",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3200": {
+      "ziffer": "3200",
+      "description": "Operation einer Zyste durch Zystektomie, als selbstständige Leistung",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Das Auskratzen von Granulationsgewebe oder kleinen Zysten in Verbindung mit Extraktionen, Osteotomien oder Wurzelspitzenresektionen kann nicht nach den Nummern 3190 bis 3200 sowie 3310 berechnet werden."
+      ]
+    },
+    "3210": {
+      "ziffer": "3210",
+      "description": "Beseitigung störender Schleimhautbänder, je Kieferhälfte oder Frontzahnbereich",
+      "points": 140,
+      "baseAmount": 7.87,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3230": {
+      "ziffer": "3230",
+      "description": "Knochenresektion am Alveolarfortsatz zur Formung des Prothesenlagers, als selbstständige Leistung, je Kiefer",
+      "points": 440,
+      "baseAmount": 24.75,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3240": {
+      "ziffer": "3240",
+      "description": "Vestibulumplastik oder Mundbodenplastik kleineren Umfangs auch Gingivaextensionsplastik, je Kieferhälfte oder Frontzahnbereich, für einen Bereich bis zu zwei nebeneinander liegenden Zähnen, gegebenenfalls auch am zahnlosen Kieferabschnitt",
+      "points": 550,
+      "baseAmount": 30.93,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3250": {
+      "ziffer": "3250",
+      "description": "Tuberplastik, einseitig",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3260": {
+      "ziffer": "3260",
+      "description": "Freilegen eines retinierten oder verlagerten Zahnes zur orthopädischen Einstellung",
+      "points": 550,
+      "baseAmount": 30.93,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3270": {
+      "ziffer": "3270",
+      "description": "Germektomie",
+      "points": 590,
+      "baseAmount": 33.18,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3280": {
+      "ziffer": "3280",
+      "description": "Lösen, Verlegen und Fixieren des Lippenbändchens und Durchtrennen des Septums bei echtem Diastema",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3290": {
+      "ziffer": "3290",
+      "description": "Kontrolle nach chirurgischem Eingriff, als selbstständige Leistung, je Kieferhälfte oder Frontzahnbereich",
+      "points": 55,
+      "baseAmount": 3.09,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "3300": {
+      "ziffer": "3300",
+      "description": "Nachbehandlung nach chirurgischem Eingriff (z. B. Tamponieren), als selbstständige Leistung, je Operationsgebiet (Raum einer zusammenhängenden Schnittführung)",
+      "points": 65,
+      "baseAmount": 3.66,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 3300 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
+        "Neben der Leistung nach der Nummer 3300 sind die Leistungen nach den Nummern 3060 oder 3310 nicht berechnungsfähig."
+      ]
+    },
+    "3310": {
+      "ziffer": "3310",
+      "description": "Chirurgische Wundrevision (z. B. Glätten des Knochens, Auskratzen, Naht), je Operationsgebiet (Raum einer zusammenhängenden Schnittführung)",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 3310 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
+        "Neben der Leistung nach der Nummer 3310 sind die Leistungen nach den Nummern 3060 oder 3300 nicht berechnungsfähig.",
+        "Leistungstext"
+      ]
+    },
+    "4000": {
+      "ziffer": "4000",
+      "description": "Erstellen und Dokumentieren eines Parodontalstatus",
+      "points": 160,
+      "baseAmount": 9,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 4000 ist innerhalb eines Jahres höchstens zweimal berechnungsfähig."
+      ]
+    },
+    "4005": {
+      "ziffer": "4005",
+      "description": "Erhebung mindestens eines Gingivalindex und/oder eines Parodontalindex (z. B. des Parodontalen Screening-Index PSI)",
+      "points": 80,
+      "baseAmount": 4.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 4005 ist innerhalb eines Jahres höchstens zweimal berechnungsfähig."
+      ]
+    },
+    "4020": {
+      "ziffer": "4020",
+      "description": "Lokalbehandlung von Mundschleimhauterkrankungen, gegebenenfalls einschließlich Taschenspülungen, je Sitzung",
+      "points": 45,
+      "baseAmount": 2.53,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4025": {
+      "ziffer": "4025",
+      "description": "Subgingivale medikamentöse antibakterielle Lokalapplikation, je Zahn",
+      "points": 15,
+      "baseAmount": 0.84,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die verwendeten antibakteriellen Materialien sind gesondert berechnungsfähig."
+      ]
+    },
+    "4030": {
+      "ziffer": "4030",
+      "description": "Beseitigung von scharfen Zahnkanten, störenden Prothesenrändern und Fremdreizen am Parodontium, je Kieferhälfte oder Frontzahnbereich",
+      "points": 35,
+      "baseAmount": 1.97,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4040": {
+      "ziffer": "4040",
+      "description": "Beseitigung grober Vorkontakte der Okklusion und Artikulation durch Einschleifen des natürlichen Gebisses oder bereits vorhandenen Zahnersatzes, je Sitzung",
+      "points": 45,
+      "baseAmount": 2.53,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4050": {
+      "ziffer": "4050",
+      "description": "Entfernung harter und weicher Zahnbeläge, gegebenenfalls einschließlich Polieren an einem einwurzeligen Zahn oder Implantat, auch Brückenglied",
+      "points": 10,
+      "baseAmount": 0.56,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistungen nach den Nummern 4050 und 4055 sind für denselben Zahn innerhalb von 30 Tagen nur einmal berechnungsfähig."
+      ]
+    },
+    "4055": {
+      "ziffer": "4055",
+      "description": "Entfernung harter und weicher Zahnbeläge, gegebenenfalls einschließlich Polieren an einem mehrwurzeligen Zahn",
+      "points": 13,
+      "baseAmount": 0.73,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistungen nach den Nummern 4050 und 4055 sind für denselben Zahn innerhalb von 30 Tagen nur einmal berechnungsfähig."
+      ]
+    },
+    "4060": {
+      "ziffer": "4060",
+      "description": "Kontrolle nach Entfernung harter und weicher Zahnbeläge oder professioneller Zahnreinigung nach der Nummer 1040 mit Nachreinigung einschließlich Polieren, je Zahn, oder Implantat, auch Brückenglied",
+      "points": 7,
+      "baseAmount": 0.39,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1040",
+            "4050",
+            "4055"
+          ],
+          "sourceText": "Die Leistung nach der Nummer 4060 ist neben den Leistungen nach den Nummern 1040, 4050 und 4055 nicht berechnungsfähig."
+        }
+      ]
+    },
+    "4070": {
+      "ziffer": "4070",
+      "description": "Parodontalchirurgische Therapie (insbesondere Entfernung subgingivaler Konkremente und Wurzelglättung) an einem einwurzeligen Zahn oder Implantat, geschlossenes Vorgehen",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4075": {
+      "ziffer": "4075",
+      "description": "Parodontalchirurgische Therapie (insbesondere Entfernung subgingivaler Konkremente und Wurzelglättung) an einem mehrwurzeligen Zahn, geschlossenes Vorgehen",
+      "points": 130,
+      "baseAmount": 7.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4080": {
+      "ziffer": "4080",
+      "description": "Gingivektomie, Gingivoplastik, je Parodontium",
+      "points": 45,
+      "baseAmount": 2.53,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4090": {
+      "ziffer": "4090",
+      "description": "Lappenoperation, offene Kürettage einschließlich Osteoplastik an einem Frontzahn, je Parodontium",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4100": {
+      "ziffer": "4100",
+      "description": "Lappenoperation, offene Kürettage einschließlich Osteoplastik an einem Seitenzahn, je Parodontium",
+      "points": 275,
+      "baseAmount": 15.47,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "4090",
+            "4100"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 4090 und 4100 sind Leistungen nach den Nummern 4050 bis 4080 in der gleichen Sitzung nicht berechnungsfähig."
+        }
+      ]
+    },
+    "4110": {
+      "ziffer": "4110",
+      "description": "Auffüllen von parodontalen Knochendefekten mit Aufbaumaterial (Knochen- und/oder Knochenersatzmaterial), auch Einbringen von Proteinen, zur regenerativen Behandlung parodontaler Defekte, gegebenenfalls einschließlich Materialentnahme im Aufbaugebiet, je Zahn oder Parodontium oder Implantat",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 4110 ist auch im Rahmen einer chirurgischen Behandlung berechnungsfähig.",
+        "Die Kosten eines einmal verwendbaren Knochenkollektors oder -schabers sind gesondert berechnungsfähig."
+      ]
+    },
+    "4120": {
+      "ziffer": "4120",
+      "description": "Verlegen eines gestielten Schleimhautlappens, je Kieferhälfte oder Frontzahnbereich",
+      "points": 275,
+      "baseAmount": 15.47,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4130": {
+      "ziffer": "4130",
+      "description": "Gewinnung und Transplantation von Schleimhaut, gegebenenfalls einschließlich Versorgung der Entnahmestelle, je Transplantat",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4133": {
+      "ziffer": "4133",
+      "description": "Gewinnung und Transplantation von Bindegewebe einschließlich Versorgung der Entnahmestelle, je Zahnzwischenraum",
+      "points": 880,
+      "baseAmount": 49.49,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4136": {
+      "ziffer": "4136",
+      "description": "Osteoplastik auch Kronenverlängerung, Tunnelierung oder Ähnliches je Zahn oder Parodontium, auch Implantat, als selbstständige Leistung",
+      "points": 200,
+      "baseAmount": 11.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4138": {
+      "ziffer": "4138",
+      "description": "Verwendung einer Membran zur Behandlung eines Knochendefektes einschließlich Fixierung, je Zahn, je Implantat",
+      "points": 220,
+      "baseAmount": 12.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "4150": {
+      "ziffer": "4150",
+      "description": "Kontrolle/Nachbehandlung nach parodontalchirurgischen Maßnahmen, je Zahn, Implantat oder Parodontium",
+      "points": 7,
+      "baseAmount": 0.39,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Leistungstext"
+      ]
+    },
+    "5000": {
+      "ziffer": "5000",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: je Pfeilerzahn oder Implantat als Brücken- oder Prothesenanker mit einer Vollkrone (Tangentialpräparation)",
+      "points": 1016,
+      "baseAmount": 57.14,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5010": {
+      "ziffer": "5010",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: je Pfeilerzahn als Brücken- oder Prothesenanker mit einer Vollkrone (Hohlkehl- und Stufenpräparation) oder Einlagefüllung",
+      "points": 1483,
+      "baseAmount": 83.41,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistungen nach den Nummern 5010 und 5020 sind im Zusammenhang mit Implantaten nicht berechnungsfähig."
+      ]
+    },
+    "5020": {
+      "ziffer": "5020",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: je Pfeilerzahn als Brücken- oder Prothesenanker mit einer Teilkrone mit Retentionsrillen oder -kasten oder mit Pinledges einschließlich Rekonstruktion der Kaufläche",
+      "points": 1997,
+      "baseAmount": 112.32,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistungen nach den Nummern 5010 und 5020 sind im Zusammenhang mit Implantaten nicht berechnungsfähig."
+      ]
+    },
+    "5030": {
+      "ziffer": "5030",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: je Pfeilerzahn oder Implantat als Brücken- oder Prothesenanker mit einer Wurzelkappe mit Stift, gegebenenfalls zur Aufnahme einer Verbindungsvorrichtung oder anderer Verbindungselemente",
+      "points": 1483,
+      "baseAmount": 83.41,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5040": {
+      "ziffer": "5040",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: je Pfeilerzahn oder Implantat als Brücken- oder Prothesenanker mit einer Teleskopkrone, auch Konuskrone",
+      "points": 2605,
+      "baseAmount": 146.51,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 5040 ist neben der Leistung nach der Nummer 5080 nicht berechnungsfähig.",
+        "Durch die Leistungen nach den Nummern 5000 bis 5040 sind folgende zahnärztliche Leistungen abgegolten: Präparieren des Zahnes oder Implantats, Relationsbestimmung, Abformungen, Einproben, provisorisches Eingliedern, festes Einfügen der Krone, der Einlagefüllung, der Teilkrone o. a., Nachkontrolle und Korrekturen",
+        "Die Leistungen nach den Nummern 5000 und 5030 umfassen auch die Verschraubung und Abdeckung mit Füllungsmaterial.",
+        "Zu den Leistungen nach den Nummern 5000 bis 5040 gehören Brücken- oder Prothesenanker mit Verbindungselementen jeder Ausführung.",
+        "Zu den Kronen nach den Nummern 5000 bis 5040 gehören Kronen (Voll-, Teil- und Teleskopkronen, sowie Wurzelstiftkappen) jeder zahntechnischen Ausführung.",
+        "Teilleistungen nach den Nummern 5000 bis 5040:",
+        "Enden die Leistungen mit der Präparation der Brückenpfeiler oder Prothesenanker mit Verbindungselementen oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
+        "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.Die Leistungen nach den Nummern 5050 oder 5060 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen, oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+      ]
+    },
+    "5070": {
+      "ziffer": "5070",
+      "description": "Versorgung eines Lückengebisses durch eine Brücke oder Prothese: Verbindung von Kronen oder Einlagefüllungen durch Brückenglieder, Prothesenspannen oder Stege, je zu überbrückende Spanne oder Freiendsattel",
+      "points": 400,
+      "baseAmount": 22.5,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5080": {
+      "ziffer": "5080",
+      "description": "Versorgung eines Lückengebisses durch eine zusammengesetzte Brücke oder Prothese, je Verbindungselement",
+      "points": 230,
+      "baseAmount": 12.94,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Matrize und Patrize gelten als ein Verbindungselement. Die Leistung nach der Nummer 5080 ist neben der Leistung nach der Nummer 5040 nicht berechnungsfähig."
+      ]
+    },
+    "5090": {
+      "ziffer": "5090",
+      "description": "Wiederherstellung der Funktion eines Verbindungselements nach der Nummer 5080",
+      "points": 110,
+      "baseAmount": 6.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5100": {
+      "ziffer": "5100",
+      "description": "Erneuern des Sekundärteils einer Teleskopkrone einschließlich Abformung",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5110": {
+      "ziffer": "5110",
+      "description": "Wiedereingliederung einer endgültigen Brücke nach Wiederherstellung der Funktion",
+      "points": 360,
+      "baseAmount": 20.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5120": {
+      "ziffer": "5120",
+      "description": "Provisorische Brücke im direkten Verfahren mit Abformung, je Zahn oder Implantat, einschließlich Entfernung",
+      "points": 240,
+      "baseAmount": 13.5,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5140": {
+      "ziffer": "5140",
+      "description": "Provisorische Brücke im direkten Verfahren mit Abformung, je Brückenspanne oder Freiendsattel, einschließlich Entfernung",
+      "points": 80,
+      "baseAmount": 4.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Das Wiedereingliedern derselben provisorischen Brücke, gegebenenfalls auch mehrmals, einschließlich Entfernung ist mit den Gebühren nach den Nummern 5120 bis 5140 abgegolten."
+      ]
+    },
+    "5150": {
+      "ziffer": "5150",
+      "description": "Versorgung eines Lückengebisses mit Hilfe einer durch Adhäsivtechnik befestigten Brücke, für die erste zu überbrückende Spanne",
+      "points": 730,
+      "baseAmount": 41.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5160": {
+      "ziffer": "5160",
+      "description": "Versorgung eines Lückengebisses nach der Nummer 5150, für jede weitere zu überbrückende Spanne",
+      "points": 360,
+      "baseAmount": 20.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5170": {
+      "ziffer": "5170",
+      "description": "Anatomische Abformung des Kiefers mit individuellem Löffel bei ungünstigen Zahnbogen- und Kieferformen und/oder tief ansetzenden Bändern oder spezielle Abformung zur Remontage, je Kiefer",
+      "points": 250,
+      "baseAmount": 14.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5180": {
+      "ziffer": "5180",
+      "description": "Funktionelle Abformung des Oberkiefers mit individuellem Löffel",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5190": {
+      "ziffer": "5190",
+      "description": "Funktionelle Abformung des Unterkiefers mit individuellem Löffel",
+      "points": 540,
+      "baseAmount": 30.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5200": {
+      "ziffer": "5200",
+      "description": "Versorgung eines teilbezahnten Kiefers durch eine Teilprothese mit einfachen, gebogenen Haftelementen einschließlich Einschleifen der Auflagen",
+      "points": 700,
+      "baseAmount": 39.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5210": {
+      "ziffer": "5210",
+      "description": "Versorgung eines teilbezahnten Kiefers durch eine Modellgussprothese mit gegossenen Halte- und Stützelementen einschließlich Einschleifen der Auflagen",
+      "points": 1400,
+      "baseAmount": 78.74,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5220": {
+      "ziffer": "5220",
+      "description": "Versorgung eines zahnlosen Kiefers durch eine totale Prothese oder Deckprothese bei Verwendung einer Kunststoff- oder Metallbasis, im Oberkiefer",
+      "points": 1850,
+      "baseAmount": 104.05,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Eine Deckprothese setzt eine Basisgestaltung wie bei einer totalen Prothese voraus."
+      ]
+    },
+    "5230": {
+      "ziffer": "5230",
+      "description": "Versorgung eines zahnlosen Kiefers durch eine totale Prothese oder Deckprothese bei Verwendung einer Kunststoff- oder Metallbasis, im Unterkiefer",
+      "points": 2200,
+      "baseAmount": 123.73,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Eine Deckprothese setzt eine Basisgestaltung wie bei einer totalen Prothese voraus.",
+        "Durch die Leistungen nach den Nummern 5200 bis 5230 sind folgende Leistungen abgegolten:",
+        "Anatomische Abformungen (auch des Gegenkiefers), Bestimmung der Kieferrelation, Einproben, Einpassen bzw. Einfügen, Nachkontrolle und Korrekturen.",
+        "Teilleistungen nach den Nummern 5200 und 5230:Für Maßnahmen bis einschließlich Bestimmung der Kieferrelation ist die Hälfte der jeweiligen Gebühr berechnungsfähig; bei weitergehenden Maßnahmen sind drei Viertel der jeweiligen Gebühr berechnungsfähig."
+      ]
+    },
+    "5250": {
+      "ziffer": "5250",
+      "description": "Maßnahmen zur Wiederherstellung der Funktion oder zur Erweiterung einer abnehmbaren Prothese (ohne Abformung)",
+      "points": 140,
+      "baseAmount": 7.87,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5260": {
+      "ziffer": "5260",
+      "description": "Maßnahmen zur Wiederherstellung der Funktion oder zur Erweiterung einer abnehmbaren Prothese (mit Abformung) einschließlich Halte- und Stützvorrichtungen",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5270": {
+      "ziffer": "5270",
+      "description": "Teilunterfütterung einer Prothese",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5280": {
+      "ziffer": "5280",
+      "description": "Vollständige Unterfütterung einer Prothese",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5290": {
+      "ziffer": "5290",
+      "description": "Vollständige Unterfütterung einer Prothese einschließlich funktioneller Randgestaltung, im Oberkiefer",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5300": {
+      "ziffer": "5300",
+      "description": "Vollständige Unterfütterung einer Prothese einschließlich funktioneller Randgestaltung, im Unterkiefer",
+      "points": 540,
+      "baseAmount": 30.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5310": {
+      "ziffer": "5310",
+      "description": "Vollständige Unterfütterung bei einer Defektprothese einschließlich funktioneller Randgestaltung",
+      "points": 730,
+      "baseAmount": 41.06,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Im Zusammenhang mit Leistungen nach den Nummern 5270 bis 5310 dürfen Leistungen nach den Nummern 5250 und 5260 nur berechnet werden, wenn es sich um zeitlich getrennte Verrichtungen handelt.",
+        "Leistungen nach den Nummern 5270 bis 5310 sind nur als Maßnahmen zur Wiederherstellung der Funktion einer abnehmbaren Prothese berechnungsfähig."
+      ]
+    },
+    "5320": {
+      "ziffer": "5320",
+      "description": "Eingliederung eines Obturators zum Verschluss von Defekten des Gaumens",
+      "points": 2200,
+      "baseAmount": 123.73,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5330": {
+      "ziffer": "5330",
+      "description": "Eingliederung einer Resektionsprothese zum Verschluss und zum Ausgleich von Defekten der Kiefer",
+      "points": 2800,
+      "baseAmount": 157.48,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "5340": {
+      "ziffer": "5340",
+      "description": "Eingliederung einer Prothese oder Epithese zum Verschluss extraoraler Weichteildefekte oder zum Ersatz fehlender Gesichtsteile einschließlich Stütz-, Halte- oder Hilfsvorrichtungen",
+      "points": 7300,
+      "baseAmount": 410.57,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Maßnahmen zur Weichteilstützung sind mit den Leistungen nach den Nummern 5200 bis 5340 abgegolten.",
+        "Leistungstext"
+      ]
+    },
+    "6000": {
+      "ziffer": "6000",
+      "description": "Profil- oder Enfacefotografie einschließlich kieferorthopädischer Auswertung",
+      "points": 80,
+      "baseAmount": 4.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Eine mehr als viermalige Berechnung der Leistung nach der Nummer 6000 im Verlauf einer kieferorthopädischen Behandlung ist in der Rechnung zu begründen."
+      ]
+    },
+    "6010": {
+      "ziffer": "6010",
+      "description": "Anwendung von Methoden zur Analyse von Kiefermodellen (dreidimensionale, graphische oder metrische Analysen, Diagramme), je Leistung nach der Nummer 0060",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6020": {
+      "ziffer": "6020",
+      "description": "Anwendung von Methoden zur Untersuchung des Gesichtsschädels (zeichnerische Auswertung von Röntgenaufnahmen des Schädels, Wachstumsanalysen)",
+      "points": 360,
+      "baseAmount": 20.25,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6030": {
+      "ziffer": "6030",
+      "description": "Maßnahmen zur Umformung eines Kiefers einschließlich Retention, geringer Umfang",
+      "points": 1350,
+      "baseAmount": 75.93,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6040": {
+      "ziffer": "6040",
+      "description": "Maßnahmen zur Umformung eines Kiefers einschließlich Retention, mittlerer Umfang",
+      "points": 2100,
+      "baseAmount": 118.11,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6050": {
+      "ziffer": "6050",
+      "description": "Maßnahmen zur Umformung eines Kiefers einschließlich Retention, hoher Umfang",
+      "points": 3600,
+      "baseAmount": 202.47,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Bei Maßnahmen von mittlerem Umfang nach der Nummer 6040 müssen mindestens drei, bei Maßnahmen von hohem Umfang mindestens vier der Kriterien nach den Buchstaben a bis e erfüllt sein:",
+        "a) Zahl der bewegten Zahngruppen: zwei und mehr Zahngruppen,",
+        "b) Ausmaß der Zahnbewegung: mehr als 2 Millimeter,",
+        "c) Art der Zahnbewegung: körperlich mehr als 2 Millimeter, kontrollierte Wurzelbewegung, direkte Veränderung der Bisshöhe, Zahndrehung mehr als 30 Grad,",
+        "d) Richtung der Zahnbewegung: entgegen Wanderungstendenz,",
+        "e) Verankerung: mit zusätzlichen intra- oder extraoralen Maßnahmen."
+      ]
+    },
+    "6060": {
+      "ziffer": "6060",
+      "description": "Maßnahmen zur Einstellung der Kiefer in den Regelbiss während der Wachstumsphase einschließlich Retention, geringer Umfang",
+      "points": 1800,
+      "baseAmount": 101.24,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6070": {
+      "ziffer": "6070",
+      "description": "Maßnahmen zur Einstellung der Kiefer in den Regelbiss während der Wachstumsphase einschließlich Retention, mittlerer Umfang",
+      "points": 2600,
+      "baseAmount": 146.23,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6080": {
+      "ziffer": "6080",
+      "description": "Maßnahmen zur Einstellung der Kiefer in den Regelbiss während der Wachstumsphase einschließlich Retention, hoher Umfang",
+      "points": 3600,
+      "baseAmount": 202.47,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6030",
+            "6040",
+            "6050",
+            "6060",
+            "6070",
+            "6080"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Bei Maßnahmen von mittlerem Umfang muss mindestens ein Kriterium nach den Buchstaben a bis c, bei Maßnahmen von hohem Umfang müssen mindestens zwei der Kriterien erfüllt sein:",
+        "a) Ausmaß der Bissverschiebung: mehr als 4 Millimeter,",
+        "b) Richtung der durchzuführenden Bissverschiebung, Unterkiefer relativ zum Oberkiefer: dorsal,",
+        "c) Skelettale Bedingungen: ungünstige Wachstumsvoraussetzungen.",
+        "Die Leistungen nach den Nummern 6030 bis 6080 umfassen alle im Behandlungsplan festgelegten Maßnahmen innerhalb eines Zeitraumes von bis zu vier Jahren.",
+        "Die Maßnahmen im Sinne der Nummern 6030 bis 6080 umfassen alle Leistungen zur Kieferumformung und Retention bzw. zur Einstellung des Unterkiefers in den Regelbiss innerhalb eines Zeitraumes von bis zu vier Jahren, unabhängig von den angewandten Behandlungsmethoden oder den verwendeten Therapiegeräten."
+      ]
+    },
+    "6090": {
+      "ziffer": "6090",
+      "description": "Maßnahmen zur Einstellung der Okklusion durch alveolären Ausgleich bei abgeschlossener Wachstumsphase einschließlich Retention, je Kiefer",
+      "points": 700,
+      "baseAmount": 39.37,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6100": {
+      "ziffer": "6100",
+      "description": "Eingliederung eines Klebebrackets zur Aufnahme orthodontischer Hilfsmittel",
+      "points": 165,
+      "baseAmount": 9.28,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6110": {
+      "ziffer": "6110",
+      "description": "Entfernung eines Klebebrackets einschließlich Polieren und gegebenenfalls Versiegelung des Zahnes",
+      "points": 70,
+      "baseAmount": 3.94,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6120": {
+      "ziffer": "6120",
+      "description": "Eingliederung eines Bandes zur Aufnahme orthodontischer Hilfsmittel",
+      "points": 230,
+      "baseAmount": 12.94,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6130": {
+      "ziffer": "6130",
+      "description": "Entfernung eines Bandes einschließlich Polieren und gegebenenfalls Versiegelung des Zahnes",
+      "points": 20,
+      "baseAmount": 1.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6140": {
+      "ziffer": "6140",
+      "description": "Eingliederung eines Teilbogens",
+      "points": 210,
+      "baseAmount": 11.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6150": {
+      "ziffer": "6150",
+      "description": "Eingliederung eines ungeteilten Bogens, alle Zahngruppen umfassend, je Kiefer",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6160": {
+      "ziffer": "6160",
+      "description": "Eingliederung einer intra-/extraoralen Verankerung (z. B. Headgear).",
+      "points": 370,
+      "baseAmount": 20.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6170": {
+      "ziffer": "6170",
+      "description": "Eingliederung einer Kopf-Kinn-Kappe.",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Kosten für die eingegliederten Hilfsmittel nach den Nummern 6160 und 6170 sind gesondert berechnungsfähig."
+      ]
+    },
+    "6180": {
+      "ziffer": "6180",
+      "description": "Maßnahmen zur Wiederherstellung der Funktionsfähigkeit und/oder Erweiterung von herausnehmbaren Behandlungsgeräten einschließlich Abformung und Wiedereinfügen, je Kiefer und je Sitzung einmal berechnungsfähig",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6190": {
+      "ziffer": "6190",
+      "description": "Beratendes und belehrendes Gespräch mit Anweisungen zur Beseitigung von schädlichen Gewohnheiten und Dysfunktionen",
+      "points": 140,
+      "baseAmount": 7.87,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Neben der Leistung nach der Nummer 6190 ist die Leistung nach der Nummer 0010 in derselben Sitzung nicht berechnungsfähig."
+      ]
+    },
+    "6200": {
+      "ziffer": "6200",
+      "description": "Eingliedern von Hilfsmitteln zur Beseitigung von Funktionsstörungen (z. B. Mundvorhofplatte) einschließlich Anweisung zum Gebrauch und Kontrollen",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6210": {
+      "ziffer": "6210",
+      "description": "Kontrolle des Behandlungsverlaufs oder Weiterführung der Retention einschließlich kleiner Änderungen der Behandlungs- oder Retentionsgeräte, Therapiekontrolle der gesteuerten Extraktion, je Sitzung",
+      "points": 90,
+      "baseAmount": 5.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6220": {
+      "ziffer": "6220",
+      "description": "Vorbereitende Maßnahmen zur Herstellung von kieferorthopädischen Behandlungsmitteln (z. B. Abformung, Bissnahme), je Kiefer",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6230": {
+      "ziffer": "6230",
+      "description": "Eingliederung von kieferorthopädischen Behandlungsmitteln, je Kiefer",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6240": {
+      "ziffer": "6240",
+      "description": "Maßnahmen zur Verhütung von Folgen vorzeitigen Zahnverlustes (Offenhalten einer Lücke)",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6250": {
+      "ziffer": "6250",
+      "description": "Beseitigung des Diastemas, als selbstständige Leistung",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "6260": {
+      "ziffer": "6260",
+      "description": "Maßnahmen zur Einordnung eines verlagerten Zahnes in den Zahnbogen, als selbstständige Leistung",
+      "points": 1100,
+      "baseAmount": 61.87,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Leistungstext"
+      ]
+    },
+    "7000": {
+      "ziffer": "7000",
+      "description": "Eingliederung eines Aufbissbehelfs ohne adjustierte Oberfläche",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7010": {
+      "ziffer": "7010",
+      "description": "Eingliederung eines Aufbissbehelfs mit adjustierter Oberfläche",
+      "points": 800,
+      "baseAmount": 44.99,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7020": {
+      "ziffer": "7020",
+      "description": "Umarbeitung einer vorhandenen Prothese zum Aufbissbehelf",
+      "points": 450,
+      "baseAmount": 25.31,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7030": {
+      "ziffer": "7030",
+      "description": "Wiederherstellung der Funktion eines Aufbissbehelfs, z. B. durch Unterfütterung",
+      "points": 370,
+      "baseAmount": 20.81,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7040": {
+      "ziffer": "7040",
+      "description": "Kontrolle eines Aufbissbehelfs",
+      "points": 65,
+      "baseAmount": 3.66,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7050": {
+      "ziffer": "7050",
+      "description": "Kontrolle eines Aufbissbehelfs mit adjustierter Oberfläche: subtraktive Maßnahmen, je Sitzung",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7060": {
+      "ziffer": "7060",
+      "description": "Kontrolle eines Aufbissbehelfs mit adjustierter Oberfläche: additive Maßnahmen, je Sitzung",
+      "points": 410,
+      "baseAmount": 23.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7070": {
+      "ziffer": "7070",
+      "description": "Semipermanente Schiene unter Anwendung der Ätztechnik, je Interdentalraum",
+      "points": 90,
+      "baseAmount": 5.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7080": {
+      "ziffer": "7080",
+      "description": "Versorgung eines Kiefers mit einem festsitzenden laborgefertigten Provisorium (einschließlich Vorpräparation) im indirekten Verfahren, je Zahn oder je Implantat, einschließlich Entfernung",
+      "points": 600,
+      "baseAmount": 33.75,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "7090": {
+      "ziffer": "7090",
+      "description": "Versorgung eines Kiefers mit einem laborgefertigten Provisorium im indirekten Verfahren, je Brückenglied, einschließlich Entfernung",
+      "points": 270,
+      "baseAmount": 15.19,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Berechnung der Leistungen nach den Nummern 7080 und 7090 setzt voraus, dass es sich bei dem festsitzenden laborgefertigten Provisorium um ein Langzeitprovisorium mit einer Tragezeit von mindestens drei Monaten handelt.",
+        "Beträgt die Tragezeit des festsitzenden laborgefertigten Provisoriums unter drei Monaten, sind anstelle der Leistungen nach den Nummern 7080 und 7090 die Leistungen nach den Nummern 2260, 2270 oder 5120 und 5140 berechnungsfähig.Im Zusammenhang mit den Leistungen nach den Nummern 7080 oder 7090 sind die Leistungen nach den Nummern 2230, 2240, 5050 oder 5060 nicht berechnungsfähig."
+      ]
+    },
+    "7100": {
+      "ziffer": "7100",
+      "description": "Maßnahmen zur Wiederherstellung der Funktion eines Langzeitprovisoriums, je Krone, Spanne oder Freiendbrückenglied",
+      "points": 200,
+      "baseAmount": 11.25,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Wiedereingliederung desselben festsitzenden laborgefertigten Provisoriums nach den Nummern 7080 oder 7090, gegebenenfalls auch mehrmals, einschließlich Entfernung, ist mit den Gebühren nach den Nummern 7080 bis 7100 abgegolten.",
+        "Leistungstext"
+      ]
+    },
+    "8000": {
+      "ziffer": "8000",
+      "description": "Klinische Funktionsanalyse einschließlich Dokumentation",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Leistung nach der Nummer 8000 umfasst auch folgende zahnärztliche Leistungen: prophylaktische, prothetische, parodontologische und okklusale Befunderhebung, funktionsdiagnostische Auswertung von Röntgenaufnahmen des Schädels und der Halswirbelsäule, klinische Reaktionstests (z. B. Resilienztest, Provokationstest)."
+      ]
+    },
+    "8010": {
+      "ziffer": "8010",
+      "description": "Registrieren der gelenkbezüglichen Zentrallage des Unterkiefers, auch Stützstiftregistrierung, je Registrat",
+      "points": 180,
+      "baseAmount": 10.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 2,
+          "scope": "session",
+          "sourceText": "Die Leistung nach der Nummer 8010 ist je Sitzung höchstens zweimal berechnungsfähig."
+        }
+      ],
+      "notes": [
+        "Neben der Leistung nach der Nummer 8010 sind die Material- und Laborkosten für die Bissnahme und die Lieferung und Anbringung des Stützstiftbestecks gesondert berechnungsfähig."
+      ]
+    },
+    "8020": {
+      "ziffer": "8020",
+      "description": "Arbiträre Scharnierachsenbestimmung (eingeschlossen sind die arbiträre Scharnierachsenbestimmung, das Anlegen eines Übertragungsbogens, das Koordinieren eines Übertragungsbogens mit einem Artikulator)",
+      "points": 300,
+      "baseAmount": 16.87,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8030": {
+      "ziffer": "8030",
+      "description": "Kinematische Scharnierachsenbestimmung (eingeschlossen sind die kinematische Scharnierachsenbestimmung, das definitive Markieren der Referenzpunkte, das Anlegen eines Übertragungsbogens, das Koordinieren eines Übertragungsbogens mit einem Artikulator)",
+      "points": 550,
+      "baseAmount": 30.93,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8035": {
+      "ziffer": "8035",
+      "description": "Kinematische Scharnierachsenbestimmung mittels elektronischer Aufzeichnung (eingeschlossen sind die kinematische Scharnierachsenbestimmung, das definitive Markieren der Referenzpunkte, gegebenenfalls das Anlegen eines Übertragungsbogens, gegebenenfalls das Koordinieren eines Übertragungsbogens mit einem Artikulator)",
+      "points": 550,
+      "baseAmount": 30.93,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "8020",
+            "8030",
+            "8035"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 8020 bis 8035 sind die Material- und Laborkosten für die Artikulation des Ober- und Unterkiefermodells im (halb) individuellen Artikulator gesondert berechnungsfähig."
+        }
+      ]
+    },
+    "8050": {
+      "ziffer": "8050",
+      "description": "Registrieren von Unterkieferbewegungen zur Einstellung halbindividueller Artikulatoren und Einstellung nach den gemessenen Werten, je Sitzung",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8060": {
+      "ziffer": "8060",
+      "description": "Registrieren von Unterkieferbewegungen zur Einstellung voll adjustierbarer Artikulatoren und Einstellung nach den gemessenen Werten, je Sitzung",
+      "points": 750,
+      "baseAmount": 42.18,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8065": {
+      "ziffer": "8065",
+      "description": "Registrieren von Unterkieferbewegungen mittels elektronischer Aufzeichnung zur Einstellung voll adjustierbarer Artikulatoren und Einstellung nach den gemessenen Werten, je Sitzung",
+      "points": 850,
+      "baseAmount": 47.81,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "8050",
+            "8060",
+            "8065"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 8050 bis 8065 sind Material- und Laborkosten für die Einstellung des (halb) individuellen Artikulators nach den gemessenen Werten gesondert berechnungsfähig."
+        }
+      ]
+    },
+    "8080": {
+      "ziffer": "8080",
+      "description": "Diagnostische Maßnahmen an Modellen im Artikulator einschließlich subtraktiver oder additiver Korrekturen, Befundauswertung und Behandlungsplanung, je Sitzung",
+      "points": 250,
+      "baseAmount": 14.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8090": {
+      "ziffer": "8090",
+      "description": "Diagnostischer Aufbau von Funktionsflächen am natürlichen Gebiss, am festsitzenden und/oder herausnehmbaren Zahnersatz, je Sitzung",
+      "points": 250,
+      "baseAmount": 14.06,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "8100": {
+      "ziffer": "8100",
+      "description": "Systematische subtraktive Maßnahmen am natürlichen Gebiss, am festsitzenden und/oder herausnehmbaren Zahnersatz, je Zahnpaar",
+      "points": 20,
+      "baseAmount": 1.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Leistungstext"
+      ]
+    },
+    "9000": {
+      "ziffer": "9000",
+      "description": "Implantatbezogene Analyse und Vermessung des Alveolarfortsatzes, des Kieferkörpers und der angrenzenden knöchernen Strukturen sowie der Schleimhaut, einschließlich metrischer Auswertung von radiologischen Befundunterlagen, Modellen und Fotos zur Feststellung der Implantatposition, gegebenenfalls mit Hilfe einer individuellen Schablone zur Diagnostik, einschließlich Implantatauswahl, je Kiefer.",
+      "points": 884,
+      "baseAmount": 49.72,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Bei Verwendung einer Röntgenmessschablone sind die Material- und Laborkosten gesondert berechnungsfähig."
+      ]
+    },
+    "9003": {
+      "ziffer": "9003",
+      "description": "Verwenden einer Orientierungsschablone/Positionierungsschablone zur Implantation, je Kiefer",
+      "points": 100,
+      "baseAmount": 5.62,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Bei Verwendung einer Orientierungsschablone sind die Material- und Laborkosten gesondert berechnungsfähig."
+      ]
+    },
+    "9005": {
+      "ziffer": "9005",
+      "description": "Verwenden einer auf dreidimensionale Daten gestützten Navigationsschablone/chirurgischen Führungsschablone zur Implantation, gegebenenfalls einschließlich Fixierung, je Kiefer",
+      "points": 300,
+      "baseAmount": 16.87,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die verwendeten Fixierungselemente sowie die Material- und Laborkosten der Navigationsschablone sind gesondert berechnungsfähig."
+      ]
+    },
+    "9010": {
+      "ziffer": "9010",
+      "description": "Implantatinsertion, je Implantat Präparieren einer Knochenkavität für ein enossales Implantat, Einsetzen einer Implantatschablone zur Überprüfung der Knochenkavität (z. B. Tiefenlehre), gegebenenfalls einschließlich Knochenkondensation, Knochenglättung im Bereich des Implantats, Einbringen eines enossalen Implantats einschließlich Verschlussschraube und gegebenenfalls Einbringen von Aufbauelementen bei offener Einheilung sowie Wundverschluss",
+      "points": 1545,
+      "baseAmount": 86.89,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9020": {
+      "ziffer": "9020",
+      "description": "Insertion eines Implantats zum temporären Verbleib, auch orthodontisches Implantat",
+      "points": 515,
+      "baseAmount": 28.96,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9040": {
+      "ziffer": "9040",
+      "description": "Freilegen eines Implantats, und Einfügen eines oder mehrerer Aufbauelemente (z. B. eines Gingivaformers) bei einem zweiphasigen Implantatsystem",
+      "points": 626,
+      "baseAmount": 35.21,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9050": {
+      "ziffer": "9050",
+      "description": "Entfernen und Wiedereinsetzen sowie Auswechseln eines oder mehrerer Aufbauelemente bei einem zweiphasigen Implantatsystem während der rekonstruktiven Phase",
+      "points": 313,
+      "baseAmount": 17.6,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "9010",
+            "9040"
+          ],
+          "sourceText": "1. Die Leistung nach der Nummer 9050 ist nicht neben den Leistungen nach den Nummern 9010 und 9040 berechnungsfähig."
+        },
+        {
+          "type": "maxFrequency",
+          "count": 3,
+          "scope": "session",
+          "sourceText": "2. Die Leistung nach der Nummer 9050 ist je Implantat höchstens dreimal und höchstens einmal je Sitzung berechnungsfähig."
+        }
+      ]
+    },
+    "9060": {
+      "ziffer": "9060",
+      "description": "Auswechseln von Aufbauelementen (Sekundärteilen) im Reparaturfall",
+      "points": 313,
+      "baseAmount": 17.6,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "maxFrequency",
+          "count": 1,
+          "scope": "session",
+          "sourceText": "Die Leistung nach der Nummer 9060 ist für ein Implantat höchstens einmal je Sitzung berechnungsfähig."
+        }
+      ]
+    },
+    "9090": {
+      "ziffer": "9090",
+      "description": "Knochengewinnung (z. B. Knochenkollektor oder Knochenschaber), Knochenaufbereitung und -implantation, auch zur Weichteilunterfütterung",
+      "points": 400,
+      "baseAmount": 22.5,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Kosten eines einmal verwendbaren Knochenkollektors oder -schabers sind gesondert berechnungsfähig."
+      ]
+    },
+    "9100": {
+      "ziffer": "9100",
+      "description": "Aufbau des Alveolarfortsatzes durch Augmentation ohne zusätzliche Stabilisierungsmaßnahmen, je Kieferhälfte oder Frontzahnbereich Mit der Leistung nach der Nummer 9100 sind folgende Leistungen abgegolten: Lagerbildung, Glättung des Alveolarfortsatzes, gegebenenfalls Entnahme von Knochen innerhalb des Aufbaugebietes, Einbringung von Aufbaumaterial (Knochen und/oder Knochenersatzmaterial) und Wundverschluss mit vollständiger Schleimhautabdeckung, gegebenenfalls einschließlich Einbringung und Fixierung resorbierbarer oder nicht resorbierbarer Barrieren",
+      "points": 2694,
+      "baseAmount": 151.52,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "1. Die Leistung nach der Nummer 9100 ist für die Glättung des Alveolarfortsatzes im Bereich des Implantatbettes nicht berechnungsfähig.",
+        "2. Neben der Leistung nach der Nummer 9100 sind die Leistungen nach der Nummer 9130 nicht berechnungsfähig.",
+        "3. Wird die Leistung nach der Nummer 9100 in derselben Kieferhälfte neben der Leistung nach der Nummer 9110 erbracht, ist die Hälfte der Gebühr der Nummer 9100 berechnungsfähig.",
+        "4. Wird die Leistung nach der Nummer 9100 in derselben Kieferhälfte neben der Leistung nach der Nummer 9120 erbracht, ist ein Drittel der Gebühr der Nummer 9100 berechnungsfähig."
+      ]
+    },
+    "9110": {
+      "ziffer": "9110",
+      "description": "Geschlossene Sinusbodenelevation vom Kieferkamm aus (interner Sinuslift) Mit einer Leistung nach der Nummer 9110 sind folgende Leistungen abgegolten: Schaffung des Zugangs durch die Alveole oder das Implantatfach, Anhebung des Kieferhöhlenbodens durch knochenverdrängende oder knochenverdichtende Maßnahmen und der Kieferhöhlenmembran, Entnahme von Knochenspänen innerhalb des Aufbaugebietes des Implantatfaches und Einbringen von Aufbaumaterial (Knochen und/oder Knochenersatzmaterial)",
+      "points": 1500,
+      "baseAmount": 84.36,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "9120",
+            "9130"
+          ],
+          "sourceText": "Die Leistung nach der Nummer 9110 ist für dieselbe Implantatkavität nicht neben den Leistungen nach den Nummern 9120 und 9130 berechnungsfähig."
+        }
+      ]
+    },
+    "9120": {
+      "ziffer": "9120",
+      "description": "Sinusbodenelevation durch externe Knochenfensterung (externer Sinuslift), je Kieferhälfte Mit einer Leistung nach der Nummer 9120 sind folgende Leistungen abgegolten: Schaffung des Zugangs zur Kieferhöhle durch Knochenfensterung (auch Knochendeckel), Präparation der Kieferhöhlenmembran, Anhebung des Kieferhöhlenbodens und der Kieferhöhlenmembran, Lagerbildung, gegebenenfalls Entnahme von Knochenspänen innerhalb des Aufbaugebietes, Einbringung von Aufbaumaterial (Knochen und/oder Knochenersatzmaterial), gegebenenfalls Einbringung resorbierbarer oder nicht resorbierbarer Barrieren – einschließlich Fixierung –, gegebenenfalls Reposition des Knochendeckels, Verschluss der Kieferhöhle und Wundverschluss",
+      "points": 3000,
+      "baseAmount": 168.73,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9130": {
+      "ziffer": "9130",
+      "description": "Spaltung und Spreizung von Knochensegmenten (Bone Splitting), gegebenenfalls mit Auffüllung der Spalträume mittels Knochen oder Knochenersatzmaterial, gegebenenfalls einschließlich zusätzlicher Osteosynthesemaßnahmen, gegebenenfalls einschließlich Einbringung resorbierbarer oder nicht resorbierbarer Barrieren und deren Fixierung je Kieferhälfte oder Frontzahnbereich, oder vertikale Distraktion des Alveolarfortsatzes einschließlich Fixierung, je Kieferhälfte oder Frontzahnbereich",
+      "points": 1540,
+      "baseAmount": 86.61,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Neben der Leistung nach der Nummer 9130 ist die Leistung nach der Nummer 9100 nicht berechnungsfähig."
+      ]
+    },
+    "9140": {
+      "ziffer": "9140",
+      "description": "Intraorale Entnahme von Knochen außerhalb des Aufbaugebietes gegebenenfalls einschließlich Aufbereitung des Knochenmaterials und/oder der Aufnahmeregion, einschließlich der notwendigen Versorgung der Entnahmestelle, je Kieferhälfte oder Frontzahnbereich",
+      "points": 650,
+      "baseAmount": 36.56,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Bei Entnahme von einem oder mehreren Knochenblöcken ist das Doppelte der Gebühr nach der Nummer 9140 berechnungsfähig. Von einem Knochenblock im Sinne dieser Abrechnungsbestimmung ist auszugehen, wenn dieser bei der Implantation eigenständig fixiert werden muss."
+      ]
+    },
+    "9150": {
+      "ziffer": "9150",
+      "description": "Fixation oder Stabilisierung des Augmentates durch Osteosynthesemaßnahmen (z. B. Schrauben- oder Plattenosteosynthese oder Titannetze), zusätzlich zu der Leistung nach der Nummer 9100, je Kieferhälfte oder Frontzahnbereich",
+      "points": 675,
+      "baseAmount": 37.96,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9160": {
+      "ziffer": "9160",
+      "description": "Entfernung unter der Schleimhaut liegender Materialien (z. B. Barrieren – einschließlich Fixierung –, Osteosynthesematerial), je Kieferhälfte oder Frontzahnbereich",
+      "points": 330,
+      "baseAmount": 18.56,
+      "category": "default",
+      "maxMultiplier": 2.3
+    },
+    "9170": {
+      "ziffer": "9170",
+      "description": "Entfernung im Knochen liegender Materialien durch Osteotomie (z. B. Osteosynthesematerial, Knochenschrauben) oder Entfernung eines subperiostalen Gerüstimplantats, je Kieferhälfte oder Frontzahnbereich",
+      "points": 500,
+      "baseAmount": 28.12,
+      "category": "default",
+      "maxMultiplier": 2.3,
+      "notes": [
+        "Die Entfernung eines Implantats ist mit der Gebühr für die Leistungen nach den Nummern 3000 und 3030 abgegolten.",
+        "Leistungstext"
+      ]
+    }
+  },
+  "constraintGroups": [
+    {
+      "id": "excl-30-40",
+      "type": "mutualExclusion",
+      "members": [
+        "30",
+        "40"
+      ],
+      "sourceText": "Die Leistungen nach den Nummern 0030 und 0040 sind nicht nebeneinander berechnungsfähig."
+    }
+  ]
+}

@@ -49,6 +49,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Fee-schedule tables (reproducible + valid)
+        run: |
+          pnpm fees:build
+          git diff --exit-code -- frontend/src/lib/data/ \
+            || (echo '::error::Generated fee-schedule tables are stale — run `pnpm fees:build` and commit the result.' && exit 1)
+          pnpm fees:validate
+
       - name: Test (with coverage)
         run: pnpm test:coverage
 

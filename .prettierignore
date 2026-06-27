@@ -6,6 +6,11 @@ build/
 coverage/
 playwright-report/
 test-results/
+# Generated fee-schedule lookup tables (formatted by scripts/build-fee-schedules.mjs;
+# the reproducibility check in CI is the real gate, not Prettier).
+frontend/src/lib/data/goae.json
+frontend/src/lib/data/goz.json
+frontend/src/lib/data/got.json
 
 # Dependencies & lockfile
 node_modules/
