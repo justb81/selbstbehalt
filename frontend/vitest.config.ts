@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [svelte(), svelteTesting()],
+  // The SvelteKit plugin gives tests the same `$lib`, `$app/*` and `$env/*`
+  // module resolution as the app, so components and the API client can be
+  // imported exactly as they are at runtime.
+  plugins: [sveltekit(), svelteTesting()],
   test: {
     environment: 'jsdom',
     globals: true,
@@ -14,8 +17,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,svelte}'],
-      // Bootstrap/entry code has no meaningful unit coverage.
-      exclude: ['src/main.ts', 'src/**/*.d.ts'],
+      // Generated declarations and per-route load config (a one-line constant)
+      // carry no meaningful unit coverage.
+      exclude: ['src/**/*.d.ts', 'src/routes/**/+layout.ts'],
       thresholds: {
         statements: 80,
         functions: 80,

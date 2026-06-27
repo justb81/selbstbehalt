@@ -72,7 +72,7 @@ pnpm test:e2e       # run Playwright end-to-end tests (frontend)
 
 The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo:
 
-- [`frontend/`](frontend/) — Svelte 5 + Vite PWA (graduates to SvelteKit in a later issue)
+- [`frontend/`](frontend/) — SvelteKit (Svelte 5, TypeScript) PWA
 - [`backend/`](backend/) — Hono REST API + SQLite
 
 Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
