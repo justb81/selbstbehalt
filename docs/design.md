@@ -351,7 +351,7 @@ Die Gebührenordnung für Ärzte (GOÄ) ist öffentlich zugänglich und wird als
 }
 ```
 
-Die Tabelle umfasst alle ~4.500 Ziffern der GOÄ (aktuell GOÄ 1996 mit Anpassungskursfaktor), GOZ (Zahnärzte) und GOT (Tierärzte, für Haustierversicherung). Sie wird versioniert im Git-Repository gepflegt und kann per Community-Beitrag aktualisiert werden.
+Die Tabelle umfasst alle ~4.500 Ziffern der GOÄ (aktuell GOÄ 1996 mit Anpassungskursfaktor), GOZ (Zahnärzte) und GOT (Tierärzte, für Haustierversicherung). Sie wird versioniert im Git-Repository gepflegt und ausschließlich vom Maintainer (@justb81) aktualisiert — reproduzierbar aus den amtlichen Quell-XML unter `data/input/` (siehe §10). Gefundene Fehler können als Issue gemeldet werden; externe PRs (Code, Daten o. a.) sind willkommen, müssen aber zwingend vom Maintainer reviewt und gemerged werden.
 
 ***
 

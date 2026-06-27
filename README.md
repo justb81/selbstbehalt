@@ -78,6 +78,19 @@ Source files carry an [SPDX](https://spdx.dev/) short-form identifier as the fir
 
 Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->` for HTML/Svelte markup, etc.).
 
+## Contributing
+
+Contributions — code, data, docs, or bug reports — are welcome. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, conventions, and the quality bar.
+
+Every pull request is reviewed and approved by the maintainer
+([@justb81](https://github.com/justb81)) before merge. The GOÄ/GOZ/GOT
+fee-schedule tables are maintained exclusively by the maintainer (regenerated
+from the official source XML under [`data/input/`](data/input/)) — please
+[report data errors as an issue](.github/ISSUE_TEMPLATE/data_error.yml) rather
+than hand-editing the generated tables. Found a vulnerability? See
+[`SECURITY.md`](SECURITY.md).
+
 ## License
 
 [Apache License 2.0](LICENSE).

@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Bug report
+description: Report something that is broken or behaving unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please do **not** include real
+        invoice images, health data, or other sensitive personal information.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+      placeholder: When I … I expected … but instead …
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Frontend (PWA / UI)
+        - Backend (API / database)
+        - OCR / invoice parsing
+        - Günstigerprüfung (decision logic)
+        - Deployment / Docker
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser & version, OS, deployment (Docker Compose / dev), app version or commit.
+      placeholder: |
+        - Browser: Firefox 130
+        - OS: Ubuntu 24.04
+        - Deployment: Docker Compose
+        - Commit: abc1234
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Relevant console output or screenshots. Redact any personal/health data first.
+    validations:
+      required: false

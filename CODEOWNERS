@@ -1,0 +1,17 @@
+# Code owners for selbstbehalt
+#
+# The maintainer reviews and approves every change before merge. The catch-all
+# rule below makes @justb81 a required reviewer for any path; combined with
+# branch protection ("Require review from Code Owners") this guarantees nothing
+# merges into `main` without the maintainer's approval.
+#
+# More specific rules are listed after the catch-all only to document intent —
+# the fee-schedule source data and the generated lookup tables are maintained
+# exclusively by the maintainer (see CONTRIBUTING.md → "Fee-schedule data").
+
+# Everything in the repository.
+*                           @justb81
+
+# Fee-schedule source XML and the generated lookup tables (maintainer-only).
+/data/input/                @justb81
+/frontend/src/lib/data/     @justb81

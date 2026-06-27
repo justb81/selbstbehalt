@@ -14,6 +14,7 @@ Issues parallel bearbeitet werden.
 - **phase:** `phase:0-foundation`, `phase:1-mvp`, `phase:2-ocr`, `phase:3-polish`, `phase:4-extensions`
 - **priority:** `priority:high`, `priority:medium`, `priority:low`
 - **sonstige:** `privacy` (Privacy-by-Design-relevant), `epic` (Meta/Übersicht)
+- **gemeldete Issues:** Über die Issue-Templates eingereichte Issues nutzen die GitHub-Standard-Labels (`bug`, `enhancement`, `documentation`, `question`, …); die obige `type:`/`area:`/`phase:`-Taxonomie ist primär für die geplanten Umsetzungs-Issues gedacht.
 
 ## Phase 0 — Fundament & DevEx
 
@@ -24,7 +25,7 @@ Issues parallel bearbeitet werden.
 | #4 | Test-Infrastruktur (Vitest + Playwright + Coverage) | #2, #3 |
 | #5 | CI-Pipeline (Lint/Typecheck/Test/Build) | #2, #3, #4 |
 | #6 | Sicherheits-/Abhängigkeits-Automatisierung (CodeQL, Audit, Dependabot, SBOM) | #5 |
-| #7 | Repo-Meta (.env.example, CONTRIBUTING, Templates, GOÄ-Beitragsleitfaden) | #2 |
+| #7 | Repo-Meta (.env.example, CONTRIBUTING, Templates, CODEOWNERS) | #2 |
 
 ## Phase 1 — MVP: Backend, Domäne & Frontend
 
