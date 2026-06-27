@@ -27,30 +27,30 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #3 | TypeScript, ESLint, Prettier, Git-Hooks | #2 | ✅ |
 | #4 | Test-Infrastruktur (Vitest + Playwright + Coverage) | #2, #3 | ✅ |
 | #5 | CI-Pipeline (Lint/Typecheck/Test/Build) | #2, #3, #4 | ✅ |
-| #6 | Sicherheits-/Abhängigkeits-Automatisierung (CodeQL, Audit, Dependabot, SBOM) | #5 | 🚧 |
+| #6 | Sicherheits-/Abhängigkeits-Automatisierung (CodeQL, Audit, Dependabot, SBOM) | #5 | ✅ |
 | #7 | Repo-Meta (.env.example, CONTRIBUTING, Templates, CODEOWNERS) | #2 | ✅ |
 
 ## Phase 1 — MVP: Backend, Domäne & Frontend
 
 | Issue | Titel | Abhängig von | Status |
 |---|---|---|---|
-| #8 | Datenbank-Schicht (Drizzle + SQLite + Schema) | #2, #3 | 🚧 |
-| #9 | Backend-Grundgerüst (Hono + Middleware + Auth) | #2, #3 | 🚧 |
-| #10 | Geteilte Zod-Schemas & Typen | #2, #3 | 🚧 |
+| #8 | Datenbank-Schicht (Drizzle + SQLite + Schema) | #2, #3 | ✅ |
+| #9 | Backend-Grundgerüst (Hono + Middleware + Auth) | #2, #3 | ✅ |
+| #10 | Geteilte Zod-Schemas & Typen | #2, #3 | ✅ |
 | #11 | Contracts-API (CRUD) | #8, #9, #10 | 🚧 |
 | #12 | Invoices-API (CRUD + Submit + Refund) | #8, #9, #10 | 🚧 |
 | #13 | Stats-API (Jahr + BRE) | #8, #9, #12, #17 | ⬜ |
 | #14 | Backup-API (Export/Import) | #8, #9 | ⬜ |
-| #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ⬜ |
-| #16 | GOÄ-Parser + Steigerungsfaktor-Validierung (§5) | #15, #4 | ⬜ |
+| #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ✅ |
+| #16 | GOÄ-Parser + Steigerungsfaktor-Validierung (§5) | #15, #4 | ✅ |
 | #17 | BRE-Helfer (Streak/Projektion) | #4, #10 | ⬜ |
 | #18 | Günstigerprüfung-Engine | #17, #4 | ⬜ |
-| #19 | SvelteKit-Grundgerüst + API-Client | #2, #3, #10 | ⬜ |
+| #19 | SvelteKit-Grundgerüst + API-Client | #2, #3, #10 | ✅ |
 | #20 | Einstellungs-Seite | #19, #14 | ⬜ |
 | #21 | Vertragsverwaltung-UI (ContractCard, BRETracker) | #19, #11, #17 | ⬜ |
 | #22 | Rechnungs-UI (InvoiceReview, GCPCard, InvoiceBadge) | #19, #12, #16, #18, #20 | ⬜ |
 | #23 | Dashboard | #21, #22, #13 | ⬜ |
-| #30 | Containerisierung (Docker Compose) | #9, #19 | ⬜ |
+| #30 | Containerisierung (Docker Compose) | #9, #19 | ✅ |
 
 ## Phase 2 — OCR (client-seitig)
 
