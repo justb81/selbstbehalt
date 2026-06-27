@@ -9,6 +9,9 @@ import type {
   Contract,
   ContractCreate,
   ContractUpdate,
+  InsuredPerson,
+  InsuredPersonCreate,
+  InsuredPersonUpdate,
   Invoice,
   InvoiceCreate,
   InvoicePosition,
@@ -19,10 +22,18 @@ import type {
   SubmissionUpdate,
 } from '@selbstbehalt/shared';
 
-import type { contracts, invoicePositions, invoices, submissions } from '../db/schema.js';
+import type {
+  contracts,
+  insuredPersons,
+  invoicePositions,
+  invoices,
+  submissions,
+} from '../db/schema.js';
 
 type ContractRow = typeof contracts.$inferSelect;
 type ContractInsert = typeof contracts.$inferInsert;
+type InsuredPersonRow = typeof insuredPersons.$inferSelect;
+type InsuredPersonInsert = typeof insuredPersons.$inferInsert;
 type InvoiceRow = typeof invoices.$inferSelect;
 type InvoiceInsert = typeof invoices.$inferInsert;
 type PositionRow = typeof invoicePositions.$inferSelect;
@@ -30,58 +41,95 @@ type PositionInsert = typeof invoicePositions.$inferInsert;
 type SubmissionRow = typeof submissions.$inferSelect;
 type SubmissionInsert = typeof submissions.$inferInsert;
 
-// ── Contracts ──────────────────────────────────────────────────────────────
+// ── Contracts (Hauptvertrag) ─────────────────────────────────────────────────
 
 export function serializeContract(row: ContractRow): Contract {
   return {
     id: row.id,
     created_at: row.createdAt,
-    person_id: row.personId,
+    policyholder_id: row.policyholderId,
     insurer_name: row.insurerName,
     contract_number: row.contractNumber,
-    tariff_name: row.tariffName,
     type: row.type,
     start_date: row.startDate,
     end_date: row.endDate,
-    monthly_premium: row.monthlyPremium,
-    self_retention: row.selfRetention,
-    bre_structure: row.breStructure,
-    included_benefits: row.includedBenefits,
     notes: row.notes,
   };
 }
 
 export function toContractInsert(input: ContractCreate): ContractInsert {
   return {
-    personId: input.person_id,
+    policyholderId: input.policyholder_id,
     insurerName: input.insurer_name,
     contractNumber: input.contract_number,
-    tariffName: input.tariff_name,
     type: input.type,
     startDate: input.start_date,
     endDate: input.end_date,
-    monthlyPremium: input.monthly_premium,
-    // Omitted (undefined) on create → DB DEFAULT 0 applies.
-    selfRetention: input.self_retention,
-    breStructure: input.bre_structure,
-    includedBenefits: input.included_benefits,
     notes: input.notes,
   };
 }
 
 export function toContractUpdate(input: ContractUpdate): Partial<ContractInsert> {
   const u: Partial<ContractInsert> = {};
-  if (input.person_id !== undefined) u.personId = input.person_id;
+  if (input.policyholder_id !== undefined) u.policyholderId = input.policyholder_id;
   if (input.insurer_name !== undefined) u.insurerName = input.insurer_name;
   if (input.contract_number !== undefined) u.contractNumber = input.contract_number;
-  if (input.tariff_name !== undefined) u.tariffName = input.tariff_name;
   if (input.type !== undefined) u.type = input.type;
   if (input.start_date !== undefined) u.startDate = input.start_date;
   if (input.end_date !== undefined) u.endDate = input.end_date;
+  if (input.notes !== undefined) u.notes = input.notes;
+  return u;
+}
+
+// ── Insured persons (versicherte Personen) ───────────────────────────────────
+
+export function serializeInsuredPerson(row: InsuredPersonRow): InsuredPerson {
+  return {
+    id: row.id,
+    created_at: row.createdAt,
+    contract_id: row.contractId,
+    person_id: row.personId,
+    kvnr: row.kvnr,
+    tariff_name: row.tariffName,
+    monthly_premium: row.monthlyPremium,
+    self_retention: row.selfRetention,
+    bre_structure: row.breStructure,
+    included_benefits: row.includedBenefits,
+    start_date: row.startDate,
+    end_date: row.endDate,
+    notes: row.notes,
+  };
+}
+
+export function toInsuredPersonInsert(input: InsuredPersonCreate): InsuredPersonInsert {
+  return {
+    contractId: input.contract_id,
+    personId: input.person_id,
+    kvnr: input.kvnr,
+    tariffName: input.tariff_name,
+    monthlyPremium: input.monthly_premium,
+    // Omitted (undefined) on create → DB DEFAULT 0 applies.
+    selfRetention: input.self_retention,
+    breStructure: input.bre_structure,
+    includedBenefits: input.included_benefits,
+    startDate: input.start_date,
+    endDate: input.end_date,
+    notes: input.notes,
+  };
+}
+
+export function toInsuredPersonUpdate(input: InsuredPersonUpdate): Partial<InsuredPersonInsert> {
+  const u: Partial<InsuredPersonInsert> = {};
+  if (input.contract_id !== undefined) u.contractId = input.contract_id;
+  if (input.person_id !== undefined) u.personId = input.person_id;
+  if (input.kvnr !== undefined) u.kvnr = input.kvnr;
+  if (input.tariff_name !== undefined) u.tariffName = input.tariff_name;
   if (input.monthly_premium !== undefined) u.monthlyPremium = input.monthly_premium;
   if (input.self_retention !== undefined) u.selfRetention = input.self_retention;
   if (input.bre_structure !== undefined) u.breStructure = input.bre_structure;
   if (input.included_benefits !== undefined) u.includedBenefits = input.included_benefits;
+  if (input.start_date !== undefined) u.startDate = input.start_date;
+  if (input.end_date !== undefined) u.endDate = input.end_date;
   if (input.notes !== undefined) u.notes = input.notes;
   return u;
 }
@@ -92,7 +140,7 @@ export function serializeInvoice(row: InvoiceRow): Invoice {
   return {
     id: row.id,
     created_at: row.createdAt,
-    contract_id: row.contractId,
+    insured_person_id: row.insuredPersonId,
     invoice_date: row.invoiceDate,
     invoice_number: row.invoiceNumber,
     provider_name: row.providerName,
@@ -110,7 +158,7 @@ export function serializeInvoice(row: InvoiceRow): Invoice {
 
 export function toInvoiceInsert(input: InvoiceCreate): InvoiceInsert {
   return {
-    contractId: input.contract_id,
+    insuredPersonId: input.insured_person_id,
     invoiceDate: input.invoice_date,
     invoiceNumber: input.invoice_number,
     providerName: input.provider_name,
@@ -129,7 +177,7 @@ export function toInvoiceInsert(input: InvoiceCreate): InvoiceInsert {
 
 export function toInvoiceUpdate(input: InvoiceUpdate): Partial<InvoiceInsert> {
   const u: Partial<InvoiceInsert> = {};
-  if (input.contract_id !== undefined) u.contractId = input.contract_id;
+  if (input.insured_person_id !== undefined) u.insuredPersonId = input.insured_person_id;
   if (input.invoice_date !== undefined) u.invoiceDate = input.invoice_date;
   if (input.invoice_number !== undefined) u.invoiceNumber = input.invoice_number;
   if (input.provider_name !== undefined) u.providerName = input.provider_name;

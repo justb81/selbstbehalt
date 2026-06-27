@@ -15,6 +15,7 @@ import { onError, notFound } from './middleware/error.js';
 import { createBackupRoute } from './routes/backup.js';
 import { createContractsRoute } from './routes/contracts.js';
 import { createHealthRoute } from './routes/health.js';
+import { createInsuredRoute } from './routes/insured.js';
 import { createInvoicesRoute } from './routes/invoices.js';
 import { createStatsRoute } from './routes/stats.js';
 
@@ -43,6 +44,8 @@ export function createApp({ db, config }: AppDeps) {
   app.use('/api/*', apiKeyAuth(config.apiKey));
 
   app.route('/api/contracts', createContractsRoute(db));
+  // Insured-person endpoints: /api/contracts/:id/insured and /api/insured/:id.
+  app.route('/api', createInsuredRoute(db));
   app.route('/api/invoices', createInvoicesRoute(db));
   app.route('/api/stats', createStatsRoute(db));
 

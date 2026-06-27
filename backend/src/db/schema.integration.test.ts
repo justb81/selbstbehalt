@@ -12,6 +12,7 @@ import { seed } from './seed.js';
 import {
   brePeriods,
   contracts,
+  insuredPersons,
   invoicePositions,
   invoices,
   persons,
@@ -30,7 +31,7 @@ afterEach(() => {
 });
 
 describe('migrations', () => {
-  it('create all six tables', () => {
+  it('create all seven tables', () => {
     const rows = handle.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as { name: string }[];
@@ -38,6 +39,7 @@ describe('migrations', () => {
     for (const table of [
       'persons',
       'contracts',
+      'insured_persons',
       'invoices',
       'invoice_positions',
       'submissions',
@@ -49,7 +51,7 @@ describe('migrations', () => {
 });
 
 describe('entity chain', () => {
-  it('persists Person → Vertrag → Rechnung → Position and reads it back', () => {
+  it('persists Person → Vertrag → versicherte Person → Rechnung → Position and reads it back', () => {
     const { db } = handle;
 
     const person = db.insert(persons).values({ name: 'Max Mustermann' }).returning().get();
@@ -59,21 +61,31 @@ describe('entity chain', () => {
     const contract = db
       .insert(contracts)
       .values({
-        personId: person.id,
+        policyholderId: person.id,
         insurerName: 'Allianz',
         type: 'vollversicherung',
         startDate: '2024-01-01',
+      })
+      .returning()
+      .get();
+
+    const insured = db
+      .insert(insuredPersons)
+      .values({
+        contractId: contract.id,
+        personId: person.id,
+        kvnr: 'A123456789',
         monthlyPremium: 400,
       })
       .returning()
       .get();
     // DEFAULT 0 applied by the DB.
-    expect(contract.selfRetention).toBe(0);
+    expect(insured.selfRetention).toBe(0);
 
     const invoice = db
       .insert(invoices)
       .values({
-        contractId: contract.id,
+        insuredPersonId: insured.id,
         invoiceDate: '2026-06-01',
         providerName: 'Dr. Schmidt',
         totalAmount: 120.5,
@@ -110,10 +122,18 @@ describe('entity chain', () => {
     const contract = db
       .insert(contracts)
       .values({
-        personId: person.id,
+        policyholderId: person.id,
         insurerName: 'DKV',
         type: 'zusatztarif',
         startDate: '2025-01-01',
+      })
+      .returning()
+      .get();
+    const insured = db
+      .insert(insuredPersons)
+      .values({
+        contractId: contract.id,
+        personId: person.id,
         monthlyPremium: 80,
         breStructure: {
           type: 'staffel',
@@ -125,11 +145,11 @@ describe('entity chain', () => {
       .returning()
       .get();
 
-    expect(contract.breStructure?.levels[0]?.bre_months).toBe(1);
-    expect(contract.includedBenefits).toEqual(['Zahn 90%', 'Heilpraktiker']);
+    expect(insured.breStructure?.levels[0]?.bre_months).toBe(1);
+    expect(insured.includedBenefits).toEqual(['Zahn 90%', 'Heilpraktiker']);
   });
 
-  it('cascades deletes from contract down to invoices and positions', () => {
+  it('cascades deletes from contract down to insured persons, invoices and positions', () => {
     const { db } = handle;
     seed(handle);
 
@@ -138,19 +158,20 @@ describe('entity chain', () => {
 
     db.delete(contracts).run();
 
+    expect(db.select().from(insuredPersons).all()).toHaveLength(0);
     expect(db.select().from(invoices).all()).toHaveLength(0);
     expect(db.select().from(invoicePositions).all()).toHaveLength(0);
     expect(db.select().from(submissions).all()).toHaveLength(0);
     expect(db.select().from(brePeriods).all()).toHaveLength(0);
   });
 
-  it('rejects an invoice referencing a non-existent contract (FK enforced)', () => {
+  it('rejects an invoice referencing a non-existent insured person (FK enforced)', () => {
     const { db } = handle;
     expect(() =>
       db
         .insert(invoices)
         .values({
-          contractId: 'missing-contract-id',
+          insuredPersonId: 'missing-insured-id',
           invoiceDate: '2026-01-01',
           providerName: 'X',
           totalAmount: 10,
@@ -165,7 +186,7 @@ describe('seed', () => {
     const { db } = handle;
     seed(handle);
     seed(handle);
-    expect(db.select().from(persons).all()).toHaveLength(1);
+    expect(db.select().from(persons).all()).toHaveLength(2);
     expect(db.select().from(invoicePositions).all()).toHaveLength(2);
   });
 });

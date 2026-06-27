@@ -7,11 +7,6 @@
 
 import { z } from 'zod';
 
-/** Role of a person within the household (`persons.role`). */
-export const personRoleValues = ['primary', 'family_member'] as const;
-export const personRoleSchema = z.enum(personRoleValues);
-export type PersonRole = z.infer<typeof personRoleSchema>;
-
 /** Kind of insurance contract (`contracts.type`). */
 export const contractTypeValues = ['vollversicherung', 'zusatztarif', 'beihilfe'] as const;
 export const contractTypeSchema = z.enum(contractTypeValues);

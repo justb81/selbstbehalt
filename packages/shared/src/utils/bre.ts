@@ -16,7 +16,7 @@
 
 import { differenceInMonths } from 'date-fns';
 
-import type { BRELevel, BREStructure } from '../schemas/contract.js';
+import type { BRELevel, BREStructure } from '../schemas/insured-person.js';
 
 /** A calendar day, accepted either as a `Date` or a `YYYY-MM-DD` string. */
 export type DateInput = Date | string;

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Development seed data. Wipes the six tables and inserts one representative
-// chain (Person → Vertrag → Rechnung → Positionen → Einreichung → BRE-Periode)
-// so the API has something to serve locally. Run via `pnpm --filter backend db:seed`.
+// Development seed data. Wipes the tables and inserts one representative chain
+// (Person → Vertrag → versicherte Person → Rechnung → Positionen → Einreichung →
+// BRE-Periode) so the API has something to serve locally. Run via
+// `pnpm --filter backend db:seed`.
 //
 // NEVER run this against a production database — it deletes existing rows.
 
@@ -14,6 +15,7 @@ import { runMigrations } from './migrate.js';
 import {
   brePeriods,
   contracts,
+  insuredPersons,
   invoicePositions,
   invoices,
   persons,
@@ -29,26 +31,45 @@ export function seed(handle: DbHandle): void {
   db.delete(invoicePositions).run();
   db.delete(invoices).run();
   db.delete(brePeriods).run();
+  db.delete(insuredPersons).run();
   db.delete(contracts).run();
   db.delete(persons).run();
 
+  // Versicherungsnehmer (policyholder) plus a covered family member.
   const person = db
     .insert(persons)
-    .values({ name: 'Erika Mustermann', birthDate: '1985-03-12', role: 'primary' })
+    .values({ name: 'Erika Mustermann', birthDate: '1985-03-12' })
+    .returning()
+    .get();
+  const child = db
+    .insert(persons)
+    .values({ name: 'Lena Mustermann', birthDate: '2015-09-04' })
     .returning()
     .get();
 
   const contract = db
     .insert(contracts)
     .values({
-      personId: person.id,
+      policyholderId: person.id,
       insurerName: 'DKV',
       contractNumber: 'KV-12345678',
-      tariffName: 'KomfortSelect',
       type: 'vollversicherung',
       startDate: '2024-01-01',
+    })
+    .returning()
+    .get();
+
+  // The policyholder's own cover on the contract (own KVNR, tariff, SB, BRE).
+  const insured = db
+    .insert(insuredPersons)
+    .values({
+      contractId: contract.id,
+      personId: person.id,
+      kvnr: 'A123456780',
+      tariffName: 'KomfortSelect',
       monthlyPremium: 452.3,
       selfRetention: 600,
+      startDate: '2024-01-01',
       breStructure: {
         type: 'staffel',
         levels: [
@@ -63,10 +84,24 @@ export function seed(handle: DbHandle): void {
     .returning()
     .get();
 
+  // A second insured person (child) on the same contract, own KVNR and tariff.
+  db.insert(insuredPersons)
+    .values({
+      contractId: contract.id,
+      personId: child.id,
+      kvnr: 'A123456781',
+      tariffName: 'KinderSelect',
+      monthlyPremium: 168.5,
+      selfRetention: 0,
+      startDate: '2024-01-01',
+      includedBenefits: ['Ambulant', 'Stationär (Zweibettzimmer)', 'Zahn 100%'],
+    })
+    .run();
+
   const invoice = db
     .insert(invoices)
     .values({
-      contractId: contract.id,
+      insuredPersonId: insured.id,
       invoiceDate: '2026-06-01',
       invoiceNumber: 'R-2026-0042',
       providerName: 'Dr. med. Müller',
@@ -115,7 +150,7 @@ export function seed(handle: DbHandle): void {
 
   db.insert(brePeriods)
     .values({
-      contractId: contract.id,
+      insuredPersonId: insured.id,
       year: 2026,
       streakMonths: 11,
       breAmount: 0,

@@ -15,7 +15,7 @@ import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { contracts, invoices, persons } from '../db/schema.js';
+import { contracts, insuredPersons, invoices, persons } from '../db/schema.js';
 
 let tmp: string;
 const handles: DbHandle[] = [];
@@ -42,7 +42,7 @@ function makeApp(name: string) {
   return { handle, app, dbPath };
 }
 
-/** Seed one Person → Vertrag → Rechnung chain; returns the contract id. */
+/** Seed one Person → Vertrag → versicherte Person → Rechnung chain. */
 function seedChain(handle: DbHandle, insurer: string): string {
   const db = handle.db;
   const personId = db
@@ -53,17 +53,21 @@ function seedChain(handle: DbHandle, insurer: string): string {
   const contractId = db
     .insert(contracts)
     .values({
-      personId,
+      policyholderId: personId,
       insurerName: insurer,
       type: 'vollversicherung',
       startDate: '2024-01-01',
-      monthlyPremium: 200,
     })
+    .returning()
+    .get().id;
+  const insuredPersonId = db
+    .insert(insuredPersons)
+    .values({ contractId, personId, monthlyPremium: 200 })
     .returning()
     .get().id;
   db.insert(invoices)
     .values({
-      contractId,
+      insuredPersonId,
       invoiceDate: '2026-06-01',
       providerName: 'Dr. Müller',
       totalAmount: 85,
@@ -112,7 +116,7 @@ describe('POST /api/import/db', () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: 'ok', tables_imported: 6 });
+    expect(body).toMatchObject({ status: 'ok', tables_imported: 7 });
     expect(body.rows_imported).toBeGreaterThan(0);
 
     // A safety backup of the pre-import target was written to disk.

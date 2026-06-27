@@ -7,6 +7,7 @@
 import {
   contractSchema,
   healthBodySchema,
+  insuredPersonSchema,
   invoiceSchema,
   invoiceWithPositionsSchema,
   submissionSchema,
@@ -14,6 +15,9 @@ import {
   type ContractCreate,
   type ContractUpdate,
   type HealthBody,
+  type InsuredPerson,
+  type InsuredPersonCreate,
+  type InsuredPersonUpdate,
   type Invoice,
   type InvoiceCreatePayload,
   type InvoiceUpdate,
@@ -30,7 +34,11 @@ import type { ApiRequester, QueryValue } from './client.js';
 export const healthSchema = healthBodySchema;
 export type Health = HealthBody;
 
+/** Create payload for the nested endpoint — the contract comes from the path. */
+export type InsuredPersonCreateBody = Omit<InsuredPersonCreate, 'contract_id'>;
+
 const contractListSchema = z.array(contractSchema);
+const insuredPersonListSchema = z.array(insuredPersonSchema);
 const invoiceListSchema = z.array(invoiceSchema);
 
 const id = (value: string): string => encodeURIComponent(value);
@@ -53,6 +61,26 @@ export function createResources(request: ApiRequester) {
       }),
     remove: (contractId: string) =>
       request(`/api/contracts/${id(contractId)}`, { method: 'DELETE' }),
+  };
+
+  const insured = {
+    list: (contractId: string) =>
+      request(`/api/contracts/${id(contractId)}/insured`, { schema: insuredPersonListSchema }),
+    create: (contractId: string, data: InsuredPersonCreateBody) =>
+      request(`/api/contracts/${id(contractId)}/insured`, {
+        method: 'POST',
+        body: data,
+        schema: insuredPersonSchema,
+      }),
+    get: (insuredId: string) =>
+      request(`/api/insured/${id(insuredId)}`, { schema: insuredPersonSchema }),
+    update: (insuredId: string, data: InsuredPersonUpdate) =>
+      request(`/api/insured/${id(insuredId)}`, {
+        method: 'PUT',
+        body: data,
+        schema: insuredPersonSchema,
+      }),
+    remove: (insuredId: string) => request(`/api/insured/${id(insuredId)}`, { method: 'DELETE' }),
   };
 
   const invoices = {
@@ -83,8 +111,8 @@ export function createResources(request: ApiRequester) {
       }),
   };
 
-  return { health, contracts, invoices };
+  return { health, contracts, insured, invoices };
 }
 
 export type Resources = ReturnType<typeof createResources>;
-export type { Contract, Invoice, InvoiceWithPositions, Submission };
+export type { Contract, InsuredPerson, Invoice, InvoiceWithPositions, Submission };

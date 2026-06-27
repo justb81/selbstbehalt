@@ -29,13 +29,12 @@ describe('createResources', () => {
     await contracts.list();
     await contracts.get(UUID);
     await contracts.create({
-      person_id: UUID,
+      policyholder_id: UUID,
       insurer_name: 'DKV',
       type: 'vollversicherung',
       start_date: '2024-01-01',
-      monthly_premium: 450,
     });
-    await contracts.update(UUID, { monthly_premium: 460 });
+    await contracts.update(UUID, { contract_number: 'KV-460' });
     await contracts.remove(UUID);
 
     expect(calls[0]!).toMatchObject({ path: '/api/contracts' });
@@ -64,6 +63,24 @@ describe('createResources', () => {
     expect(calls[3]!.opts).toMatchObject({ method: 'PUT' });
   });
 
+  it('maps insured-person methods to the nested and item endpoints', async () => {
+    const { request, calls } = stubRequester();
+    const { insured } = createResources(request);
+
+    await insured.list(UUID);
+    await insured.create(UUID, { person_id: UUID, monthly_premium: 450 });
+    await insured.get(UUID);
+    await insured.update(UUID, { monthly_premium: 460 });
+    await insured.remove(UUID);
+
+    expect(calls[0]!).toMatchObject({ path: `/api/contracts/${UUID}/insured` });
+    expect(calls[1]!).toMatchObject({ path: `/api/contracts/${UUID}/insured` });
+    expect(calls[1]!.opts).toMatchObject({ method: 'POST' });
+    expect(calls[2]!).toMatchObject({ path: `/api/insured/${UUID}` });
+    expect(calls[3]!.opts).toMatchObject({ method: 'PUT' });
+    expect(calls[4]!.opts).toMatchObject({ method: 'DELETE' });
+  });
+
   it('percent-encodes path identifiers', async () => {
     const { request, calls } = stubRequester();
     const { contracts } = createResources(request);
@@ -86,12 +103,10 @@ describe('createApi (full client)', () => {
     const contract = {
       id: UUID,
       created_at: '2026-01-01T00:00:00Z',
-      person_id: UUID,
+      policyholder_id: UUID,
       insurer_name: 'DKV',
       type: 'vollversicherung',
       start_date: '2024-01-01',
-      monthly_premium: 450,
-      self_retention: 0,
     };
     const fetch = vi.fn().mockResolvedValue(jsonResponse(contract));
     const api = createApi({ baseUrl: 'http://api.test', fetch });

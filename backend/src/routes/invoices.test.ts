@@ -9,26 +9,31 @@ import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { contracts, invoicePositions, persons } from '../db/schema.js';
+import { contracts, insuredPersons, invoicePositions, persons } from '../db/schema.js';
 
 let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
-let contractId: string;
+let insuredPersonId: string;
 
 beforeEach(() => {
   handle = createDb(':memory:');
   runMigrations(handle);
   app = createApp({ db: handle.db, config: loadConfig({}) });
-  const personId = handle.db.insert(persons).values({ name: 'Erika' }).returning().get().id;
-  contractId = handle.db
+  const db = handle.db;
+  const personId = db.insert(persons).values({ name: 'Erika' }).returning().get().id;
+  const contractId = db
     .insert(contracts)
     .values({
-      personId,
+      policyholderId: personId,
       insurerName: 'DKV',
       type: 'vollversicherung',
       startDate: '2024-01-01',
-      monthlyPremium: 452.3,
     })
+    .returning()
+    .get().id;
+  insuredPersonId = db
+    .insert(insuredPersons)
+    .values({ contractId, personId, monthlyPremium: 452.3 })
     .returning()
     .get().id;
 });
@@ -38,7 +43,7 @@ afterEach(() => {
 });
 
 const baseInvoice = () => ({
-  contract_id: contractId,
+  insured_person_id: insuredPersonId,
   invoice_date: '2026-06-01',
   provider_name: 'Dr. med. Müller',
   total_amount: 85.0,
@@ -89,17 +94,17 @@ describe('POST /api/invoices', () => {
     expect(handle.db.select().from(invoicePositions).all()).toHaveLength(0);
   });
 
-  it('rejects an invoice for an unknown contract with 400', async () => {
+  it('rejects an invoice for an unknown insured person with 400', async () => {
     const res = await json('POST', '/api/invoices', {
       ...baseInvoice(),
-      contract_id: crypto.randomUUID(),
+      insured_person_id: crypto.randomUUID(),
     });
     expect(res.status).toBe(400);
   });
 });
 
 describe('GET /api/invoices', () => {
-  it('filters by contract, status, period and search term', async () => {
+  it('filters by insured person, status, period and search term', async () => {
     await createInvoice({
       ...baseInvoice(),
       invoice_date: '2026-01-15',
@@ -116,8 +121,10 @@ describe('GET /api/invoices', () => {
     const bySearch = await (await app.request('/api/invoices?q=Zahn')).json();
     expect(bySearch).toHaveLength(1);
 
-    const byContract = await (await app.request(`/api/invoices?contract_id=${contractId}`)).json();
-    expect(byContract).toHaveLength(2);
+    const byInsured = await (
+      await app.request(`/api/invoices?insured_person_id=${insuredPersonId}`)
+    ).json();
+    expect(byInsured).toHaveLength(2);
 
     const byStatus = await (await app.request('/api/invoices?status=erstattet')).json();
     expect(byStatus).toHaveLength(0);

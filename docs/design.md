@@ -94,12 +94,21 @@ Bestehende Apps (PKV Go, RechnungsDoc Mobil, Belegkompass) lösen Teile davon, s
 ### 3.1 Entitäts-Übersicht
 
 ```
-Person (1) ──── (n) Vertrag
-Vertrag  (1) ──── (n) Rechnung
+Person  (1) ──── (n) Vertrag             (als Versicherungsnehmer)
+Vertrag (1) ──── (n) VersichertePerson   (versicherte Person auf dem Vertrag, je eigene KVNR)
+Person  (1) ──── (n) VersichertePerson   (eine Person kann auf mehreren Verträgen versichert sein)
+VersichertePerson (1) ──── (n) Rechnung
 Rechnung (1) ──── (n) Rechnungsposition (GOÄ-Ziffer)
 Rechnung (1) ──── (1) Einreichung (optional)
-Vertrag  (1) ──── (n) BRE-Periode (Beitragsrückerstattungs-Zeitraum)
+VersichertePerson (1) ──── (n) BRE-Periode (Beitragsrückerstattungs-Zeitraum)
 ```
+
+Ein **Vertrag** (Hauptvertrag/Versicherungsschein) hat genau einen **Versicherungsnehmer**
+(`persons`-Eintrag, der den Vertrag hält und die Beiträge zahlt) und ein oder mehrere
+**versicherte Personen**. Jede versicherte Person hat eine eigene **Krankenversichertennummer
+(KVNR)** sowie einen eigenen Tarif, Beitrag, Selbstbehalt und eigene Beitragsrückerstattung auf
+dem gemeinsamen Vertrag. Rechnungen und BRE-Perioden hängen daher an der **versicherten Person**,
+nicht am Vertrag.
 
 ### 3.2 Tabellen-Schema (SQLite / Drizzle ORM)
 
@@ -108,24 +117,49 @@ Vertrag  (1) ──── (n) BRE-Periode (Beitragsrückerstattungs-Zeitraum)
 id          TEXT PRIMARY KEY  -- UUID
 name        TEXT NOT NULL
 birth_date  DATE
-role        TEXT              -- 'primary' | 'family_member'
 created_at  DATETIME
 ```
 
+Eine natürliche Person. Ob sie Versicherungsnehmer und/oder versicherte Person ist, ergibt sich
+aus den Verknüpfungen (`contracts.policyholder_id` bzw. `insured_persons.person_id`) — derselbe
+`persons`-Eintrag kann beides zugleich sein.
+
 #### `contracts`
+
+Der Hauptvertrag (Versicherungsschein): Versicherer, Vertragsnummer und Versicherungsnehmer. Die
+tarifspezifischen Größen (Tarif, Beitrag, Selbstbehalt, BRE, Leistungen) liegen je versicherter
+Person in `insured_persons`.
+
 ```sql
 id                    TEXT PRIMARY KEY
-person_id             TEXT REFERENCES persons(id)
+policyholder_id       TEXT REFERENCES persons(id)  -- Versicherungsnehmer
 insurer_name          TEXT NOT NULL          -- z.B. "DKV", "Allianz"
-contract_number       TEXT
-tariff_name           TEXT                   -- z.B. "KomfortSelect"
+contract_number       TEXT                   -- Vertrags-/Versicherungsscheinnummer
 type                  TEXT NOT NULL          -- 'vollversicherung' | 'zusatztarif' | 'beihilfe'
 start_date            DATE NOT NULL
 end_date              DATE                   -- NULL = laufend
-monthly_premium       REAL NOT NULL          -- Monatsbeitrag in EUR
-self_retention        REAL DEFAULT 0         -- Selbstbehalt p.a. in EUR
+notes                 TEXT
+created_at            DATETIME
+```
+
+#### `insured_persons`
+
+Eine versicherte Person auf einem Vertrag — die Verknüpfung von `persons` und `contracts`, die den
+individuellen Versicherungsschutz trägt. Jeder Eintrag hat eine eigene KVNR und eigene Tarif-,
+Beitrags-, Selbstbehalt- und BRE-Werte.
+
+```sql
+id                    TEXT PRIMARY KEY
+contract_id           TEXT REFERENCES contracts(id)
+person_id             TEXT REFERENCES persons(id)
+kvnr                  TEXT                   -- Krankenversichertennummer dieser Person auf dem Vertrag
+tariff_name           TEXT                   -- z.B. "KomfortSelect"
+monthly_premium       REAL NOT NULL          -- Monatsbeitrag dieser Person in EUR
+self_retention        REAL DEFAULT 0         -- Selbstbehalt p.a. dieser Person in EUR
 bre_structure         TEXT                   -- JSON: Staffelung der Beitragsrückerstattung
 included_benefits     TEXT                   -- JSON: Array von enthaltenen Leistungen
+start_date            DATE                   -- Beginn des Versicherungsschutzes dieser Person
+end_date              DATE                   -- NULL = laufend
 notes                 TEXT
 created_at            DATETIME
 ```
@@ -190,7 +224,7 @@ Beihilfeanspruch (`beihilfe_satz`).
 #### `invoices`
 ```sql
 id                TEXT PRIMARY KEY
-contract_id       TEXT REFERENCES contracts(id)
+insured_person_id TEXT REFERENCES insured_persons(id)  -- welche versicherte Person die Rechnung betrifft
 invoice_date      DATE NOT NULL
 invoice_number    TEXT
 provider_name     TEXT NOT NULL        -- Name des Arztes / der Einrichtung
@@ -234,12 +268,12 @@ rejection_reason TEXT
 
 #### `bre_periods`
 ```sql
-id              TEXT PRIMARY KEY
-contract_id     TEXT REFERENCES contracts(id)
-year            INTEGER NOT NULL
-streak_months   INTEGER DEFAULT 0    -- Leistungsfreie Monate
-bre_amount      REAL DEFAULT 0       -- Bereits erzielte BRE in diesem Jahr
-projected_bre   REAL                 -- Erwartete BRE bei Leistungsfreiheit
+id                TEXT PRIMARY KEY
+insured_person_id TEXT REFERENCES insured_persons(id)
+year              INTEGER NOT NULL
+streak_months     INTEGER DEFAULT 0    -- Leistungsfreie Monate
+bre_amount        REAL DEFAULT 0       -- Bereits erzielte BRE in diesem Jahr
+projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 ```
 
 ***
@@ -366,7 +400,7 @@ Die Tabelle umfasst alle ~4.500 Ziffern der GOÄ (aktuell GOÄ 1996 mit Anpassun
 ### 5.1 Erstattungs-Engine (Vorstufe)
 
 Die Günstigerprüfung setzt den Erstattungsbetrag $$R$$ (`eligible_amount`) als gegeben voraus.
-Dieser wird von der **Erstattungs-Engine** aus den `included_benefits` des Vertrags und den
+Dieser wird von der **Erstattungs-Engine** aus den `included_benefits` der versicherten Person und den
 geprüften Rechnungspositionen berechnet — sie übersetzt die tarifspezifischen Bausteine
 (Erstattungssätze, Schwellen-Staffeln, Summengrenzen, Aufbaujahres-Staffel, Wartezeiten;
 siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
@@ -376,9 +410,9 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 
 interface ErstattungInput {
   positions: InvoicePosition[];     // aus dem GOÄ-Parser (charged_amount, Kategorie)
-  benefits: IncludedBenefits;       // included_benefits des Vertrags
+  benefits: IncludedBenefits;       // included_benefits der versicherten Person
   invoiceDate: Date;                // für Wartezeit-/Aufbaujahres-Prüfung
-  contractStart: Date;
+  coverageStart: Date;              // Beginn des Versicherungsschutzes der Person (insured_persons.start_date)
   priorClaimsByCategory?: Record<string, number>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
 }
 
@@ -397,7 +431,7 @@ interface ErstattungResult {
 
 Berechnungsschritte je Position (gruppiert nach `category`):
 
-1. **Wartezeit prüfen** — liegt `invoiceDate` vor `contractStart + waiting_period_months`,
+1. **Wartezeit prüfen** — liegt `invoiceDate` vor `coverageStart + waiting_period_months`,
    ist der Betrag nicht erstattungsfähig (`appliedPct = 0`, `cappedBy = 'waiting_period'`).
 2. **Schwellen-Staffel (`tiers`) anwenden** — den Rechnungsbetrag entlang der `up_to`-Grenzen
    in Tranchen aufteilen und je Tranche mit `pct` erstatten.
@@ -597,11 +631,23 @@ Service Worker Strategie:
 ### 7.1 REST-Endpunkte
 
 ```
+GET    /api/persons                   → Alle Personen
+POST   /api/persons                   → Neue Person anlegen
+GET    /api/persons/:id               → Persondetail
+PUT    /api/persons/:id               → Person aktualisieren
+DELETE /api/persons/:id               → Person löschen
+
 GET    /api/contracts                 → Alle Verträge
-POST   /api/contracts                 → Neuen Vertrag anlegen
-GET    /api/contracts/:id             → Vertragsdetail
+POST   /api/contracts                 → Neuen Vertrag anlegen (mit Versicherungsnehmer)
+GET    /api/contracts/:id             → Vertragsdetail inkl. versicherter Personen
 PUT    /api/contracts/:id             → Vertrag aktualisieren
 DELETE /api/contracts/:id             → Vertrag löschen
+
+GET    /api/contracts/:id/insured     → Versicherte Personen eines Vertrags
+POST   /api/contracts/:id/insured     → Versicherte Person hinzufügen (mit KVNR, Tarif, SB, BRE)
+GET    /api/insured/:id               → Detail einer versicherten Person
+PUT    /api/insured/:id               → Versicherte Person aktualisieren
+DELETE /api/insured/:id               → Versicherte Person entfernen
 
 GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params)
 POST   /api/invoices                  → Neue Rechnung speichern
@@ -613,7 +659,7 @@ POST   /api/invoices/:id/submit       → Einreichung erfassen
 PUT    /api/invoices/:id/refund       → Erstattungseingang erfassen
 
 GET    /api/stats/year/:year          → Jahresauswertung
-GET    /api/stats/bre/:contractId     → BRE-Verlauf eines Vertrags
+GET    /api/stats/bre/:insuredPersonId → BRE-Verlauf einer versicherten Person
 
 GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup)
 POST   /api/import/db                 → Datenbank-Wiederherstellung

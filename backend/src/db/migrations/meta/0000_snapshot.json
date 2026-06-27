@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "18cc27c5-e762-44b6-86d7-14ad192ad9ff",
+  "id": "65fceb50-0149-43e4-85ef-04514952bfd8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "bre_periods": {
@@ -14,8 +14,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "contract_id": {
-          "name": "contract_id",
+        "insured_person_id": {
+          "name": "insured_person_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -54,12 +54,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "bre_periods_contract_id_contracts_id_fk": {
-          "name": "bre_periods_contract_id_contracts_id_fk",
+        "bre_periods_insured_person_id_insured_persons_id_fk": {
+          "name": "bre_periods_insured_person_id_insured_persons_id_fk",
           "tableFrom": "bre_periods",
-          "tableTo": "contracts",
+          "tableTo": "insured_persons",
           "columnsFrom": [
-            "contract_id"
+            "insured_person_id"
           ],
           "columnsTo": [
             "id"
@@ -82,8 +82,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "person_id": {
-          "name": "person_id",
+        "policyholder_id": {
+          "name": "policyholder_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -98,13 +98,6 @@
         },
         "contract_number": {
           "name": "contract_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tariff_name": {
-          "name": "tariff_name",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -126,6 +119,79 @@
         },
         "end_date": {
           "name": "end_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contracts_policyholder_id_persons_id_fk": {
+          "name": "contracts_policyholder_id_persons_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "persons",
+          "columnsFrom": [
+            "policyholder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "insured_persons": {
+      "name": "insured_persons",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kvnr": {
+          "name": "kvnr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tariff_name": {
+          "name": "tariff_name",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -160,6 +226,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "start_date": {
+          "name": "start_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "notes": {
           "name": "notes",
           "type": "text",
@@ -177,9 +257,22 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "contracts_person_id_persons_id_fk": {
-          "name": "contracts_person_id_persons_id_fk",
-          "tableFrom": "contracts",
+        "insured_persons_contract_id_contracts_id_fk": {
+          "name": "insured_persons_contract_id_contracts_id_fk",
+          "tableFrom": "insured_persons",
+          "tableTo": "contracts",
+          "columnsFrom": [
+            "contract_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "insured_persons_person_id_persons_id_fk": {
+          "name": "insured_persons_person_id_persons_id_fk",
+          "tableFrom": "insured_persons",
           "tableTo": "persons",
           "columnsFrom": [
             "person_id"
@@ -299,8 +392,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "contract_id": {
-          "name": "contract_id",
+        "insured_person_id": {
+          "name": "insured_person_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -402,12 +495,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "invoices_contract_id_contracts_id_fk": {
-          "name": "invoices_contract_id_contracts_id_fk",
+        "invoices_insured_person_id_insured_persons_id_fk": {
+          "name": "invoices_insured_person_id_insured_persons_id_fk",
           "tableFrom": "invoices",
-          "tableTo": "contracts",
+          "tableTo": "insured_persons",
           "columnsFrom": [
-            "contract_id"
+            "insured_person_id"
           ],
           "columnsTo": [
             "id"
@@ -439,13 +532,6 @@
         },
         "birth_date": {
           "name": "birth_date",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "role": {
-          "name": "role",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

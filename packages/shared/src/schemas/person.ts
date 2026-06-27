@@ -2,13 +2,17 @@
 import { z } from 'zod';
 
 import { auditFields, isoDate } from '../common.js';
-import { personRoleSchema } from '../enums.js';
 
-/** Payload for creating a person. `id`/`created_at` are assigned server-side. */
+/**
+ * Payload for creating a person. `id`/`created_at` are assigned server-side.
+ *
+ * A person carries no role of its own — whether it is the Versicherungsnehmer
+ * and/or a versicherte Person follows from `contracts.policyholder_id` and
+ * `insured_persons.person_id` (§3.2).
+ */
 export const personCreateSchema = z.object({
   name: z.string().min(1, 'Name darf nicht leer sein'),
   birth_date: isoDate.nullish(),
-  role: personRoleSchema.nullish(),
 });
 
 /** A persisted person as returned by the API (§3.2 `persons`). */

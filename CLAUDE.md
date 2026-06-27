@@ -4,14 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is **greenfield**: there is no application code yet. The repo currently contains:
+The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Implemented so far:
 
-- `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth.
+- **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
+- **`backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
+- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, and the Günstigerprüfung engine. Most UI pages (contracts/invoices/dashboard/settings) and the OCR pipeline (Phase 2) are **not yet built** — see `docs/roadmap.md` and the open GitHub issues.
+
+Reference material:
+
+- `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth; follow it when implementing.
 - `docs/roadmap.md` — the phased implementation plan, mirroring the GitHub issues (phases, dependencies, label scheme).
 - `data/input/{goae,goz,got}/*.xml` — the official gesetze-im-internet.de legal-text exports of the GOÄ/GOZ/GOT fee schedules; build inputs from which the parser's JSON lookup tables are generated (not hand-maintained).
-- `README.md`, `LICENSE` (Apache 2.0), and `assets/` (logo + hero image).
 
-When implementing, follow `docs/design.md` as the authoritative spec. The directory layout, data model, API surface, and domain formulas below are all derived from it. Build commands (lint/test/run) do not exist yet — establish them as part of the initial scaffolding.
+### Commands
+
+Run from the repo root (pnpm workspaces); each fans out to the packages:
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` — CI gate (also `pnpm test:e2e` for Playwright).
+- `pnpm format:check` / `pnpm format` — Prettier.
+- `pnpm --filter @selbstbehalt/backend db:generate` / `db:migrate` / `db:seed` — Drizzle migrations + seed data.
+- `pnpm fees:build` / `pnpm fees:validate` — regenerate/validate the fee-schedule JSON from the source XML.
 
 ## What this is
 
@@ -25,7 +37,7 @@ The domain is German and insurance-specific. Keep entity/field names in German w
 
 ## Architecture (planned)
 
-Monorepo via **pnpm workspaces** — `frontend/` and `backend/`.
+Monorepo via **pnpm workspaces** — `frontend/`, `backend/`, and `packages/shared/` (shared Zod schemas, types and domain helpers).
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
@@ -46,14 +58,18 @@ These come from §1.3 and §8 of the design doc and override convenience:
 Entity relationships (see `docs/design.md` §3 for full SQLite/Drizzle schemas):
 
 ```
-Person (1) ── (n) Vertrag (contract)
-Vertrag (1) ── (n) Rechnung (invoice)
+Person (1) ── (n) Vertrag (contract, as Versicherungsnehmer / policyholder)
+Vertrag (1) ── (n) VersichertePerson (insured person on the contract, own KVNR)
+Person (1) ── (n) VersichertePerson (a person may be insured on several contracts)
+VersichertePerson (1) ── (n) Rechnung (invoice)
 Rechnung (1) ── (n) Rechnungsposition (invoice line / GOÄ code)
 Rechnung (1) ── (1) Einreichung (submission, optional)
-Vertrag (1) ── (n) BRE-Periode (premium-refund period)
+VersichertePerson (1) ── (n) BRE-Periode (premium-refund period)
 ```
 
-Tables: `persons`, `contracts`, `invoices`, `invoice_positions`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
+A `contract` (Hauptvertrag) holds only insurer/contract number and its `policyholder_id`. Each insured person sits in `insured_persons` and carries its own `kvnr` (Krankenversichertennummer), `tariff_name`, `monthly_premium`, `self_retention`, `bre_structure`, and `included_benefits`. Invoices and BRE periods reference the **insured person**, not the contract.
+
+Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_positions`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
 
 ## Two domain-critical algorithms
 
@@ -82,7 +98,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 
 ## Backend REST surface (planned)
 
-`/api/contracts`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:contractId`, and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
+`/api/persons`, `/api/contracts`, `/api/contracts/:id/insured` + `/api/insured/:id`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:insuredPersonId`, and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
 
 ## Conventions
 

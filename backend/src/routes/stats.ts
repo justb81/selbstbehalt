@@ -2,8 +2,8 @@
 //
 // `/api/stats` aggregation endpoints (§7.1, issue #13). These are read-only
 // roll-ups that drive the dashboard (#23) and the statistics page (#28):
-//   - `GET /year/:year`       calendar-year totals (costs, refunds, BRE)
-//   - `GET /bre/:contractId`  a contract's premium-refund ladder over the years
+//   - `GET /year/:year`              calendar-year totals (costs, refunds, BRE)
+//   - `GET /bre/:insuredPersonId`    an insured person's premium-refund ladder
 //
 // The aggregation runs as SQL `SUM`s in the database (not row-by-row in JS), and
 // the BRE projection reuses the shared ladder helper (#17) — no duplication.
@@ -19,7 +19,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
 import type { Database } from '../db/client.js';
-import { brePeriods, contracts, invoices, submissions } from '../db/schema.js';
+import { brePeriods, insuredPersons, invoices, submissions } from '../db/schema.js';
 
 /** Round a monetary sum to whole cents (REAL columns accumulate float drift). */
 function toCents(value: number): number {
@@ -62,7 +62,7 @@ export function createStatsRoute(db: Database) {
         .where(and(gte(submissions.refundDate, yearStart), lte(submissions.refundDate, yearEnd)))
         .get();
 
-      // Premium refund booked in the year across all contracts.
+      // Premium refund booked in the year across all insured persons.
       const breAgg = db
         .select({ bre: sql<number>`coalesce(sum(${brePeriods.breAmount}), 0)` })
         .from(brePeriods)
@@ -80,15 +80,19 @@ export function createStatsRoute(db: Database) {
       };
       return c.json(body);
     })
-    .get('/bre/:contractId', (c) => {
-      const contractId = c.req.param('contractId');
-      const contract = db.select().from(contracts).where(eq(contracts.id, contractId)).get();
-      if (!contract) throw new HTTPException(404, { message: 'Vertrag nicht gefunden' });
+    .get('/bre/:insuredPersonId', (c) => {
+      const insuredPersonId = c.req.param('insuredPersonId');
+      const insured = db
+        .select()
+        .from(insuredPersons)
+        .where(eq(insuredPersons.id, insuredPersonId))
+        .get();
+      if (!insured) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
 
       const rows = db
         .select()
         .from(brePeriods)
-        .where(eq(brePeriods.contractId, contractId))
+        .where(eq(brePeriods.insuredPersonId, insuredPersonId))
         .orderBy(asc(brePeriods.year))
         .all();
 
@@ -99,12 +103,12 @@ export function createStatsRoute(db: Database) {
         // Project from the recorded streak via the shared helper (#17). Without a
         // bre_structure there is no ladder to project, so fall back to the stored
         // value (which is itself nullable).
-        projected_bre: contract.breStructure
-          ? projectedBREForStreak(contract.breStructure, contract.monthlyPremium, row.streakMonths)
+        projected_bre: insured.breStructure
+          ? projectedBREForStreak(insured.breStructure, insured.monthlyPremium, row.streakMonths)
           : (row.projectedBre ?? null),
       }));
 
-      const body: BREHistory = { contract_id: contractId, years };
+      const body: BREHistory = { insured_person_id: insuredPersonId, years };
       return c.json(body);
     });
 }

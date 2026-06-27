@@ -9,11 +9,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   serializeContract,
+  serializeInsuredPerson,
   serializeInvoice,
   serializePosition,
   serializeSubmission,
   toContractInsert,
   toContractUpdate,
+  toInsuredPersonInsert,
+  toInsuredPersonUpdate,
   toInvoiceInsert,
   toInvoiceUpdate,
   toPositionInsert,
@@ -28,84 +31,62 @@ describe('contract mapping', () => {
   it('serializes a fully populated row', () => {
     const result = serializeContract({
       id: ID,
-      personId: ID,
+      policyholderId: ID,
       insurerName: 'DKV',
       contractNumber: 'KV-1',
-      tariffName: 'Komfort',
       type: 'vollversicherung',
       startDate: '2024-01-01',
       endDate: '2030-01-01',
-      monthlyPremium: 452.3,
-      selfRetention: 600,
-      breStructure: {
-        type: 'staffel',
-        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
-      },
-      includedBenefits: ['Ambulant'],
       notes: 'x',
       createdAt: NOW,
     });
     expect(result).toMatchObject({
       id: ID,
-      person_id: ID,
+      policyholder_id: ID,
       insurer_name: 'DKV',
       contract_number: 'KV-1',
-      self_retention: 600,
+      type: 'vollversicherung',
       created_at: NOW,
     });
-    expect(result.bre_structure?.levels[0]?.bre_months).toBe(1);
   });
 
   it('serializes a row with nullable columns null', () => {
     const result = serializeContract({
       id: ID,
-      personId: ID,
+      policyholderId: ID,
       insurerName: 'DKV',
       contractNumber: null,
-      tariffName: null,
       type: 'beihilfe',
       startDate: '2024-01-01',
       endDate: null,
-      monthlyPremium: 100,
-      selfRetention: 0,
-      breStructure: null,
-      includedBenefits: null,
       notes: null,
       createdAt: NOW,
     });
     expect(result.contract_number).toBeNull();
-    expect(result.bre_structure).toBeNull();
+    expect(result.end_date).toBeNull();
   });
 
   it('maps a create payload to insert values', () => {
     const insert = toContractInsert({
-      person_id: ID,
+      policyholder_id: ID,
       insurer_name: 'DKV',
       type: 'zusatztarif',
       start_date: '2024-01-01',
-      monthly_premium: 80,
     });
-    expect(insert).toMatchObject({ personId: ID, insurerName: 'DKV', monthlyPremium: 80 });
-    // self_retention omitted → undefined so the DB DEFAULT applies.
-    expect(insert.selfRetention).toBeUndefined();
+    expect(insert).toMatchObject({ policyholderId: ID, insurerName: 'DKV', type: 'zusatztarif' });
   });
 
   it('maps every field on a full update', () => {
     const update = toContractUpdate({
-      person_id: ID,
+      policyholder_id: ID,
       insurer_name: 'Allianz',
       contract_number: 'KV-2',
-      tariff_name: 'Premium',
       type: 'vollversicherung',
       start_date: '2025-01-01',
       end_date: '2031-01-01',
-      monthly_premium: 500,
-      self_retention: 300,
-      bre_structure: null,
-      included_benefits: ['Zahn'],
       notes: 'n',
     });
-    expect(Object.keys(update)).toHaveLength(12);
+    expect(Object.keys(update)).toHaveLength(7);
     expect(update.insurerName).toBe('Allianz');
   });
 
@@ -114,11 +95,96 @@ describe('contract mapping', () => {
   });
 });
 
+describe('insured-person mapping', () => {
+  it('serializes a fully populated row', () => {
+    const result = serializeInsuredPerson({
+      id: ID,
+      contractId: ID,
+      personId: ID,
+      kvnr: 'A123456789',
+      tariffName: 'Komfort',
+      monthlyPremium: 452.3,
+      selfRetention: 600,
+      breStructure: {
+        type: 'staffel',
+        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+      },
+      includedBenefits: ['Ambulant'],
+      startDate: '2024-01-01',
+      endDate: '2030-01-01',
+      notes: 'x',
+      createdAt: NOW,
+    });
+    expect(result).toMatchObject({
+      id: ID,
+      contract_id: ID,
+      person_id: ID,
+      kvnr: 'A123456789',
+      self_retention: 600,
+      created_at: NOW,
+    });
+    expect(result.bre_structure?.levels[0]?.bre_months).toBe(1);
+  });
+
+  it('serializes a row with nullable columns null', () => {
+    const result = serializeInsuredPerson({
+      id: ID,
+      contractId: ID,
+      personId: ID,
+      kvnr: null,
+      tariffName: null,
+      monthlyPremium: 100,
+      selfRetention: 0,
+      breStructure: null,
+      includedBenefits: null,
+      startDate: null,
+      endDate: null,
+      notes: null,
+      createdAt: NOW,
+    });
+    expect(result.kvnr).toBeNull();
+    expect(result.bre_structure).toBeNull();
+  });
+
+  it('maps a create payload to insert values', () => {
+    const insert = toInsuredPersonInsert({
+      contract_id: ID,
+      person_id: ID,
+      monthly_premium: 80,
+    });
+    expect(insert).toMatchObject({ contractId: ID, personId: ID, monthlyPremium: 80 });
+    // self_retention omitted → undefined so the DB DEFAULT applies.
+    expect(insert.selfRetention).toBeUndefined();
+  });
+
+  it('maps every field on a full update', () => {
+    const update = toInsuredPersonUpdate({
+      contract_id: ID,
+      person_id: ID,
+      kvnr: 'A1',
+      tariff_name: 'Premium',
+      monthly_premium: 500,
+      self_retention: 300,
+      bre_structure: null,
+      included_benefits: ['Zahn'],
+      start_date: '2025-01-01',
+      end_date: '2031-01-01',
+      notes: 'n',
+    });
+    expect(Object.keys(update)).toHaveLength(11);
+    expect(update.monthlyPremium).toBe(500);
+  });
+
+  it('produces an empty patch for an empty update', () => {
+    expect(toInsuredPersonUpdate({})).toEqual({});
+  });
+});
+
 describe('invoice mapping', () => {
   it('serializes a fully populated row', () => {
     const result = serializeInvoice({
       id: ID,
-      contractId: ID,
+      insuredPersonId: ID,
       invoiceDate: '2026-06-01',
       invoiceNumber: 'R-1',
       providerName: 'Dr. Müller',
@@ -134,7 +200,7 @@ describe('invoice mapping', () => {
       createdAt: NOW,
     });
     expect(result).toMatchObject({
-      contract_id: ID,
+      insured_person_id: ID,
       provider_name: 'Dr. Müller',
       eligible_amount: 62.5,
       status: 'neu',
@@ -143,18 +209,18 @@ describe('invoice mapping', () => {
 
   it('maps a create payload to insert values', () => {
     const insert = toInvoiceInsert({
-      contract_id: ID,
+      insured_person_id: ID,
       invoice_date: '2026-06-01',
       provider_name: 'Dr. Müller',
       total_amount: 85,
     });
-    expect(insert).toMatchObject({ contractId: ID, totalAmount: 85 });
+    expect(insert).toMatchObject({ insuredPersonId: ID, totalAmount: 85 });
     expect(insert.status).toBeUndefined();
   });
 
   it('maps every field on a full update', () => {
     const update = toInvoiceUpdate({
-      contract_id: ID,
+      insured_person_id: ID,
       invoice_date: '2026-07-01',
       invoice_number: 'R-2',
       provider_name: 'Dr. B',

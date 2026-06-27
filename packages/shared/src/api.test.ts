@@ -76,9 +76,9 @@ describe('yearStatsSchema', () => {
 });
 
 describe('breHistorySchema', () => {
-  it('accepts a contract ladder with a nullable projection', () => {
+  it('accepts an insured-person ladder with a nullable projection', () => {
     const result = breHistorySchema.safeParse({
-      contract_id: '11111111-1111-1111-1111-111111111111',
+      insured_person_id: '11111111-1111-1111-1111-111111111111',
       years: [
         { year: 2025, streak_months: 6, bre_amount: 0, projected_bre: 185 },
         { year: 2026, streak_months: 18, bre_amount: 185, projected_bre: null },
@@ -87,8 +87,10 @@ describe('breHistorySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects a non-UUID contract id', () => {
-    expect(breHistorySchema.safeParse({ contract_id: 'nope', years: [] }).success).toBe(false);
+  it('rejects a non-UUID insured-person id', () => {
+    expect(breHistorySchema.safeParse({ insured_person_id: 'nope', years: [] }).success).toBe(
+      false,
+    );
   });
 });
 
