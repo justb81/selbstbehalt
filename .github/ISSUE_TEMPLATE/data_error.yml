@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Fee-schedule data error (GOÄ/GOZ/GOT)
 description: Report a wrong amount, description, or category in a fee-schedule lookup table.
-labels: ["bug", "area:domain-logic"]
+labels: ['bug', 'area:domain-logic']
 body:
   - type: markdown
     attributes:
