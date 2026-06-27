@@ -143,6 +143,50 @@ created_at            DATETIME
 }
 ```
 
+**`included_benefits` JSON-Beispiel:**
+
+Bildet die tarifspezifischen Erstattungsregeln je Leistungsbereich ab. Pro Baustein lassen sich
+die vier in der PKV-/Zusatzwelt üblichen Stellschrauben kombinieren: **Erstattungssatz** (Prozent),
+**Schwellen-Staffel** innerhalb eines Falls/Jahres (z.B. „bis 500 € zu 100 %, darüber 70 %"),
+**Summenbegrenzungen** (pro Fall / pro Jahr / lebenslang, optional altersabhängig) und die
+**Aufbaujahres-Staffel** (Zahnstaffel: kumuliertes Limit, das in den ersten Jahren ansteigt und
+dann entfällt) sowie **Wartezeiten**. Für beihilfekonforme Tarife ist `pct` die Restquote zum
+Beihilfeanspruch (`beihilfe_satz`).
+
+```json
+{
+  "benefits": [
+    {
+      "category": "kieferorthopaedie",
+      "waiting_period_months": 8,
+      "beihilfe_satz": 0,
+      "tiers": [
+        { "up_to": 500, "pct": 100 },
+        { "up_to": null, "pct": 70 }
+      ],
+      "limits": [
+        { "scope": "behandlung", "max_amount": 3000 },
+        { "scope": "jahr", "max_amount": null, "age_max": 18 }
+      ],
+      "annual_staffel": [
+        { "policy_year": 1, "cumulative_cap": 1000 },
+        { "policy_year": 2, "cumulative_cap": 2000 },
+        { "policy_year": 5, "cumulative_cap": null }
+      ]
+    }
+  ]
+}
+```
+
+| Feld | Bedeutung |
+|---|---|
+| `category` | Leistungsbereich: `ambulant` \| `stationaer` \| `zahnbehandlung` \| `zahnersatz` \| `kieferorthopaedie` \| `heilmittel` \| `hilfsmittel` \| `wahlleistung` \| `sonstiges` |
+| `waiting_period_months` | Wartezeit in Monaten ab Vertragsbeginn; Rechnungen davor sind nicht erstattungsfähig (`0` = keine) |
+| `beihilfe_satz` | Beihilfe-Bemessungssatz in % (0 = kein Beihilfeanspruch); der Tarif trägt die Restquote |
+| `tiers` | Schwellen-Staffel: erstattet `pct` % bis zum Betrag `up_to` (EUR), darüber der nächste Eintrag; `up_to: null` = darüber hinaus |
+| `limits` | Höchstgrenzen; `scope`: `behandlung` \| `jahr` \| `lebenslang`; `max_amount: null` = unbegrenzt; optional `age_max`/`age_min` |
+| `annual_staffel` | Aufbaujahres-Staffel (Zahnstaffel): kumuliertes Limit `cumulative_cap` (EUR) je `policy_year`; letzter Eintrag mit `cumulative_cap: null` = ab diesem Jahr unbegrenzt |
+
 #### `invoices`
 ```sql
 id                TEXT PRIMARY KEY
@@ -317,9 +361,56 @@ Die Tabelle umfasst alle ~4.500 Ziffern der GOÄ (aktuell GOÄ 1996 mit Anpassun
 
 ***
 
-## 5. Günstigerprüfung
+## 5. Erstattungsberechnung & Günstigerprüfung
 
-### 5.1 Entscheidungslogik
+### 5.1 Erstattungs-Engine (Vorstufe)
+
+Die Günstigerprüfung setzt den Erstattungsbetrag $$R$$ (`eligible_amount`) als gegeben voraus.
+Dieser wird von der **Erstattungs-Engine** aus den `included_benefits` des Vertrags und den
+geprüften Rechnungspositionen berechnet — sie übersetzt die tarifspezifischen Bausteine
+(Erstattungssätze, Schwellen-Staffeln, Summengrenzen, Aufbaujahres-Staffel, Wartezeiten;
+siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
+
+```typescript
+// erstattungs-engine.ts
+
+interface ErstattungInput {
+  positions: InvoicePosition[];     // aus dem GOÄ-Parser (charged_amount, Kategorie)
+  benefits: IncludedBenefits;       // included_benefits des Vertrags
+  invoiceDate: Date;                // für Wartezeit-/Aufbaujahres-Prüfung
+  contractStart: Date;
+  priorClaimsByCategory?: Record<string, number>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
+}
+
+interface ErstattungResult {
+  eligibleAmount: number;           // R — Summe der erstattungsfähigen Beträge
+  byCategory: Array<{
+    category: string;
+    chargedAmount: number;
+    eligibleAmount: number;
+    appliedPct: number;             // effektiver Erstattungssatz nach Staffel/Restquote
+    cappedBy: 'tier' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
+    note?: string;                  // erklärender Text für die UI
+  }>;
+}
+```
+
+Berechnungsschritte je Position (gruppiert nach `category`):
+
+1. **Wartezeit prüfen** — liegt `invoiceDate` vor `contractStart + waiting_period_months`,
+   ist der Betrag nicht erstattungsfähig (`appliedPct = 0`, `cappedBy = 'waiting_period'`).
+2. **Schwellen-Staffel (`tiers`) anwenden** — den Rechnungsbetrag entlang der `up_to`-Grenzen
+   in Tranchen aufteilen und je Tranche mit `pct` erstatten.
+3. **Beihilfe berücksichtigen** — bei `beihilfe_satz > 0` deckt der Tarif nur die Restquote
+   (`100 % − beihilfe_satz`); die Beihilfe trägt den Rest separat.
+4. **Summengrenzen (`limits`) kappen** — pro `behandlung`/`jahr`/`lebenslang` und ggf. Alter.
+5. **Aufbaujahres-Staffel (`annual_staffel`) kappen** — kumuliertes Limit des relevanten
+   Policenjahres unter Berücksichtigung von `priorClaimsByCategory`.
+
+Das Ergebnis (`eligibleAmount`) fließt als `erstattungsBetrag` (= $$R$$) in die Günstigerprüfung
+(§5.3) ein.
+
+### 5.2 Entscheidungslogik
 
 Die Günstigerprüfung beantwortet: **Lohnt es sich, eine Rechnung einzureichen, oder soll ich sie selbst zahlen, um meine Beitragsrückerstattungs-Staffel nicht zu unterbrechen?**
 
@@ -342,7 +433,7 @@ $$ R - S > \text{NPV}(\Delta \text{BRE}) - \text{Steuervorteil}(R) $$
 
 wobei $$\text{NPV}(\Delta \text{BRE})$$ der Kapitalwert des entgehenden BRE-Vorteils durch die Unterbrechung der Leistungsfreiheits-Staffel ist [^9].
 
-### 5.2 Implementierung
+### 5.3 Implementierung
 
 ```typescript
 // guenstiger-pruefung.ts
@@ -409,7 +500,7 @@ function calculateGCP(input: GCP_Input): GCP_Result {
 }
 ```
 
-### 5.3 Benutzeroberfläche der Günstigerprüfung
+### 5.4 Benutzeroberfläche der Günstigerprüfung
 
 Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnungsscan angezeigt:
 
