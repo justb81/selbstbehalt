@@ -101,7 +101,7 @@ So please:
 - If you spot an error, **open a
   [Data error report](.github/ISSUE_TEMPLATE/data_error.yml)** instead. Keep it
   simple: the affected code, the expected vs. actual value, and your source.
-- Corrections to the *extraction/generation* tooling itself are of course
+- Corrections to the _extraction/generation_ tooling itself are of course
   welcome as PRs (see issue #15).
 
 ## Submitting a pull request
