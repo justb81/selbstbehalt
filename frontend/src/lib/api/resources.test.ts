@@ -52,7 +52,8 @@ describe('createResources', () => {
 
     await invoices.list({ status: 'neu' });
     await invoices.get(UUID);
-    await invoices.submit(UUID, { invoice_id: UUID, submitted_via: 'email' });
+    // No body-level invoice_id — it comes from the path, symmetric with refund.
+    await invoices.submit(UUID, { submitted_via: 'email' });
     await invoices.refund(UUID, { actual_refund: 62.5 });
 
     expect(calls[0]!.opts.query).toEqual({ status: 'neu' });

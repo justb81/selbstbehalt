@@ -6,29 +6,27 @@
 
 import {
   contractSchema,
+  healthBodySchema,
   invoiceSchema,
   submissionSchema,
   type Contract,
   type ContractCreate,
   type ContractUpdate,
+  type HealthBody,
   type Invoice,
   type InvoiceCreate,
   type InvoiceUpdate,
   type Submission,
-  type SubmissionCreate,
+  type SubmissionInput,
   type SubmissionUpdate,
 } from '@selbstbehalt/shared';
 import { z } from 'zod';
 
 import type { ApiRequester, QueryValue } from './client.js';
 
-/** Shape returned by the backend `/api/health` probe. */
-export const healthSchema = z.object({
-  status: z.enum(['ok', 'degraded']),
-  service: z.string(),
-  db: z.enum(['up', 'down']),
-});
-export type Health = z.infer<typeof healthSchema>;
+/** Re-exported from `@selbstbehalt/shared` so callers keep a stable import. */
+export const healthSchema = healthBodySchema;
+export type Health = HealthBody;
 
 const contractListSchema = z.array(contractSchema);
 const invoiceListSchema = z.array(invoiceSchema);
@@ -69,7 +67,7 @@ export function createResources(request: ApiRequester) {
         schema: invoiceSchema,
       }),
     remove: (invoiceId: string) => request(`/api/invoices/${id(invoiceId)}`, { method: 'DELETE' }),
-    submit: (invoiceId: string, data: SubmissionCreate) =>
+    submit: (invoiceId: string, data: SubmissionInput) =>
       request(`/api/invoices/${id(invoiceId)}/submit`, {
         method: 'POST',
         body: data,

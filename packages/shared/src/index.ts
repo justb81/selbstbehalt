@@ -6,6 +6,7 @@
 
 export * from './enums.js';
 export * from './common.js';
+export * from './api.js';
 export * from './schemas/person.js';
 export * from './schemas/contract.js';
 export * from './schemas/invoice.js';

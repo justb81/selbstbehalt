@@ -30,8 +30,8 @@ describe('resolveApiBaseUrl', () => {
     expect(resolveApiBaseUrl({ apiUrl: '' })).toBe('http://localhost:8080');
   });
 
-  it('reads the persisted setting from localStorage when called without args', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiUrl: 'http://fromstore:9000' }));
+  it('defaults to the live store value (not a fresh localStorage read) when called without args', () => {
+    settings.set({ apiUrl: 'http://fromstore:9000' });
     expect(resolveApiBaseUrl()).toBe('http://fromstore:9000');
   });
 });

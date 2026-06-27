@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
-/** The unified error envelope the backend returns (see backend error middleware). */
-export interface ApiErrorBody {
-  error: { status: number; message: string };
-}
+import { errorBodySchema, type ErrorBody } from '@selbstbehalt/shared';
+
+/**
+ * The unified error envelope the backend returns. Defined once in
+ * `@selbstbehalt/shared` so both sides parse the same wire contract.
+ */
+export type ApiErrorBody = ErrorBody;
 
 /** Narrowing guard for the backend's `{ error: { status, message } }` shape. */
 export function isApiErrorBody(value: unknown): value is ApiErrorBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const error = (value as { error?: unknown }).error;
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    typeof (error as { message?: unknown }).message === 'string'
-  );
+  return errorBodySchema.safeParse(value).success;
 }
 
 interface ApiErrorOptions {
