@@ -332,7 +332,7 @@ Die relevanten Variablen:
 | $$B_n$$ | BRE bei Leistungsfreiheit noch n Monate (aus bre_structure) |
 | $$P$$ | Monatlicher Beitrag |
 | $$i$$ | Diskontierungsrate (Standard: 3% p.a.) |
-| $$T$$ | Steuersatz des Nutzers (für Steuerersparnis bei Selbstzahlung) |
+| $$\text{Steuervorteil}(R)$$ | Steuerersparnis bei Selbstzahlung — extern berechnet und in die Engine injiziert (Default 0), siehe unten |
 
 **Entscheidungsregel:**
 
@@ -342,18 +342,19 @@ $$ R - S > \text{NPV}(\Delta \text{BRE}) + \text{Steuervorteil}(R) $$
 
 wobei $$\text{NPV}(\Delta \text{BRE})$$ der Kapitalwert des entgehenden BRE-Vorteils durch die Unterbrechung der Leistungsfreiheits-Staffel ist [^9]. Sowohl der BRE-Verlust als auch der Steuervorteil sind Vorteile, die nur bei **Selbstzahlung** anfallen; beide erhöhen daher die Schwelle für das Einreichen und stehen auf derselben Seite der Ungleichung.
 
+**Steuervorteil — nicht in der Engine geschätzt:** Selbst gezahlte Arztrechnungen sind nur als **außergewöhnliche Belastungen (§33 EStG)** absetzbar, und auch nur der Teil **oberhalb der zumutbaren Belastung** — einer einkommensabhängigen, über das Jahr kumulierten Schwelle (≈ 1–7 % des Gesamtbetrags der Einkünfte, gestaffelt nach Familienstand und Kinderzahl), die eine einzelne Rechnung selten überschreitet. Eine korrekte Berechnung braucht Einkommen, Veranlagungsart, Kinderzahl und die bereits selbst getragenen Jahreskosten; die Günstigerprüfung-Engine berechnet den Wert daher **nicht** selbst, sondern erhält ihn vom Aufrufer (`taxSavingFromSelfPay`, Default `0` — kein erfundener Vorteil). Ein eigener §33-Helfer liefert den Wert später (Folge-Issue).
+
 ### 5.2 Implementierung
 
 ```typescript
 // guenstiger-pruefung.ts
 
 interface GCP_Input {
-  rechnungsBetrag: number;
   erstattungsBetrag: number;       // Was die PKV erstatten würde
   verbleibenderSelbstbehalt: number;  // Noch offener Selbstbehalt dieses Jahr
   breStructure: BREStructure;
   monthlyPremium: number;
-  taxRate: number;                 // 0.0 – 1.0, z.B. 0.42 für 42%
+  taxSavingFromSelfPay?: number;   // Steuervorteil (§33 EStG), extern berechnet; Default 0
   discountRate?: number;           // Default: 0.03
   asOf?: Date | string;            // Stichtag; injizierbar (kein verstecktes Date.now())
 }
@@ -379,7 +380,7 @@ function calculateGCP(input: GCP_Input): GCP_Result {
     verbleibenderSelbstbehalt,
     breStructure,
     monthlyPremium,
-    taxRate,
+    taxSavingFromSelfPay = 0,
     discountRate = 0.03,
     asOf = new Date(),
   } = input;
@@ -396,12 +397,9 @@ function calculateGCP(input: GCP_Input): GCP_Result {
   const monthsToYearEnd = 12 - asOf.getMonth();
   const lostBREValue_NPV = lostBRE / Math.pow(1 + discountRate / 12, monthsToYearEnd);
 
-  // Steuerersparnis bei Selbstzahlung (§10 Abs. 1 Nr. 3a EStG)
-  // Selbst gezahlte PKV-Beiträge und Krankheitskosten sind begrenzt absetzbar
-  const taxSavingFromSelfPay = input.rechnungsBetrag * taxRate * 0.5; // Vereinfacht
-
-  // Der Steuervorteil entsteht NUR bei Selbstzahlung und ist damit – wie der
-  // BRE-Verlust – ein Kostenfaktor des Einreichens (vgl. Entscheidungsregel §5.1).
+  // Steuervorteil: vom Aufrufer geliefert (§33 EStG, Default 0 — siehe §5.1). Er
+  // entsteht NUR bei Selbstzahlung und ist damit – wie der BRE-Verlust – ein
+  // Kostenfaktor des Einreichens (vgl. Entscheidungsregel §5.1).
   const netBenefitOfSubmitting = refundAfterDeductible - lostBREValue_NPV - taxSavingFromSelfPay;
 
   return {
@@ -409,6 +407,10 @@ function calculateGCP(input: GCP_Input): GCP_Result {
     netBenefitOfSubmitting,
     breakdown: {
       refundAfterDeductible,
+      currentStreakMonths: currentStreak,
+      projectedBRELoss: lostBRE,
+      monthsToYearEnd,
+      discountRate,
       lostBREValue_NPV,
       taxSavingFromSelfPay,
     },

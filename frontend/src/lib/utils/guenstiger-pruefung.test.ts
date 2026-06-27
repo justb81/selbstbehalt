@@ -20,12 +20,10 @@ function ladder(currentStreakStart: string | null): BREStructure {
 /** A baseline input; spread and override per test. */
 function input(overrides: Partial<GCP_Input> = {}): GCP_Input {
   return {
-    rechnungsBetrag: 85,
     erstattungsBetrag: 62.5,
     verbleibenderSelbstbehalt: 150,
     breStructure: ladder('2023-06-01'),
     monthlyPremium: 185,
-    taxRate: 0,
     asOf: '2024-05-01',
     ...overrides,
   };
@@ -76,7 +74,6 @@ describe('calculateGCP — recommendation einreichen', () => {
   it('recommends submitting when the net refund dwarfs the BRE loss', () => {
     const result = calculateGCP(
       input({
-        rechnungsBetrag: 1000,
         erstattungsBetrag: 1000,
         verbleibenderSelbstbehalt: 0,
         monthlyPremium: 50,
@@ -101,7 +98,6 @@ describe('calculateGCP — netBenefit boundary', () => {
       breStructure: ladder('2024-01-01'),
       asOf: '2024-06-01',
       discountRate: 0,
-      taxRate: 0,
     });
 
   it('treats an exact tie (netBenefit === 0) as self-pay', () => {
@@ -127,38 +123,42 @@ describe('calculateGCP — netBenefit boundary', () => {
 });
 
 describe('calculateGCP — tax saving from self-paying', () => {
+  it('defaults to zero — the engine invents no §33 benefit', () => {
+    const result = calculateGCP(input());
+    expect(result.breakdown.taxSavingFromSelfPay).toBe(0);
+  });
+
   it('is a benefit of self-paying, so it lowers the benefit of submitting', () => {
     const base = input({
-      rechnungsBetrag: 1000,
       erstattungsBetrag: 1000,
       verbleibenderSelbstbehalt: 0,
       monthlyPremium: 50,
       breStructure: ladder('2024-01-01'),
       asOf: '2024-04-01',
     });
-    const withoutTax = calculateGCP({ ...base, taxRate: 0 });
-    const withTax = calculateGCP({ ...base, taxRate: 0.42 });
+    const withoutTax = calculateGCP(base);
+    const withTax = calculateGCP({ ...base, taxSavingFromSelfPay: 210 });
 
-    // 1000 € × 42 % × 0.5 deductible share = 210,00 €.
     expect(withTax.breakdown.taxSavingFromSelfPay).toBe(210);
     expect(withoutTax.breakdown.taxSavingFromSelfPay).toBe(0);
-    // The tax saving must reduce — never increase — the net benefit of submitting.
+    // The injected saving must reduce — never increase — the benefit of submitting.
     expect(withTax.netBenefitOfSubmitting).toBeCloseTo(withoutTax.netBenefitOfSubmitting - 210, 2);
     expect(withTax.netBenefitOfSubmitting).toBeLessThan(withoutTax.netBenefitOfSubmitting);
   });
 
   it('can flip the recommendation to self-pay on its own', () => {
     const base = input({
-      rechnungsBetrag: 400,
       erstattungsBetrag: 200,
       verbleibenderSelbstbehalt: 0,
       monthlyPremium: 10, // tiny BRE so the tax term is decisive
       breStructure: ladder('2024-01-01'),
       asOf: '2024-12-01',
     });
-    expect(calculateGCP({ ...base, taxRate: 0 }).recommendation).toBe('einreichen');
-    // 400 € × 1.0 × 0.5 = 200 € tax saving wipes out the 200 € refund.
-    expect(calculateGCP({ ...base, taxRate: 1 }).recommendation).toBe('selbst_zahlen');
+    expect(calculateGCP(base).recommendation).toBe('einreichen');
+    // A 200 € tax saving wipes out the 200 € net refund.
+    expect(calculateGCP({ ...base, taxSavingFromSelfPay: 200 }).recommendation).toBe(
+      'selbst_zahlen',
+    );
   });
 });
 
@@ -232,9 +232,8 @@ describe('calculateGCP — determinism & injectable date', () => {
 });
 
 describe('calculateGCP — input validation', () => {
-  it('rejects a tax rate outside [0, 1]', () => {
-    expect(() => calculateGCP(input({ taxRate: -0.1 }))).toThrow(RangeError);
-    expect(() => calculateGCP(input({ taxRate: 1.5 }))).toThrow(RangeError);
+  it('rejects a negative tax saving', () => {
+    expect(() => calculateGCP(input({ taxSavingFromSelfPay: -1 }))).toThrow(RangeError);
   });
 
   it('rejects a discount rate of -1 or below', () => {

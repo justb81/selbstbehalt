@@ -21,8 +21,17 @@
  *
  * Equivalently, with `netBenefitOfSubmitting = (R − S) − NPV(ΔBRE) − Steuervorteil`,
  * submit when that value is positive. Both the BRE loss and the tax saving are
- * benefits you keep **only if you self-pay**, so both raise the bar for
- * submitting — see the note in design §5.2 on the corrected sign of the tax term.
+ * benefits you keep **only if you self-pay**, so both raise the bar for submitting.
+ *
+ * ## Tax saving is injected, not computed here
+ *
+ * Self-paid medical bills are deductible only as außergewöhnliche Belastungen
+ * (§33 EStG), and **only the part exceeding the income-dependent zumutbare
+ * Belastung** counts — a yearly, cumulative threshold a single bill rarely
+ * clears. Modelling that correctly needs income, filing status, children and
+ * the year's self-paid total, so this engine does **not** estimate it. The
+ * caller supplies `taxSavingFromSelfPay` (default `0` — no invented benefit);
+ * a dedicated §33 helper will compute it later (follow-up issue).
  */
 
 import {
@@ -35,13 +44,8 @@ import {
 /** Default annual discount rate for the NPV of the forfeited BRE (design §5.1). */
 export const DEFAULT_DISCOUNT_RATE = 0.03;
 
-/** Share of a self-paid bill assumed tax-deductible (design §5.2, simplified §10 EStG). */
-const TAX_DEDUCTIBLE_SHARE = 0.5;
-
 /** Inputs for {@link calculateGCP}. Mirrors `GCP_Input` in design §5.2. */
 export interface GCP_Input {
-  /** Gross invoice total in EUR (the amount eligible for the tax deduction). */
-  rechnungsBetrag: number;
   /** Amount the insurer would reimburse in EUR (`eligible_amount`). */
   erstattungsBetrag: number;
   /** Deductible (Selbstbehalt) still open this calendar year, in EUR. */
@@ -50,8 +54,12 @@ export interface GCP_Input {
   breStructure: BREStructure;
   /** Monthly premium in EUR — the base of the projected refund. */
   monthlyPremium: number;
-  /** Marginal tax rate, `0.0`–`1.0` (e.g. `0.42` for 42 %). */
-  taxRate: number;
+  /**
+   * Tax saved in EUR by self-paying this bill (§33 EStG, above the zumutbare
+   * Belastung). Supplied by the caller; defaults to `0` — this engine does not
+   * estimate it (see the module header). Must be non-negative.
+   */
+  taxSavingFromSelfPay?: number;
   /** Annual discount rate for the BRE NPV. Defaults to {@link DEFAULT_DISCOUNT_RATE}. */
   discountRate?: number;
   /**
@@ -154,22 +162,21 @@ function buildExplanation(
 /**
  * Run the Günstigerprüfung for a single invoice.
  *
- * @throws RangeError if `taxRate` is outside `[0, 1]` or `discountRate ≤ −1`.
+ * @throws RangeError if `taxSavingFromSelfPay` is negative or `discountRate ≤ −1`.
  */
 export function calculateGCP(input: GCP_Input): GCP_Result {
   const {
-    rechnungsBetrag,
     erstattungsBetrag,
     verbleibenderSelbstbehalt,
     breStructure,
     monthlyPremium,
-    taxRate,
+    taxSavingFromSelfPay: taxSavingInput = 0,
     discountRate = DEFAULT_DISCOUNT_RATE,
     asOf = new Date(),
   } = input;
 
-  if (!(taxRate >= 0 && taxRate <= 1)) {
-    throw new RangeError(`Steuersatz muss zwischen 0 und 1 liegen, war ${taxRate}`);
+  if (!(taxSavingInput >= 0)) {
+    throw new RangeError(`Steuervorteil darf nicht negativ sein, war ${taxSavingInput}`);
   }
   if (!(discountRate > -1)) {
     throw new RangeError(`Diskontrate muss größer als -1 sein, war ${discountRate}`);
@@ -188,9 +195,9 @@ export function calculateGCP(input: GCP_Input): GCP_Result {
     projectedBRELoss / Math.pow(1 + discountRate / 12, monthsToYearEnd),
   );
 
-  // Tax saved by self-paying (§10 EStG, simplified). Only realised if NOT submitted,
-  // so it is part of the cost of submitting — it lowers the benefit of submitting.
-  const taxSavingFromSelfPay = round2(rechnungsBetrag * taxRate * TAX_DEDUCTIBLE_SHARE);
+  // Tax saved by self-paying (§33 EStG, caller-supplied). Only realised if NOT
+  // submitted, so it is part of the cost of submitting — it lowers the benefit.
+  const taxSavingFromSelfPay = round2(taxSavingInput);
 
   const netBenefitOfSubmitting = round2(
     refundAfterDeductible - lostBREValue_NPV - taxSavingFromSelfPay,
