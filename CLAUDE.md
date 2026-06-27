@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is **greenfield**: there is no application code yet. The repo currently contains only:
+This repository is **greenfield**: there is no application code yet. The repo currently contains:
 
 - `docs/design.md` — the complete technical and functional specification (German). This is the single source of truth.
+- `docs/roadmap.md` — the phased implementation plan, mirroring the GitHub issues (phases, dependencies, label scheme).
+- `data/input/{goae,goz,got}/*.xml` — the official gesetze-im-internet.de legal-text exports of the GOÄ/GOZ/GOT fee schedules; build inputs from which the parser's JSON lookup tables are generated (not hand-maintained).
 - `README.md`, `LICENSE` (Apache 2.0), and `assets/` (logo + hero image).
 
 When implementing, follow `docs/design.md` as the authoritative spec. The directory layout, data model, API surface, and domain formulas below are all derived from it. Build commands (lint/test/run) do not exist yet — establish them as part of the initial scaffolding.
@@ -88,3 +90,8 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
 - Keep the GOÄ/GOZ lookup tables as static, versioned JSON so they can be updated via community contribution.
+
+## Repository hygiene & change policy
+
+- **No outdated content in the repo.** Code, docs, comments, examples, and configuration must always reflect the current state. When you change something, update everything it touches in the same change — never leave stale references, dead code, obsolete docs, or superseded files behind. If you find existing content that is out of date, fix or remove it.
+- **No backward-compatibility guarantee by default.** When changing an interface, API, schema, data format, or config, prefer the clean, correct result over preserving the old shape. Do not add compatibility shims, deprecation layers, dual-path handling, or migration fallbacks unless backward compatibility is explicitly requested. Update all call sites and consumers directly instead.
