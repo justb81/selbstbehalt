@@ -95,3 +95,8 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 
 - **No outdated content in the repo.** Code, docs, comments, examples, and configuration must always reflect the current state. When you change something, update everything it touches in the same change — never leave stale references, dead code, obsolete docs, or superseded files behind. If you find existing content that is out of date, fix or remove it.
 - **No backward-compatibility guarantee by default.** When changing an interface, API, schema, data format, or config, prefer the clean, correct result over preserving the old shape. Do not add compatibility shims, deprecation layers, dual-path handling, or migration fallbacks unless backward compatibility is explicitly requested. Update all call sites and consumers directly instead.
+
+## Issue & PR workflow
+
+- **Tick off completed checkboxes.** When a change completes task checkboxes in the issue(s) it addresses, update the issue body to mark those boxes `- [x]` as part of the same work — don't leave finished tasks unchecked.
+- **Auto-close issues from the PR.** When a PR fully resolves an issue, add a `Closes #<n>` line to the PR body so GitHub closes it on merge. List one `Closes #<n>` per fully-resolved issue. Use `Refs #<n>` (not `Closes`) for issues the PR only touches partially.
