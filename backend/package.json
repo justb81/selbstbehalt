@@ -1,0 +1,15 @@
+{
+  "name": "@selbstbehalt/backend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hono REST API + SQLite (Drizzle) backend for selbstbehalt (PKV Manager).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"[backend] dev server not scaffolded yet\"",
+    "build": "echo \"[backend] no build step yet\"",
+    "lint": "echo \"[backend] no linter configured yet\"",
+    "test": "echo \"[backend] no tests yet\"",
+    "typecheck": "echo \"[backend] no typecheck configured yet\""
+  }
+}
