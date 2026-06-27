@@ -27,8 +27,10 @@ services:
     volumes:
       - ./data/db:/app/db # SQLite database — persisted across restarts
       - ./data/files:/app/files # optional saved invoice files
-    ports:
-      - '8080:8080'
+    # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
+    # container over the shared network. `expose` documents the internal port.
+    expose:
+      - '8080'
     restart: unless-stopped
     healthcheck:
       test:
@@ -51,8 +53,10 @@ services:
         # Baked into the static bundle at build time — must be reachable from
         # the user's BROWSER (not the in-network service name). See .env.example.
         PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
-    ports:
-      - '3000:3000'
+    # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
+    # container over the shared network. `expose` documents the internal port.
+    expose:
+      - '3000'
     depends_on:
       backend:
         condition: service_healthy

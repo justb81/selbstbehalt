@@ -135,23 +135,27 @@ Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->
 The stack ships as two lean, non-root container images orchestrated by
 [`docker-compose.yml`](docker-compose.yml) — a Hono/SQLite backend and an
 nginx-served static PWA — sized for a home network (Proxmox LXC / NAS /
-Portainer). Prerequisite: Docker with the Compose v2 plugin.
+Coolify / Portainer). Prerequisite: Docker with the Compose v2 plugin.
 
 ```bash
 cp .env.example .env          # then edit .env for your host (see below)
 docker compose up -d --build  # build images and start both services
 ```
 
-- **Frontend** → `http://<host>:3000`, **backend API** → `http://<host>:8080`.
+- The services **do not publish host ports**. They are meant to sit behind a
+  reverse proxy (e.g. Coolify/Traefik), which routes to them over the Docker
+  network; the internal ports are documented via `expose` (frontend `3000`,
+  backend `8080`). Point the proxy at those, or add a `ports:` mapping locally
+  if you want to reach them directly.
 - SQLite and any saved invoice files live in bind-mounted volumes
   (`./data/db`, `./data/files`), so data survives `docker compose restart`,
   `down`/`up`, and image rebuilds.
 - Set **`PUBLIC_API_URL`** in `.env` to the backend URL your **browser** can
-  reach (e.g. `http://nas.local:8080`) — it is baked into the frontend bundle
-  at build time, so re-run `docker compose build frontend` after changing it.
-  You can also override it at runtime in the app's settings.
+  reach (e.g. `https://api.example.com` behind the proxy) — it is baked into
+  the frontend bundle at build time, so re-run `docker compose build frontend`
+  after changing it. You can also override it at runtime in the app's settings.
 - Set **`PKV_API_KEY`** to require an `X-API-Key` header (for external/VPN
-  access); leave it empty when relying on a reverse proxy on a trusted LAN.
+  access); leave it empty when relying on the reverse proxy's auth.
 
 The backend exposes an unauthenticated `/api/health` endpoint that drives the
 container healthcheck; the frontend only starts once the backend reports
