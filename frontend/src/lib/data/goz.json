@@ -36,7 +36,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "30": {
       "ziffer": "30",
@@ -44,7 +49,12 @@
       "points": 200,
       "baseAmount": 11.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "40": {
       "ziffer": "40",
@@ -52,7 +62,12 @@
       "points": 250,
       "baseAmount": 14.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "50": {
       "ziffer": "50",
@@ -60,7 +75,12 @@
       "points": 120,
       "baseAmount": 6.75,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "60": {
       "ziffer": "60",
@@ -68,7 +88,12 @@
       "points": 260,
       "baseAmount": 14.62,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "notes": [
         "Die Nebeneinanderberechnung der Leistungen nach den Nummern 0050 und 0060 ist in der Rechnung zu begründen."
       ]
@@ -79,7 +104,12 @@
       "points": 80,
       "baseAmount": 4.5,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "notes": [
         "Neben der Leistung nach der Nummer 0065 sind konventionelle Abformungen nach diesem Gebührenverzeichnis für dieselbe Kieferhälfte oder denselben Frontzahnbereich nicht berechnungsfähig."
       ]
@@ -90,7 +120,12 @@
       "points": 50,
       "baseAmount": 2.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "80": {
       "ziffer": "80",
@@ -98,7 +133,12 @@
       "points": 30,
       "baseAmount": 1.69,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "90": {
       "ziffer": "90",
@@ -106,7 +146,12 @@
       "points": 60,
       "baseAmount": 3.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      }
     },
     "100": {
       "ziffer": "100",
@@ -114,7 +159,12 @@
       "points": 70,
       "baseAmount": 3.94,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "notes": [
         "Wird die Leistung nach der Nummer 0090 je Zahn mehr als einmal berechnet, ist dies in der Rechnung zu begründen.",
         "Bei den Leistungen nach den Nummern 0090 und 0100 sind die Kosten der verwendeten Anästhetika gesondert berechnungsfähig."
@@ -126,8 +176,13 @@
       "points": 400,
       "baseAmount": 22.5,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
       "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -157,8 +212,13 @@
       "points": 400,
       "baseAmount": 22.5,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
       "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "constraints": [
         {
           "type": "requires",
@@ -182,8 +242,13 @@
       "points": 750,
       "baseAmount": 42.18,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
       "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -199,8 +264,13 @@
       "points": 1300,
       "baseAmount": 73.11,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
       "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -216,8 +286,13 @@
       "points": 2200,
       "baseAmount": 123.73,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
       "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -233,7 +308,12 @@
       "points": 200,
       "baseAmount": 11.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "B",
+        "title": "Prophylaktische Leistungen"
+      }
     },
     "1010": {
       "ziffer": "1010",
@@ -241,7 +321,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "B",
+        "title": "Prophylaktische Leistungen"
+      }
     },
     "1020": {
       "ziffer": "1020",
@@ -249,7 +334,12 @@
       "points": 50,
       "baseAmount": 2.81,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "B",
+        "title": "Prophylaktische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 1000 ist innerhalb eines Jahres einmal, die Leistung nach der Nummer 1010 innerhalb eines Jahres dreimal berechnungsfähig.",
         "Die Leistungen umfassen die Erhebung von Mundhygiene-Indizes, das Anfärben der Zähne, die praktische Unterweisung mit individuellen Übungen und die Motivierung des Patienten.",
@@ -263,7 +353,12 @@
       "points": 90,
       "baseAmount": 5.06,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "B",
+        "title": "Prophylaktische Leistungen"
+      },
       "notes": [
         "1. Die Herstellung einer individuell angefertigten Schiene als Medikamententräger (z. B. Tiefziehschiene) ist gesondert berechnungsfähig.",
         "2. Mit der Gebühr sind die Kosten für das verwendete Medikament abgegolten.",
@@ -277,7 +372,12 @@
       "points": 28,
       "baseAmount": 1.57,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "B",
+        "title": "Prophylaktische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -305,7 +405,12 @@
       "points": 90,
       "baseAmount": 5.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2010": {
       "ziffer": "2010",
@@ -313,7 +418,12 @@
       "points": 50,
       "baseAmount": 2.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2020": {
       "ziffer": "2020",
@@ -321,7 +431,12 @@
       "points": 98,
       "baseAmount": 5.51,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2030": {
       "ziffer": "2030",
@@ -329,7 +444,12 @@
       "points": 65,
       "baseAmount": 3.66,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -345,7 +465,12 @@
       "points": 65,
       "baseAmount": 3.66,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2050": {
       "ziffer": "2050",
@@ -353,7 +478,12 @@
       "points": 213,
       "baseAmount": 11.98,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2060": {
       "ziffer": "2060",
@@ -361,7 +491,12 @@
       "points": 527,
       "baseAmount": 29.64,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2070": {
       "ziffer": "2070",
@@ -369,7 +504,12 @@
       "points": 242,
       "baseAmount": 13.61,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2080": {
       "ziffer": "2080",
@@ -377,7 +517,12 @@
       "points": 556,
       "baseAmount": 31.27,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2090": {
       "ziffer": "2090",
@@ -385,7 +530,12 @@
       "points": 297,
       "baseAmount": 16.7,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2100": {
       "ziffer": "2100",
@@ -393,7 +543,12 @@
       "points": 642,
       "baseAmount": 36.11,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2110": {
       "ziffer": "2110",
@@ -401,7 +556,12 @@
       "points": 319,
       "baseAmount": 17.94,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2120": {
       "ziffer": "2120",
@@ -409,7 +569,12 @@
       "points": 770,
       "baseAmount": 43.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2130": {
       "ziffer": "2130",
@@ -417,7 +582,12 @@
       "points": 104,
       "baseAmount": 5.85,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2150": {
       "ziffer": "2150",
@@ -425,7 +595,12 @@
       "points": 1141,
       "baseAmount": 64.17,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2160": {
       "ziffer": "2160",
@@ -433,7 +608,12 @@
       "points": 1356,
       "baseAmount": 76.26,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2170": {
       "ziffer": "2170",
@@ -441,7 +621,12 @@
       "points": 1709,
       "baseAmount": 96.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2180": {
       "ziffer": "2180",
@@ -449,7 +634,12 @@
       "points": 150,
       "baseAmount": 8.44,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -468,7 +658,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -487,7 +682,12 @@
       "points": 300,
       "baseAmount": 16.87,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -512,7 +712,12 @@
       "points": 130,
       "baseAmount": 7.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2200": {
       "ziffer": "2200",
@@ -520,7 +725,12 @@
       "points": 1322,
       "baseAmount": 74.35,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2210": {
       "ziffer": "2210",
@@ -528,7 +738,12 @@
       "points": 1678,
       "baseAmount": 94.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2220": {
       "ziffer": "2220",
@@ -536,7 +751,12 @@
       "points": 2067,
       "baseAmount": 116.25,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -564,7 +784,12 @@
       "points": 210,
       "baseAmount": 11.81,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "notes": [
         "Die Kosten für konfektionierte Kronen sind gesondert berechnungsfähig."
       ]
@@ -575,7 +800,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2270": {
       "ziffer": "2270",
@@ -583,7 +813,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "notes": [
         "Bei Verwendung eines konfektionierten Provisoriums sind die Kosten hierfür gesondert berechnungsfähig.",
         "Das Wiedereingliedern desselben Provisoriums, gegebenenfalls auch mehrmals, einschließlich Entfernung, ist mit der Gebühr nach der Nummer 2260 oder 2270 abgegolten."
@@ -595,7 +830,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2300": {
       "ziffer": "2300",
@@ -603,7 +843,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2310": {
       "ziffer": "2310",
@@ -611,7 +856,12 @@
       "points": 145,
       "baseAmount": 8.16,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2320": {
       "ziffer": "2320",
@@ -619,7 +869,12 @@
       "points": 350,
       "baseAmount": 19.68,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2330": {
       "ziffer": "2330",
@@ -627,7 +882,12 @@
       "points": 110,
       "baseAmount": 6.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2340": {
       "ziffer": "2340",
@@ -635,7 +895,12 @@
       "points": 200,
       "baseAmount": 11.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2350": {
       "ziffer": "2350",
@@ -643,7 +908,12 @@
       "points": 290,
       "baseAmount": 16.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2360": {
       "ziffer": "2360",
@@ -651,7 +921,12 @@
       "points": 110,
       "baseAmount": 6.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2380": {
       "ziffer": "2380",
@@ -659,7 +934,12 @@
       "points": 160,
       "baseAmount": 9,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2390": {
       "ziffer": "2390",
@@ -667,7 +947,12 @@
       "points": 65,
       "baseAmount": 3.66,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2400": {
       "ziffer": "2400",
@@ -675,7 +960,12 @@
       "points": 70,
       "baseAmount": 3.94,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -691,7 +981,12 @@
       "points": 392,
       "baseAmount": 22.05,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 2410 ist für denselben Wurzelkanal nur dann erneut berechnungsfähig, wenn der Wurzelkanal nach der ersten Aufbereitung definitiv versorgt worden ist.",
         "Wenn auf Grund anatomischer Besonderheiten eine Aufbereitung in einer Sitzung nicht erfolgen kann, ist die Leistung nach der Nummer 2410 für denselben Wurzelkanal erneut berechnungsfähig. Dies ist in der Rechnung zu begründen. Je Aufbereitung eines Wurzelkanals ist die Leistung in diesem Fall höchstens zweimal berechnungsfähig."
@@ -703,7 +998,12 @@
       "points": 70,
       "baseAmount": 3.94,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2430": {
       "ziffer": "2430",
@@ -711,7 +1011,12 @@
       "points": 204,
       "baseAmount": 11.47,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      }
     },
     "2440": {
       "ziffer": "2440",
@@ -719,7 +1024,12 @@
       "points": 258,
       "baseAmount": 14.51,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
       "notes": [
         "Leistungstext"
       ]
@@ -730,7 +1040,12 @@
       "points": 70,
       "baseAmount": 3.94,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3010": {
       "ziffer": "3010",
@@ -738,7 +1053,12 @@
       "points": 110,
       "baseAmount": 6.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3020": {
       "ziffer": "3020",
@@ -746,7 +1066,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3030": {
       "ziffer": "3030",
@@ -754,7 +1079,12 @@
       "points": 350,
       "baseAmount": 19.68,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3040": {
       "ziffer": "3040",
@@ -762,7 +1092,12 @@
       "points": 540,
       "baseAmount": 30.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3045": {
       "ziffer": "3045",
@@ -770,7 +1105,12 @@
       "points": 767,
       "baseAmount": 43.14,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3050": {
       "ziffer": "3050",
@@ -778,7 +1118,12 @@
       "points": 110,
       "baseAmount": 6.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3060": {
       "ziffer": "3060",
@@ -786,7 +1131,12 @@
       "points": 140,
       "baseAmount": 7.87,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3070": {
       "ziffer": "3070",
@@ -794,7 +1144,12 @@
       "points": 45,
       "baseAmount": 2.53,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3080": {
       "ziffer": "3080",
@@ -802,7 +1157,12 @@
       "points": 150,
       "baseAmount": 8.44,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3090": {
       "ziffer": "3090",
@@ -810,7 +1170,12 @@
       "points": 370,
       "baseAmount": 20.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3100": {
       "ziffer": "3100",
@@ -818,7 +1183,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 3100 ist für dasselbe Operationsgebiet nicht neben der Leistung nach der Nummer 3090 berechnungsfähig."
       ]
@@ -829,7 +1199,12 @@
       "points": 460,
       "baseAmount": 25.87,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3120": {
       "ziffer": "3120",
@@ -837,7 +1212,12 @@
       "points": 580,
       "baseAmount": 32.62,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      },
       "notes": [
         "Die Kosten für konfektionierte apikale Stiftsysteme sind gesondert berechnungsfähig."
       ]
@@ -848,7 +1228,12 @@
       "points": 280,
       "baseAmount": 15.75,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3140": {
       "ziffer": "3140",
@@ -856,7 +1241,12 @@
       "points": 550,
       "baseAmount": 30.93,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3160": {
       "ziffer": "3160",
@@ -864,7 +1254,12 @@
       "points": 650,
       "baseAmount": 36.56,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3190": {
       "ziffer": "3190",
@@ -872,7 +1267,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3200": {
       "ziffer": "3200",
@@ -880,7 +1280,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      },
       "notes": [
         "Das Auskratzen von Granulationsgewebe oder kleinen Zysten in Verbindung mit Extraktionen, Osteotomien oder Wurzelspitzenresektionen kann nicht nach den Nummern 3190 bis 3200 sowie 3310 berechnet werden."
       ]
@@ -891,7 +1296,12 @@
       "points": 140,
       "baseAmount": 7.87,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3230": {
       "ziffer": "3230",
@@ -899,7 +1309,12 @@
       "points": 440,
       "baseAmount": 24.75,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3240": {
       "ziffer": "3240",
@@ -907,7 +1322,12 @@
       "points": 550,
       "baseAmount": 30.93,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3250": {
       "ziffer": "3250",
@@ -915,7 +1335,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3260": {
       "ziffer": "3260",
@@ -923,7 +1348,12 @@
       "points": 550,
       "baseAmount": 30.93,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3270": {
       "ziffer": "3270",
@@ -931,7 +1361,12 @@
       "points": 590,
       "baseAmount": 33.18,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3280": {
       "ziffer": "3280",
@@ -939,7 +1374,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3290": {
       "ziffer": "3290",
@@ -947,7 +1387,12 @@
       "points": 55,
       "baseAmount": 3.09,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      }
     },
     "3300": {
       "ziffer": "3300",
@@ -955,7 +1400,12 @@
       "points": 65,
       "baseAmount": 3.66,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 3300 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
         "Neben der Leistung nach der Nummer 3300 sind die Leistungen nach den Nummern 3060 oder 3310 nicht berechnungsfähig."
@@ -967,7 +1417,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "D",
+        "title": "Chirurgische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 3310 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
         "Neben der Leistung nach der Nummer 3310 sind die Leistungen nach den Nummern 3060 oder 3300 nicht berechnungsfähig.",
@@ -980,7 +1435,12 @@
       "points": 160,
       "baseAmount": 9,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die Leistung nach der Nummer 4000 ist innerhalb eines Jahres höchstens zweimal berechnungsfähig."
       ]
@@ -991,7 +1451,12 @@
       "points": 80,
       "baseAmount": 4.5,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die Leistung nach der Nummer 4005 ist innerhalb eines Jahres höchstens zweimal berechnungsfähig."
       ]
@@ -1002,7 +1467,12 @@
       "points": 45,
       "baseAmount": 2.53,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4025": {
       "ziffer": "4025",
@@ -1010,7 +1480,12 @@
       "points": 15,
       "baseAmount": 0.84,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die verwendeten antibakteriellen Materialien sind gesondert berechnungsfähig."
       ]
@@ -1021,7 +1496,12 @@
       "points": 35,
       "baseAmount": 1.97,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4040": {
       "ziffer": "4040",
@@ -1029,7 +1509,12 @@
       "points": 45,
       "baseAmount": 2.53,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4050": {
       "ziffer": "4050",
@@ -1037,7 +1522,12 @@
       "points": 10,
       "baseAmount": 0.56,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die Leistungen nach den Nummern 4050 und 4055 sind für denselben Zahn innerhalb von 30 Tagen nur einmal berechnungsfähig."
       ]
@@ -1048,7 +1538,12 @@
       "points": 13,
       "baseAmount": 0.73,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die Leistungen nach den Nummern 4050 und 4055 sind für denselben Zahn innerhalb von 30 Tagen nur einmal berechnungsfähig."
       ]
@@ -1059,7 +1554,12 @@
       "points": 7,
       "baseAmount": 0.39,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -1078,7 +1578,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4075": {
       "ziffer": "4075",
@@ -1086,7 +1591,12 @@
       "points": 130,
       "baseAmount": 7.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4080": {
       "ziffer": "4080",
@@ -1094,7 +1604,12 @@
       "points": 45,
       "baseAmount": 2.53,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4090": {
       "ziffer": "4090",
@@ -1102,7 +1617,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4100": {
       "ziffer": "4100",
@@ -1110,7 +1630,12 @@
       "points": 275,
       "baseAmount": 15.47,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -1128,7 +1653,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Die Leistung nach der Nummer 4110 ist auch im Rahmen einer chirurgischen Behandlung berechnungsfähig.",
         "Die Kosten eines einmal verwendbaren Knochenkollektors oder -schabers sind gesondert berechnungsfähig."
@@ -1140,7 +1670,12 @@
       "points": 275,
       "baseAmount": 15.47,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4130": {
       "ziffer": "4130",
@@ -1148,7 +1683,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4133": {
       "ziffer": "4133",
@@ -1156,7 +1696,12 @@
       "points": 880,
       "baseAmount": 49.49,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4136": {
       "ziffer": "4136",
@@ -1164,7 +1709,12 @@
       "points": 200,
       "baseAmount": 11.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4138": {
       "ziffer": "4138",
@@ -1172,7 +1722,12 @@
       "points": 220,
       "baseAmount": 12.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      }
     },
     "4150": {
       "ziffer": "4150",
@@ -1180,7 +1735,12 @@
       "points": 7,
       "baseAmount": 0.39,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "E",
+        "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
+      },
       "notes": [
         "Leistungstext"
       ]
@@ -1191,7 +1751,12 @@
       "points": 1016,
       "baseAmount": 57.14,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5010": {
       "ziffer": "5010",
@@ -1199,7 +1764,12 @@
       "points": 1483,
       "baseAmount": 83.41,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Die Leistungen nach den Nummern 5010 und 5020 sind im Zusammenhang mit Implantaten nicht berechnungsfähig."
       ]
@@ -1210,7 +1780,12 @@
       "points": 1997,
       "baseAmount": 112.32,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Die Leistungen nach den Nummern 5010 und 5020 sind im Zusammenhang mit Implantaten nicht berechnungsfähig."
       ]
@@ -1221,7 +1796,12 @@
       "points": 1483,
       "baseAmount": 83.41,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5040": {
       "ziffer": "5040",
@@ -1229,7 +1809,12 @@
       "points": 2605,
       "baseAmount": 146.51,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 5040 ist neben der Leistung nach der Nummer 5080 nicht berechnungsfähig.",
         "Durch die Leistungen nach den Nummern 5000 bis 5040 sind folgende zahnärztliche Leistungen abgegolten: Präparieren des Zahnes oder Implantats, Relationsbestimmung, Abformungen, Einproben, provisorisches Eingliedern, festes Einfügen der Krone, der Einlagefüllung, der Teilkrone o. a., Nachkontrolle und Korrekturen",
@@ -1247,7 +1832,12 @@
       "points": 400,
       "baseAmount": 22.5,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5080": {
       "ziffer": "5080",
@@ -1255,7 +1845,12 @@
       "points": 230,
       "baseAmount": 12.94,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Matrize und Patrize gelten als ein Verbindungselement. Die Leistung nach der Nummer 5080 ist neben der Leistung nach der Nummer 5040 nicht berechnungsfähig."
       ]
@@ -1266,7 +1861,12 @@
       "points": 110,
       "baseAmount": 6.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5100": {
       "ziffer": "5100",
@@ -1274,7 +1874,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5110": {
       "ziffer": "5110",
@@ -1282,7 +1887,12 @@
       "points": 360,
       "baseAmount": 20.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5120": {
       "ziffer": "5120",
@@ -1290,7 +1900,12 @@
       "points": 240,
       "baseAmount": 13.5,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5140": {
       "ziffer": "5140",
@@ -1298,7 +1913,12 @@
       "points": 80,
       "baseAmount": 4.5,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Das Wiedereingliedern derselben provisorischen Brücke, gegebenenfalls auch mehrmals, einschließlich Entfernung ist mit den Gebühren nach den Nummern 5120 bis 5140 abgegolten."
       ]
@@ -1309,7 +1929,12 @@
       "points": 730,
       "baseAmount": 41.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5160": {
       "ziffer": "5160",
@@ -1317,7 +1942,12 @@
       "points": 360,
       "baseAmount": 20.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5170": {
       "ziffer": "5170",
@@ -1325,7 +1955,12 @@
       "points": 250,
       "baseAmount": 14.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5180": {
       "ziffer": "5180",
@@ -1333,7 +1968,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5190": {
       "ziffer": "5190",
@@ -1341,7 +1981,12 @@
       "points": 540,
       "baseAmount": 30.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5200": {
       "ziffer": "5200",
@@ -1349,7 +1994,12 @@
       "points": 700,
       "baseAmount": 39.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5210": {
       "ziffer": "5210",
@@ -1357,7 +2007,12 @@
       "points": 1400,
       "baseAmount": 78.74,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5220": {
       "ziffer": "5220",
@@ -1365,7 +2020,12 @@
       "points": 1850,
       "baseAmount": 104.05,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Eine Deckprothese setzt eine Basisgestaltung wie bei einer totalen Prothese voraus."
       ]
@@ -1376,7 +2036,12 @@
       "points": 2200,
       "baseAmount": 123.73,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Eine Deckprothese setzt eine Basisgestaltung wie bei einer totalen Prothese voraus.",
         "Durch die Leistungen nach den Nummern 5200 bis 5230 sind folgende Leistungen abgegolten:",
@@ -1390,7 +2055,12 @@
       "points": 140,
       "baseAmount": 7.87,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5260": {
       "ziffer": "5260",
@@ -1398,7 +2068,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5270": {
       "ziffer": "5270",
@@ -1406,7 +2081,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5280": {
       "ziffer": "5280",
@@ -1414,7 +2094,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5290": {
       "ziffer": "5290",
@@ -1422,7 +2107,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5300": {
       "ziffer": "5300",
@@ -1430,7 +2120,12 @@
       "points": 540,
       "baseAmount": 30.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5310": {
       "ziffer": "5310",
@@ -1438,7 +2133,12 @@
       "points": 730,
       "baseAmount": 41.06,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Im Zusammenhang mit Leistungen nach den Nummern 5270 bis 5310 dürfen Leistungen nach den Nummern 5250 und 5260 nur berechnet werden, wenn es sich um zeitlich getrennte Verrichtungen handelt.",
         "Leistungen nach den Nummern 5270 bis 5310 sind nur als Maßnahmen zur Wiederherstellung der Funktion einer abnehmbaren Prothese berechnungsfähig."
@@ -1450,7 +2150,12 @@
       "points": 2200,
       "baseAmount": 123.73,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5330": {
       "ziffer": "5330",
@@ -1458,7 +2163,12 @@
       "points": 2800,
       "baseAmount": 157.48,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      }
     },
     "5340": {
       "ziffer": "5340",
@@ -1466,7 +2176,12 @@
       "points": 7300,
       "baseAmount": 410.57,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
       "notes": [
         "Maßnahmen zur Weichteilstützung sind mit den Leistungen nach den Nummern 5200 bis 5340 abgegolten.",
         "Leistungstext"
@@ -1478,7 +2193,12 @@
       "points": 80,
       "baseAmount": 4.5,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "notes": [
         "Eine mehr als viermalige Berechnung der Leistung nach der Nummer 6000 im Verlauf einer kieferorthopädischen Behandlung ist in der Rechnung zu begründen."
       ]
@@ -1489,7 +2209,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6020": {
       "ziffer": "6020",
@@ -1497,7 +2222,12 @@
       "points": 360,
       "baseAmount": 20.25,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6030": {
       "ziffer": "6030",
@@ -1505,7 +2235,12 @@
       "points": 1350,
       "baseAmount": 75.93,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6040": {
       "ziffer": "6040",
@@ -1513,7 +2248,12 @@
       "points": 2100,
       "baseAmount": 118.11,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6050": {
       "ziffer": "6050",
@@ -1521,7 +2261,12 @@
       "points": 3600,
       "baseAmount": 202.47,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "notes": [
         "Bei Maßnahmen von mittlerem Umfang nach der Nummer 6040 müssen mindestens drei, bei Maßnahmen von hohem Umfang mindestens vier der Kriterien nach den Buchstaben a bis e erfüllt sein:",
         "a) Zahl der bewegten Zahngruppen: zwei und mehr Zahngruppen,",
@@ -1537,7 +2282,12 @@
       "points": 1800,
       "baseAmount": 101.24,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6070": {
       "ziffer": "6070",
@@ -1545,7 +2295,12 @@
       "points": 2600,
       "baseAmount": 146.23,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6080": {
       "ziffer": "6080",
@@ -1553,7 +2308,12 @@
       "points": 3600,
       "baseAmount": 202.47,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -1583,7 +2343,12 @@
       "points": 700,
       "baseAmount": 39.37,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6100": {
       "ziffer": "6100",
@@ -1591,7 +2356,12 @@
       "points": 165,
       "baseAmount": 9.28,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6110": {
       "ziffer": "6110",
@@ -1599,7 +2369,12 @@
       "points": 70,
       "baseAmount": 3.94,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6120": {
       "ziffer": "6120",
@@ -1607,7 +2382,12 @@
       "points": 230,
       "baseAmount": 12.94,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6130": {
       "ziffer": "6130",
@@ -1615,7 +2395,12 @@
       "points": 20,
       "baseAmount": 1.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6140": {
       "ziffer": "6140",
@@ -1623,7 +2408,12 @@
       "points": 210,
       "baseAmount": 11.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6150": {
       "ziffer": "6150",
@@ -1631,7 +2421,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6160": {
       "ziffer": "6160",
@@ -1639,7 +2434,12 @@
       "points": 370,
       "baseAmount": 20.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6170": {
       "ziffer": "6170",
@@ -1647,7 +2447,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "notes": [
         "Die Kosten für die eingegliederten Hilfsmittel nach den Nummern 6160 und 6170 sind gesondert berechnungsfähig."
       ]
@@ -1658,7 +2463,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6190": {
       "ziffer": "6190",
@@ -1666,7 +2476,12 @@
       "points": 140,
       "baseAmount": 7.87,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "notes": [
         "Neben der Leistung nach der Nummer 6190 ist die Leistung nach der Nummer 0010 in derselben Sitzung nicht berechnungsfähig."
       ]
@@ -1677,7 +2492,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6210": {
       "ziffer": "6210",
@@ -1685,7 +2505,12 @@
       "points": 90,
       "baseAmount": 5.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6220": {
       "ziffer": "6220",
@@ -1693,7 +2518,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6230": {
       "ziffer": "6230",
@@ -1701,7 +2531,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6240": {
       "ziffer": "6240",
@@ -1709,7 +2544,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6250": {
       "ziffer": "6250",
@@ -1717,7 +2557,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "kieferorthopaedie",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      }
     },
     "6260": {
       "ziffer": "6260",
@@ -1725,7 +2570,12 @@
       "points": 1100,
       "baseAmount": 61.87,
       "category": "default",
+      "benefitCategory": "kieferorthopaedie",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "G",
+        "title": "Kieferorthopädische Leistungen"
+      },
       "notes": [
         "Leistungstext"
       ]
@@ -1736,7 +2586,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7010": {
       "ziffer": "7010",
@@ -1744,7 +2599,12 @@
       "points": 800,
       "baseAmount": 44.99,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7020": {
       "ziffer": "7020",
@@ -1752,7 +2612,12 @@
       "points": 450,
       "baseAmount": 25.31,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7030": {
       "ziffer": "7030",
@@ -1760,7 +2625,12 @@
       "points": 370,
       "baseAmount": 20.81,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7040": {
       "ziffer": "7040",
@@ -1768,7 +2638,12 @@
       "points": 65,
       "baseAmount": 3.66,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7050": {
       "ziffer": "7050",
@@ -1776,7 +2651,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7060": {
       "ziffer": "7060",
@@ -1784,7 +2664,12 @@
       "points": 410,
       "baseAmount": 23.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7070": {
       "ziffer": "7070",
@@ -1792,7 +2677,12 @@
       "points": 90,
       "baseAmount": 5.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7080": {
       "ziffer": "7080",
@@ -1800,7 +2690,12 @@
       "points": 600,
       "baseAmount": 33.75,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      }
     },
     "7090": {
       "ziffer": "7090",
@@ -1808,7 +2703,12 @@
       "points": 270,
       "baseAmount": 15.19,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      },
       "notes": [
         "Die Berechnung der Leistungen nach den Nummern 7080 und 7090 setzt voraus, dass es sich bei dem festsitzenden laborgefertigten Provisorium um ein Langzeitprovisorium mit einer Tragezeit von mindestens drei Monaten handelt.",
         "Beträgt die Tragezeit des festsitzenden laborgefertigten Provisoriums unter drei Monaten, sind anstelle der Leistungen nach den Nummern 7080 und 7090 die Leistungen nach den Nummern 2260, 2270 oder 5120 und 5140 berechnungsfähig.Im Zusammenhang mit den Leistungen nach den Nummern 7080 oder 7090 sind die Leistungen nach den Nummern 2230, 2240, 5050 oder 5060 nicht berechnungsfähig."
@@ -1820,7 +2720,12 @@
       "points": 200,
       "baseAmount": 11.25,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "H",
+        "title": "Eingliederung von Aufbissbehelfen und Schienen"
+      },
       "notes": [
         "Die Wiedereingliederung desselben festsitzenden laborgefertigten Provisoriums nach den Nummern 7080 oder 7090, gegebenenfalls auch mehrmals, einschließlich Entfernung, ist mit den Gebühren nach den Nummern 7080 bis 7100 abgegolten.",
         "Leistungstext"
@@ -1832,7 +2737,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      },
       "notes": [
         "Die Leistung nach der Nummer 8000 umfasst auch folgende zahnärztliche Leistungen: prophylaktische, prothetische, parodontologische und okklusale Befunderhebung, funktionsdiagnostische Auswertung von Röntgenaufnahmen des Schädels und der Halswirbelsäule, klinische Reaktionstests (z. B. Resilienztest, Provokationstest)."
       ]
@@ -1843,7 +2753,12 @@
       "points": 180,
       "baseAmount": 10.12,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -1862,7 +2777,12 @@
       "points": 300,
       "baseAmount": 16.87,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8030": {
       "ziffer": "8030",
@@ -1870,7 +2790,12 @@
       "points": 550,
       "baseAmount": 30.93,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8035": {
       "ziffer": "8035",
@@ -1878,7 +2803,12 @@
       "points": 550,
       "baseAmount": 30.93,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -1897,7 +2827,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8060": {
       "ziffer": "8060",
@@ -1905,7 +2840,12 @@
       "points": 750,
       "baseAmount": 42.18,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8065": {
       "ziffer": "8065",
@@ -1913,7 +2853,12 @@
       "points": 850,
       "baseAmount": 47.81,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -1932,7 +2877,12 @@
       "points": 250,
       "baseAmount": 14.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8090": {
       "ziffer": "8090",
@@ -1940,7 +2890,12 @@
       "points": 250,
       "baseAmount": 14.06,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      }
     },
     "8100": {
       "ziffer": "8100",
@@ -1948,7 +2903,12 @@
       "points": 20,
       "baseAmount": 1.12,
       "category": "default",
+      "benefitCategory": "zahnbehandlung",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "I",
+        "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
+      },
       "notes": [
         "Leistungstext"
       ]
@@ -1959,7 +2919,12 @@
       "points": 884,
       "baseAmount": 49.72,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Bei Verwendung einer Röntgenmessschablone sind die Material- und Laborkosten gesondert berechnungsfähig."
       ]
@@ -1970,7 +2935,12 @@
       "points": 100,
       "baseAmount": 5.62,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Bei Verwendung einer Orientierungsschablone sind die Material- und Laborkosten gesondert berechnungsfähig."
       ]
@@ -1981,7 +2951,12 @@
       "points": 300,
       "baseAmount": 16.87,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Die verwendeten Fixierungselemente sowie die Material- und Laborkosten der Navigationsschablone sind gesondert berechnungsfähig."
       ]
@@ -1992,7 +2967,12 @@
       "points": 1545,
       "baseAmount": 86.89,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9020": {
       "ziffer": "9020",
@@ -2000,7 +2980,12 @@
       "points": 515,
       "baseAmount": 28.96,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9040": {
       "ziffer": "9040",
@@ -2008,7 +2993,12 @@
       "points": 626,
       "baseAmount": 35.21,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9050": {
       "ziffer": "9050",
@@ -2016,7 +3006,12 @@
       "points": 313,
       "baseAmount": 17.6,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -2040,7 +3035,12 @@
       "points": 313,
       "baseAmount": 17.6,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "constraints": [
         {
           "type": "maxFrequency",
@@ -2056,7 +3056,12 @@
       "points": 400,
       "baseAmount": 22.5,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Die Kosten eines einmal verwendbaren Knochenkollektors oder -schabers sind gesondert berechnungsfähig."
       ]
@@ -2067,7 +3072,12 @@
       "points": 2694,
       "baseAmount": 151.52,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "1. Die Leistung nach der Nummer 9100 ist für die Glättung des Alveolarfortsatzes im Bereich des Implantatbettes nicht berechnungsfähig.",
         "2. Neben der Leistung nach der Nummer 9100 sind die Leistungen nach der Nummer 9130 nicht berechnungsfähig.",
@@ -2081,7 +3091,12 @@
       "points": 1500,
       "baseAmount": 84.36,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "constraints": [
         {
           "type": "excludes",
@@ -2099,7 +3114,12 @@
       "points": 3000,
       "baseAmount": 168.73,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9130": {
       "ziffer": "9130",
@@ -2107,7 +3127,12 @@
       "points": 1540,
       "baseAmount": 86.61,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Neben der Leistung nach der Nummer 9130 ist die Leistung nach der Nummer 9100 nicht berechnungsfähig."
       ]
@@ -2118,7 +3143,12 @@
       "points": 650,
       "baseAmount": 36.56,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Bei Entnahme von einem oder mehreren Knochenblöcken ist das Doppelte der Gebühr nach der Nummer 9140 berechnungsfähig. Von einem Knochenblock im Sinne dieser Abrechnungsbestimmung ist auszugehen, wenn dieser bei der Implantation eigenständig fixiert werden muss."
       ]
@@ -2129,7 +3159,12 @@
       "points": 675,
       "baseAmount": 37.96,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9160": {
       "ziffer": "9160",
@@ -2137,7 +3172,12 @@
       "points": 330,
       "baseAmount": 18.56,
       "category": "default",
-      "maxMultiplier": 2.3
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      }
     },
     "9170": {
       "ziffer": "9170",
@@ -2145,7 +3185,12 @@
       "points": 500,
       "baseAmount": 28.12,
       "category": "default",
+      "benefitCategory": "zahnersatz",
       "maxMultiplier": 2.3,
+      "section": {
+        "code": "J",
+        "title": "Implantologische Leistungen"
+      },
       "notes": [
         "Die Entfernung eines Implantats ist mit der Gebühr für die Leistungen nach den Nummern 3000 und 3030 abgegolten.",
         "Leistungstext"

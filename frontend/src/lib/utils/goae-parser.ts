@@ -35,6 +35,8 @@
  * per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
+import type { BenefitCategory } from '@selbstbehalt/shared';
+
 import type {
   Constraint,
   FeeCategory,
@@ -92,6 +94,13 @@ export interface ParsedPosition {
   baseAmount: number | null;
   /** §5 multiplier category from the entry; null when unknown. */
   category: FeeCategory | null;
+  /**
+   * Tariff benefit area from the entry — the schedule-derivable default the
+   * Erstattungs-Engine groups by (§3.2 `included_benefits`). `null` when the
+   * Ziffer is unknown; for GOÄ the engine may still override ambulant→stationär
+   * from the invoice context. See {@link FeeEntry.benefitCategory}.
+   */
+  benefitCategory: BenefitCategory | null;
   /** Flagging threshold from the entry; null when unknown. */
   maxMultiplier: number | null;
   /** Whether the Ziffer was found in the table. */
@@ -390,6 +399,7 @@ export function lookupPosition(
       chargedAmount: raw.chargedAmount,
       baseAmount: null,
       category: null,
+      benefitCategory: null,
       maxMultiplier: null,
       known: false,
       isValid: false,
@@ -430,6 +440,7 @@ export function lookupPosition(
     chargedAmount: raw.chargedAmount,
     baseAmount: entry.baseAmount,
     category: entry.category,
+    benefitCategory: entry.benefitCategory ?? null,
     maxMultiplier: entry.maxMultiplier,
     known: true,
     isValid: flags.length === 0,

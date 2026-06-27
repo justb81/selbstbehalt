@@ -20,6 +20,8 @@
  * parser can validate a whole invoice, not just single lines.
  */
 
+import type { BenefitCategory } from '@selbstbehalt/shared';
+
 /** Which official fee schedule a table represents. */
 export type FeeScheduleId = 'GOÄ' | 'GOZ' | 'GOT';
 
@@ -84,9 +86,9 @@ export type ConstraintType = Constraint['type'];
 
 /** The section of the schedule an entry sits in (drives §5 category, audit). */
 export interface FeeSection {
-  /** Top-level part, e.g. GOÄ Teil "M" (Labor), GOZ has none. */
+  /** Top-level part, e.g. GOÄ Teil "M" (Labor); unset for GOZ/GOT. */
   part?: string;
-  /** Section/subsection label as printed, e.g. "B I", "L". */
+  /** Section/subsection label as printed, e.g. GOÄ "B I", GOZ part "F". */
   code?: string;
   /** Human title, e.g. "Laboratoriumsuntersuchungen". */
   title?: string;
@@ -106,6 +108,17 @@ export interface FeeEntry {
   baseAmount: number;
   /** §5 multiplier category → Steigerungsfaktor limits. */
   category: FeeCategory;
+  /**
+   * Tariff benefit area this number falls into — the bridge to a tariff's
+   * `included_benefits` (§3.2): the Erstattungs-Engine groups positions by it to
+   * pick the matching reimbursement block. Derived at build time from the
+   * schedule + Gebührenverzeichnis section (GOZ number ranges map to
+   * zahnbehandlung / zahnersatz / kieferorthopaedie; all GOÄ → ambulant; GOT →
+   * sonstiges). It is the *schedule-derivable default*; the ambulant↔stationär
+   * distinction and non-GOÄ/GOZ areas (heilmittel/hilfsmittel) depend on the
+   * invoice context and are resolved by the caller, not by the table.
+   */
+  benefitCategory?: BenefitCategory;
   /** Steigerungsfaktor threshold to flag against (Regelhöchstsatz for the
    *  category, or an entry-specific override where the law sets one). */
   maxMultiplier: number;

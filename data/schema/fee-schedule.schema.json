@@ -70,13 +70,34 @@
     "entry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ziffer", "description", "points", "baseAmount", "category", "maxMultiplier"],
+      "required": [
+        "ziffer",
+        "description",
+        "points",
+        "baseAmount",
+        "category",
+        "benefitCategory",
+        "maxMultiplier"
+      ],
       "properties": {
         "ziffer": { "$ref": "#/$defs/ziffer" },
         "description": { "type": "string", "minLength": 1 },
         "points": { "type": ["number", "null"], "minimum": 0 },
         "baseAmount": { "type": "number", "minimum": 0 },
         "category": { "enum": ["default", "technical", "lab", "inpatient"] },
+        "benefitCategory": {
+          "enum": [
+            "ambulant",
+            "stationaer",
+            "zahnbehandlung",
+            "zahnersatz",
+            "kieferorthopaedie",
+            "heilmittel",
+            "hilfsmittel",
+            "wahlleistung",
+            "sonstiges"
+          ]
+        },
         "maxMultiplier": { "type": "number", "exclusiveMinimum": 0 },
         "isSurcharge": { "type": "boolean" },
         "section": {

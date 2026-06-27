@@ -21,6 +21,17 @@ const FILES = ['goae.json', 'goz.json', 'got.json'].map((f) =>
   join(ROOT, 'frontend', 'src', 'lib', 'data', f),
 );
 const CATEGORIES = ['default', 'technical', 'lab', 'inpatient'];
+const BENEFIT_CATEGORIES = [
+  'ambulant',
+  'stationaer',
+  'zahnbehandlung',
+  'zahnersatz',
+  'kieferorthopaedie',
+  'heilmittel',
+  'hilfsmittel',
+  'wahlleistung',
+  'sonstiges',
+];
 const CONSTRAINT_TYPES = [
   'excludes',
   'requires',
@@ -80,6 +91,16 @@ function validate(path) {
     if (!e.description) err(`${where}: empty description`);
     if (!(e.baseAmount >= 0)) err(`${where}: baseAmount must be >= 0`);
     if (!CATEGORIES.includes(e.category)) err(`${where}: bad category ${e.category}`);
+    if (!BENEFIT_CATEGORIES.includes(e.benefitCategory))
+      err(`${where}: bad benefitCategory ${e.benefitCategory}`);
+    // benefitCategory must match the schedule's domain (catches a GOZ range regression).
+    const allowedBenefits = {
+      GOÄ: ['ambulant'],
+      GOZ: ['zahnbehandlung', 'zahnersatz', 'kieferorthopaedie'],
+      GOT: ['sonstiges'],
+    }[table.feeSchedule];
+    if (allowedBenefits && !allowedBenefits.includes(e.benefitCategory))
+      err(`${where}: benefitCategory ${e.benefitCategory} not valid for ${table.feeSchedule}`);
     if (!(e.maxMultiplier > 0)) err(`${where}: maxMultiplier must be > 0`);
 
     // §5 consistency: maxMultiplier == regelhoechstsatz (or hoechstsatz when there is no threshold).
