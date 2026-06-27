@@ -5,7 +5,7 @@ import { money, uuid } from '../common.js';
 
 /** A per-year premium-refund tracking row (§3.2 `bre_periods`). */
 export const brePeriodCreateSchema = z.object({
-  contract_id: uuid,
+  insured_person_id: uuid,
   year: z
     .number({ invalid_type_error: 'Jahr muss eine Zahl sein' })
     .int('Jahr muss eine Ganzzahl sein')

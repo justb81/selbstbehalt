@@ -10,6 +10,7 @@ export * from './common.js';
 export * from './api.js';
 export * from './schemas/person.js';
 export * from './schemas/contract.js';
+export * from './schemas/insured-person.js';
 export * from './schemas/invoice.js';
 export * from './schemas/invoice-position.js';
 export * from './schemas/submission.js';

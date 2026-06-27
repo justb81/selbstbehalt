@@ -50,7 +50,7 @@ export const yearStatsSchema = z.object({
 });
 export type YearStats = z.infer<typeof yearStatsSchema>;
 
-/** One year on a contract's premium-refund (BRE) progression (see #13). */
+/** One year on an insured person's premium-refund (BRE) progression (see #13). */
 export const breHistoryYearSchema = z.object({
   year: z.number().int(),
   /** Claim-free months recorded for that year (`bre_periods.streak_months`). */
@@ -59,15 +59,15 @@ export const breHistoryYearSchema = z.object({
   bre_amount: money,
   /**
    * Premium refund the streak projects to (shared BRE helper, #17). `null` only
-   * when the contract carries no `bre_structure` and no value was stored.
+   * when the insured person carries no `bre_structure` and no value was stored.
    */
   projected_bre: money.nullable(),
 });
 export type BREHistoryYear = z.infer<typeof breHistoryYearSchema>;
 
-/** Response of `GET /api/stats/bre/:contractId` (#13): the BRE ladder over time. */
+/** Response of `GET /api/stats/bre/:insuredPersonId` (#13): the BRE ladder over time. */
 export const breHistorySchema = z.object({
-  contract_id: uuid,
+  insured_person_id: uuid,
   years: z.array(breHistoryYearSchema),
 });
 export type BREHistory = z.infer<typeof breHistorySchema>;

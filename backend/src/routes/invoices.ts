@@ -21,7 +21,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
-import { contracts, invoicePositions, invoices, submissions } from '../db/schema.js';
+import { insuredPersons, invoicePositions, invoices, submissions } from '../db/schema.js';
 import {
   serializeInvoice,
   serializePosition,
@@ -40,7 +40,7 @@ const SUBMITTABLE_FROM: InvoiceStatus[] = ['neu', 'geprüft'];
 const isoDateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Datum muss JJJJ-MM-TT sein');
 
 const listQuerySchema = z.object({
-  contract_id: uuid.optional(),
+  insured_person_id: uuid.optional(),
   status: z.enum(invoiceStatusValues).optional(),
   from: isoDateOnly.optional(),
   to: isoDateOnly.optional(),
@@ -63,14 +63,16 @@ function invoiceWithPositions(db: Database, id: string): InvoiceWithPositions {
   return { ...serializeInvoice(invoice), positions: positions.map(serializePosition) };
 }
 
-function assertContractExists(db: Database, contractId: string): void {
-  const contract = db
-    .select({ id: contracts.id })
-    .from(contracts)
-    .where(eq(contracts.id, contractId))
+function assertInsuredPersonExists(db: Database, insuredPersonId: string): void {
+  const row = db
+    .select({ id: insuredPersons.id })
+    .from(insuredPersons)
+    .where(eq(insuredPersons.id, insuredPersonId))
     .get();
-  if (!contract) {
-    throw new HTTPException(400, { message: `Vertrag ${contractId} existiert nicht` });
+  if (!row) {
+    throw new HTTPException(400, {
+      message: `Versicherte Person ${insuredPersonId} existiert nicht`,
+    });
   }
 }
 
@@ -79,7 +81,7 @@ export function createInvoicesRoute(db: Database) {
     .get('/', (c) => {
       const f = parseQuery(c, listQuerySchema);
       const conditions: (SQL | undefined)[] = [
-        f.contract_id ? eq(invoices.contractId, f.contract_id) : undefined,
+        f.insured_person_id ? eq(invoices.insuredPersonId, f.insured_person_id) : undefined,
         f.status ? eq(invoices.status, f.status) : undefined,
         f.from ? gte(invoices.invoiceDate, f.from) : undefined,
         f.to ? lte(invoices.invoiceDate, f.to) : undefined,
@@ -96,7 +98,7 @@ export function createInvoicesRoute(db: Database) {
     })
     .post('/', async (c) => {
       const input = await parseJsonBody(c, invoiceCreatePayloadSchema);
-      assertContractExists(db, input.contract_id);
+      assertInsuredPersonExists(db, input.insured_person_id);
       const { positions, ...invoiceInput } = input;
 
       // Invoice + its positions are written in one transaction so a partial
@@ -119,7 +121,8 @@ export function createInvoicesRoute(db: Database) {
       if (!findInvoice(db, id))
         throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
       const input = await parseJsonBody(c, invoiceUpdateSchema);
-      if (input.contract_id !== undefined) assertContractExists(db, input.contract_id);
+      if (input.insured_person_id !== undefined)
+        assertInsuredPersonExists(db, input.insured_person_id);
 
       const changes = toInvoiceUpdate(input);
       if (Object.keys(changes).length > 0) {

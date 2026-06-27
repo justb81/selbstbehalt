@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import type { BREStructure } from '../schemas/contract.js';
+import type { BREStructure } from '../schemas/insured-person.js';
 import {
   getCurrentStreakMonths,
   getNextLevel,

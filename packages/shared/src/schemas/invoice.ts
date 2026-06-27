@@ -6,7 +6,7 @@ import { invoiceDecisionSchema, invoiceStatusSchema, providerTypeSchema } from '
 import { invoicePositionInputSchema, invoicePositionSchema } from './invoice-position.js';
 
 export const invoiceCreateSchema = z.object({
-  contract_id: uuid,
+  insured_person_id: uuid,
   invoice_date: isoDate,
   invoice_number: z.string().nullish(),
   provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),

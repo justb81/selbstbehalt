@@ -46,14 +46,18 @@ These come from §1.3 and §8 of the design doc and override convenience:
 Entity relationships (see `docs/design.md` §3 for full SQLite/Drizzle schemas):
 
 ```
-Person (1) ── (n) Vertrag (contract)
-Vertrag (1) ── (n) Rechnung (invoice)
+Person (1) ── (n) Vertrag (contract, as Versicherungsnehmer / policyholder)
+Vertrag (1) ── (n) VersichertePerson (insured person on the contract, own KVNR)
+Person (1) ── (n) VersichertePerson (a person may be insured on several contracts)
+VersichertePerson (1) ── (n) Rechnung (invoice)
 Rechnung (1) ── (n) Rechnungsposition (invoice line / GOÄ code)
 Rechnung (1) ── (1) Einreichung (submission, optional)
-Vertrag (1) ── (n) BRE-Periode (premium-refund period)
+VersichertePerson (1) ── (n) BRE-Periode (premium-refund period)
 ```
 
-Tables: `persons`, `contracts`, `invoices`, `invoice_positions`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
+A `contract` (Hauptvertrag) holds only insurer/contract number and its `policyholder_id`. Each insured person sits in `insured_persons` and carries its own `kvnr` (Krankenversichertennummer), `tariff_name`, `monthly_premium`, `self_retention`, `bre_structure`, and `included_benefits`. Invoices and BRE periods reference the **insured person**, not the contract.
+
+Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_positions`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
 
 ## Two domain-critical algorithms
 
@@ -82,7 +86,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 
 ## Backend REST surface (planned)
 
-`/api/contracts`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:contractId`, and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
+`/api/persons`, `/api/contracts`, `/api/contracts/:id/insured` + `/api/insured/:id`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:insuredPersonId`, and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
 
 ## Conventions
 

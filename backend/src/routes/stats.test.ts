@@ -10,11 +10,18 @@ import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { brePeriods, contracts, invoices, persons, submissions } from '../db/schema.js';
+import {
+  brePeriods,
+  contracts,
+  insuredPersons,
+  invoices,
+  persons,
+  submissions,
+} from '../db/schema.js';
 
 let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
-let contractId: string;
+let insuredPersonId: string;
 
 /** Three-tier ladder (12/24/36 months → 1/2/3 premiums) at a €200 premium. */
 const ladder = {
@@ -34,16 +41,19 @@ beforeEach(() => {
   const db = handle.db;
 
   const personId = db.insert(persons).values({ name: 'Erika Mustermann' }).returning().get().id;
-  contractId = db
+  const contractId = db
     .insert(contracts)
     .values({
-      personId,
+      policyholderId: personId,
       insurerName: 'DKV',
       type: 'vollversicherung',
       startDate: '2024-01-01',
-      monthlyPremium: 200,
-      breStructure: ladder,
     })
+    .returning()
+    .get().id;
+  insuredPersonId = db
+    .insert(insuredPersons)
+    .values({ contractId, personId, monthlyPremium: 200, breStructure: ladder })
     .returning()
     .get().id;
 
@@ -51,7 +61,7 @@ beforeEach(() => {
   const inv2025a = db
     .insert(invoices)
     .values({
-      contractId,
+      insuredPersonId,
       invoiceDate: '2025-03-01',
       providerName: 'Dr. A',
       totalAmount: 100,
@@ -63,7 +73,7 @@ beforeEach(() => {
     .get();
   db.insert(invoices)
     .values({
-      contractId,
+      insuredPersonId,
       invoiceDate: '2025-07-01',
       providerName: 'Dr. B',
       totalAmount: 200,
@@ -74,7 +84,7 @@ beforeEach(() => {
   const inv2026c = db
     .insert(invoices)
     .values({
-      contractId,
+      insuredPersonId,
       invoiceDate: '2026-02-01',
       providerName: 'Dr. C',
       totalAmount: 300,
@@ -86,7 +96,7 @@ beforeEach(() => {
     .get();
   db.insert(invoices)
     .values({
-      contractId,
+      insuredPersonId,
       invoiceDate: '2026-09-01',
       providerName: 'Dr. D',
       totalAmount: 120,
@@ -105,9 +115,9 @@ beforeEach(() => {
   // BRE ladder progression across three years.
   db.insert(brePeriods)
     .values([
-      { contractId, year: 2024, streakMonths: 0, breAmount: 0 },
-      { contractId, year: 2025, streakMonths: 12, breAmount: 200 },
-      { contractId, year: 2026, streakMonths: 24, breAmount: 400 },
+      { insuredPersonId, year: 2024, streakMonths: 0, breAmount: 0 },
+      { insuredPersonId, year: 2025, streakMonths: 12, breAmount: 200 },
+      { insuredPersonId, year: 2026, streakMonths: 24, breAmount: 400 },
     ])
     .run();
 });
@@ -164,12 +174,37 @@ describe('GET /api/stats/year/:year', () => {
   });
 });
 
-describe('GET /api/stats/bre/:contractId', () => {
+describe('GET /api/stats/bre/:insuredPersonId', () => {
+  /** Insert a contract + insured person and return the insured-person id. */
+  function makeInsured(
+    db: typeof handle.db,
+    name: string,
+    insurerName: string,
+    values: Record<string, unknown>,
+  ): string {
+    const personId = db.insert(persons).values({ name }).returning().get().id;
+    const contractId = db
+      .insert(contracts)
+      .values({
+        policyholderId: personId,
+        insurerName,
+        type: 'zusatztarif',
+        startDate: '2024-01-01',
+      })
+      .returning()
+      .get().id;
+    return db
+      .insert(insuredPersons)
+      .values({ contractId, personId, ...values })
+      .returning()
+      .get().id;
+  }
+
   it('returns the ladder progression with helper-computed projections', async () => {
-    const res = await app.request(`/api/stats/bre/${contractId}`);
+    const res = await app.request(`/api/stats/bre/${insuredPersonId}`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      contract_id: contractId,
+      insured_person_id: insuredPersonId,
       years: [
         // streak 0 still aims at the first level (1 × €200)
         { year: 2024, streak_months: 0, bre_amount: 0, projected_bre: 200 },
@@ -181,28 +216,17 @@ describe('GET /api/stats/bre/:contractId', () => {
     });
   });
 
-  it('falls back to the stored projection when the contract has no bre_structure', async () => {
+  it('falls back to the stored projection when the insured person has no bre_structure', async () => {
     const db = handle.db;
-    const personId = db.insert(persons).values({ name: 'Max' }).returning().get().id;
-    const bare = db
-      .insert(contracts)
-      .values({
-        personId,
-        insurerName: 'Allianz',
-        type: 'zusatztarif',
-        startDate: '2024-01-01',
-        monthlyPremium: 50,
-      })
-      .returning()
-      .get();
+    const bareId = makeInsured(db, 'Max', 'Allianz', { monthlyPremium: 50 });
     db.insert(brePeriods)
       .values([
-        { contractId: bare.id, year: 2025, streakMonths: 12, breAmount: 0, projectedBre: 99 },
-        { contractId: bare.id, year: 2026, streakMonths: 24, breAmount: 0 },
+        { insuredPersonId: bareId, year: 2025, streakMonths: 12, breAmount: 0, projectedBre: 99 },
+        { insuredPersonId: bareId, year: 2026, streakMonths: 24, breAmount: 0 },
       ])
       .run();
 
-    const res = await app.request(`/api/stats/bre/${bare.id}`);
+    const res = await app.request(`/api/stats/bre/${bareId}`);
     const body = await res.json();
     expect(body.years).toEqual([
       { year: 2025, streak_months: 12, bre_amount: 0, projected_bre: 99 },
@@ -210,26 +234,15 @@ describe('GET /api/stats/bre/:contractId', () => {
     ]);
   });
 
-  it('returns an empty history for a contract without BRE periods', async () => {
+  it('returns an empty history for an insured person without BRE periods', async () => {
     const db = handle.db;
-    const personId = db.insert(persons).values({ name: 'Lea' }).returning().get().id;
-    const fresh = db
-      .insert(contracts)
-      .values({
-        personId,
-        insurerName: 'Barmenia',
-        type: 'vollversicherung',
-        startDate: '2026-01-01',
-        monthlyPremium: 300,
-      })
-      .returning()
-      .get();
-    const res = await app.request(`/api/stats/bre/${fresh.id}`);
+    const freshId = makeInsured(db, 'Lea', 'Barmenia', { monthlyPremium: 300 });
+    const res = await app.request(`/api/stats/bre/${freshId}`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ contract_id: fresh.id, years: [] });
+    expect(await res.json()).toEqual({ insured_person_id: freshId, years: [] });
   });
 
-  it('returns 404 for an unknown contract', async () => {
+  it('returns 404 for an unknown insured person', async () => {
     const res = await app.request(`/api/stats/bre/${crypto.randomUUID()}`);
     expect(res.status).toBe(404);
   });

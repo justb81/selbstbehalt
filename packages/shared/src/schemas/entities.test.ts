@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import { personRoleValues, invoiceStatusValues, goaeCategoryValues } from '../enums.js';
+import { invoiceStatusValues, goaeCategoryValues } from '../enums.js';
 import { personCreateSchema, personUpdateSchema } from './person.js';
-import { contractCreateSchema, breStructureSchema } from './contract.js';
+import { contractCreateSchema } from './contract.js';
+import { insuredPersonCreateSchema, breStructureSchema } from './insured-person.js';
 import { invoiceCreateSchema, invoiceSchema } from './invoice.js';
 import { invoicePositionCreateSchema } from './invoice-position.js';
 import { submissionCreateSchema } from './submission.js';
@@ -13,7 +14,6 @@ const UUID = '3f9a8c2e-1d4b-4c6a-9e2f-7b1c0d5e6a7f';
 
 describe('enums', () => {
   it('expose the values from §3.2', () => {
-    expect(personRoleValues).toEqual(['primary', 'family_member']);
     expect(invoiceStatusValues).toContain('selbst_gezahlt');
     expect(goaeCategoryValues).toContain('GOÄ');
   });
@@ -25,8 +25,12 @@ describe('personCreateSchema', () => {
     expect(personCreateSchema.safeParse({ name: 'Erika Mustermann' }).success).toBe(true);
   });
 
-  it('rejects an unknown role', () => {
-    expect(personCreateSchema.safeParse({ name: 'X', role: 'boss' }).success).toBe(false);
+  it('rejects unknown fields gracefully (role is no longer part of a person)', () => {
+    // role was removed in favour of the policyholder/insured relations; Zod
+    // strips unknown keys, so the payload still validates on the known fields.
+    const result = personCreateSchema.safeParse({ name: 'X', role: 'primary' });
+    expect(result.success).toBe(true);
+    expect(result.success && 'role' in result.data).toBe(false);
   });
 
   it('partial update allows an empty object', () => {
@@ -36,29 +40,56 @@ describe('personCreateSchema', () => {
 
 describe('contractCreateSchema', () => {
   const base = {
-    person_id: UUID,
+    policyholder_id: UUID,
     insurer_name: 'DKV',
     type: 'vollversicherung' as const,
     start_date: '2024-01-01',
-    monthly_premium: 450,
   };
 
-  it('accepts a minimal valid contract', () => {
+  it('accepts a minimal valid contract (Hauptvertrag only)', () => {
     expect(contractCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('requires the Versicherungsnehmer (policyholder_id)', () => {
+    const withoutHolder = { ...base, policyholder_id: undefined };
+    expect(contractCreateSchema.safeParse(withoutHolder).success).toBe(false);
   });
 
   it('rejects an unknown contract type', () => {
     expect(contractCreateSchema.safeParse({ ...base, type: 'reise' }).success).toBe(false);
   });
+});
+
+describe('insuredPersonCreateSchema', () => {
+  const base = {
+    contract_id: UUID,
+    person_id: UUID,
+    kvnr: 'A123456789',
+    monthly_premium: 450,
+  };
+
+  it('accepts a minimal valid insured person', () => {
+    expect(insuredPersonCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('requires the contract and person it links', () => {
+    expect(insuredPersonCreateSchema.safeParse({ ...base, contract_id: undefined }).success).toBe(
+      false,
+    );
+    expect(insuredPersonCreateSchema.safeParse({ ...base, person_id: undefined }).success).toBe(
+      false,
+    );
+  });
 
   it('validates a nested bre_structure', () => {
-    const result = contractCreateSchema.safeParse({
+    const result = insuredPersonCreateSchema.safeParse({
       ...base,
       bre_structure: {
         type: 'staffel',
         levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
         current_streak_start: '2024-01-01',
       },
+      included_benefits: ['Ambulant', 'Zahn 80%'],
     });
     expect(result.success).toBe(true);
   });
@@ -79,7 +110,7 @@ describe('contractCreateSchema', () => {
 
 describe('invoiceCreateSchema', () => {
   const base = {
-    contract_id: UUID,
+    insured_person_id: UUID,
     invoice_date: '2026-06-01',
     provider_name: 'Dr. Müller',
     total_amount: 85,
@@ -147,16 +178,19 @@ describe('submissionCreateSchema', () => {
 describe('brePeriodCreateSchema', () => {
   it('accepts a valid period', () => {
     expect(
-      brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 2026, streak_months: 11 }).success,
+      brePeriodCreateSchema.safeParse({ insured_person_id: UUID, year: 2026, streak_months: 11 })
+        .success,
     ).toBe(true);
   });
 
   it('rejects an implausible year', () => {
-    expect(brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 1700 }).success).toBe(false);
+    expect(brePeriodCreateSchema.safeParse({ insured_person_id: UUID, year: 1700 }).success).toBe(
+      false,
+    );
   });
 
   it('rejects a non-integer year', () => {
-    expect(brePeriodCreateSchema.safeParse({ contract_id: UUID, year: 2026.5 }).success).toBe(
+    expect(brePeriodCreateSchema.safeParse({ insured_person_id: UUID, year: 2026.5 }).success).toBe(
       false,
     );
   });

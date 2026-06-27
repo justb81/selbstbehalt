@@ -50,7 +50,7 @@ export interface GCP_Input {
   erstattungsBetrag: number;
   /** Deductible (Selbstbehalt) still open this calendar year, in EUR. */
   verbleibenderSelbstbehalt: number;
-  /** The contract's BRE ladder (`contracts.bre_structure`). */
+  /** The insured person's BRE ladder (`insured_persons.bre_structure`). */
   breStructure: BREStructure;
   /** Monthly premium in EUR — the base of the projected refund. */
   monthlyPremium: number;

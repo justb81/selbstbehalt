@@ -30,6 +30,7 @@ import type { Database } from '../db/client.js';
 import {
   brePeriods,
   contracts,
+  insuredPersons,
   invoicePositions,
   invoices,
   persons,
@@ -47,9 +48,15 @@ const MAX_IMPORT_BYTES = 256 * 1024 * 1024; // 256 MiB
  * Drizzle-internal `__drizzle_migrations` table is deliberately excluded: the
  * live database keeps its own migration state, we only reload user data.
  */
-const APP_TABLES = [persons, contracts, invoices, invoicePositions, submissions, brePeriods].map(
-  getTableName,
-);
+const APP_TABLES = [
+  persons,
+  contracts,
+  insuredPersons,
+  invoices,
+  invoicePositions,
+  submissions,
+  brePeriods,
+].map(getTableName);
 
 interface BackupDeps {
   db: Database;

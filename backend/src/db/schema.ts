@@ -19,7 +19,6 @@ import type {
   IncludedBenefits,
   InvoiceDecision,
   InvoiceStatus,
-  PersonRole,
   ProviderType,
   SubmissionChannel,
 } from '@selbstbehalt/shared';
@@ -41,34 +40,52 @@ export const persons = sqliteTable('persons', {
   id: uuidPk(),
   name: text('name').notNull(),
   birthDate: text('birth_date'),
-  role: text('role').$type<PersonRole>(),
   createdAt: createdAt(),
 });
 
+// The Hauptvertrag: insurer, contract number and the Versicherungsnehmer
+// (policyholder). Tariff-specific cover lives per insured person below.
 export const contracts = sqliteTable('contracts', {
   id: uuidPk(),
-  personId: text('person_id')
+  policyholderId: text('policyholder_id')
     .notNull()
     .references(() => persons.id, { onDelete: 'cascade' }),
   insurerName: text('insurer_name').notNull(),
   contractNumber: text('contract_number'),
-  tariffName: text('tariff_name'),
   type: text('type').$type<ContractType>().notNull(),
   startDate: text('start_date').notNull(),
   endDate: text('end_date'),
+  notes: text('notes'),
+  createdAt: createdAt(),
+});
+
+// A versicherte Person on a contract — the join of persons × contracts that
+// carries the individual cover (own KVNR, tariff, premium, Selbstbehalt, BRE).
+export const insuredPersons = sqliteTable('insured_persons', {
+  id: uuidPk(),
+  contractId: text('contract_id')
+    .notNull()
+    .references(() => contracts.id, { onDelete: 'cascade' }),
+  personId: text('person_id')
+    .notNull()
+    .references(() => persons.id, { onDelete: 'cascade' }),
+  kvnr: text('kvnr'),
+  tariffName: text('tariff_name'),
   monthlyPremium: real('monthly_premium').notNull(),
   selfRetention: real('self_retention').notNull().default(0),
   breStructure: text('bre_structure', { mode: 'json' }).$type<BREStructure>(),
   includedBenefits: text('included_benefits', { mode: 'json' }).$type<IncludedBenefits>(),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
   notes: text('notes'),
   createdAt: createdAt(),
 });
 
 export const invoices = sqliteTable('invoices', {
   id: uuidPk(),
-  contractId: text('contract_id')
+  insuredPersonId: text('insured_person_id')
     .notNull()
-    .references(() => contracts.id, { onDelete: 'cascade' }),
+    .references(() => insuredPersons.id, { onDelete: 'cascade' }),
   invoiceDate: text('invoice_date').notNull(),
   invoiceNumber: text('invoice_number'),
   providerName: text('provider_name').notNull(),
@@ -114,9 +131,9 @@ export const submissions = sqliteTable('submissions', {
 
 export const brePeriods = sqliteTable('bre_periods', {
   id: uuidPk(),
-  contractId: text('contract_id')
+  insuredPersonId: text('insured_person_id')
     .notNull()
-    .references(() => contracts.id, { onDelete: 'cascade' }),
+    .references(() => insuredPersons.id, { onDelete: 'cascade' }),
   year: integer('year').notNull(),
   streakMonths: integer('streak_months').notNull().default(0),
   breAmount: real('bre_amount').notNull().default(0),
@@ -127,6 +144,7 @@ export const brePeriods = sqliteTable('bre_periods', {
 export const schema = {
   persons,
   contracts,
+  insuredPersons,
   invoices,
   invoicePositions,
   submissions,
