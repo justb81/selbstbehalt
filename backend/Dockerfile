@@ -51,7 +51,8 @@ RUN pnpm --filter @selbstbehalt/shared build \
 # Self-contained production bundle in /app (dist + prod node_modules, with the
 # built shared package copied in). inject-workspace-packages lets `deploy` copy
 # from the local store instead of re-resolving from the registry.
-RUN pnpm --filter @selbstbehalt/backend \
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm --filter @selbstbehalt/backend \
   --config.inject-workspace-packages=true \
   deploy --prod /app
 
