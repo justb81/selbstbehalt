@@ -8,7 +8,7 @@
 <section>
   <h1>{title}</h1>
   <p>
-    Der Scan-Flow (Kamera/Datei-Upload, client-seitige OCR) folgt mit #24–#26. Rechnungsbilder
-    verlassen das Gerät nie.
+    Bildaufnahme und client-seitige OCR (Kamera/Datei-Upload, Web-Worker) sind vorbereitet; der
+    geführte Scan-Flow folgt mit #26. Rechnungsbilder verlassen das Gerät nie.
   </p>
 </section>
