@@ -13,7 +13,7 @@
 # sets `context: .` accordingly.
 
 # ---- Stage 1: build (TypeScript → JS, native modules compiled) ----
-FROM node:22-bookworm-slim AS build
+FROM node:24-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -48,7 +48,7 @@ RUN pnpm --filter @selbstbehalt/backend \
   deploy --prod /app
 
 # ---- Stage 2: runtime (slim, non-root) ----
-FROM node:22-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
 # Defaults mirror docs/design.md §7.3; the DB path points at the mounted volume.
 ENV DATABASE_PATH=/app/db/pkv.sqlite

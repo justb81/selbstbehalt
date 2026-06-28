@@ -57,7 +57,7 @@ See [`docs/design.md`](docs/design.md) for the full data model, REST surface, OC
 
 ## Getting started (development)
 
-Prerequisites: **Node.js 22 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**. With [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), the pinned pnpm version is used automatically.
+Prerequisites: **Node.js 24 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**. With [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), the pinned pnpm version is used automatically.
 
 ```bash
 pnpm install        # install all workspace dependencies
