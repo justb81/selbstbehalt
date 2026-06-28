@@ -360,8 +360,12 @@ export function extractPositions(text: string): RawPosition[] {
 // Lookup + §5 per-position validation
 // ---------------------------------------------------------------------------
 
-/** Builds a normalised Ziffer → entry index for a table. */
-function buildIndex(table: FeeScheduleTable): Map<string, FeeEntry> {
+/**
+ * Builds a normalised Ziffer → entry index for a table. Build it once per table
+ * and thread it into {@link lookupPosition} / {@link validateInvoice}; rebuilding
+ * it per position turns the O(positions) lookup pass into O(positions × table-size).
+ */
+export function buildIndex(table: FeeScheduleTable): Map<string, FeeEntry> {
   const index = new Map<string, FeeEntry>();
   for (const entry of Object.values(table.entries)) {
     index.set(normalizeZiffer(entry.ziffer), entry);
@@ -374,11 +378,15 @@ function buildIndex(table: FeeScheduleTable): Map<string, FeeEntry> {
  * checks. The flagging threshold comes from the entry's `maxMultiplier` (or, as
  * a fallback, the category's `regelhoechstsatz`) — never hard-coded. Entries
  * with a `fixedFactor` constraint are checked against that fixed factor instead.
+ *
+ * `index` is required (build it once with {@link buildIndex} and reuse it across
+ * every position) so the per-position lookup pass stays O(positions) rather than
+ * rebuilding the whole-table index on each call.
  */
 export function lookupPosition(
   raw: RawPosition,
   table: FeeScheduleTable,
-  index: Map<string, FeeEntry> = buildIndex(table),
+  index: Map<string, FeeEntry>,
 ): ParsedPosition {
   const normalizedZiffer = normalizeZiffer(raw.ziffer);
   const entry = index.get(normalizedZiffer);
@@ -459,14 +467,18 @@ export function lookupPosition(
  * Frequency and amount limits are evaluated treating the supplied positions as
  * a single scope window (one session/day/case); cross-invoice windowing is out
  * of scope here.
+ *
+ * `index` defaults to a freshly built one, but callers that already built it
+ * (e.g. {@link parseInvoice}) should thread it in to avoid rebuilding the
+ * whole-table index a second time per invoice.
  */
 export function validateInvoice(
   positions: ParsedPosition[],
   table: FeeScheduleTable,
   context: ValidationContext = {},
+  index: Map<string, FeeEntry> = buildIndex(table),
 ): ConstraintViolation[] {
   const violations: ConstraintViolation[] = [];
-  const index = buildIndex(table);
 
   const indicesByZiffer = new Map<string, number[]>();
   positions.forEach((p, i) => {
@@ -667,7 +679,7 @@ export function parseInvoice(
   const fields = extractInvoiceFields(text);
   const index = buildIndex(table);
   const positions = extractPositions(text).map((raw) => lookupPosition(raw, table, index));
-  const violations = validateInvoice(positions, table, context);
+  const violations = validateInvoice(positions, table, context, index);
   const totalAmount = roundCents(positions.reduce((sum, p) => sum + p.chargedAmount, 0));
 
   return {
