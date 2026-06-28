@@ -6,6 +6,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+  better-sqlite3: true
 
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
