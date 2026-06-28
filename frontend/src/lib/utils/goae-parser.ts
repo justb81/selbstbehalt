@@ -440,7 +440,7 @@ export function lookupPosition(
     chargedAmount: raw.chargedAmount,
     baseAmount: entry.baseAmount,
     category: entry.category,
-    benefitCategory: entry.benefitCategory ?? null,
+    benefitCategory: entry.benefitCategory,
     maxMultiplier: entry.maxMultiplier,
     known: true,
     isValid: flags.length === 0,

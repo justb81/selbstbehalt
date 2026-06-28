@@ -129,6 +129,16 @@ describe('GET /api/invoices', () => {
     const byStatus = await (await app.request('/api/invoices?status=erstattet')).json();
     expect(byStatus).toHaveLength(0);
   });
+
+  it('treats LIKE wildcards in the search term literally', async () => {
+    await createInvoice({ ...baseInvoice(), provider_name: 'Dr. 50% Rabatt' });
+    await createInvoice({ ...baseInvoice(), provider_name: 'Dr. ohne Sonderzeichen' });
+
+    // A literal '%' must not behave as the match-anything wildcard.
+    const wildcard = await (await app.request(`/api/invoices?q=${encodeURIComponent('%')}`)).json();
+    expect(wildcard).toHaveLength(1);
+    expect(wildcard[0].provider_name).toBe('Dr. 50% Rabatt');
+  });
 });
 
 describe('GET /api/invoices/:id', () => {

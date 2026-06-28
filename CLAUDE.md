@@ -91,7 +91,7 @@ A line exceeding its limit is flagged (`is_valid = false`, with `flag_reason`). 
 Decides **einreichen (submit)** vs **selbst_zahlen (self-pay)**. Submitting is worthwhile when:
 
 ```
-R − S  >  NPV(ΔBRE) − Steuervorteil(R)
+R − S  >  NPV(ΔBRE) + Steuervorteil(R)
 ```
 
 where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible), `NPV(ΔBRE)` = present value of the premium-refund lost by breaking the leistungsfrei (claim-free) streak, discounted to today (default rate 3% p.a.), and `Steuervorteil` = tax saving from self-paying. See §5 of the design doc for the reference implementation and the breakdown fields the UI expects.

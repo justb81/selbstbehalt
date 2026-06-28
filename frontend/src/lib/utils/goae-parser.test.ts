@@ -46,6 +46,7 @@ function entry(ziffer: string, overrides: Partial<FeeEntry> = {}): FeeEntry {
     points: 100,
     baseAmount: 5.83,
     category: 'default',
+    benefitCategory: 'ambulant',
     maxMultiplier: 2.3,
     ...overrides,
   };

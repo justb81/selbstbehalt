@@ -29,7 +29,7 @@
  * (= `R`); the `byCategory` breakdown explains how each category got there.
  */
 
-import { addMonths, differenceInCalendarYears, isBefore } from 'date-fns';
+import { addMonths, differenceInYears, isBefore } from 'date-fns';
 import type {
   AnnualStaffelEntry,
   BenefitCategory,
@@ -222,8 +222,11 @@ function computeCategory(
 
   // 5. Aufbaujahres-Staffel.
   if (benefit.annual_staffel && benefit.annual_staffel.length) {
+    // Policy years run from the coverage anniversary, not the calendar year, so
+    // count completed anniversary years (differenceInYears), not year boundaries
+    // crossed (differenceInCalendarYears, which would jump on every 1 January).
     const policyYear =
-      differenceInCalendarYears(toDate(input.invoiceDate), toDate(input.coverageStart)) + 1;
+      differenceInYears(toDate(input.invoiceDate), toDate(input.coverageStart)) + 1;
     const cap = annualCap(benefit.annual_staffel, policyYear);
     if (cap !== null) {
       const prior = input.priorClaimsByCategory?.[category] ?? 0;
