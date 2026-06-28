@@ -50,6 +50,26 @@ const GOT_LIMITS = {
   inpatient: { regelhoechstsatz: null, hoechstsatz: 3.0 },
 };
 
+// Errata for typos in the official source XML. These cannot be fixed at the
+// source — scripts/fetch-sources.mjs re-downloads it monthly — so the
+// correction lives in the build. Each rule renumbers a single mis-printed row,
+// matched on its source Ziffer plus a description test so only that one row is
+// touched. The build warns if a rule stops matching (source fixed upstream →
+// remove it). See docs/data-format.md §7.
+const SOURCE_ERRATA = {
+  GOÄ: [
+    {
+      // The official XML prints "Lithium" as 4114, but 4114 is the
+      // Renin-Aldosteron-Suppressionstest; Lithium is 4214 (it follows
+      // 4210–4213 in Abschnitt M). Without this, the two 4114 rows collide and
+      // last-write-wins silently drops the real 4114.
+      from: '4114',
+      whenDescription: /^Lithium$/i,
+      to: '4214',
+    },
+  ],
+};
+
 const SCHEDULES = [
   {
     feeSchedule: 'GOÄ',
@@ -230,7 +250,15 @@ function makeBuilder(schedule) {
   const notesByZiffer = new Map(); // ziffer → string[]
   const groups = [];
   let lastZiffer = null;
-  const stats = { entries: 0, constraints: 0, groups: 0, notes: 0, unmatchedNotes: 0 };
+  const errata = SOURCE_ERRATA[schedule.feeSchedule] || [];
+  const stats = {
+    entries: 0,
+    constraints: 0,
+    groups: 0,
+    notes: 0,
+    unmatchedNotes: 0,
+    errataApplied: {},
+  };
 
   function addConstraint(ziffer, c) {
     if (!perZiffer.has(ziffer)) perZiffer.set(ziffer, []);
@@ -250,10 +278,18 @@ function makeBuilder(schedule) {
   }
 
   function addEntry({ ziffer, description, points, euro, section }) {
-    const z = normalizeZiffer(ziffer);
+    const desc = clean(description);
+    let z = normalizeZiffer(ziffer);
+    for (const e of errata) {
+      if (z === e.from && e.whenDescription.test(desc)) {
+        z = normalizeZiffer(e.to);
+        const key = `${e.from}→${e.to}`;
+        stats.errataApplied[key] = (stats.errataApplied[key] || 0) + 1;
+        break;
+      }
+    }
     const category = schedule.category(z);
     const lim = schedule.multiplierLimits[category];
-    const desc = clean(description);
     const entry = {
       ziffer: z,
       description: desc,
@@ -579,12 +615,33 @@ function build(schedule) {
   const outPath = join(OUT_DIR, schedule.out);
   writeFileSync(outPath, JSON.stringify(table, null, 2) + '\n', 'utf8');
   const s = result.stats;
-  const dups = s.duplicates
-    ? ` ⚠ ${s.duplicates.length} duplicate ziffern: ${[...new Set(s.duplicates)].join(',')}`
-    : '';
+
+  // Report applied source errata; warn if a rule matched nothing (the source
+  // was likely fixed upstream and the rule can be removed).
+  const errataMsgs = [];
+  for (const e of SOURCE_ERRATA[schedule.feeSchedule] || []) {
+    const key = `${e.from}→${e.to}`;
+    const n = s.errataApplied[key] || 0;
+    if (n === 0)
+      console.warn(
+        `  ⚠ ${schedule.feeSchedule}: erratum ${key} matched no row — source may be fixed upstream; remove it from SOURCE_ERRATA.`,
+      );
+    else errataMsgs.push(`${key}×${n}`);
+  }
+  const errata = errataMsgs.length ? ` [errata: ${errataMsgs.join(', ')}]` : '';
+
+  // Any remaining duplicate is unexpected: last-write-wins silently drops the
+  // earlier entry, so fail the build and force a human to add an erratum.
+  if (s.duplicates) {
+    console.error(
+      `  ✗ ${schedule.feeSchedule}: ${s.duplicates.length} unexpected duplicate ziffern: ${[...new Set(s.duplicates)].join(',')} — add a SOURCE_ERRATA rule.`,
+    );
+    process.exitCode = 1;
+  }
+
   console.log(
     `${schedule.feeSchedule}: ${Object.keys(result.entries).length} entries, ${s.constraints} constraints, ` +
-      `${s.groups} groups, ${s.notes} notes (dropped ${s.droppedRefs} dangling refs) → ${schedule.out}${dups}`,
+      `${s.groups} groups, ${s.notes} notes (dropped ${s.droppedRefs} dangling refs) → ${schedule.out}${errata}`,
   );
   return table;
 }

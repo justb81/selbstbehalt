@@ -264,9 +264,16 @@ Buchstaben-Zuschläge der GOÄ (A–K, Abschnitte A/B.II) sind **nicht** als
 Einträge enthalten (mehrdeutige, kollidierende Schlüssel); ihre numerischen
 Bezüge bleiben über die Zuschlags-Beschreibungen erhalten.
 
-**Bekannte Quell-Eigenheit:** GOÄ-Nr. **4114** kommt im amtlichen XML doppelt
-vor („Renin-Aldosteron-Suppressionstest" und „Lithium"); der Build meldet das
-als Warnung und behält deterministisch den zuletzt gelesenen Eintrag.
+**Bekannte Quell-Eigenheit (korrigiert):** Im amtlichen XML ist „Lithium"
+fälschlich als GOÄ-Nr. **4114** ausgezeichnet — 4114 ist aber der
+„Renin-Aldosteron-Suppressionstest"; Lithium ist Nr. **4214** (steht in
+Abschnitt M direkt hinter 4210–4213). Unkorrigiert kollidieren beide Zeilen und
+der echte 4114 ginge verloren. `scripts/build-fee-schedules.mjs` korrigiert das
+über die `SOURCE_ERRATA`-Tabelle (4114→4214, nur die „Lithium"-Zeile); der Build
+gibt die angewandte Korrektur aus und **bricht ab**, falls eine unerwartete
+doppelte Ziffer auftaucht (dann fehlt eine Errata-Regel). Da
+`scripts/fetch-sources.mjs` die Quelle monatlich neu lädt, kann die Korrektur
+nicht in der XML erfolgen, sondern muss im Build liegen.
 
 ### Automatische monatliche Auffrischung
 
