@@ -24,7 +24,7 @@ code, data, docs, or bug reports — are welcome.
 
 ## Development setup
 
-Prerequisites: **Node.js 22 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**.
+Prerequisites: **Node.js 24 LTS** (see [`.nvmrc`](.nvmrc)) and **pnpm 10+**.
 With [Corepack](https://nodejs.org/api/corepack.html) enabled
 (`corepack enable`), the pinned pnpm version is used automatically.
 
