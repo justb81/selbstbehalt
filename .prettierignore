@@ -23,6 +23,14 @@ backend/src/db/migrations/
 # Source data (legal-text XML exports) and runtime data
 data/
 
+# On-device OCR assets fetched/copied at build time (git-ignored vendor binaries
+# + their emscripten glue): PP-OCRv5 models and the ONNX Runtime WASM. Populated
+# by `pnpm ocr:models` / `scripts/copy-ort-wasm.mjs`, never hand-formatted.
+frontend/static/models/ocr/*.onnx
+frontend/static/models/ocr/dict.txt
+frontend/static/models/ort/*.mjs
+frontend/static/models/ort/*.wasm
+
 # Authored long-form German documentation (single source of truth — kept
 # hand-formatted, not reflowed by Prettier).
 docs/

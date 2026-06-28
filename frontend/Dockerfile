@@ -39,12 +39,24 @@ COPY frontend/package.json frontend/package.json
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..." --ignore-scripts
 
-# Sources for the frontend and its shared dependency.
+# Sources for the frontend and its shared dependency. `scripts/` holds the OCR
+# asset helpers (ocr:models, copy-ort-wasm) the frontend build invokes.
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY frontend frontend
+COPY scripts scripts
 
 RUN pnpm --filter @selbstbehalt/shared build
+
+# On-device OCR assets, baked into the served bundle so nothing is fetched from a
+# CDN at runtime (CLAUDE.md privacy constraint; docs/design.md §1.3/§8):
+#   - PP-OCRv5 models via `pnpm ocr:models` (needs curl + network at build time;
+#     see frontend/static/models/ocr/README.md),
+#   - the ONNX Runtime WASM, copied from node_modules by the frontend build.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+RUN pnpm ocr:models
 
 ARG PUBLIC_API_URL=
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
