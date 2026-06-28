@@ -149,7 +149,10 @@ docker compose up -d --build  # build images and start both services
   if you want to reach them directly.
 - SQLite and any saved invoice files live in bind-mounted volumes
   (`./data/db`, `./data/files`), so data survives `docker compose restart`,
-  `down`/`up`, and image rebuilds.
+  `down`/`up`, and image rebuilds. The backend entrypoint repairs the
+  ownership of these directories on startup (they are created root-owned by
+  the Docker daemon) and then runs the server as the unprivileged `node`
+  user, so no manual `chown` is needed.
 - Set **`PUBLIC_API_URL`** in `.env` to the backend URL your **browser** can
   reach (e.g. `https://api.example.com` behind the proxy) — it is baked into
   the frontend bundle at build time, so re-run `docker compose build frontend`
