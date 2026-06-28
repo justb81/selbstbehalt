@@ -151,10 +151,14 @@
       <input
         type="url"
         bind:value={apiUrl}
-        placeholder="http://localhost:8080"
+        placeholder="https://backend.example.com"
         autocomplete="url"
       />
-      <small>Leer lassen für Standardwert (<code>PUBLIC_API_URL</code> oder localhost).</small>
+      <small
+        >Leer lassen für gleiche Origin (Standard): <code>/api</code> wird vom Reverse Proxy ans Backend
+        weitergeleitet. Nur setzen, wenn das Backend auf einer eigenen Origin läuft (dann auch X-API-Key
+        nötig).</small
+      >
     </label>
 
     <label class="field">

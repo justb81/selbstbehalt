@@ -678,45 +678,55 @@ POST   /api/import/db                 → Datenbank-Wiederherstellung
 
 Da die App im Heimnetz betrieben wird, ist eine einfache Lösung ausreichend:
 
+- **Single-Origin (Standard):** Das Frontend-nginx leitet `/api` an das Backend
+  weiter, sodass der Browser nur mit einer Origin spricht. Dadurch deckt die
+  Basic Auth des Reverse Proxy die API mit ab und es entsteht **kein CORS**.
+  `PUBLIC_API_URL` bleibt leer (gleiche Origin). Empfohlen.
 - **Primär:** HTTP Basic Auth über nginx/Traefik Reverse Proxy (keine App-eigene Auth nötig)
-- **Optional:** Single Token-basierte Auth im Backend (`X-API-Key` Header) für externen Zugriff via Tailscale
+- **Optional:** Single Token-basierte Auth im Backend (`X-API-Key` Header) für
+  externen Zugriff via Tailscale. Nur nötig, wenn das Backend auf einer eigenen,
+  vom Browser direkt aufgerufenen Origin läuft (dann zusätzlich `CORS_ORIGINS`
+  setzen — die SPA sendet Basic Auth nicht cross-origin).
 - **HTTPS:** Pflicht – Let's Encrypt via Traefik oder selbstsigniertes Zertifikat im LAN
 
 ### 7.3 Docker Compose
 
-```yaml
-# docker-compose.yml
-version: '3.9'
+Maßgeblich ist die [`docker-compose.yml`](../docker-compose.yml) im Repo-Root;
+die folgende Skizze zeigt nur die wesentliche Struktur. Beide Services
+veröffentlichen **keine** Host-Ports — sie liegen hinter dem Reverse Proxy. Im
+Single-Origin-Standard (§7.2) routet der Reverse Proxy nur das Frontend; dessen
+nginx leitet `/api` intern an das Backend weiter, daher bleibt `PUBLIC_API_URL`
+leer.
 
+```yaml
+# docker-compose.yml (Auszug)
 services:
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    environment:
-      - PUBLIC_API_URL=http://backend:8080
-    ports:
-      - "3000:3000"
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Leer = gleiche Origin; nginx proxyt /api an das Backend.
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+    expose:
+      - '3000'
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     volumes:
       - ./data/db:/app/db        # SQLite-Datei persistent
       - ./data/files:/app/files  # Rechnungs-PDFs optional
     environment:
-      - DATABASE_PATH=/app/db/pkv.sqlite
-      - API_KEY=${PKV_API_KEY}
-    ports:
-      - "8080:8080"
+      DATABASE_PATH: /app/db/pkv.sqlite
+      API_KEY: ${PKV_API_KEY:-}   # leer → deaktiviert (Single-Origin)
+    expose:
+      - '8080'
     restart: unless-stopped
-
-volumes:
-  db_data:
-  files_data:
 ```
 
 ***

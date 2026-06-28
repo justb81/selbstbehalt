@@ -27,8 +27,12 @@ services:
     volumes:
       - ./data/db:/app/db # SQLite database — persisted across restarts
       - ./data/files:/app/files # optional saved invoice files
-    # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
-    # container over the shared network. `expose` documents the internal port.
+    # No host port mapping and no public route needed: in the default
+    # single-origin setup the frontend's nginx proxies /api to this service over
+    # the shared Compose network (reached as `backend:8080`). `expose` documents
+    # the internal port. Only give the backend its own reverse-proxy route if you
+    # deliberately run a separate backend origin (then set PUBLIC_API_URL + an
+    # X-API-Key).
     expose:
       - '8080'
     restart: unless-stopped
@@ -50,9 +54,13 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        # Baked into the static bundle at build time — must be reachable from
-        # the user's BROWSER (not the in-network service name). See .env.example.
-        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+        # Empty by default → "same origin": the frontend's nginx proxies /api to
+        # the backend, so the browser only talks to one origin (and the
+        # reverse-proxy Basic Auth covers the API too). Set this only to point the
+        # browser at a SEPARATE backend origin (not the in-network service name,
+        # which the browser can't resolve). See .env.example. Baked in at build
+        # time — `docker compose build frontend` after changing it.
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-}
     # No host port mapping: the reverse proxy (Coolify/Traefik) routes to the
     # container over the shared network. `expose` documents the internal port.
     expose:

@@ -30,8 +30,8 @@ describe('resolveApiBaseUrl', () => {
     expect(resolveApiBaseUrl({ ...defaults, apiUrl: '' })).toBe('http://backend:8080');
   });
 
-  it('falls back to the local-dev default when neither is set', () => {
-    expect(resolveApiBaseUrl({ ...defaults, apiUrl: '' })).toBe('http://localhost:8080');
+  it('falls back to same-origin (empty base) when neither a setting nor PUBLIC_API_URL is set', () => {
+    expect(resolveApiBaseUrl({ ...defaults, apiUrl: '' })).toBe('');
   });
 
   it('defaults to the live store value (not a fresh localStorage read) when called without args', () => {

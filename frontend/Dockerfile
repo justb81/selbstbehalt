@@ -9,12 +9,14 @@
 # depends on the @selbstbehalt/shared workspace package and the root
 # pnpm-lock.yaml. docker-compose.yml sets `context: .` accordingly.
 #
-# PUBLIC_API_URL is the backend base URL the browser talks to. On a static
-# adapter, SvelteKit's $env/dynamic/public is captured at build time, so it is a
-# build arg here — not a runtime container env. It must point at where the
-# *browser* reaches the backend (e.g. http://nas.local:8080), which is usually
-# different from the in-compose-network address. Users can also override it at
-# runtime via the in-app settings (persisted to localStorage).
+# PUBLIC_API_URL is the backend base URL the browser talks to. It defaults to
+# empty, meaning "same origin": the nginx stage below proxies /api to the backend
+# (see frontend/nginx.conf), so the browser only ever talks to this one origin
+# and the reverse-proxy Basic Auth covers the API too. Set it only to point the
+# browser at a *separate* backend origin (e.g. https://api.example.com). On a
+# static adapter, SvelteKit's $env/dynamic/public is captured at build time, so
+# it is a build arg here — not a runtime container env; changing it needs a
+# rebuild. Users can also override it at runtime via the in-app settings.
 
 # ---- Stage 1: build the static PWA bundle ----
 FROM node:24-bookworm-slim AS build
@@ -44,7 +46,7 @@ COPY frontend frontend
 
 RUN pnpm --filter @selbstbehalt/shared build
 
-ARG PUBLIC_API_URL=http://localhost:8080
+ARG PUBLIC_API_URL=
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN pnpm --filter @selbstbehalt/frontend build
 
