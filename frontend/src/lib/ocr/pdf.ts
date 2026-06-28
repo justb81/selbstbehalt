@@ -52,12 +52,15 @@ function defaultCreateCanvas(width: number, height: number): HTMLCanvasElement |
 
 async function defaultLoadPdfJs(): Promise<PdfJsLike> {
   const pdfjs = await import('pdfjs-dist');
-  // Wire the worker; new URL lets Vite emit the asset at the correct path.
+  // Wire the worker via Vite's `?url` import: it resolves the package path,
+  // emits the (self-contained, minified) worker as a build asset, and returns
+  // the correct served URL. A plain `new URL('pdfjs-dist/build/...', ...)` does
+  // NOT work here — Vite only rewrites `new URL` for relative specifiers, so a
+  // bare package path is left as a runtime URL pointing at a path that is never
+  // served, which makes pdf.js fail with "setting up fake worker failed".
   if (pdfjs.GlobalWorkerOptions) {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).href;
+    const { default: workerSrc } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   }
   return pdfjs as unknown as PdfJsLike;
 }
