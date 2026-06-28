@@ -7,8 +7,9 @@
  * `pdfjs-dist` is heavy and DOM/worker-bound, so it is loaded through an
  * injectable lazy import and kept behind this seam — the orchestration is
  * unit-testable with a fake renderer, and no PDF bytes ever leave the device
- * (docs/design.md §1.3, §8). Wiring the bundled pdf.js worker asset is finalised
- * with the scan flow (#26) / model-cache work (#27).
+ * (docs/design.md §1.3, §8). The default loader wires the bundled worker via
+ * `new URL` so Vite emits it as a build asset; callers may override it via
+ * `RenderPdfOptions.workerSrc`.
  */
 
 /** Minimal structural views of the pdf.js surface this module uses. */
@@ -29,7 +30,7 @@ export interface PdfJsLike {
 }
 
 export interface RenderPdfDeps {
-  /** Loads pdf.js; defaults to a lazy import of `pdfjs-dist`. */
+  /** Loads pdf.js; defaults to a lazy `import('pdfjs-dist')` with worker wired. */
   loadPdfJs?: () => Promise<PdfJsLike>;
   /** Creates a render target canvas of the given size. */
   createCanvas?: (width: number, height: number) => HTMLCanvasElement | OffscreenCanvas;
@@ -50,10 +51,15 @@ function defaultCreateCanvas(width: number, height: number): HTMLCanvasElement |
 }
 
 async function defaultLoadPdfJs(): Promise<PdfJsLike> {
-  // Runtime specifier + `@vite-ignore` keeps pdf.js out of the static build
-  // graph; it is resolved on-device when the dependency/worker asset is present.
-  const specifier = 'pdfjs-dist';
-  return (await import(/* @vite-ignore */ specifier)) as unknown as PdfJsLike;
+  const pdfjs = await import('pdfjs-dist');
+  // Wire the worker; new URL lets Vite emit the asset at the correct path.
+  if (pdfjs.GlobalWorkerOptions) {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).href;
+  }
+  return pdfjs as unknown as PdfJsLike;
 }
 
 /**

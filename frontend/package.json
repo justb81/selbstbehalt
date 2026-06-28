@@ -22,6 +22,7 @@
   "dependencies": {
     "@selbstbehalt/shared": "workspace:*",
     "date-fns": "4.1.0",
+    "pdfjs-dist": "^6.1.200",
     "zod": "^3.25.76"
   },
   "devDependencies": {
