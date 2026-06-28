@@ -4,6 +4,14 @@
 // the configured backend base URL, plus the building blocks for ad-hoc clients
 // (e.g. tests) and the error type.
 
+import { browser } from '$app/environment';
+
+import {
+  OfflineQueue,
+  createIndexedDbStore,
+  notifyEnqueued,
+  wrapWithOfflineQueue,
+} from '$lib/offline/index.js';
 import { resolveApiBaseUrl } from '$lib/stores/settings.js';
 
 import { createApiClient } from './client.js';
@@ -15,8 +23,26 @@ export function createApi(options: Parameters<typeof createApiClient>[0]) {
   return { request, ...createResources(request) };
 }
 
-/** The app-wide client; base URL resolves per request from settings/env. */
-export const api = createApi({ baseUrl: () => resolveApiBaseUrl() });
+/**
+ * App-wide offline write-queue. Its IndexedDB store is opened lazily on first
+ * use, so importing the client (in SSR/tests) never touches IndexedDB.
+ */
+export const offlineQueue = new OfflineQueue(createIndexedDbStore());
+
+/**
+ * The app-wide client; base URL resolves per request from settings/env. In the
+ * browser, writes that fail while offline are queued and replayed on reconnect
+ * (wired by `initOfflineSync`); a queued write rejects with `OfflineQueuedError`.
+ */
+function createAppApi() {
+  const { request } = createApiClient({ baseUrl: () => resolveApiBaseUrl() });
+  const wrapped = browser
+    ? wrapWithOfflineQueue(request, offlineQueue, { onEnqueue: () => notifyEnqueued() })
+    : request;
+  return { request: wrapped, ...createResources(wrapped) };
+}
+
+export const api = createAppApi();
 
 export { createApiClient } from './client.js';
 export { createResources, healthSchema } from './resources.js';
