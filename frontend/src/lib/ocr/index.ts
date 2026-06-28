@@ -27,3 +27,22 @@ export {
 export type { CaptureDeps, CaptureErrorCode } from './capture';
 export { renderPdfPage } from './pdf';
 export type { RenderPdfOptions, RenderPdfDeps } from './pdf';
+export {
+  recognizeInvoiceImage,
+  loadInvoiceImage,
+  setOcrRecognizer,
+  setImageLoader,
+  disposeScanOcr,
+  textToOcrResults,
+} from './scan-ocr';
+export type { OcrRecognizer, ImageLoader } from './scan-ocr';
+export {
+  buildScanResult,
+  ocrResultsToText,
+  meanConfidence,
+  defaultProviderType,
+  toReviewPositions,
+  toInvoicePayload,
+  DEFAULT_CONFIDENCE_THRESHOLD,
+} from './scan-flow';
+export type { ScanResult, ReviewState, ReviewPosition, InsuredOption } from './scan-flow';

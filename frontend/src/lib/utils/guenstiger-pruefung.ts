@@ -37,6 +37,7 @@
 import {
   getCurrentStreakMonths,
   getProjectedBRE,
+  roundCents,
   type BREStructure,
   type DateInput,
 } from '@selbstbehalt/shared';
@@ -95,11 +96,6 @@ export interface GCP_Result {
   };
   /** German plain-text rationale for the recommendation. */
   explanation: string;
-}
-
-/** Round a EUR value to whole cents, avoiding binary-float display noise. */
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 /** 0-based month index of a `DateInput`, parsed as a calendar date (TZ-safe for strings). */
@@ -183,7 +179,9 @@ export function calculateGCP(input: GCP_Input): GCP_Result {
   }
 
   // Net refund after the still-open deductible — never negative.
-  const refundAfterDeductible = round2(Math.max(0, erstattungsBetrag - verbleibenderSelbstbehalt));
+  const refundAfterDeductible = roundCents(
+    Math.max(0, erstattungsBetrag - verbleibenderSelbstbehalt),
+  );
 
   // BRE forfeited if submitting resets the streak to zero (worst case, design §5.2).
   const currentStreakMonths = getCurrentStreakMonths(breStructure, asOf);
@@ -191,20 +189,20 @@ export function calculateGCP(input: GCP_Input): GCP_Result {
 
   // Discount that loss to today: the refund is paid out at year-end.
   const monthsToYearEnd = monthsUntilYearEnd(asOf);
-  const lostBREValue_NPV = round2(
+  const lostBREValue_NPV = roundCents(
     projectedBRELoss / Math.pow(1 + discountRate / 12, monthsToYearEnd),
   );
 
   // Tax saved by self-paying (§33 EStG, caller-supplied). Only realised if NOT
   // submitted, so it is part of the cost of submitting — it lowers the benefit.
-  const taxSavingFromSelfPay = round2(taxSavingInput);
+  const taxSavingFromSelfPay = roundCents(taxSavingInput);
 
-  const netBenefitOfSubmitting = round2(
+  const netBenefitOfSubmitting = roundCents(
     refundAfterDeductible - lostBREValue_NPV - taxSavingFromSelfPay,
   );
   // Tie (netBenefit === 0) goes to self-pay: preserve the streak when in doubt.
   const recommendation = netBenefitOfSubmitting > 0 ? 'einreichen' : 'selbst_zahlen';
-  const costOfSubmitting = round2(lostBREValue_NPV + taxSavingFromSelfPay);
+  const costOfSubmitting = roundCents(lostBREValue_NPV + taxSavingFromSelfPay);
 
   return {
     recommendation,
