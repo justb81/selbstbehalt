@@ -17,7 +17,7 @@
     "test": "svelte-kit sync && vitest run",
     "test:watch": "svelte-kit sync && vitest",
     "test:coverage": "svelte-kit sync && vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "vite build && playwright test"
   },
   "dependencies": {
     "@selbstbehalt/shared": "workspace:*",
