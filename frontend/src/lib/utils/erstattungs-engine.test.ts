@@ -198,6 +198,22 @@ describe('computeErstattung — Aufbaujahres-Staffel (annual_staffel)', () => {
     expect(result.eligibleAmount).toBe(200);
   });
 
+  it('counts policy years from the coverage anniversary, not the calendar year', () => {
+    // Coverage starts mid-year: an invoice the following January is still inside
+    // the first policy year (only ~7 months of cover), so the year-1 cap applies.
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'zahnersatz', chargedAmount: 2000 }],
+        benefits: ZAHN_BENEFITS,
+        invoiceDate: '2025-01-15', // 7 months after coverage start → policy year 1
+        coverageStart: '2024-06-01',
+      }),
+    );
+    // Still policy year 1 → capped to 1000, not the year-2 limit of 2000.
+    expect(result.eligibleAmount).toBe(1000);
+    expect(result.byCategory[0]?.cappedBy).toBe('annual_staffel');
+  });
+
   it('is unlimited once the staffel reaches its open-ended year', () => {
     const result = computeErstattung(
       input({

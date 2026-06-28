@@ -157,7 +157,7 @@ tariff_name           TEXT                   -- z.B. "KomfortSelect"
 monthly_premium       REAL NOT NULL          -- Monatsbeitrag dieser Person in EUR
 self_retention        REAL DEFAULT 0         -- Selbstbehalt p.a. dieser Person in EUR
 bre_structure         TEXT                   -- JSON: Staffelung der Beitragsrückerstattung
-included_benefits     TEXT                   -- JSON: Array von enthaltenen Leistungen
+included_benefits     TEXT                   -- JSON: Objekt { benefits: [...] } der enthaltenen Leistungen
 start_date            DATE                   -- Beginn des Versicherungsschutzes dieser Person
 end_date              DATE                   -- NULL = laufend
 notes                 TEXT

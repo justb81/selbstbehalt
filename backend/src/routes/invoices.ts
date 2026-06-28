@@ -15,7 +15,7 @@ import {
   type InvoiceStatus,
   type InvoiceWithPositions,
 } from '@selbstbehalt/shared';
-import { and, eq, gte, like, lte, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -49,6 +49,17 @@ const listQuerySchema = z.object({
 
 function findInvoice(db: Database, id: string) {
   return db.select().from(invoices).where(eq(invoices.id, id)).get();
+}
+
+/**
+ * Case-sensitive substring match that treats the search term literally: the LIKE
+ * wildcards `%` and `_` (and the escape `\`) are escaped so a query like `%` or
+ * `_` matches those characters instead of "anything". `ESCAPE '\'` activates the
+ * escaping in SQLite.
+ */
+function likeContains(column: AnyColumn, term: string): SQL {
+  const escaped = term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return sql`${column} LIKE ${`%${escaped}%`} ESCAPE '\\'`;
 }
 
 /** Assemble the detail response: the invoice joined with its line items. */
@@ -86,7 +97,7 @@ export function createInvoicesRoute(db: Database) {
         f.from ? gte(invoices.invoiceDate, f.from) : undefined,
         f.to ? lte(invoices.invoiceDate, f.to) : undefined,
         f.q
-          ? or(like(invoices.providerName, `%${f.q}%`), like(invoices.invoiceNumber, `%${f.q}%`))
+          ? or(likeContains(invoices.providerName, f.q), likeContains(invoices.invoiceNumber, f.q))
           : undefined,
       ];
       const rows = db
@@ -177,8 +188,16 @@ export function createInvoicesRoute(db: Database) {
         });
       }
 
-      const existing = db.select().from(submissions).where(eq(submissions.invoiceId, id)).all();
-      const submission = existing.at(-1);
+      // An invoice may accumulate several submissions (e.g. after a resubmission);
+      // the refund applies to the most recent one. Order explicitly — SQLite row
+      // order without ORDER BY is undefined.
+      const submission = db
+        .select()
+        .from(submissions)
+        .where(eq(submissions.invoiceId, id))
+        .orderBy(desc(submissions.submittedAt))
+        .limit(1)
+        .get();
       if (!submission) {
         throw new HTTPException(409, { message: 'Keine Einreichung zu dieser Rechnung vorhanden' });
       }

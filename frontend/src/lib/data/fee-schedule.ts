@@ -116,9 +116,11 @@ export interface FeeEntry {
    * zahnbehandlung / zahnersatz / kieferorthopaedie; all GOÄ → ambulant; GOT →
    * sonstiges). It is the *schedule-derivable default*; the ambulant↔stationär
    * distinction and non-GOÄ/GOZ areas (heilmittel/hilfsmittel) depend on the
-   * invoice context and are resolved by the caller, not by the table.
+   * invoice context and are resolved by the caller, not by the table. Always
+   * emitted by the build (a schedule-derivable default), matching the
+   * `fee-schedule/v1` JSON schema where it is a required field.
    */
-  benefitCategory?: BenefitCategory;
+  benefitCategory: BenefitCategory;
   /** Steigerungsfaktor threshold to flag against (Regelhöchstsatz for the
    *  category, or an entry-specific override where the law sets one). */
   maxMultiplier: number;
