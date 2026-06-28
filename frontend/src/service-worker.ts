@@ -134,6 +134,9 @@ async function handleNavigation(request: Request): Promise<Response> {
 // Update flow: PwaUpdateToast posts SKIP_WAITING when the user accepts the
 // reload, letting the waiting worker take over.
 sw.addEventListener('message', (event) => {
+  // Only honour messages from our own origin (the app's own pages); ignore any
+  // cross-origin sender. ExtendableMessageEvent.origin is the sender's origin.
+  if (event.origin && event.origin !== sw.location.origin) return;
   if ((event.data as { type?: string } | null)?.type === 'SKIP_WAITING') {
     void sw.skipWaiting();
   }
