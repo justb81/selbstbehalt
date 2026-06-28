@@ -9,18 +9,22 @@ import { includedBenefitsSchema } from './included-benefits.js';
  * claim-free for `leistungsfrei_months` and you earn `bre_months` worth of
  * premium back, at `pct_of_premium` percent. Mirrors the JSON example in §3.2.
  */
-export const breLevelSchema = z.object({
-  leistungsfrei_months: z.number().int().nonnegative(),
-  bre_months: z.number().nonnegative(),
-  pct_of_premium: z.number().min(0).max(100),
-});
+export const breLevelSchema = z
+  .object({
+    leistungsfrei_months: z.number().int().nonnegative(),
+    bre_months: z.number().nonnegative(),
+    pct_of_premium: z.number().min(0).max(100),
+  })
+  .strict();
 
 /** Structured `insured_persons.bre_structure` (stored as JSON TEXT). */
-export const breStructureSchema = z.object({
-  type: z.literal('staffel'),
-  levels: z.array(breLevelSchema).min(1, 'Mindestens eine Staffel-Stufe erforderlich'),
-  current_streak_start: isoDate.nullish(),
-});
+export const breStructureSchema = z
+  .object({
+    type: z.literal('staffel'),
+    levels: z.array(breLevelSchema).min(1, 'Mindestens eine Staffel-Stufe erforderlich'),
+    current_streak_start: isoDate.nullish(),
+  })
+  .strict();
 
 /**
  * A versicherte Person on a contract — the link between `persons` and
@@ -28,20 +32,22 @@ export const breStructureSchema = z.object({
  * one has its own Krankenversichertennummer (`kvnr`), tariff, premium,
  * Selbstbehalt and BRE structure.
  */
-export const insuredPersonCreateSchema = z.object({
-  contract_id: uuid,
-  person_id: uuid,
-  kvnr: z.string().nullish(),
-  tariff_name: z.string().nullish(),
-  monthly_premium: money,
-  // NOT NULL DEFAULT 0 in the DB — omittable on create, the DB supplies 0.
-  self_retention: money.optional(),
-  bre_structure: breStructureSchema.nullish(),
-  included_benefits: includedBenefitsSchema.nullish(),
-  start_date: isoDate.nullish(),
-  end_date: isoDate.nullish(),
-  notes: z.string().nullish(),
-});
+export const insuredPersonCreateSchema = z
+  .object({
+    contract_id: uuid,
+    person_id: uuid,
+    kvnr: z.string().nullish(),
+    tariff_name: z.string().nullish(),
+    monthly_premium: money,
+    // NOT NULL DEFAULT 0 in the DB — omittable on create, the DB supplies 0.
+    self_retention: money.optional(),
+    bre_structure: breStructureSchema.nullish(),
+    included_benefits: includedBenefitsSchema.nullish(),
+    start_date: isoDate.nullish(),
+    end_date: isoDate.nullish(),
+    notes: z.string().nullish(),
+  })
+  .strict();
 
 export const insuredPersonSchema = insuredPersonCreateSchema.extend({
   ...auditFields,

@@ -25,12 +25,12 @@ describe('personCreateSchema', () => {
     expect(personCreateSchema.safeParse({ name: 'Erika Mustermann' }).success).toBe(true);
   });
 
-  it('rejects unknown fields gracefully (role is no longer part of a person)', () => {
-    // role was removed in favour of the policyholder/insured relations; Zod
-    // strips unknown keys, so the payload still validates on the known fields.
+  it('rejects unknown fields outright (role is no longer part of a person)', () => {
+    // role was removed in favour of the policyholder/insured relations. The
+    // schema is strict, so an unknown key is a hard rejection (not a silent
+    // drop) — a typo'd field name surfaces as a 400 instead of being lost.
     const result = personCreateSchema.safeParse({ name: 'X', role: 'primary' });
-    expect(result.success).toBe(true);
-    expect(result.success && 'role' in result.data).toBe(false);
+    expect(result.success).toBe(false);
   });
 
   it('partial update allows an empty object', () => {
@@ -79,6 +79,24 @@ describe('insuredPersonCreateSchema', () => {
     expect(insuredPersonCreateSchema.safeParse({ ...base, person_id: undefined }).success).toBe(
       false,
     );
+  });
+
+  it('rejects a typo’d field instead of silently dropping it', () => {
+    // `self_retension` is a typo for `self_retention`; strict mode flags it as a
+    // 400 rather than discarding the deductible and letting the DB default to 0.
+    expect(insuredPersonCreateSchema.safeParse({ ...base, self_retension: 600 }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects an unknown key inside a nested included_benefits block', () => {
+    const result = insuredPersonCreateSchema.safeParse({
+      ...base,
+      included_benefits: {
+        benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 100 }], typo: true }],
+      },
+    });
+    expect(result.success).toBe(false);
   });
 
   it('validates a nested bre_structure', () => {

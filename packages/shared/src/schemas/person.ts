@@ -10,10 +10,12 @@ import { auditFields, isoDate } from '../common.js';
  * and/or a versicherte Person follows from `contracts.policyholder_id` and
  * `insured_persons.person_id` (§3.2).
  */
-export const personCreateSchema = z.object({
-  name: z.string().min(1, 'Name darf nicht leer sein'),
-  birth_date: isoDate.nullish(),
-});
+export const personCreateSchema = z
+  .object({
+    name: z.string().min(1, 'Name darf nicht leer sein'),
+    birth_date: isoDate.nullish(),
+  })
+  .strict();
 
 /** A persisted person as returned by the API (§3.2 `persons`). */
 export const personSchema = personCreateSchema.extend(auditFields);

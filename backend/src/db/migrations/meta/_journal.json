@@ -8,6 +8,13 @@
       "when": 1782596901951,
       "tag": "0000_nervous_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782630400581,
+      "tag": "0001_dusty_namorita",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,7 @@ import {
   insuredPersonUpdateSchema,
   type InsuredPerson,
 } from '@selbstbehalt/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -50,6 +50,29 @@ function assertPersonExists(db: Database, personId: string): void {
   if (!row) throw new HTTPException(400, { message: `Person ${personId} existiert nicht` });
 }
 
+// A person may be insured only once per contract (unique index on
+// (contract_id, person_id), §3.2). Reject a colliding pair with a clear 409
+// instead of letting the DB raise an opaque constraint error. `exceptId` skips
+// the row being updated so a no-op PUT does not collide with itself.
+function assertNoDuplicateInsured(
+  db: Database,
+  contractId: string,
+  personId: string,
+  exceptId?: string,
+): void {
+  const where = and(
+    eq(insuredPersons.contractId, contractId),
+    eq(insuredPersons.personId, personId),
+    ...(exceptId ? [ne(insuredPersons.id, exceptId)] : []),
+  );
+  const row = db.select({ id: insuredPersons.id }).from(insuredPersons).where(where).get();
+  if (row) {
+    throw new HTTPException(409, {
+      message: `Person ${personId} ist auf Vertrag ${contractId} bereits versichert`,
+    });
+  }
+}
+
 export function createInsuredRoute(db: Database) {
   return new Hono()
     .get('/contracts/:contractId/insured', (c) => {
@@ -68,6 +91,7 @@ export function createInsuredRoute(db: Database) {
       assertContractExists(db, contractId);
       const input = await parseJsonBody(c, nestedCreateSchema);
       assertPersonExists(db, input.person_id);
+      assertNoDuplicateInsured(db, contractId, input.person_id);
       const row = db
         .insert(insuredPersons)
         .values(toInsuredPersonInsert({ ...input, contract_id: contractId }))
@@ -82,11 +106,21 @@ export function createInsuredRoute(db: Database) {
     })
     .put('/insured/:id', async (c) => {
       const id = c.req.param('id');
-      if (!findInsured(db, id))
-        throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
+      const existing = findInsured(db, id);
+      if (!existing) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
       const input = await parseJsonBody(c, insuredPersonUpdateSchema);
       if (input.contract_id !== undefined) assertContractExists(db, input.contract_id);
       if (input.person_id !== undefined) assertPersonExists(db, input.person_id);
+      // Re-pointing the row at another contract/person must not collide with an
+      // existing (contract, person) pair.
+      if (input.contract_id !== undefined || input.person_id !== undefined) {
+        assertNoDuplicateInsured(
+          db,
+          input.contract_id ?? existing.contractId,
+          input.person_id ?? existing.personId,
+          id,
+        );
+      }
 
       const changes = toInsuredPersonUpdate(input);
       const row =
@@ -97,7 +131,7 @@ export function createInsuredRoute(db: Database) {
               .where(eq(insuredPersons.id, id))
               .returning()
               .get()
-          : findInsured(db, id)!;
+          : existing;
       return c.json(serializeInsuredPerson(row));
     })
     .delete('/insured/:id', (c) => {

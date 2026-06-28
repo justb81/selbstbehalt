@@ -11,19 +11,21 @@ import { goaeCategorySchema } from '../enums.js';
  * inserted invoice, so a body-level `invoice_id` would be redundant — mirrors
  * the submission input/create split.
  */
-export const invoicePositionInputSchema = z.object({
-  goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
-  goae_category: goaeCategorySchema.nullish(),
-  description: z.string().nullish(),
-  multiplier: z
-    .number({ invalid_type_error: 'Steigerungsfaktor muss eine Zahl sein' })
-    .finite()
-    .positive('Steigerungsfaktor muss größer als 0 sein'),
-  base_amount: money,
-  charged_amount: money,
-  is_valid: z.boolean().nullish(),
-  flag_reason: z.string().nullish(),
-});
+export const invoicePositionInputSchema = z
+  .object({
+    goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
+    goae_category: goaeCategorySchema.nullish(),
+    description: z.string().nullish(),
+    multiplier: z
+      .number({ invalid_type_error: 'Steigerungsfaktor muss eine Zahl sein' })
+      .finite()
+      .positive('Steigerungsfaktor muss größer als 0 sein'),
+    base_amount: money,
+    charged_amount: money,
+    is_valid: z.boolean().nullish(),
+    flag_reason: z.string().nullish(),
+  })
+  .strict();
 
 /** Full create payload, including the `invoice_id` FK the server persists. */
 export const invoicePositionCreateSchema = invoicePositionInputSchema.extend({ invoice_id: uuid });

@@ -33,22 +33,26 @@ const age = z.number().int().nonnegative();
  * `up_to` (EUR), beyond which the next tier applies. `up_to: null` marks the
  * open-ended top tier ("everything above"). See §3.2 `tiers`.
  */
-export const benefitTierSchema = z.object({
-  up_to: money.nullable(),
-  pct,
-});
+export const benefitTierSchema = z
+  .object({
+    up_to: money.nullable(),
+    pct,
+  })
+  .strict();
 
 /**
  * A spending cap. `max_amount: null` = unlimited (used to declare an age-bound
  * carve-out without a money limit). `age_min`/`age_max` restrict the cap to a
  * patient age range (inclusive). See §3.2 `limits`.
  */
-export const benefitLimitSchema = z.object({
-  scope: benefitLimitScopeSchema,
-  max_amount: money.nullable(),
-  age_min: age.optional(),
-  age_max: age.optional(),
-});
+export const benefitLimitSchema = z
+  .object({
+    scope: benefitLimitScopeSchema,
+    max_amount: money.nullable(),
+    age_min: age.optional(),
+    age_max: age.optional(),
+  })
+  .strict();
 
 /**
  * One year of the build-up ladder (Zahnstaffel): the cumulative cap
@@ -56,10 +60,12 @@ export const benefitLimitSchema = z.object({
  * `cumulative_cap: null` means "unlimited from that policy year on". See §3.2
  * `annual_staffel`.
  */
-export const annualStaffelEntrySchema = z.object({
-  policy_year: z.number().int().positive(),
-  cumulative_cap: money.nullable(),
-});
+export const annualStaffelEntrySchema = z
+  .object({
+    policy_year: z.number().int().positive(),
+    cumulative_cap: money.nullable(),
+  })
+  .strict();
 
 /**
  * The reimbursement rules for a single benefit area. `tiers`, when present, must
@@ -75,6 +81,7 @@ export const includedBenefitSchema = z
     limits: z.array(benefitLimitSchema).optional(),
     annual_staffel: z.array(annualStaffelEntrySchema).optional(),
   })
+  .strict()
   .superRefine((benefit, ctx) => {
     if (benefit.tiers) {
       validateTiers(benefit.tiers, ctx);
@@ -139,9 +146,11 @@ function validateAnnualStaffel(
 }
 
 /** Structured `insured_persons.included_benefits` (stored as JSON TEXT). */
-export const includedBenefitsSchema = z.object({
-  benefits: z.array(includedBenefitSchema),
-});
+export const includedBenefitsSchema = z
+  .object({
+    benefits: z.array(includedBenefitSchema),
+  })
+  .strict();
 
 export type BenefitTier = z.infer<typeof benefitTierSchema>;
 export type BenefitLimit = z.infer<typeof benefitLimitSchema>;
