@@ -26,7 +26,8 @@
     "audit": "pnpm audit --prod --audit-level high",
     "licenses:check": "node scripts/check-licenses.mjs",
     "fees:build": "node scripts/build-fee-schedules.mjs",
-    "fees:validate": "node scripts/validate-fee-schedules.mjs"
+    "fees:validate": "node scripts/validate-fee-schedules.mjs",
+    "ocr:models": "node scripts/fetch-ocr-models.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.1.0",

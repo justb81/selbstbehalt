@@ -1,47 +1,68 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * PaddleOCR engine adapter (docs/design.md §4.2, issue #24).
+ * PaddleOCR engine adapter (docs/design.md §4.2, issues #24/#27).
  *
- * Adapts the `@paddle-js-models/ocr` (PP-OCRv5) binding to the {@link OcrEngine}
- * interface the worker drives. The package is a DOM-bound, model-downloading
- * dependency, so it is pulled in via a **lazy dynamic import** (the module
- * loader is injectable for tests) and kept entirely behind this seam. Two pure,
- * fully-tested helpers — {@link mapPaddleResult} and the `ImageData` → source
- * conversion — carry the real adapter logic.
+ * Adapts the `ppu-paddle-ocr` (PP-OCRv5 on ONNX Runtime) binding to the
+ * {@link OcrEngine} interface the worker drives. We use the package's **web**
+ * entry (`ppu-paddle-ocr/web`), which runs in a Web Worker, accepts an
+ * {@link ImageData} frame directly and selects WebGPU with an automatic WASM
+ * fallback. The binding is heavy (ONNX Runtime + WASM/opencv) and resolves its
+ * own assets, so it is pulled in via a **lazy dynamic import** (the loader is
+ * injectable for tests) and kept entirely behind this seam. One pure,
+ * fully-tested helper — {@link mapPaddleResult} — carries the result mapping.
  *
- * **Privacy:** the model is loaded from on-device/bundled URLs (never a remote
- * CDN) and recognition runs on the local {@link ImageData}; no image ever
- * leaves the device (docs/design.md §1.3, §8; model caching lands in #27).
+ * **Privacy:** the binding is always pointed at on-device, same-origin model
+ * URLs ({@link OcrModelUrls}) — never the package's built-in CDN defaults — and
+ * recognition runs on the local {@link ImageData}; no image or model byte ever
+ * leaves the device (docs/design.md §1.3, §8; model hosting + caching is #27).
  */
 import type { OcrBackend, OcrEngine, OcrEngineConfig, OcrResult } from './types';
 
-/** The slice of the `@paddle-js-models/ocr` module surface this adapter uses. */
-export interface PaddleOcrModule {
-  /** Loads the detection + recognition models from the given (local) URLs. */
-  init(detectionModel?: string, recognitionModel?: string): Promise<void>;
-  /** Recognises an image into per-line text and quadrilateral box points. */
-  recognize(
-    image: unknown,
-    options?: unknown,
-    detConfig?: unknown,
-  ): Promise<{ text: string[]; points: unknown }>;
+/** One recognised line as returned by `ppu-paddle-ocr`'s `recognize()`. */
+export interface PaddleOcrLine {
+  text: string;
+  /** Quadrilateral corner points `[x, y]` in source-image pixels. */
+  box: Array<[number, number]>;
+  /** Recogniser confidence in `[0, 1]`. */
+  score: number;
 }
 
-/** Raw recognition payload as returned by the PaddleOCR binding. */
+/** Recognition payload returned by `PaddleOcrService.recognize()`. */
 export interface PaddleRecognizeResult {
-  text: string[];
-  points: unknown;
+  /** The full recognised text (lines joined); unused — we map per line. */
+  text: string;
+  lines: PaddleOcrLine[];
+}
+
+/** Construction options for `ppu-paddle-ocr`'s `PaddleOcrService` (the slice we set). */
+export interface PaddleOcrServiceOptions {
+  /** Local URLs/buffers of the detection + recognition models and dictionary. */
+  model: { detection: string; recognition: string; charactersDictionary: string };
+  /** ONNX Runtime session config; `executionProviders` picks WebGPU vs WASM. */
+  session: { executionProviders: string[]; graphOptimizationLevel: 'all' };
+  /** Image pre-processing engine; `canvas-native` avoids the DOM-bound opencv path. */
+  processing: { engine: 'canvas-native' };
+}
+
+/** The `PaddleOcrService` instance surface this adapter drives. */
+export interface PaddleOcrServiceLike {
+  initialize(): Promise<void>;
+  recognize(image: ImageData): Promise<PaddleRecognizeResult>;
+  destroy(): Promise<void> | void;
+}
+
+/** The slice of the `ppu-paddle-ocr/web` module surface this adapter uses. */
+export interface PaddleOcrModule {
+  PaddleOcrService: new (options: PaddleOcrServiceOptions) => PaddleOcrServiceLike;
 }
 
 /** Injection points that make the adapter testable without the real package. */
 export interface CreatePaddleOcrEngineDeps {
-  /** Loads the OCR module; defaults to a lazy import of `@paddle-js-models/ocr`. */
+  /** Loads the OCR module; defaults to a lazy import of `ppu-paddle-ocr/web`. */
   loadModule?: () => Promise<PaddleOcrModule>;
-  /** Converts an {@link ImageData} frame into a source the binding accepts. */
-  toImageSource?: (image: ImageData) => unknown;
 }
 
-/** Coerces PaddleOCR's loosely-typed `points` into our quad-point arrays. */
+/** Coerces a loosely-typed box into our quad-point arrays. */
 function toBoxPoints(raw: unknown): Array<[number, number]> {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -49,47 +70,46 @@ function toBoxPoints(raw: unknown): Array<[number, number]> {
     .map((pt) => [Number(pt[0]), Number(pt[1])] as [number, number]);
 }
 
+/** Clamps a recogniser score into the `[0, 1]` confidence range. */
+function clampConfidence(score: unknown): number {
+  const n = Number(score);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
 /**
- * Maps PaddleOCR's `{ text[], points }` payload onto our `OcrResult[]`.
- *
- * The PP-OCRv5 binding returns no per-line score, so confidence defaults to `1`;
- * lines are paired with their box by index, and a missing box yields an empty
- * bbox rather than dropping the line.
+ * Maps `ppu-paddle-ocr`'s `{ text, lines }` payload onto our `OcrResult[]`,
+ * carrying the real per-line `score` through as confidence and a malformed or
+ * missing box through as an empty bbox rather than dropping the line.
  */
 export function mapPaddleResult(raw: PaddleRecognizeResult): OcrResult[] {
-  const boxes = Array.isArray(raw.points) ? (raw.points as unknown[]) : [];
-  return raw.text.map((text, i) => ({
-    text,
-    bbox: { points: toBoxPoints(boxes[i]) },
-    confidence: 1,
+  const lines = Array.isArray(raw.lines) ? raw.lines : [];
+  return lines.map((line) => ({
+    text: line.text,
+    bbox: { points: toBoxPoints(line.box) },
+    confidence: clampConfidence(line.score),
   }));
 }
 
-/** Default `ImageData` → image-source conversion using an `OffscreenCanvas`. */
-function defaultToImageSource(image: ImageData): unknown {
-  if (typeof OffscreenCanvas === 'undefined') {
-    throw new Error('OffscreenCanvas is unavailable; cannot prepare image for OCR.');
-  }
-  const canvas = new OffscreenCanvas(image.width, image.height);
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Could not acquire a 2D context for OCR input.');
-  context.putImageData(image, 0, 0);
-  return canvas;
+/** Maps our backend choice onto an ONNX Runtime execution provider. */
+function executionProviderFor(backend: OcrBackend): string {
+  return backend === 'webgpu' ? 'webgpu' : 'wasm';
 }
 
 /** Default lazy loader for the real package (kept out of the static graph). */
 async function defaultLoadModule(): Promise<PaddleOcrModule> {
-  // A runtime specifier + `@vite-ignore` keeps this DOM-bound, model-downloading
-  // dependency out of the build graph; it is only resolved on a real device once
-  // the local models are in place (#27).
-  const specifier = '@paddle-js-models/ocr';
+  // `@vite-ignore` keeps this heavy ONNX-Runtime/WASM binding out of the build
+  // graph; it is resolved only on a real device, where the bundler is wired to
+  // serve the package's WASM assets on-device and the local models are in place
+  // (#27). Loading it eagerly would pull tens of MB of WASM into every build.
+  const specifier = 'ppu-paddle-ocr/web';
   return (await import(/* @vite-ignore */ specifier)) as unknown as PaddleOcrModule;
 }
 
 /**
  * Builds a PaddleOCR-backed {@link OcrEngine} for the given backend. The
- * `@paddle-js-models/ocr` binding selects its own compute backend internally;
- * `backend` is recorded so the worker can report which path was chosen.
+ * resolved {@link OcrBackend} is forwarded to ONNX Runtime as its execution
+ * provider (WebGPU, else WASM) and recorded so the worker can report the path.
  */
 export function createPaddleOcrEngine(
   backend: OcrBackend,
@@ -97,31 +117,44 @@ export function createPaddleOcrEngine(
   deps: CreatePaddleOcrEngineDeps = {},
 ): OcrEngine {
   const loadModule = deps.loadModule ?? defaultLoadModule;
-  const toImageSource = deps.toImageSource ?? defaultToImageSource;
-  let module: PaddleOcrModule | null = null;
+  let service: PaddleOcrServiceLike | null = null;
 
   return {
     backend,
     async init(onProgress) {
       onProgress?.({ phase: 'init', ratio: null, message: 'OCR-Modell wird geladen …' });
       const mod = await loadModule();
-      await mod.init(config.modelUrls?.detection, config.modelUrls?.recognition);
-      module = mod;
+      const created = new mod.PaddleOcrService({
+        model: {
+          detection: config.modelUrls.detection,
+          recognition: config.modelUrls.recognition,
+          charactersDictionary: config.modelUrls.dictionary,
+        },
+        session: {
+          executionProviders: [executionProviderFor(backend)],
+          graphOptimizationLevel: 'all',
+        },
+        processing: { engine: 'canvas-native' },
+      });
+      await created.initialize();
+      service = created;
       onProgress?.({ phase: 'init', ratio: 1, message: 'OCR bereit.' });
     },
     async recognize(image, onProgress) {
-      if (!module) throw new Error('PaddleOCR engine used before init().');
+      if (!service) throw new Error('PaddleOCR engine used before init().');
       onProgress?.({ phase: 'recognize', ratio: null, message: 'Text wird erkannt …' });
-      const source = toImageSource(image);
-      const raw = await module.recognize(source);
-      const results = mapPaddleResult({ text: raw.text, points: raw.points });
+      const raw = await service.recognize(image);
+      const results = mapPaddleResult(raw);
       onProgress?.({ phase: 'recognize', ratio: 1 });
       return results;
     },
-    dispose() {
-      // The binding holds a process-global model; drop our reference so a later
-      // init() reloads cleanly. GPU/WASM teardown is owned by the binding.
-      module = null;
+    async dispose() {
+      // Free the ONNX session + model memory and drop our reference so a later
+      // init() reloads cleanly.
+      if (service) {
+        await service.destroy();
+        service = null;
+      }
     },
   };
 }

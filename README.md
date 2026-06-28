@@ -42,7 +42,7 @@ Privately insured people in Germany juggle several administrative tasks for whic
 
 A pnpm monorepo with two workspaces:
 
-- **`frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable. OCR runs in a Web Worker via PaddleOCR.js (PP-OCRv5) with WebGPU + WASM fallback.
+- **`frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable. OCR runs in a Web Worker via `ppu-paddle-ocr` (PP-OCRv5 on ONNX Runtime) with WebGPU + WASM fallback.
 - **`backend/`** — Hono (TypeScript) REST API on port 8080, backed by SQLite via Drizzle ORM.
 
 Deployed via Docker Compose, intended for a home network (Proxmox LXC / NAS) with optional VPN access.
