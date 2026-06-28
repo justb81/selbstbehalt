@@ -60,7 +60,7 @@ export default defineConfig({
         // App shell + bundled data (the GOÄ/GOZ/GOT tables are imported into the
         // JS bundle). The OCR models (~50–100 MB, issue #27) are deliberately
         // excluded from the precache and cached on first use instead.
-        globPatterns: ['**/*.{js,css,html,svg,ico,png,webp,woff,woff2,json}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,ico,png,webp,woff,woff2,json}'],
         globIgnores: ['**/models/**'],
         // The largest precached asset is the GOÄ table chunk; raise the limit so
         // it is not silently dropped from the precache.
