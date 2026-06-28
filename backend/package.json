@@ -24,7 +24,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "@selbstbehalt/shared": "workspace:*",
-    "better-sqlite3": "^11.8.1",
+    "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.6.16",
     "zod": "^3.25.76"
