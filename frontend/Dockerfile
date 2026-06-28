@@ -29,8 +29,13 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 # Install only the frontend's subtree (frontend + the shared package it needs).
+# --ignore-scripts: only the manifests have been copied so far, so the
+# @selbstbehalt/shared `prepare` script (`tsc -p tsconfig.build.json`) would
+# fail — its sources don't exist in this layer yet. The frontend pulls in no
+# dependencies that need a postinstall build, and shared is compiled explicitly
+# below once its sources are in place.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-  pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..."
+  pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..." --ignore-scripts
 
 # Sources for the frontend and its shared dependency.
 COPY tsconfig.base.json ./
