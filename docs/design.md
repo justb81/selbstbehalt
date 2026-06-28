@@ -338,7 +338,7 @@ const { lines } = await service.recognize(imageData); // [{ text, box, score }]
 
 **Wichtig:** OCR läuft in einem **Web Worker**, damit der UI-Thread während der
 Verarbeitung nicht blockiert. Die schweren Laufzeit-Assets (ONNX-Runtime-WASM
-und die ~25 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
+und die ~12 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
 Worker beim ersten Gebrauch gecacht (§6.3); kein Drittanbieter-Abruf zur
 Laufzeit.
 

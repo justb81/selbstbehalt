@@ -14,11 +14,11 @@ initial visit OCR works fully offline.
 
 ## Expected files
 
-| File served at         | Model (PP-OCRv5)                                  | ~size  |
-| ---------------------- | ------------------------------------------------- | ------ |
-| `/models/ocr/det.onnx` | mobile text **detection**                         | ~5 MB  |
-| `/models/ocr/rec.onnx` | Latin mobile text **recognition** (covers German) | ~20 MB |
-| `/models/ocr/dict.txt` | Latin character **dictionary**                    | ~small |
+| File served at         | Model (PP-OCRv5)                                  | ~size   |
+| ---------------------- | ------------------------------------------------- | ------- |
+| `/models/ocr/det.onnx` | mobile text **detection**                         | ~4.5 MB |
+| `/models/ocr/rec.onnx` | Latin mobile text **recognition** (covers German) | ~7.7 MB |
+| `/models/ocr/dict.txt` | Latin character **dictionary**                    | ~3 KB   |
 
 These paths are the defaults in `frontend/src/lib/ocr/types.ts`
 (`DEFAULT_MODEL_URLS`); change them there and here together if you host a
@@ -34,7 +34,16 @@ source data. Download them with:
 pnpm ocr:models
 ```
 
-This runs `scripts/fetch-ocr-models.mjs`, which pulls the INT8 PP-OCRv5 mobile
+This runs `scripts/fetch-ocr-models.mjs`, which pulls the PP-OCRv5 mobile
 detection model, the Latin recognition model, and the Latin dictionary from the
 [`ppu-paddle-ocr-models`](https://github.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models)
 release repository into this directory. Re-run it to refresh the models.
+
+## Integrity verification
+
+Each download is verified against the SHA-256 pinned in **`models.sha256`** (the
+canonical hash list, committed alongside this README). A mismatch — supply-chain
+substitution, Git-LFS corruption, or a truncated download — deletes the bad file
+and fails the script. When you intentionally refresh the models, regenerate the
+hashes (e.g. `sha256sum det.onnx rec.onnx dict.txt > models.sha256` from this
+directory) in the same change.

@@ -12,12 +12,19 @@
 // fetched from the `media.githubusercontent.com/media/...` LFS endpoint; the
 // plain-text dictionary comes from `raw.githubusercontent.com`.
 //
+// Each download is verified against the SHA-256 pinned in
+// frontend/static/models/ocr/models.sha256 (the canonical hash list) — a
+// mismatch (supply-chain substitution, LFS corruption, truncated download)
+// deletes the bad file and fails. When intentionally refreshing the models,
+// update models.sha256 to the new hashes.
+//
 // Dependency-free: uses the system `curl` (matches scripts/fetch-sources.mjs).
 //
 // Run: node scripts/fetch-ocr-models.mjs   (or: pnpm ocr:models)
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -39,9 +46,24 @@ const ASSETS = [
   { out: 'dict.txt', url: `${RAW}/recognition/multi/latin/v5/ppocrv5_latin_dict.txt` },
 ];
 
+/** Parses `models.sha256` (`<hex>  <filename>` per line) into a name→hash map. */
+function loadExpectedHashes() {
+  const text = readFileSync(join(DEST, 'models.sha256'), 'utf8');
+  const map = new Map();
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^([0-9a-f]{64})\s+(.+)$/i);
+    if (m) map.set(m[2].trim(), m[1].toLowerCase());
+  }
+  return map;
+}
+
+const expected = loadExpectedHashes();
 mkdirSync(DEST, { recursive: true });
 
 for (const { out, url } of ASSETS) {
+  const want = expected.get(out);
+  if (!want) throw new Error(`No SHA-256 pinned for ${out} in models.sha256 — refusing to fetch.`);
+
   const dest = join(DEST, out);
   try {
     execFileSync(
@@ -74,7 +96,17 @@ for (const { out, url } of ASSETS) {
       { cause: err },
     );
   }
-  console.log(`frontend/static/models/ocr/${out} ← ${url}`);
+
+  const got = createHash('sha256').update(readFileSync(dest)).digest('hex');
+  if (got !== want) {
+    rmSync(dest, { force: true });
+    throw new Error(
+      `SHA-256 mismatch for ${out}: expected ${want}, got ${got}. ` +
+        `The download was deleted. If you intentionally changed the model source, ` +
+        `update frontend/static/models/ocr/models.sha256.`,
+    );
+  }
+  console.log(`frontend/static/models/ocr/${out} ← ${url} (sha256 ok)`);
 }
 
-console.log('OCR models fetched');
+console.log('OCR models fetched and verified');
