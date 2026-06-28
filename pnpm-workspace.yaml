@@ -4,11 +4,56 @@ packages:
   # Shared code (Zod schemas & types) lives here, e.g. packages/shared.
   - 'packages/*'
 
+allowBuilds:
+  esbuild: true
+  better-sqlite3: true
+
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
 # the Dependabot `cooldown` setting so manual `pnpm add`/`pnpm update` are held to
 # the same rule. Frozen-lockfile installs (CI) are unaffected.
 minimumReleaseAge: 10080
+
+minimumReleaseAgeExclude:
+  - '@commitlint/cli@21.1.0'
+  - '@commitlint/config-conventional@21.1.0'
+  - '@commitlint/config-validator@21.1.0'
+  - '@commitlint/ensure@21.1.0'
+  - '@commitlint/format@21.1.0'
+  - '@commitlint/is-ignored@21.1.0'
+  - '@commitlint/lint@21.1.0'
+  - '@commitlint/load@21.1.0'
+  - '@commitlint/parse@21.1.0'
+  - '@commitlint/read@21.1.0'
+  - '@commitlint/resolve-extends@21.1.0'
+  - '@commitlint/rules@21.1.0'
+  - '@commitlint/types@21.1.0'
+  - '@playwright/test@1.61.1'
+  - '@sveltejs/load-config@0.2.0'
+  - '@testing-library/svelte-core@1.1.3'
+  - '@testing-library/svelte@5.4.2'
+  - '@types/node@26.0.1'
+  - '@typescript-eslint/eslint-plugin@8.62.0'
+  - '@typescript-eslint/parser@8.62.0'
+  - '@typescript-eslint/project-service@8.62.0'
+  - '@typescript-eslint/scope-manager@8.62.0'
+  - '@typescript-eslint/tsconfig-utils@8.62.0'
+  - '@typescript-eslint/type-utils@8.62.0'
+  - '@typescript-eslint/types@8.62.0'
+  - '@typescript-eslint/typescript-estree@8.62.0'
+  - '@typescript-eslint/utils@8.62.0'
+  - '@typescript-eslint/visitor-keys@8.62.0'
+  - eslint-plugin-svelte@3.20.0
+  - eslint@10.6.0
+  - globals@17.7.0
+  - pdfjs-dist@6.1.200
+  - playwright-core@1.61.1
+  - playwright@1.61.1
+  - prettier@3.9.0
+  - svelte-check@4.7.1
+  - svelte@5.56.4
+  - typescript-eslint@8.62.0
+  - vite@8.1.0
 
 onlyBuiltDependencies:
   - better-sqlite3
