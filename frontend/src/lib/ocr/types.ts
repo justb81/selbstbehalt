@@ -52,7 +52,7 @@ export interface OcrProgress {
 
 /** Stable error codes so callers can branch without string matching. */
 export type OcrErrorCode =
-  'init_failed' | 'recognize_failed' | 'not_initialized' | 'unknown_message';
+  'init_failed' | 'recognize_failed' | 'dispose_failed' | 'not_initialized' | 'unknown_message';
 
 /** Serialisable error carried over the worker boundary. */
 export interface OcrErrorPayload {

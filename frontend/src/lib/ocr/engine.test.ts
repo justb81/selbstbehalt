@@ -186,6 +186,20 @@ describe('createPaddleOcrEngine', () => {
     ]);
   });
 
+  it('destroys the previous service when init() is called again without dispose()', async () => {
+    const first = fakeService();
+    const second = fakeService();
+    const loadModule = vi
+      .fn()
+      .mockResolvedValueOnce(fakeModule(first).module)
+      .mockResolvedValueOnce(fakeModule(second).module);
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, { loadModule });
+    await engine.init();
+    await engine.init();
+    expect(first.destroy).toHaveBeenCalledOnce();
+    expect(second.initialize).toHaveBeenCalledOnce();
+  });
+
   it('dispose destroys the service so a later recognize fails again', async () => {
     const service = fakeService();
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {

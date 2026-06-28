@@ -94,11 +94,21 @@ export function createOcrWorkerCore(deps: OcrWorkerCoreDeps) {
   }
 
   async function handleDispose(id: number) {
-    if (engine) {
+    if (!engine) {
+      deps.post({ type: 'disposed', id });
+      return;
+    }
+    try {
       await engine.dispose();
+      deps.post({ type: 'disposed', id });
+    } catch (err) {
+      // `dispose()` is async now (GPU/WASM teardown can reject); report it like
+      // any other failure so the client's request settles instead of hanging.
+      fail(id, 'dispose_failed', err);
+    } finally {
+      // Drop the reference regardless so a failed teardown can't wedge a later init().
       engine = null;
     }
-    deps.post({ type: 'disposed', id });
   }
 
   return {

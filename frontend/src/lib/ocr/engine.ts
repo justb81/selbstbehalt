@@ -122,6 +122,13 @@ export function createPaddleOcrEngine(
   return {
     backend,
     async init(onProgress) {
+      // Free a previously loaded session before overwriting it, so a direct
+      // re-init() (outside the worker, which disposes first) can't leak the old
+      // ONNX session + model weights.
+      if (service) {
+        await service.destroy();
+        service = null;
+      }
       onProgress?.({ phase: 'init', ratio: null, message: 'OCR-Modell wird geladen …' });
       const mod = await loadModule();
       const created = new mod.PaddleOcrService({

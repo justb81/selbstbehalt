@@ -12,6 +12,12 @@ allowBuilds:
   # protobufjs' optional install script. Neither runs in the browser.
   onnxruntime-node: false
   protobufjs: false
+  # Note: @napi-rs/canvas (pulled in via ppu-paddle-ocr → ppu-ocv) needs NO entry
+  # here. It has no install/postinstall lifecycle script — only a manual `build`
+  # script that pnpm never runs on install — and ships prebuilt platform binaries
+  # as optional deps. It is also never loaded on the web OCR path (we use
+  # onnxruntime-web + the `canvas-native` engine), so an allowBuilds entry would
+  # be inert.
 
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
