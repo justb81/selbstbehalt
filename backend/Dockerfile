@@ -29,8 +29,14 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 # Install only the backend's subtree (backend + the shared package it needs).
+# --ignore-scripts: only the manifests have been copied so far, so the
+# @selbstbehalt/shared `prepare` script (`tsc -p tsconfig.build.json`) would
+# fail — its sources don't exist in this layer yet (shared is compiled
+# explicitly below). Skipping scripts also skips better-sqlite3's native build,
+# so rebuild just that one afterwards to compile its binding into the store.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-  pnpm install --frozen-lockfile --filter "@selbstbehalt/backend..."
+  pnpm install --frozen-lockfile --filter "@selbstbehalt/backend..." --ignore-scripts \
+  && pnpm rebuild better-sqlite3
 
 # Sources for the backend and its shared dependency.
 COPY tsconfig.base.json ./
