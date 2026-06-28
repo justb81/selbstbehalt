@@ -54,7 +54,17 @@ sw.addEventListener('install', (event) => {
       const assetUrls = PRECACHE.map((entry) => entry.url).filter(
         (url) => url !== 'index.html' && url !== '/index.html',
       );
-      await cache.addAll([...new Set([SHELL_DOCUMENT, ...assetUrls])]);
+      // Behind a reverse-proxy Basic Auth (e.g. Traefik/Coolify), the SW
+      // install-event fetch runs before the browser has had a chance to replay
+      // cached credentials in a worker context (Firefox in particular). A 401
+      // here would throw and abort SW installation entirely. Catch and swallow:
+      // the assets are fetched on demand via cacheFirst on first page access,
+      // by which point the user's Basic Auth session is active in the tab.
+      try {
+        await cache.addAll([...new Set([SHELL_DOCUMENT, ...assetUrls])]);
+      } catch {
+        // Precache not critical — assets are cached on first use instead.
+      }
       // Deliberately no skipWaiting(): registerType 'prompt' waits for the user
       // to accept the reload hint (PwaStatus → SKIP_WAITING message).
     })(),
@@ -95,10 +105,16 @@ sw.addEventListener('fetch', (event) => {
   if (!cls) return; // non-GET / unsupported scheme → straight to the network
 
   const cacheName = cls === 'api' ? API_CACHE : cls === 'model' ? MODEL_CACHE : SHELL_CACHE;
+  // For shell assets, force credentials:'include' on SW network fallback fetches
+  // so that a Basic Auth session set in the tab is forwarded by Firefox SW
+  // contexts (where the default 'same-origin' mode sometimes omits them).
   const deps: StrategyDeps = {
     cacheName,
     openCache: (name) => caches.open(name),
-    fetch: (req) => fetch(req),
+    fetch:
+      cls === 'shell'
+        ? (req) => fetch(new Request(req, { credentials: 'include' }))
+        : (req) => fetch(req),
   };
 
   if (cls === 'api') {

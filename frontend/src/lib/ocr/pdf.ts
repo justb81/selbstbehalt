@@ -7,10 +7,16 @@
  * `pdfjs-dist` is heavy and DOM/worker-bound, so it is loaded through an
  * injectable lazy import and kept behind this seam — the orchestration is
  * unit-testable with a fake renderer, and no PDF bytes ever leave the device
- * (docs/design.md §1.3, §8). The default loader wires the bundled worker via
- * `new URL` so Vite emits it as a build asset; callers may override it via
- * `RenderPdfOptions.workerSrc`.
+ * (docs/design.md §1.3, §8). The default loader wires the bundled worker via a
+ * static `?url` import so Vite emits it as a content-hashed build asset at
+ * compile time; callers may override it via `RenderPdfOptions.workerSrc`.
  */
+
+// Static `?url` import: Vite resolves the package path at build time, emits
+// the worker as a content-hashed asset, and returns the correct served URL.
+// A dynamic `await import('...?url')` inside an async function is less
+// reliable in Rollup production builds — the asset may not be emitted.
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 /** Minimal structural views of the pdf.js surface this module uses. */
 export interface PdfPageLike {
@@ -52,14 +58,7 @@ function defaultCreateCanvas(width: number, height: number): HTMLCanvasElement |
 
 async function defaultLoadPdfJs(): Promise<PdfJsLike> {
   const pdfjs = await import('pdfjs-dist');
-  // Wire the worker via Vite's `?url` import: it resolves the package path,
-  // emits the (self-contained, minified) worker as a build asset, and returns
-  // the correct served URL. A plain `new URL('pdfjs-dist/build/...', ...)` does
-  // NOT work here — Vite only rewrites `new URL` for relative specifiers, so a
-  // bare package path is left as a runtime URL pointing at a path that is never
-  // served, which makes pdf.js fail with "setting up fake worker failed".
   if (pdfjs.GlobalWorkerOptions) {
-    const { default: workerSrc } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
     pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   }
   return pdfjs as unknown as PdfJsLike;
