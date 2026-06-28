@@ -4,11 +4,14 @@
   import type { Snippet } from 'svelte';
 
   import Nav from './Nav.svelte';
+  import PwaStatus from './PwaStatus.svelte';
 
   let { children }: { children: Snippet } = $props();
 </script>
 
 <div class="app-shell">
+  <PwaStatus />
+
   <header class="app-header">
     <a class="brand" href={resolve('/')}>selbstbehalt</a>
     <Nav />

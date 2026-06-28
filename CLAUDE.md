@@ -8,7 +8,7 @@ The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Impl
 
 - **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
 - **`backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
-- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, and the Günstigerprüfung engine. Most UI pages (contracts/invoices/dashboard/settings) and the OCR pipeline (Phase 2) are **not yet built** — see `docs/roadmap.md` and the open GitHub issues.
+- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most UI pages (contracts/invoices/dashboard/settings) are still thin, and the OCR pipeline's heavy runtime deps + local model hosting (Phase 2/3) are **not yet wired** — see `docs/roadmap.md` and the open GitHub issues.
 
 Reference material:
 

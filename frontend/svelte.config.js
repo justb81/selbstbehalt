@@ -11,5 +11,9 @@ export default {
     // server-render step (see docs/design.md §1.3, §2.1). adapter-static emits
     // a static shell with an SPA fallback that any plain file server can host.
     adapter: adapter({ fallback: 'index.html' }),
+    // The PWA service worker (src/service-worker.ts) is built and registered by
+    // @vite-pwa/sveltekit (see vite.config.ts), so SvelteKit's own auto-build /
+    // auto-registration of that file is turned off to avoid a double register.
+    serviceWorker: { register: false },
   },
 };
