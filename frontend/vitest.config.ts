@@ -30,8 +30,10 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,svelte}'],
       // Generated declarations and per-route load config (a one-line constant)
-      // carry no meaningful unit coverage.
-      exclude: ['src/**/*.d.ts', 'src/routes/**/+layout.ts'],
+      // carry no meaningful unit coverage. Route page components (.svelte files
+      // directly under src/routes/) are integration points covered by the
+      // Playwright E2E suite, not unit tests.
+      exclude: ['src/**/*.d.ts', 'src/routes/**/+layout.ts', 'src/routes/**/*.svelte'],
       thresholds: {
         statements: 80,
         functions: 80,
