@@ -145,20 +145,27 @@ docker compose up -d --build  # build images and start both services
 - The services **do not publish host ports**. They are meant to sit behind a
   reverse proxy (e.g. Coolify/Traefik), which routes to them over the Docker
   network; the internal ports are documented via `expose` (frontend `3000`,
-  backend `8080`). Point the proxy at those, or add a `ports:` mapping locally
-  if you want to reach them directly.
+  backend `8080`). In the default **single-origin** setup you only route the
+  reverse proxy to the **frontend** — its nginx proxies `/api` to the backend
+  over the Docker network, so the browser only ever talks to one origin and the
+  proxy's Basic Auth covers the API too (no CORS, no separate backend route).
+  Add a `ports:` mapping locally if you want to reach a service directly.
 - SQLite and any saved invoice files live in bind-mounted volumes
   (`./data/db`, `./data/files`), so data survives `docker compose restart`,
   `down`/`up`, and image rebuilds. The backend entrypoint repairs the
   ownership of these directories on startup (they are created root-owned by
   the Docker daemon) and then runs the server as the unprivileged `node`
   user, so no manual `chown` is needed.
-- Set **`PUBLIC_API_URL`** in `.env` to the backend URL your **browser** can
-  reach (e.g. `https://api.example.com` behind the proxy) — it is baked into
-  the frontend bundle at build time, so re-run `docker compose build frontend`
-  after changing it. You can also override it at runtime in the app's settings.
+- Leave **`PUBLIC_API_URL`** empty for the single-origin setup above. Set it
+  only to point the browser at a **separate** backend origin (e.g.
+  `https://api.example.com`); it is baked into the frontend bundle at build
+  time, so re-run `docker compose build frontend` after changing it (or override
+  it at runtime in the app's settings). A separate origin also requires
+  `PKV_API_KEY` (the SPA does not send Basic Auth cross-origin) and
+  `CORS_ORIGINS`.
 - Set **`PKV_API_KEY`** to require an `X-API-Key` header (for external/VPN
-  access); leave it empty when relying on the reverse proxy's auth.
+  access, or a separate backend origin); leave it empty when relying on the
+  reverse proxy's auth in the single-origin setup.
 
 The backend exposes an unauthenticated `/api/health` endpoint that drives the
 container healthcheck; the frontend only starts once the backend reports

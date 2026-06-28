@@ -39,6 +39,15 @@ describe('createApiClient', () => {
     expect(fetch.mock.calls[0]![0]).toBe('http://api.test/api/thing');
   });
 
+  it('resolves a relative path against the page origin when the base URL is empty (same-origin)', async () => {
+    const fetch = vi.fn().mockResolvedValue(jsonResponse({ id: 'a', n: 1 }));
+    const { request } = createApiClient({ baseUrl: '', fetch });
+
+    await request('/api/thing', { schema });
+
+    expect(fetch.mock.calls[0]![0]).toBe(`${location.origin}/api/thing`);
+  });
+
   it('appends query params and skips undefined/null values', async () => {
     const fetch = vi.fn().mockResolvedValue(jsonResponse({ id: 'a', n: 1 }));
     const { request } = createApiClient({ baseUrl: 'http://api.test', fetch });

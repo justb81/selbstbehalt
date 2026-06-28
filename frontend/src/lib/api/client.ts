@@ -38,11 +38,24 @@ export interface RequestOptions<T> {
   signal?: AbortSignal;
 }
 
+/**
+ * Origin to resolve a relative (same-origin) base against. In the browser this
+ * is the page's own origin; outside it (SSR/tests) a dummy origin keeps `new URL`
+ * happy — real same-origin requests only ever run client-side.
+ */
+function sameOriginBase(): string {
+  return typeof location !== 'undefined' && location?.origin ? location.origin : 'http://localhost';
+}
+
 function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryValue>): string {
   // Normalise so a base URL with a trailing slash doesn't produce a doubled
   // slash (`http://host//api/...` resolves to a different, 404-ing path). Every
   // caller benefits — not just the default instance whose store pre-trims.
-  const url = new URL(`${baseUrl.replace(/\/+$/, '')}${path}`);
+  const trimmedBase = baseUrl.replace(/\/+$/, '');
+  // An empty base URL means "same origin" (the default — see config.ts): resolve
+  // the path against the page origin so the request stays on the app's own host
+  // and inherits its reverse-proxy Basic Auth, with no CORS.
+  const url = trimmedBase ? new URL(`${trimmedBase}${path}`) : new URL(path, sameOriginBase());
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
