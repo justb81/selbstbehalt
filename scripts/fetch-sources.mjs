@@ -67,6 +67,7 @@ function refresh({ dir, url }) {
         `Failed to download ${url} (curl exited ${err.status ?? err.code ?? '?'}). ` +
           `gesetze-im-internet.de may be temporarily unreachable from this runner — ` +
           `re-run the workflow; see the curl output above.`,
+        { cause: err },
       );
     }
     execFileSync('unzip', ['-o', '-q', zip, '-d', tmp]);
