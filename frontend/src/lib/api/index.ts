@@ -12,7 +12,7 @@ import {
   notifyEnqueued,
   wrapWithOfflineQueue,
 } from '$lib/offline/index.js';
-import { resolveApiBaseUrl } from '$lib/stores/settings.js';
+import { resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings.js';
 
 import { createApiClient } from './client.js';
 import { createResources } from './resources.js';
@@ -36,6 +36,7 @@ export const offlineQueue = new OfflineQueue(createIndexedDbStore());
  */
 export const offlineReplayRequester = createApiClient({
   baseUrl: () => resolveApiBaseUrl(),
+  apiKey: () => resolveApiKey(),
 }).request;
 
 /**

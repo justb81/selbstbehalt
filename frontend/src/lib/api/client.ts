@@ -16,8 +16,11 @@ export interface ApiClientOptions {
    * client.
    */
   baseUrl: string | (() => string);
-  /** Optional `X-API-Key` for external/VPN access (§7.2). */
-  apiKey?: string;
+  /**
+   * Optional `X-API-Key` for external/VPN access (§7.2). A function is
+   * resolved per request so a changed setting takes effect immediately.
+   */
+  apiKey?: string | (() => string | undefined);
   /** Injectable `fetch`, primarily for tests. Defaults to the global `fetch`. */
   fetch?: typeof globalThis.fetch;
 }
@@ -65,6 +68,11 @@ export function createApiClient(options: ApiClientOptions) {
   const doFetch = options.fetch ?? globalThis.fetch;
   const resolveBaseUrl = (): string =>
     typeof options.baseUrl === 'function' ? options.baseUrl() : options.baseUrl;
+  const resolveApiKey = (): string | undefined => {
+    const k = options.apiKey;
+    if (!k) return undefined;
+    return typeof k === 'function' ? k() : k;
+  };
 
   async function request<T = void>(path: string, opts: RequestOptions<T> = {}): Promise<T> {
     const { method = 'GET', body, query, schema, signal } = opts;
@@ -72,7 +80,8 @@ export function createApiClient(options: ApiClientOptions) {
 
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (options.apiKey) headers['X-API-Key'] = options.apiKey;
+    const apiKey = resolveApiKey();
+    if (apiKey) headers['X-API-Key'] = apiKey;
 
     let response: Response;
     try {
