@@ -76,7 +76,7 @@ export interface ErstattungInput {
 }
 
 /** Which rule, if any, bound a category's reimbursement (design §5.1). */
-export type CappedBy = 'tier' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
+export type CappedBy = 'tier' | 'beihilfe' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
 
 /** Per-category reimbursement breakdown — sums to {@link ErstattungResult.eligibleAmount}. */
 export interface ErstattungByCategory {
@@ -192,9 +192,11 @@ function computeCategory(
   const notes: string[] = [];
   if (cappedBy === 'tier') notes.push('gestaffelt nach Schwellenwerten');
 
-  // 3. Beihilfe — tariff covers only the residual quota.
+  // 3. Beihilfe — tariff covers only the residual quota. As elsewhere, the last
+  // binding rule wins: a later `limit`/`annual_staffel` cap overrides this.
   if (benefit.beihilfe_satz && benefit.beihilfe_satz > 0) {
     eligible *= (100 - benefit.beihilfe_satz) / 100;
+    cappedBy = 'beihilfe';
     notes.push(`Beihilfe-Restquote ${100 - benefit.beihilfe_satz} %`);
   }
 

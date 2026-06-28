@@ -22,7 +22,7 @@ import type {
   ProviderType,
   SubmissionChannel,
 } from '@selbstbehalt/shared';
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /** A UUID TEXT primary key with an app-side default. */
 const uuidPk = () =>
@@ -61,25 +61,33 @@ export const contracts = sqliteTable('contracts', {
 
 // A versicherte Person on a contract — the join of persons × contracts that
 // carries the individual cover (own KVNR, tariff, premium, Selbstbehalt, BRE).
-export const insuredPersons = sqliteTable('insured_persons', {
-  id: uuidPk(),
-  contractId: text('contract_id')
-    .notNull()
-    .references(() => contracts.id, { onDelete: 'cascade' }),
-  personId: text('person_id')
-    .notNull()
-    .references(() => persons.id, { onDelete: 'cascade' }),
-  kvnr: text('kvnr'),
-  tariffName: text('tariff_name'),
-  monthlyPremium: real('monthly_premium').notNull(),
-  selfRetention: real('self_retention').notNull().default(0),
-  breStructure: text('bre_structure', { mode: 'json' }).$type<BREStructure>(),
-  includedBenefits: text('included_benefits', { mode: 'json' }).$type<IncludedBenefits>(),
-  startDate: text('start_date'),
-  endDate: text('end_date'),
-  notes: text('notes'),
-  createdAt: createdAt(),
-});
+// A given person may appear only once per contract: the (contract, person) pair
+// is unique, so invoices and BRE periods always reference an unambiguous row.
+export const insuredPersons = sqliteTable(
+  'insured_persons',
+  {
+    id: uuidPk(),
+    contractId: text('contract_id')
+      .notNull()
+      .references(() => contracts.id, { onDelete: 'cascade' }),
+    personId: text('person_id')
+      .notNull()
+      .references(() => persons.id, { onDelete: 'cascade' }),
+    kvnr: text('kvnr'),
+    tariffName: text('tariff_name'),
+    monthlyPremium: real('monthly_premium').notNull(),
+    selfRetention: real('self_retention').notNull().default(0),
+    breStructure: text('bre_structure', { mode: 'json' }).$type<BREStructure>(),
+    includedBenefits: text('included_benefits', { mode: 'json' }).$type<IncludedBenefits>(),
+    startDate: text('start_date'),
+    endDate: text('end_date'),
+    notes: text('notes'),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex('insured_persons_contract_person_unique').on(table.contractId, table.personId),
+  ],
+);
 
 export const invoices = sqliteTable('invoices', {
   id: uuidPk(),

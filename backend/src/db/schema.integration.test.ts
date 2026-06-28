@@ -171,6 +171,28 @@ describe('entity chain', () => {
     expect(db.select().from(brePeriods).all()).toHaveLength(0);
   });
 
+  it('rejects insuring the same person twice on one contract (unique index enforced)', () => {
+    const { db } = handle;
+    const person = db.insert(persons).values({ name: 'Doppelt Versichert' }).returning().get();
+    const contract = db
+      .insert(contracts)
+      .values({
+        policyholderId: person.id,
+        insurerName: 'DKV',
+        type: 'vollversicherung',
+        startDate: '2024-01-01',
+      })
+      .returning()
+      .get();
+    const insure = () =>
+      db
+        .insert(insuredPersons)
+        .values({ contractId: contract.id, personId: person.id, monthlyPremium: 400 })
+        .run();
+    insure();
+    expect(insure).toThrow();
+  });
+
   it('rejects an invoice referencing a non-existent insured person (FK enforced)', () => {
     const { db } = handle;
     expect(() =>

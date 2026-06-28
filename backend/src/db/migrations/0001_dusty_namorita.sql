@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `insured_persons_contract_person_unique` ON `insured_persons` (`contract_id`,`person_id`);

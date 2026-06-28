@@ -256,7 +256,30 @@ describe('computeErstattung — Wartezeit & Beihilfe', () => {
     );
     expect(result.eligibleAmount).toBe(50);
     expect(result.byCategory[0]?.appliedPct).toBe(50);
+    expect(result.byCategory[0]?.cappedBy).toBe('beihilfe');
     expect(result.byCategory[0]?.note).toContain('Beihilfe-Restquote 50 %');
+  });
+
+  it('lets a later limit override the Beihilfe cappedBy (last binding rule wins)', () => {
+    const benefits: IncludedBenefits = {
+      benefits: [
+        {
+          category: 'ambulant',
+          beihilfe_satz: 50,
+          tiers: [{ up_to: null, pct: 100 }],
+          limits: [{ scope: 'behandlung', max_amount: 30 }],
+        },
+      ],
+    };
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'ambulant', chargedAmount: 100 }],
+        benefits,
+      }),
+    );
+    // 100 → 50 (Beihilfe) → capped at 30 (limit); the limit is the last binder.
+    expect(result.eligibleAmount).toBe(30);
+    expect(result.byCategory[0]?.cappedBy).toBe('limit');
   });
 });
 

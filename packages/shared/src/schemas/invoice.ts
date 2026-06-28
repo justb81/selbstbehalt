@@ -5,23 +5,25 @@ import { auditFields, isoDate, money, uuid } from '../common.js';
 import { invoiceDecisionSchema, invoiceStatusSchema, providerTypeSchema } from '../enums.js';
 import { invoicePositionInputSchema, invoicePositionSchema } from './invoice-position.js';
 
-export const invoiceCreateSchema = z.object({
-  insured_person_id: uuid,
-  invoice_date: isoDate,
-  invoice_number: z.string().nullish(),
-  provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),
-  provider_type: providerTypeSchema.nullish(),
-  total_amount: money,
-  eligible_amount: money.nullish(),
-  // NOT NULL DEFAULT 0 — omittable on create.
-  self_paid_amount: money.optional(),
-  // NOT NULL DEFAULT 'neu' — omittable on create.
-  status: invoiceStatusSchema.optional(),
-  decision: invoiceDecisionSchema.nullish(),
-  file_path: z.string().nullish(),
-  ocr_raw: z.string().nullish(),
-  notes: z.string().nullish(),
-});
+export const invoiceCreateSchema = z
+  .object({
+    insured_person_id: uuid,
+    invoice_date: isoDate,
+    invoice_number: z.string().nullish(),
+    provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),
+    provider_type: providerTypeSchema.nullish(),
+    total_amount: money,
+    eligible_amount: money.nullish(),
+    // NOT NULL DEFAULT 0 — omittable on create.
+    self_paid_amount: money.optional(),
+    // NOT NULL DEFAULT 'neu' — omittable on create.
+    status: invoiceStatusSchema.optional(),
+    decision: invoiceDecisionSchema.nullish(),
+    file_path: z.string().nullish(),
+    ocr_raw: z.string().nullish(),
+    notes: z.string().nullish(),
+  })
+  .strict();
 
 /**
  * `POST /api/invoices` body: an invoice plus its line items, persisted together

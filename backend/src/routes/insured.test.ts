@@ -93,6 +93,21 @@ describe('POST /api/contracts/:id/insured', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('rejects the same person twice on one contract with 409', async () => {
+    const first = await json('POST', `/api/contracts/${contractId}/insured`, baseInsured());
+    expect(first.status).toBe(201);
+    const dup = await json('POST', `/api/contracts/${contractId}/insured`, baseInsured());
+    expect(dup.status).toBe(409);
+  });
+
+  it('rejects an unknown field with 400 (strict create schema)', async () => {
+    const res = await json('POST', `/api/contracts/${contractId}/insured`, {
+      ...baseInsured(),
+      self_retension: 600, // typo for self_retention
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('GET /api/contracts/:id/insured', () => {
@@ -139,6 +154,20 @@ describe('GET/PUT/DELETE /api/insured/:id', () => {
     expect(body.monthly_premium).toBe(500);
     expect(body.self_retention).toBe(600);
     expect(body.kvnr).toBe('A123456789');
+  });
+
+  it('rejects a PUT that collides with another (contract, person) pair with 409', async () => {
+    const first = await create();
+    const other = handle.db.insert(persons).values({ name: 'Lena' }).returning().get().id;
+    const second = await (
+      await json('POST', `/api/contracts/${contractId}/insured`, {
+        person_id: other,
+        monthly_premium: 100,
+      })
+    ).json();
+    // Re-pointing `second` at `first`'s person duplicates the pair on this contract.
+    const res = await json('PUT', `/api/insured/${second.id}`, { person_id: first.person_id });
+    expect(res.status).toBe(409);
   });
 
   it('deletes an insured person (204) and cascades to its invoices', async () => {
