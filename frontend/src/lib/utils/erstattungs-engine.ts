@@ -29,6 +29,7 @@
  * (= `R`); the `byCategory` breakdown explains how each category got there.
  */
 
+import { addMonths, differenceInCalendarYears, isBefore } from 'date-fns';
 import type {
   AnnualStaffelEntry,
   BenefitCategory,
@@ -115,19 +116,6 @@ function toDate(value: DateInput): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
-/** Add whole months to a calendar day, clamping to the target month's last day. */
-function addMonths(date: Date, months: number): Date {
-  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
-  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(date.getDate(), lastDay));
-  return target;
-}
-
-/** Whole calendar years between two days (`a.year − b.year`). */
-function diffCalendarYears(a: Date, b: Date): number {
-  return a.getFullYear() - b.getFullYear();
-}
-
 /**
  * Reimburse `amount` along an ascending threshold ladder: each tranche
  * `(lower, up_to]` at its `pct`, the open-ended final tier (`up_to: null`) for
@@ -193,7 +181,7 @@ function computeCategory(
   const waiting = benefit.waiting_period_months ?? 0;
   if (waiting > 0) {
     const waitingEnds = addMonths(toDate(input.coverageStart), waiting);
-    if (toDate(input.invoiceDate) < waitingEnds) {
+    if (isBefore(toDate(input.invoiceDate), waitingEnds)) {
       return base(0, 'waiting_period', `Innerhalb der Wartezeit von ${waiting} Monaten.`);
     }
   }
@@ -235,7 +223,7 @@ function computeCategory(
   // 5. Aufbaujahres-Staffel.
   if (benefit.annual_staffel && benefit.annual_staffel.length) {
     const policyYear =
-      diffCalendarYears(toDate(input.invoiceDate), toDate(input.coverageStart)) + 1;
+      differenceInCalendarYears(toDate(input.invoiceDate), toDate(input.coverageStart)) + 1;
     const cap = annualCap(benefit.annual_staffel, policyYear);
     if (cap !== null) {
       const prior = input.priorClaimsByCategory?.[category] ?? 0;

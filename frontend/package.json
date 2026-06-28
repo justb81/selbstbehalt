@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@selbstbehalt/shared": "workspace:*",
+    "date-fns": "4.1.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

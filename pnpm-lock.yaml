@@ -93,6 +93,9 @@ importers:
       '@selbstbehalt/shared':
         specifier: workspace:*
         version: link:../packages/shared
+      date-fns:
+        specifier: 4.1.0
+        version: 4.1.0
       zod:
         specifier: ^3.25.76
         version: 3.25.76
