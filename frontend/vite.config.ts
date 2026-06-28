@@ -16,7 +16,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'service-worker.ts',
       // `prompt`: a new worker waits until the user accepts the reload hint
-      // (handled by PwaUpdateToast) instead of silently swapping the app.
+      // (handled by PwaStatus) instead of silently swapping the app.
       registerType: 'prompt',
       // We register the worker ourselves via $lib/pwa/register so the update
       // flow is driven from a Svelte store.

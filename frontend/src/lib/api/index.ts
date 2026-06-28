@@ -30,15 +30,25 @@ export function createApi(options: Parameters<typeof createApiClient>[0]) {
 export const offlineQueue = new OfflineQueue(createIndexedDbStore());
 
 /**
+ * The raw, un-wrapped requester. Replay must go through this, NOT `api.request`:
+ * replaying through the offline-wrapped requester would re-enqueue a duplicate
+ * whenever a replay attempt itself fails offline. Used by `initOfflineSync`.
+ */
+export const offlineReplayRequester = createApiClient({
+  baseUrl: () => resolveApiBaseUrl(),
+}).request;
+
+/**
  * The app-wide client; base URL resolves per request from settings/env. In the
  * browser, writes that fail while offline are queued and replayed on reconnect
  * (wired by `initOfflineSync`); a queued write rejects with `OfflineQueuedError`.
  */
 function createAppApi() {
-  const { request } = createApiClient({ baseUrl: () => resolveApiBaseUrl() });
   const wrapped = browser
-    ? wrapWithOfflineQueue(request, offlineQueue, { onEnqueue: () => notifyEnqueued() })
-    : request;
+    ? wrapWithOfflineQueue(offlineReplayRequester, offlineQueue, {
+        onEnqueue: () => notifyEnqueued(),
+      })
+    : offlineReplayRequester;
   return { request: wrapped, ...createResources(wrapped) };
 }
 

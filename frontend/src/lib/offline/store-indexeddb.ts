@@ -4,13 +4,17 @@
  *
  * The database is opened lazily on first use so merely importing the app's API
  * client never touches IndexedDB (it also keeps SSR/unit-test imports inert).
- * Entries are keyed by their `id`; FIFO order is preserved by an `enqueuedAt`
- * index, falling back to insertion order for ties.
+ *
+ * FIFO is guaranteed by an **auto-incrementing** out-of-line primary key:
+ * `getAll()` yields records in key (= insertion) order, so writes enqueued in
+ * the same millisecond still replay in the order they were made. The `QueuedWrite.id`
+ * is kept as an indexed property purely so a replayed entry can be removed.
  */
 import type { QueuedWrite, QueueStore } from './queue.js';
 
 const DB_NAME = 'selbstbehalt-offline';
 const STORE_NAME = 'writes';
+const ID_INDEX = 'id';
 const DB_VERSION = 1;
 
 function promisify<T>(request: IDBRequest<T>): Promise<T> {
@@ -40,8 +44,9 @@ export function createIndexedDbStore(
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('enqueuedAt', 'enqueuedAt', { unique: false });
+          // Auto-incrementing key = strict insertion order; index `id` for removal.
+          const store = db.createObjectStore(STORE_NAME, { autoIncrement: true });
+          store.createIndex(ID_INDEX, 'id', { unique: true });
         }
       };
       request.onsuccess = () => resolve(request.result);
@@ -75,13 +80,14 @@ export function createIndexedDbStore(
       return tx('readwrite', (store) => promisify(store.add(item)).then(() => undefined));
     },
     all() {
-      return tx('readonly', async (store) => {
-        const items = await promisify(store.index('enqueuedAt').getAll());
-        return items as QueuedWrite[];
-      });
+      // getAll() over the store returns records in auto-increment key order = FIFO.
+      return tx('readonly', async (store) => (await promisify(store.getAll())) as QueuedWrite[]);
     },
     remove(id) {
-      return tx('readwrite', (store) => promisify(store.delete(id)).then(() => undefined));
+      return tx('readwrite', async (store) => {
+        const key = await promisify(store.index(ID_INDEX).getKey(id));
+        if (key !== undefined) await promisify(store.delete(key));
+      });
     },
     clear() {
       return tx('readwrite', (store) => promisify(store.clear()).then(() => undefined));

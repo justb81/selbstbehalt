@@ -22,6 +22,13 @@ export interface ClassifyContext {
   modelPathPrefix: string;
   /** Path prefix the REST API is mounted at when reverse-proxied same-origin. */
   apiPathPrefix: string;
+  /**
+   * Explicit backend origin, when the REST API lives on its own origin
+   * (docs/design.md §7.3). Requests to it are classified as `api`; any *other*
+   * cross-origin request is left untouched. Omit when the backend is reached
+   * same-origin via {@link ClassifyContext.apiPathPrefix}.
+   */
+  apiOrigin?: string;
 }
 
 /**
@@ -29,8 +36,8 @@ export interface ClassifyContext {
  * (passed straight to the network by the SW).
  *
  * Only GET is handled: writes flow through the app-layer offline queue
- * (`$lib/offline`), which owns replay order and Background Sync, so the SW never
- * caches or intercepts them.
+ * (`$lib/offline`), which owns replay order, so the SW never caches or
+ * intercepts them.
  */
 export function classifyRequest(
   url: string,
@@ -48,10 +55,15 @@ export function classifyRequest(
   // Ignore non-http(s) schemes (chrome-extension:, data:, blob:, …).
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
 
-  // REST reads: either a same-origin `/api/` proxy path, or any cross-origin
-  // host (the backend usually runs on its own origin, docs/design.md §7.3).
+  // Cross-origin: only the explicitly-configured backend is ours; leave every
+  // other host (avatars, map tiles, future embeds) untouched rather than
+  // blanket-caching it as "API".
+  if (parsed.origin !== ctx.selfOrigin) {
+    return ctx.apiOrigin && parsed.origin === ctx.apiOrigin ? 'api' : null;
+  }
+
+  // Same-origin REST reads (e.g. a reverse-proxied `/api/`, docs/design.md §7.2).
   if (parsed.pathname.startsWith(ctx.apiPathPrefix)) return 'api';
-  if (parsed.origin !== ctx.selfOrigin) return 'api';
 
   // Same-origin, on-device OCR models: large and immutable, cached for good.
   if (parsed.pathname.startsWith(ctx.modelPathPrefix)) return 'model';

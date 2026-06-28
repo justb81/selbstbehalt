@@ -43,9 +43,19 @@ describe('classifyRequest', () => {
     expect(classifyRequest(`${SELF}/models/det.onnx`, 'GET', ctx)).toBe('model');
   });
 
-  it('routes the REST API as api, both same-origin /api/ and cross-origin', () => {
+  it('routes the same-origin /api/ path as api', () => {
     expect(classifyRequest(`${SELF}/api/invoices`, 'GET', ctx)).toBe('api');
-    expect(classifyRequest('https://backend.example:8080/invoices', 'GET', ctx)).toBe('api');
+  });
+
+  it('classifies the configured backend origin as api, other cross-origin untouched', () => {
+    const withBackend = { ...ctx, apiOrigin: 'https://backend.example:8080' };
+    expect(classifyRequest('https://backend.example:8080/invoices', 'GET', withBackend)).toBe(
+      'api',
+    );
+    // A different cross-origin host is left alone (not blanket-cached as API).
+    expect(classifyRequest('https://cdn.example/avatar.png', 'GET', withBackend)).toBeNull();
+    // With no apiOrigin configured, every cross-origin GET is untouched.
+    expect(classifyRequest('https://backend.example:8080/invoices', 'GET', ctx)).toBeNull();
   });
 
   it('ignores writes and non-http schemes', () => {

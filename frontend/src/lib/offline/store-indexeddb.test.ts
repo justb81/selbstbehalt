@@ -16,13 +16,25 @@ describe('createIndexedDbStore', () => {
     factory = new IDBFactory();
   });
 
-  it('round-trips writes in FIFO (enqueuedAt) order', async () => {
+  it('round-trips writes in FIFO (insertion) order', async () => {
     const store = createIndexedDbStore(factory);
     await store.add(write('a', '/api/a', '2026-06-28T00:00:01.000Z'));
     await store.add(write('b', '/api/b', '2026-06-28T00:00:02.000Z'));
     await store.add(write('c', '/api/c', '2026-06-28T00:00:03.000Z'));
 
     expect((await store.all()).map((w) => w.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('preserves insertion order even when enqueuedAt collides (same ms)', async () => {
+    const store = createIndexedDbStore(factory);
+    const sameMs = '2026-06-28T00:00:00.000Z';
+    // ids are deliberately out of lexical order to prove ordering is by
+    // insertion (auto-increment key), not by id or by the colliding timestamp.
+    await store.add(write('zzz', '/api/1', sameMs));
+    await store.add(write('aaa', '/api/2', sameMs));
+    await store.add(write('mmm', '/api/3', sameMs));
+
+    expect((await store.all()).map((w) => w.path)).toEqual(['/api/1', '/api/2', '/api/3']);
   });
 
   it('removes a single entry by id and clears all', async () => {

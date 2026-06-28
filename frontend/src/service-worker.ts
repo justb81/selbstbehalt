@@ -11,9 +11,9 @@
  *   - On-device OCR models               → Cache After First Load (immutable)
  *
  * Writes are intentionally NOT handled here: they go through the app-layer
- * offline queue (`$lib/offline`), which owns replay order and Background Sync.
- * This worker only forwards the `replay-writes` sync event to open clients so
- * the queue can flush when connectivity returns.
+ * offline queue (`$lib/offline`), which owns replay order. Replay is driven from
+ * the page (the `online` event + an on-load flush), so it is not duplicated in
+ * the worker.
  *
  * Built by @vite-pwa/sveltekit in `injectManifest` mode: `self.__WB_MANIFEST` is
  * the only thing injected — no Workbox runtime is bundled, so the SW fetches
@@ -30,11 +30,6 @@ import {
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-/** Background Sync event (not in the TS lib) — `tag` plus `ExtendableEvent`. */
-interface SyncEventLike extends ExtendableEvent {
-  readonly tag: string;
-}
-
 // Injected by @vite-pwa/sveltekit (injectManifest): the precached app shell.
 const PRECACHE = (self as unknown as { __WB_MANIFEST: PrecacheEntry[] }).__WB_MANIFEST;
 const VERSION = hashManifest(PRECACHE);
@@ -47,7 +42,6 @@ const SHELL_DOCUMENT = '/';
 
 const MODEL_PATH_PREFIX = '/models/';
 const API_PATH_PREFIX = '/api/';
-const REPLAY_TAG = 'replay-writes';
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(
@@ -62,7 +56,7 @@ sw.addEventListener('install', (event) => {
       );
       await cache.addAll([...new Set([SHELL_DOCUMENT, ...assetUrls])]);
       // Deliberately no skipWaiting(): registerType 'prompt' waits for the user
-      // to accept the reload hint (PwaUpdateToast → SKIP_WAITING message).
+      // to accept the reload hint (PwaStatus → SKIP_WAITING message).
     })(),
   );
 });
@@ -131,8 +125,8 @@ async function handleNavigation(request: Request): Promise<Response> {
   }
 }
 
-// Update flow: PwaUpdateToast posts SKIP_WAITING when the user accepts the
-// reload, letting the waiting worker take over.
+// Update flow: PwaStatus posts SKIP_WAITING when the user accepts the reload,
+// letting the waiting worker take over.
 sw.addEventListener('message', (event) => {
   // Only honour messages from our own origin (the app's own pages); ignore any
   // cross-origin sender. ExtendableMessageEvent.origin is the sender's origin.
@@ -141,16 +135,3 @@ sw.addEventListener('message', (event) => {
     void sw.skipWaiting();
   }
 });
-
-// Background Sync: when connectivity returns, nudge any open client to replay
-// its offline write-queue (the queue itself lives in the page, $lib/offline).
-sw.addEventListener('sync', (event) => {
-  const sync = event as SyncEventLike;
-  if (sync.tag !== REPLAY_TAG) return;
-  sync.waitUntil(notifyClientsToReplay());
-});
-
-async function notifyClientsToReplay(): Promise<void> {
-  const clients = await sw.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-  for (const client of clients) client.postMessage({ type: 'replay-queue' });
-}
