@@ -35,7 +35,7 @@
  * per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
-import type { BenefitCategory } from '@selbstbehalt/shared';
+import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
 
 import type {
   Constraint,
@@ -229,8 +229,6 @@ function scopeLabel(scope: string): string {
       return `je ${scope}`;
   }
 }
-
-const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 // ---------------------------------------------------------------------------
 // Field extraction
@@ -640,7 +638,7 @@ export function validateInvoice(
     if (sum > group.amount + EPS) {
       violations.push({
         type: 'maxAmount',
-        message: `Der Höchstwert von ${group.amount} EUR (1,0-fach) für die Nummern ${group.members.join(', ')} ist überschritten (Summe: ${round2(sum)} EUR).`,
+        message: `Der Höchstwert von ${group.amount} EUR (1,0-fach) für die Nummern ${group.members.join(', ')} ist überschritten (Summe: ${roundCents(sum)} EUR).`,
         sourceText: group.sourceText,
         ruleId: group.id,
         ziffern: members,
@@ -670,7 +668,7 @@ export function parseInvoice(
   const index = buildIndex(table);
   const positions = extractPositions(text).map((raw) => lookupPosition(raw, table, index));
   const violations = validateInvoice(positions, table, context);
-  const totalAmount = round2(positions.reduce((sum, p) => sum + p.chargedAmount, 0));
+  const totalAmount = roundCents(positions.reduce((sum, p) => sum + p.chargedAmount, 0));
 
   return {
     feeSchedule: table.feeSchedule,

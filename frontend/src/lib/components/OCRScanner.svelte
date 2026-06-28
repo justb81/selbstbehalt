@@ -13,7 +13,7 @@
   is unit-testable without a real camera, worker or DOM.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
 
   import {
     captureVideoFrame as defaultCaptureVideoFrame,
@@ -24,7 +24,7 @@
   import { preprocess as defaultPreprocess } from '$lib/ocr/preprocess';
   import { loadInvoiceImage, recognizeInvoiceImage } from '$lib/ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '$lib/ocr/scan-flow';
-  import { FEE_SCHEDULE_IDS } from '$lib/data/fee-tables';
+  import { FEE_SCHEDULE_IDS, loadFeeTable } from '$lib/data/fee-tables';
   import type { FeeScheduleId } from '$lib/data/fee-schedule';
   import type { OcrProgress, OcrResult } from '$lib/ocr/types';
   import LoadingState from './LoadingState.svelte';
@@ -92,10 +92,14 @@
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
       const prepared = preprocess(image);
-      const results = await recognize(prepared, (p) => (progress = p));
+      // Recognise and load the (lazy) fee table for the chosen schedule together.
+      const [results, table] = await Promise.all([
+        recognize(prepared, (p) => (progress = p)),
+        loadFeeTable(schedule),
+      ]);
       // The frame is no longer referenced past this point — only text/metadata
       // continues through the flow (datenminimierung, §8.2).
-      onScanned(buildScanResult(results, schedule));
+      onScanned(buildScanResult(results, schedule, table));
       phase = 'idle';
       progress = null;
     } catch (err) {
@@ -153,9 +157,16 @@
       teardownCamera();
       await processImage(image);
     } catch (err) {
+      // Never leave the camera running on a failed capture.
+      teardownCamera();
+      phase = 'idle';
       error = messageFor(err);
     }
   }
+
+  // Release the camera if the component is torn down (navigate-away) before the
+  // user captures or cancels — the LED must not stay on (privacy, §8).
+  onDestroy(teardownCamera);
 </script>
 
 <div class="scanner">

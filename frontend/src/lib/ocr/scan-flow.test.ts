@@ -13,7 +13,10 @@ import {
 } from './scan-flow';
 import { textToOcrResults } from './scan-ocr';
 import type { OcrResult } from './types';
+import goaeJson from '$lib/data/goae.json';
+import type { FeeScheduleTable } from '$lib/data/fee-schedule';
 
+const GOAE = goaeJson as unknown as FeeScheduleTable;
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 
 // A realistic GOÄ invoice: one clean line (250), one over the §5 limit (75 at
@@ -49,7 +52,7 @@ describe('ocrResultsToText / meanConfidence', () => {
 
 describe('buildScanResult', () => {
   it('parses an invoice against the chosen schedule', () => {
-    const result = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ');
+    const result = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ', GOAE);
 
     expect(result.schedule).toBe('GOÄ');
     expect(result.parsed.invoiceDate).toBe('2026-03-15');
@@ -63,14 +66,17 @@ describe('buildScanResult', () => {
     expect(unknown?.known).toBe(false);
   });
 
-  it('maps per-line OCR confidence onto positions by raw text', () => {
+  it('aligns per-position confidence by order, even for duplicate line text', () => {
+    // Two identical position lines must keep their own confidences (no collapse
+    // to a single min-merged value); the header line is ignored.
     const results: OcrResult[] = [
-      { text: '250  Blutentnahme         2,3    5,36', bbox: { points: [] }, confidence: 0.4 },
-      { text: '75   Krankheitsbericht    3,5   26,53', bbox: { points: [] }, confidence: 0.95 },
+      { text: 'Rechnungsdatum: 15.03.2026', bbox: { points: [] }, confidence: 0.99 },
+      { text: '250  Blutentnahme  2,3  5,36', bbox: { points: [] }, confidence: 0.4 },
+      { text: '250  Blutentnahme  2,3  5,36', bbox: { points: [] }, confidence: 0.95 },
     ];
-    const result = buildScanResult(results, 'GOÄ');
-    expect(result.positionConfidence[0]).toBeCloseTo(0.4);
-    expect(result.positionConfidence[1]).toBeCloseTo(0.95);
+    const result = buildScanResult(results, 'GOÄ', GOAE);
+    expect(result.parsed.positions).toHaveLength(2);
+    expect(result.positionConfidence).toEqual([0.4, 0.95]);
   });
 });
 
@@ -83,10 +89,10 @@ describe('defaultProviderType', () => {
 });
 
 describe('toReviewPositions / toInvoicePayload', () => {
-  const scan = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ');
+  const scan = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ', GOAE);
 
   it('builds editable positions carrying flags', () => {
-    const positions = toReviewPositions(scan.parsed);
+    const positions = toReviewPositions(scan);
     expect(positions[0]?.isValid).toBe(true);
     expect(positions[1]?.isValid).toBe(false);
     expect(positions[1]?.flagReason).toContain('Steigerungsfaktor');
@@ -100,7 +106,7 @@ describe('toReviewPositions / toInvoicePayload', () => {
       providerName: 'Praxis Dr. med. Mustermann',
       providerType: 'arzt',
       schedule: 'GOÄ',
-      positions: toReviewPositions(scan.parsed),
+      positions: toReviewPositions(scan),
     };
   }
 
@@ -127,6 +133,7 @@ describe('toReviewPositions / toInvoicePayload', () => {
         chargedAmount: 10.72,
         isValid: true,
         flagReason: null,
+        confidence: 1,
       },
     ];
     expect(toInvoicePayload(state).total_amount).toBeCloseTo(10.72);

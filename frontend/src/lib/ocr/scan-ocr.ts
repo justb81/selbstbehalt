@@ -14,7 +14,7 @@
  */
 import { fileToImageData } from './capture';
 import { OcrClient } from './ocr-client';
-import type { OcrProgress, OcrResult } from './types';
+import type { OcrBackend, OcrProgress, OcrResult } from './types';
 
 /** Recognises one preprocessed frame into text lines, reporting progress. */
 export type OcrRecognizer = (
@@ -26,21 +26,28 @@ export type OcrRecognizer = (
 export type ImageLoader = (file: File) => Promise<ImageData>;
 
 let client: OcrClient | null = null;
-let initialized = false;
+let initPromise: Promise<OcrBackend> | null = null;
 let override: OcrRecognizer | null = null;
 let loaderOverride: ImageLoader | null = null;
 
-/** Default recognizer: a shared worker-backed client, initialised on first use. */
+/**
+ * Default recognizer: a shared worker-backed client, initialised once on first
+ * use. Concurrent callers await the same in-flight `init()`; if it rejects, the
+ * client and the promise are dropped so the next call constructs a fresh client
+ * and retries (no half-initialised singleton lingers).
+ */
 async function defaultRecognize(
   image: ImageData,
   onProgress?: (progress: OcrProgress) => void,
 ): Promise<OcrResult[]> {
-  client ??= new OcrClient();
-  if (!initialized) {
-    await client.init({ onProgress });
-    initialized = true;
-  }
-  return client.recognize(image, onProgress);
+  const activeClient = (client ??= new OcrClient());
+  initPromise ??= activeClient.init({ onProgress }).catch((err: unknown) => {
+    client = null;
+    initPromise = null;
+    throw err;
+  });
+  await initPromise;
+  return activeClient.recognize(image, onProgress);
 }
 
 /** Recognises an invoice frame via the active recognizer (override or default). */
@@ -70,7 +77,7 @@ export function setImageLoader(loader: ImageLoader | null): void {
 export function disposeScanOcr(): void {
   client?.terminate();
   client = null;
-  initialized = false;
+  initPromise = null;
 }
 
 /**

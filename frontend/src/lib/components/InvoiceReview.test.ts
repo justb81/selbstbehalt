@@ -5,9 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { buildScanResult, type ScanResult } from '$lib/ocr/scan-flow';
 import { textToOcrResults } from '$lib/ocr/scan-ocr';
+import goaeJson from '$lib/data/goae.json';
+import type { FeeScheduleTable } from '$lib/data/fee-schedule';
 import type { InvoiceCreatePayload } from '@selbstbehalt/shared';
 import InvoiceReview from './InvoiceReview.svelte';
 
+const GOAE = goaeJson as unknown as FeeScheduleTable;
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 
 const SAMPLE = [
@@ -18,7 +21,7 @@ const SAMPLE = [
 ].join('\n');
 
 function makeScan(): ScanResult {
-  return buildScanResult(textToOcrResults(SAMPLE), 'GOÄ');
+  return buildScanResult(textToOcrResults(SAMPLE), 'GOÄ', GOAE);
 }
 
 const persons = [{ id: VALID_UUID, label: 'AOK · PrivatComfort' }];
@@ -76,6 +79,7 @@ describe('InvoiceReview', () => {
     const scan = buildScanResult(
       textToOcrResults('Praxis Dr. med. Test\nRechnungsdatum: 15.03.2026'),
       'GOÄ',
+      GOAE,
     );
     render(InvoiceReview, { props: { scan, insuredPersons: persons, onSubmit } });
 

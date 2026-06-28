@@ -17,6 +17,7 @@
 import { differenceInMonths } from 'date-fns';
 
 import type { BRELevel, BREStructure } from '../schemas/insured-person.js';
+import { roundCents } from './money.js';
 
 /** A calendar day, accepted either as a `Date` or a `YYYY-MM-DD` string. */
 export type DateInput = Date | string;
@@ -74,8 +75,7 @@ export function getCurrentStreakMonths(
  * `bre_months × monthlyPremium × pct_of_premium / 100`, rounded to whole cents.
  */
 function levelAmount(level: BRELevel, monthlyPremium: number): number {
-  const amount = level.bre_months * monthlyPremium * (level.pct_of_premium / 100);
-  return Math.round(amount * 100) / 100;
+  return roundCents(level.bre_months * monthlyPremium * (level.pct_of_premium / 100));
 }
 
 /**

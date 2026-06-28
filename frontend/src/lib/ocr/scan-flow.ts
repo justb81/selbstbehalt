@@ -15,25 +15,21 @@
  * builds carries no image; `ocr_raw` is included only when the user opts in
  * (docs/design.md §8.1/§8.2).
  */
-import type { ProviderType } from '@selbstbehalt/shared';
-import { type InvoiceCreatePayload, invoiceCreatePayloadSchema } from '@selbstbehalt/shared';
-
 import {
-  parseInvoice,
-  type ParsedInvoice,
-  type ParsedPosition,
-  type ValidationContext,
-} from '$lib/utils/goae-parser';
-import { resolveFeeTable } from '$lib/data/fee-tables';
-import type { FeeScheduleId } from '$lib/data/fee-schedule';
+  invoiceCreatePayloadSchema,
+  roundCents,
+  type InvoiceCreatePayload,
+  type ProviderType,
+} from '@selbstbehalt/shared';
+
+import { parseInvoice, parsePositionLine, type ValidationContext } from '$lib/utils/goae-parser';
+import type { ParsedInvoice } from '$lib/utils/goae-parser';
+import type { FeeScheduleId, FeeScheduleTable } from '$lib/data/fee-schedule';
 
 import type { OcrResult } from './types';
 
 /** Default OCR confidence below which a line/field is flagged as uncertain. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.8;
-
-/** Round to whole cents, matching the `money` schema's two-decimal rule. */
-const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
  * The result of scanning one image: the parsed invoice plus the provenance the
@@ -52,8 +48,9 @@ export interface ScanResult {
   meanConfidence: number;
   /**
    * OCR confidence for each parsed position, aligned to
-   * {@link ParsedInvoice.positions} by index. Falls back to `1` when a
-   * position's source line can't be matched back to an OCR line.
+   * {@link ParsedInvoice.positions} by index — both are derived from the same
+   * recognised lines in the same order, so the k-th position-line's confidence
+   * lines up with the k-th parsed position (no stringly-typed re-matching).
    */
   positionConfidence: number[];
 }
@@ -77,37 +74,35 @@ export function meanConfidence(results: OcrResult[]): number {
 }
 
 /**
- * Maps each parsed position back to the confidence of the OCR line it came
- * from, matching on the trimmed raw line text. Unmatched positions default to
- * `1` (treated as confident) rather than flagged.
+ * Confidence of each recognised line the parser reads as a position, in order.
+ * `parseInvoice` extracts positions from the same lines in the same order
+ * ({@link parsePositionLine} per line), so this array aligns 1:1 with
+ * {@link ParsedInvoice.positions} by index — robust to duplicate line text and
+ * whitespace differences, unlike a text-keyed lookup.
  */
-function positionConfidences(positions: ParsedPosition[], results: OcrResult[]): number[] {
-  const byText = new Map<string, number>();
-  for (const r of results) {
-    const key = r.text.trim();
-    // Keep the lowest confidence when several lines share text.
-    byText.set(key, Math.min(r.confidence, byText.get(key) ?? r.confidence));
-  }
-  return positions.map((p) => (p.raw ? (byText.get(p.raw.trim()) ?? 1) : 1));
+function positionConfidences(results: OcrResult[]): number[] {
+  return results.filter((r) => parsePositionLine(r.text)).map((r) => r.confidence);
 }
 
 /**
- * Parses recognised OCR lines into a {@link ScanResult} against the chosen fee
- * schedule. Pure: no I/O, no worker — feed it the OCR output and a schedule id.
+ * Parses recognised OCR lines into a {@link ScanResult} against the given fee
+ * table. Pure: no I/O, no worker — feed it the OCR output, the schedule id and
+ * its (lazily-loaded) table.
  */
 export function buildScanResult(
   results: OcrResult[],
   schedule: FeeScheduleId,
+  table: FeeScheduleTable,
   context: ValidationContext = {},
 ): ScanResult {
   const ocrText = ocrResultsToText(results);
-  const parsed = parseInvoice(ocrText, resolveFeeTable(schedule), context);
+  const parsed = parseInvoice(ocrText, table, context);
   return {
     schedule,
     ocrText,
     parsed,
     meanConfidence: meanConfidence(results),
-    positionConfidence: positionConfidences(parsed.positions, results),
+    positionConfidence: positionConfidences(results),
   };
 }
 
@@ -135,6 +130,12 @@ export interface ReviewPosition {
   isValid: boolean;
   /** Combined flag reasons, or null when the line is clean. */
   flagReason: string | null;
+  /**
+   * OCR confidence of this line, carried on the row so per-row uncertainty
+   * markers stay correct after rows are reordered or removed (not indexed back
+   * into the scan).
+   */
+  confidence: number;
 }
 
 /** The full, user-confirmed review state the save step serialises. */
@@ -150,9 +151,9 @@ export interface ReviewState {
   ocrRaw?: string | null;
 }
 
-/** Builds the initial editable positions from a parsed invoice. */
-export function toReviewPositions(parsed: ParsedInvoice): ReviewPosition[] {
-  return parsed.positions.map((p) => ({
+/** Builds the initial editable positions from a scan, carrying per-row confidence. */
+export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
+  return scan.parsed.positions.map((p, i) => ({
     goaeNumber: p.ziffer,
     description: p.description ?? null,
     multiplier: p.multiplier,
@@ -160,6 +161,7 @@ export function toReviewPositions(parsed: ParsedInvoice): ReviewPosition[] {
     chargedAmount: p.chargedAmount,
     isValid: p.isValid,
     flagReason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
+    confidence: scan.positionConfidence[i] ?? 1,
   }));
 }
 
@@ -175,12 +177,12 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
     goae_category: state.schedule,
     description: p.description,
     multiplier: p.multiplier,
-    base_amount: round2(p.baseAmount),
-    charged_amount: round2(p.chargedAmount),
+    base_amount: roundCents(p.baseAmount),
+    charged_amount: roundCents(p.chargedAmount),
     is_valid: p.isValid,
     flag_reason: p.flagReason,
   }));
-  const totalAmount = round2(positions.reduce((sum, p) => sum + p.charged_amount, 0));
+  const totalAmount = roundCents(positions.reduce((sum, p) => sum + p.charged_amount, 0));
 
   return invoiceCreatePayloadSchema.parse({
     insured_person_id: state.insuredPersonId,

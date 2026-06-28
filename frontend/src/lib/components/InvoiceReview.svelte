@@ -10,7 +10,9 @@
 <script lang="ts">
   import { ZodError } from 'zod';
   import {
+    formatEur,
     providerTypeValues,
+    roundCents,
     type InvoiceCreatePayload,
     type ProviderType,
   } from '@selbstbehalt/shared';
@@ -64,26 +66,16 @@
   // svelte-ignore state_referenced_locally
   let providerType = $state<ProviderType>(defaultProviderType(scan.schedule));
   // svelte-ignore state_referenced_locally
-  let positions = $state<ReviewPosition[]>(toReviewPositions(scan.parsed));
+  let positions = $state<ReviewPosition[]>(toReviewPositions(scan));
   let saveOcrRaw = $state(false);
   let formError = $state<string | null>(null);
 
-  const total = $derived(
-    Math.round(positions.reduce((sum, p) => sum + (p.chargedAmount || 0), 0) * 100) / 100,
-  );
+  const total = $derived(roundCents(positions.reduce((sum, p) => sum + (p.chargedAmount || 0), 0)));
   const flaggedCount = $derived(positions.filter((p) => !p.isValid).length);
   const lowConfidence = $derived(scan.meanConfidence < confidenceThreshold);
 
-  function isUncertain(index: number): boolean {
-    return (scan.positionConfidence[index] ?? 1) < confidenceThreshold;
-  }
-
   function removePosition(index: number): void {
     positions = positions.filter((_, i) => i !== index);
-  }
-
-  function eur(value: number): string {
-    return value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
   }
 
   function submit(): void {
@@ -94,6 +86,13 @@
     }
     if (positions.length === 0) {
       formError = 'Die Rechnung enthält keine Positionen.';
+      return;
+    }
+    // Catch an empty/zero Faktor here so the message names the line, rather than
+    // surfacing the schema's line-less `.positive()` error from toInvoicePayload.
+    const badFactor = positions.findIndex((p) => !(p.multiplier > 0));
+    if (badFactor !== -1) {
+      formError = `Position ${badFactor + 1}: Der Steigerungsfaktor muss größer als 0 sein.`;
       return;
     }
     const state: ReviewState = {
@@ -217,7 +216,7 @@
           {#if !position.isValid && position.flagReason}
             <small class="flag" role="note">⚠ {position.flagReason}</small>
           {/if}
-          {#if isUncertain(index)}
+          {#if position.confidence < confidenceThreshold}
             <small class="uncertain">Unsichere Erkennung – bitte prüfen.</small>
           {/if}
         </span>
@@ -225,7 +224,7 @@
           class="num"
           type="number"
           step="0.1"
-          min="0"
+          min="0.1"
           bind:value={position.multiplier}
           aria-label="Faktor Position {index + 1}"
         />
@@ -249,7 +248,7 @@
     {/each}
   </div>
 
-  <p class="total">Gesamtbetrag: <strong>{eur(total)}</strong></p>
+  <p class="total">Gesamtbetrag: <strong>{formatEur(total)}</strong></p>
 
   <label class="checkbox">
     <input type="checkbox" bind:checked={saveOcrRaw} />
