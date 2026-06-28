@@ -62,6 +62,7 @@ const SCHEDULES = [
     norm: (root) => normNamed(root, 'Anlage'),
     category: goaeCategory,
     sectionOf: goaeSection,
+    benefitCategory: () => 'ambulant',
   },
   {
     feeSchedule: 'GOZ',
@@ -73,6 +74,8 @@ const SCHEDULES = [
     law: 'GOZ (Gebührenordnung für Zahnärzte, 1987)',
     norm: (root) => normNamed(root, 'Anlage 1'),
     category: () => 'default',
+    sectionOf: gozSection,
+    benefitCategory: gozBenefitCategory,
   },
   {
     feeSchedule: 'GOT',
@@ -84,6 +87,7 @@ const SCHEDULES = [
     law: 'GOT (Gebührenordnung für Tierärzte, 2022)',
     norm: null, // GOT: process the largest fee table directly
     category: () => 'default',
+    benefitCategory: () => 'sonstiges', // veterinary — outside the human PKV benefit areas
   },
 ];
 
@@ -125,6 +129,52 @@ function goaeCategory(ziffer) {
   if (n === 437 || (n >= 3500 && n <= 4787)) return 'lab'; // §5(4): Nr. 437 + Abschnitt M
   if ((n >= 500 && n <= 569) || (n >= 5000 && n <= 5855)) return 'technical'; // §5(3): Abschnitte E, O
   return 'default';
+}
+
+// GOZ Abschnitte A–J with their numeric ranges (Gebührenverzeichnis für
+// zahnärztliche Leistungen). Used for both section metadata and the
+// `benefitCategory` mapping onto a tariff's `included_benefits` areas (§3.2):
+// prosthetics (F) and implantology (J) are Zahnersatz, orthodontics (G) is
+// Kieferorthopädie, everything else is Zahnbehandlung.
+const GOZ_SECTIONS = [
+  ['A', 1, 999, 'Allgemeine zahnärztliche Leistungen', 'zahnbehandlung'],
+  ['B', 1000, 1999, 'Prophylaktische Leistungen', 'zahnbehandlung'],
+  ['C', 2000, 2999, 'Konservierende Leistungen', 'zahnbehandlung'],
+  ['D', 3000, 3999, 'Chirurgische Leistungen', 'zahnbehandlung'],
+  [
+    'E',
+    4000,
+    4999,
+    'Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums',
+    'zahnbehandlung',
+  ],
+  ['F', 5000, 5999, 'Prothetische Leistungen', 'zahnersatz'],
+  ['G', 6000, 6999, 'Kieferorthopädische Leistungen', 'kieferorthopaedie'],
+  ['H', 7000, 7999, 'Eingliederung von Aufbissbehelfen und Schienen', 'zahnbehandlung'],
+  [
+    'I',
+    8000,
+    8999,
+    'Funktionsanalytische und funktionstherapeutische Leistungen',
+    'zahnbehandlung',
+  ],
+  ['J', 9000, 9999, 'Implantologische Leistungen', 'zahnersatz'],
+];
+
+function gozSectionTuple(ziffer) {
+  const n = parseInt(ziffer, 10);
+  if (!Number.isFinite(n)) return undefined;
+  return GOZ_SECTIONS.find(([, lo, hi]) => n >= lo && n <= hi);
+}
+
+function gozSection(ziffer) {
+  const t = gozSectionTuple(ziffer);
+  return t ? { code: t[0], title: t[3] } : undefined;
+}
+
+function gozBenefitCategory(ziffer) {
+  const t = gozSectionTuple(ziffer);
+  return t ? t[4] : 'zahnbehandlung';
 }
 
 function normNamed(root, enbez) {
@@ -210,6 +260,7 @@ function makeBuilder(schedule) {
       points: points ?? null,
       baseAmount: baseAmount(points, euro),
       category,
+      benefitCategory: schedule.benefitCategory(z),
       maxMultiplier: lim.regelhoechstsatz ?? lim.hoechstsatz,
     };
     if (/^Zuschlag\b/i.test(desc)) {

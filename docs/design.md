@@ -349,9 +349,10 @@ arbeitet in vier Schritten:
    OCR-Rauschen tolerant). Eine explizite Mengenangabe (`2x`) wird erkannt.
 2. **Lookup** jeder Ziffer in der generierten Tabelle (`{goae,goz,got}.json`,
    Typ `FeeScheduleTable`); die Ziffer wird beim Nachschlagen normalisiert
-   (führende Nullen gestrippt). `baseAmount`/`category`/`maxMultiplier` werden
-   aus dem `FeeEntry` übernommen, nicht neu berechnet. Unbekannte Ziffern werden
-   gekennzeichnet (kein Crash).
+   (führende Nullen gestrippt). `baseAmount`/`category`/`benefitCategory`/
+   `maxMultiplier` werden aus dem `FeeEntry` übernommen, nicht neu berechnet
+   (`benefitCategory` = Tarif-Leistungsbereich für die Erstattungs-Engine, §5.1).
+   Unbekannte Ziffern werden gekennzeichnet (kein Crash).
 3. **Validierung pro Position (§5)**: Der Steigerungsfaktor wird gegen
    `maxMultiplier` des Eintrags (ersatzweise `multiplierLimits[category]`)
    geprüft — **die Grenzen kommen ausschließlich aus den Daten, nicht
@@ -408,18 +409,24 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 ```typescript
 // erstattungs-engine.ts
 
+interface ErstattungPosition {
+  category: BenefitCategory;        // benefitCategory aus dem GOÄ-Parser (+ ggf. Kontext-Override)
+  chargedAmount: number;            // in Rechnung gestellter Betrag der Position
+}
+
 interface ErstattungInput {
-  positions: InvoicePosition[];     // aus dem GOÄ-Parser (charged_amount, Kategorie)
+  positions: ErstattungPosition[];  // aus dem GOÄ-Parser (charged_amount, benefitCategory)
   benefits: IncludedBenefits;       // included_benefits der versicherten Person
-  invoiceDate: Date;                // für Wartezeit-/Aufbaujahres-Prüfung
-  coverageStart: Date;              // Beginn des Versicherungsschutzes der Person (insured_persons.start_date)
-  priorClaimsByCategory?: Record<string, number>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
+  invoiceDate: Date | string;       // für Wartezeit-/Aufbaujahres-Prüfung (injizierbar)
+  coverageStart: Date | string;     // Beginn des Versicherungsschutzes der Person (insured_persons.start_date)
+  patientAge?: number;              // Alter bei Rechnungsdatum, für altersabhängige limits
+  priorClaimsByCategory?: Partial<Record<BenefitCategory, number>>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
 }
 
 interface ErstattungResult {
   eligibleAmount: number;           // R — Summe der erstattungsfähigen Beträge
   byCategory: Array<{
-    category: string;
+    category: BenefitCategory;
     chargedAmount: number;
     eligibleAmount: number;
     appliedPct: number;             // effektiver Erstattungssatz nach Staffel/Restquote
@@ -429,7 +436,9 @@ interface ErstattungResult {
 }
 ```
 
-Berechnungsschritte je Position (gruppiert nach `category`):
+Die Positionen tragen ihre `benefitCategory` aus der Fee-Schedule-Tabelle (§4.4,
+`FeeEntry.benefitCategory`); der ambulant↔stationär-Fall und Nicht-GOÄ/GOZ-Bereiche
+werden vom Aufrufer aufgelöst. Berechnungsschritte je Kategorie-Gruppe:
 
 1. **Wartezeit prüfen** — liegt `invoiceDate` vor `coverageStart + waiting_period_months`,
    ist der Betrag nicht erstattungsfähig (`appliedPct = 0`, `cappedBy = 'waiting_period'`).

@@ -43,3 +43,30 @@ export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
 export const submissionChannelValues = ['app', 'post', 'email'] as const;
 export const submissionChannelSchema = z.enum(submissionChannelValues);
 export type SubmissionChannel = z.infer<typeof submissionChannelSchema>;
+
+/**
+ * Benefit area a tariff reimbursement rule applies to (a `category` entry in
+ * `insured_persons.included_benefits`). See §3.2 `included_benefits`.
+ */
+export const benefitCategoryValues = [
+  'ambulant',
+  'stationaer',
+  'zahnbehandlung',
+  'zahnersatz',
+  'kieferorthopaedie',
+  'heilmittel',
+  'hilfsmittel',
+  'wahlleistung',
+  'sonstiges',
+] as const;
+export const benefitCategorySchema = z.enum(benefitCategoryValues);
+export type BenefitCategory = z.infer<typeof benefitCategorySchema>;
+
+/**
+ * Scope a benefit `limit` caps spending over (a `limits[].scope` entry in
+ * `insured_persons.included_benefits`): per treatment case, per policy year, or
+ * lifelong. See §3.2 `included_benefits`.
+ */
+export const benefitLimitScopeValues = ['behandlung', 'jahr', 'lebenslang'] as const;
+export const benefitLimitScopeSchema = z.enum(benefitLimitScopeValues);
+export type BenefitLimitScope = z.infer<typeof benefitLimitScopeSchema>;

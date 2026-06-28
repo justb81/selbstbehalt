@@ -90,7 +90,8 @@ Wichtig:
   "description": "Beratung, auch mittels Fernsprecher",
   "points": 80,                 // Punktzahl; null bei GOT
   "baseAmount": 4.66,           // points × pointValueCents/100 bzw. Euro (GOT)
-  "category": "default",        // default | technical | lab | inpatient
+  "category": "default",        // default | technical | lab | inpatient (§5)
+  "benefitCategory": "ambulant", // Tarif-Leistungsbereich (§3.2 included_benefits)
   "maxMultiplier": 2.3,         // Schwellenwert zum Flaggen (§5 Regelhöchstsatz)
   "isSurcharge": false,         // true bei Zuschlägen
   "section": { "part": "M", "code": "B I", "title": "…" },
@@ -105,6 +106,14 @@ Wichtig:
 - **`category`** wird aus dem Abschnitt der Quelle abgeleitet (GOÄ Teil M →
   `lab`, technische Abschnitte → `technical`, …) und mappt über
   `multiplierLimits` auf die §5-Steigerungsgrenzen.
+- **`benefitCategory`** ist der Tarif-Leistungsbereich (`included_benefits`,
+  Design §3.2), nach dem die Erstattungs-Engine die Positionen gruppiert. Zur
+  Build-Zeit deterministisch aus Gebührenordnung + Nummernkreis abgeleitet: GOZ
+  `5xxx`/`9xxx` → `zahnersatz`, `6xxx` → `kieferorthopaedie`, übrige GOZ →
+  `zahnbehandlung`; alle GOÄ → `ambulant`; GOT → `sonstiges`. Es ist der aus den
+  Daten ableitbare **Default** — die Unterscheidung ambulant↔stationär und die
+  Nicht-GOÄ/GOZ-Bereiche (`heilmittel`/`hilfsmittel`) hängen vom Rechnungskontext
+  ab und werden vom Aufrufer gesetzt, nicht von der Tabelle.
 - **`maxMultiplier`** ist der Wert, gegen den der Parser den
   Steigerungsfaktor einer Position flaggt – i. d. R. der `regelhoechstsatz` der
   Kategorie, in Sonderfällen ein gesetzlicher Eintrags-Override.
