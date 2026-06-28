@@ -47,9 +47,6 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #65 | `included_benefits`-Schema (Tarif-Erstattungsregeln) | #8, #10 | ⬜ |
 | #66 | Erstattungs-Engine (`eligible_amount` aus Tarifbausteinen) | #65, #16, #4 | ⬜ |
 | #18 | Günstigerprüfung-Engine | #17, #4 | ⬜ |
-| #82 | Datenmodell: Rezept-Belege (Hilfsmittel/Arznei-/Heilmittel) erfassbar | #8, #10, #65, #66 | ⬜ |
-| #83 | Invoices-API: Rezept-Belege persistieren & validieren | #82, #12 | ⬜ |
-| #84 | Beleg-Erfassungs-UI: Rezepte (Hilfsmittel/Arznei-/Heilmittel) | #82, #83, #22 | ⬜ |
 | #19 | SvelteKit-Grundgerüst + API-Client | #2, #3, #10 | ✅ |
 | #20 | Einstellungs-Seite | #19, #14 | ⬜ |
 | #21 | Vertragsverwaltung-UI (ContractCard, BRETracker) | #19, #11, #17 | ⬜ |
@@ -84,9 +81,12 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #35 | Mehrbenutzer-/Familien-Support | #8, #21, #13 | ⬜ |
 | #36 | Beihilfe-Unterstützung | #11, #18 | ⬜ |
 | #37 | Optionaler LLM-Handschrift-Fallback (Opt-in) | #26 | ⬜ |
-| #85 | Beleg-OCR/-Parser für Apotheken-/Hilfsmittel-Belege (PZN/HMV) | #26, #82 | ⬜ |
 | #38 | n8n-Einreichungs-E-Mails | #12 | ⬜ |
 | #39 | Native Android-App via Tauri *(aus Repo-Beschreibung; mit Maintainer abstimmen)* | #19, #27 | ⬜ |
+| #82 | Datenmodell: Rezept-Belege (Hilfsmittel/Arznei-/Heilmittel) erfassbar | #8, #10, #65, #66 | ⬜ |
+| #83 | Invoices-API: Rezept-Belege persistieren & validieren | #82, #12 | ⬜ |
+| #84 | Beleg-Erfassungs-UI: Rezepte (Hilfsmittel/Arznei-/Heilmittel) | #82, #83, #22 | ⬜ |
+| #85 | Beleg-OCR/-Parser für Apotheken-/Hilfsmittel-Belege (PZN/HMV) | #26, #82 | ⬜ |
 
 ## Abhängigkeits-Graph (Auszug)
 
@@ -105,7 +105,7 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
             ├─ #22 ◀── #12,#16,#18,#66,#20
             └─ #23 ◀── #21,#22,#13
 
-#65,#66 ── #82 ──┬─ #83 ── #84 ◀── #22   (Rezept-Belege: Schema → API → UI)
+#65,#66 ── #82 ──┬─ #83 ── #84 ◀── #22   (Rezept-Belege, Phase 4: Schema → API → UI)
                  └─ #85 ◀── #26          (Beleg-OCR, Phase 4)
 
 #19 ─┬─ #24 ─┐
@@ -129,5 +129,5 @@ Paralleler Domänen-Strang: `#15 → #16`, `#17 → #18` und `#65 → #66`, die 
 erfassbar sein. Diese folgen nicht der GOÄ (kein Steigerungsfaktor), sondern *Menge × Einzelpreis*
 mit optionaler PZN/Hilfsmittelnummer. Die Erstattungs-Engine (#66) ist bereits generisch über
 `BenefitCategory`; die Arbeit liegt im Datenmodell (#82), der API (#83), der Erfassungs-UI (#84) und
-optional der Beleg-OCR (#85). Phasen-Zuordnung der MVP-nahen Teile (#82–#84 als „manuelle
-Erfassung", Design §9 Phase 1) ist mit dem Maintainer abzustimmen.
+optional der Beleg-OCR (#85). Der gesamte Strang ist als **Phase 4 (Erweiterung)** eingeordnet —
+bewusst nach dem GOÄ-MVP, da er über die im Design-Dokument dokumentierte MVP-Scope hinausgeht.
