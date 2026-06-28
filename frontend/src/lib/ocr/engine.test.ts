@@ -164,14 +164,19 @@ describe('createPaddleOcrEngine', () => {
     await expect(engine.recognize(image)).rejects.toThrow(/before init/);
   });
 
-  it('recognises the image and maps recognition output', async () => {
+  it('converts the image to a canvas source and maps recognition output', async () => {
     const service = fakeService();
+    const toImageSource = vi.fn().mockReturnValue('CANVAS');
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
       loadModule: async () => fakeModule(service).module,
+      toImageSource,
     });
     await engine.init();
     const results = await engine.recognize(image);
-    expect(service.recognize).toHaveBeenCalledWith(image);
+    // The binding calls `.getContext()` on its input, so we hand it a canvas,
+    // not the raw ImageData.
+    expect(toImageSource).toHaveBeenCalledWith(image);
+    expect(service.recognize).toHaveBeenCalledWith('CANVAS');
     expect(results).toEqual([
       {
         text: 'Hallo',
@@ -184,6 +189,40 @@ describe('createPaddleOcrEngine', () => {
         confidence: 0.9,
       },
     ]);
+  });
+
+  it('default conversion draws onto an OffscreenCanvas and patches the worker canvas factory', async () => {
+    const putImageData = vi.fn();
+    class FakeOffscreenCanvas {
+      constructor(
+        public width: number,
+        public height: number,
+      ) {}
+      getContext() {
+        return { putImageData };
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', FakeOffscreenCanvas);
+    try {
+      const service = fakeService();
+      service.platform = { createCanvas: vi.fn() };
+      const original = service.platform.createCanvas;
+      const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+        loadModule: async () => fakeModule(service).module,
+      });
+      await engine.init();
+      // The DOM-bound `document.createElement` factory is replaced with an
+      // OffscreenCanvas one so detection/padding runs in a Web Worker.
+      expect(service.platform.createCanvas).not.toBe(original);
+      expect(service.platform.createCanvas?.(3, 4)).toBeInstanceOf(FakeOffscreenCanvas);
+
+      await engine.recognize(image);
+      const arg = vi.mocked(service.recognize).mock.calls[0]?.[0];
+      expect(arg).toBeInstanceOf(FakeOffscreenCanvas);
+      expect(putImageData).toHaveBeenCalledWith(image, 0, 0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('destroys the previous service when init() is called again without dispose()', async () => {
