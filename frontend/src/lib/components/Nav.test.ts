@@ -18,7 +18,14 @@ describe('Nav', () => {
   it('renders a link for every top-level section', () => {
     nav.pathname = '/';
     render(Nav);
-    for (const label of ['Dashboard', 'Verträge', 'Rechnungen', 'Auswertung', 'Einstellungen']) {
+    for (const label of [
+      'Dashboard',
+      'Personen',
+      'Verträge',
+      'Rechnungen',
+      'Auswertung',
+      'Einstellungen',
+    ]) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });

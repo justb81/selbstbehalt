@@ -17,6 +17,7 @@ import { createContractsRoute } from './routes/contracts.js';
 import { createHealthRoute } from './routes/health.js';
 import { createInsuredRoute } from './routes/insured.js';
 import { createInvoicesRoute } from './routes/invoices.js';
+import { createPersonsRoute } from './routes/persons.js';
 import { createStatsRoute } from './routes/stats.js';
 
 export interface AppDeps {
@@ -43,6 +44,7 @@ export function createApp({ db, config }: AppDeps) {
   // Everything else under /api requires the API key when one is configured.
   app.use('/api/*', apiKeyAuth(config.apiKey));
 
+  app.route('/api/persons', createPersonsRoute(db));
   app.route('/api/contracts', createContractsRoute(db));
   // Insured-person endpoints: /api/contracts/:id/insured and /api/insured/:id.
   app.route('/api', createInsuredRoute(db));
