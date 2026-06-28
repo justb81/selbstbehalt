@@ -5,16 +5,21 @@
 // schemas so callers get validated, fully-typed data.
 
 import {
+  breHistorySchema,
   contractSchema,
   healthBodySchema,
   insuredPersonSchema,
   invoiceSchema,
   invoiceWithPositionsSchema,
+  personSchema,
   submissionSchema,
+  yearStatsSchema,
+  type BREHistory,
   type Contract,
   type ContractCreate,
   type ContractUpdate,
   type HealthBody,
+  type ImportResult,
   type InsuredPerson,
   type InsuredPersonCreate,
   type InsuredPersonUpdate,
@@ -22,9 +27,13 @@ import {
   type InvoiceCreatePayload,
   type InvoiceUpdate,
   type InvoiceWithPositions,
+  type Person,
+  type PersonCreate,
+  type PersonUpdate,
   type Submission,
   type SubmissionInput,
   type SubmissionUpdate,
+  type YearStats,
 } from '@selbstbehalt/shared';
 import { z } from 'zod';
 
@@ -40,12 +49,23 @@ export type InsuredPersonCreateBody = Omit<InsuredPersonCreate, 'contract_id'>;
 const contractListSchema = z.array(contractSchema);
 const insuredPersonListSchema = z.array(insuredPersonSchema);
 const invoiceListSchema = z.array(invoiceSchema);
+const personListSchema = z.array(personSchema);
 
 const id = (value: string): string => encodeURIComponent(value);
 
 /** Build the resource-method namespaces bound to a requester. */
 export function createResources(request: ApiRequester) {
   const health = () => request('/api/health', { schema: healthSchema });
+
+  const persons = {
+    list: () => request('/api/persons', { schema: personListSchema }),
+    get: (personId: string) => request(`/api/persons/${id(personId)}`, { schema: personSchema }),
+    create: (data: PersonCreate) =>
+      request('/api/persons', { method: 'POST', body: data, schema: personSchema }),
+    update: (personId: string, data: PersonUpdate) =>
+      request(`/api/persons/${id(personId)}`, { method: 'PUT', body: data, schema: personSchema }),
+    remove: (personId: string) => request(`/api/persons/${id(personId)}`, { method: 'DELETE' }),
+  };
 
   const contracts = {
     list: () => request('/api/contracts', { schema: contractListSchema }),
@@ -111,8 +131,25 @@ export function createResources(request: ApiRequester) {
       }),
   };
 
-  return { health, contracts, insured, invoices };
+  const stats = {
+    year: (year: number) =>
+      request(`/api/stats/year/${encodeURIComponent(year)}`, { schema: yearStatsSchema }),
+    bre: (insuredPersonId: string) =>
+      request(`/api/stats/bre/${id(insuredPersonId)}`, { schema: breHistorySchema }),
+  };
+
+  return { health, persons, contracts, insured, invoices, stats };
 }
 
 export type Resources = ReturnType<typeof createResources>;
-export type { Contract, InsuredPerson, Invoice, InvoiceWithPositions, Submission };
+export type {
+  BREHistory,
+  Contract,
+  ImportResult,
+  InsuredPerson,
+  Invoice,
+  InvoiceWithPositions,
+  Person,
+  Submission,
+  YearStats,
+};

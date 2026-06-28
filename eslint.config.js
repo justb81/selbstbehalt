@@ -41,6 +41,7 @@ export default tseslint.config(
   {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
+      globals: { ...globals.browser },
       parserOptions: {
         projectService: true,
         extraFileExtensions: ['.svelte'],
