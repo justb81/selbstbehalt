@@ -21,5 +21,10 @@ const core = createOcrWorkerCore({
 });
 
 ctx.addEventListener('message', (event: MessageEvent<OcrWorkerRequest>) => {
+  // A dedicated worker only receives messages from the page that spawned it, so
+  // same-origin messages carry an empty `origin`. Reject anything that arrives
+  // with a set, cross-origin value as defence-in-depth (and to satisfy the
+  // CodeQL js/missing-origin-check rule). Privacy posture: see docs/design.md §8.
+  if (event.origin !== '' && event.origin !== ctx.location.origin) return;
   void core.handle(event.data);
 });
