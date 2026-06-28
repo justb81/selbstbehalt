@@ -21,6 +21,9 @@ export default tseslint.config(
       '**/test-results/**',
       'pnpm-lock.yaml',
       'data/**',
+      // On-device OCR assets fetched/copied at build time (git-ignored vendor
+      // binaries + their emscripten glue), not project source.
+      'frontend/static/models/**',
     ],
   },
 

@@ -27,7 +27,8 @@
     "licenses:check": "node scripts/check-licenses.mjs",
     "fees:build": "node scripts/build-fee-schedules.mjs",
     "fees:validate": "node scripts/validate-fee-schedules.mjs",
-    "ocr:models": "node scripts/fetch-ocr-models.mjs"
+    "ocr:models": "node scripts/fetch-ocr-models.mjs",
+    "ocr:wasm": "node scripts/copy-ort-wasm.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.1.0",

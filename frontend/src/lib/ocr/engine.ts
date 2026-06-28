@@ -96,14 +96,24 @@ function executionProviderFor(backend: OcrBackend): string {
   return backend === 'webgpu' ? 'webgpu' : 'wasm';
 }
 
-/** Default lazy loader for the real package (kept out of the static graph). */
+/**
+ * Local, same-origin directory the ONNX Runtime WASM assets are served from.
+ * `scripts/copy-ort-wasm.mjs` populates `frontend/static/models/ort/` at build
+ * time; the service worker caches `/models/**` on first use (docs/design.md §6.3).
+ */
+const ORT_WASM_PATH = '/models/ort/';
+
+/**
+ * Lazily loads the real binding. Kept dynamic so the heavy ONNX-Runtime/WASM
+ * code lands in a worker-only chunk (never the main bundle), and so unit tests
+ * can inject a fake loader without resolving the package at all.
+ */
 async function defaultLoadModule(): Promise<PaddleOcrModule> {
-  // `@vite-ignore` keeps this heavy ONNX-Runtime/WASM binding out of the build
-  // graph; it is resolved only on a real device, where the bundler is wired to
-  // serve the package's WASM assets on-device and the local models are in place
-  // (#27). Loading it eagerly would pull tens of MB of WASM into every build.
-  const specifier = 'ppu-paddle-ocr/web';
-  return (await import(/* @vite-ignore */ specifier)) as unknown as PaddleOcrModule;
+  // Point ONNX Runtime at the on-device WASM assets before the binding spins up
+  // its session, so nothing is fetched from a CDN at runtime (privacy, §1.3/§8).
+  const ort = await import('onnxruntime-web');
+  ort.env.wasm.wasmPaths = ORT_WASM_PATH;
+  return (await import('ppu-paddle-ocr/web')) as unknown as PaddleOcrModule;
 }
 
 /**

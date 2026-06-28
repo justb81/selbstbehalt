@@ -640,7 +640,7 @@ Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnun
 Service Worker Strategie:
 - **Shell-Dateien** (App-Code, GOÄ-Tabelle): Cache First
 - **API-Aufrufe** (REST): Network First mit Offline-Queue für Schreiboperationen
-- **OCR-Modell** (PaddleOCR ONNX): Cache After First Load (~50–100 MB)
+- **OCR-Assets** unter `/models/**` (PP-OCRv5-Modelle ~12 MB + ONNX-Runtime-WASM unter `/models/ort/` ~38 MB): Cache After First Load. Beide werden zur Build-/Deploy-Zeit lokal bereitgestellt (`pnpm ocr:models` bzw. `scripts/copy-ort-wasm.mjs` im Frontend-Build), nicht von einem CDN.
 
 ***
 
