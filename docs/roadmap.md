@@ -58,8 +58,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 
 | Issue | Titel | Abhängig von | Status |
 |---|---|---|---|
-| #24 | OCR-Web-Worker + PaddleOCR.js (WebGPU/WASM) | #19 | ⬜ |
-| #25 | Bildaufnahme & -vorverarbeitung | #19 | ⬜ |
+| #24 | OCR-Web-Worker + PaddleOCR.js (WebGPU/WASM) | #19 | ✅ |
+| #25 | Bildaufnahme & -vorverarbeitung | #19 | ✅ |
 | #26 | Scan-Flow (Scan → Parse → Review → Speichern) | #24, #25, #16, #22 | ⬜ |
 
 ## Phase 3 — PWA, Auswertung, Polish, Security & Release
