@@ -13,6 +13,7 @@ import type {
 import realGoae from '../data/goae.json';
 import realGot from '../data/got.json';
 import {
+  buildIndex,
   extractInvoiceFields,
   extractPositions,
   lookupPosition,
@@ -22,6 +23,7 @@ import {
   parsePositionLine,
   validateInvoice,
   type ParsedPosition,
+  type RawPosition,
 } from './goae-parser';
 
 const goaeTable = realGoae as unknown as FeeScheduleTable;
@@ -76,13 +78,22 @@ function makeTable(
   };
 }
 
+/**
+ * Looks a single position up, building the index on the fly — a convenience for
+ * the unit tests, which exercise tiny synthetic tables one position at a time.
+ * Production callers must build the index once and thread it (see {@link buildIndex}).
+ */
+function look(raw: RawPosition, table: FeeScheduleTable): ParsedPosition {
+  return lookupPosition(raw, table, buildIndex(table));
+}
+
 /** Build a ParsedPosition straight from raw values (skips text extraction). */
 function pos(
   ziffer: string,
   table: FeeScheduleTable,
   overrides: { multiplier?: number; quantity?: number; durationMinutes?: number } = {},
 ): ParsedPosition {
-  const p = lookupPosition(
+  const p = look(
     {
       ziffer,
       quantity: overrides.quantity ?? 1,
@@ -274,7 +285,7 @@ describe('lookupPosition — §5 multiplier limits (all four categories)', () =>
   ];
 
   it.each(cases)('Ziffer %s at factor %s → valid=%s', (ziffer, multiplier, valid) => {
-    const p = lookupPosition({ ziffer, quantity: 1, multiplier, chargedAmount: 0, raw: '' }, table);
+    const p = look({ ziffer, quantity: 1, multiplier, chargedAmount: 0, raw: '' }, table);
     expect(p.isValid).toBe(valid);
     if (!valid) {
       expect(p.flags[0]?.code).toBe('multiplier_exceeds_limit');
@@ -283,10 +294,7 @@ describe('lookupPosition — §5 multiplier limits (all four categories)', () =>
   });
 
   it('copies baseAmount, category and maxMultiplier from the entry', () => {
-    const p = lookupPosition(
-      { ziffer: '1', quantity: 1, multiplier: 2.3, chargedAmount: 0, raw: '' },
-      table,
-    );
+    const p = look({ ziffer: '1', quantity: 1, multiplier: 2.3, chargedAmount: 0, raw: '' }, table);
     expect(p).toMatchObject({
       baseAmount: 5.83,
       category: 'default',
@@ -299,10 +307,7 @@ describe('lookupPosition — §5 multiplier limits (all four categories)', () =>
     const t = makeTable([
       entry('1', { category: 'lab', maxMultiplier: undefined as unknown as number }),
     ]);
-    const p = lookupPosition(
-      { ziffer: '1', quantity: 1, multiplier: 1.3, chargedAmount: 0, raw: '' },
-      t,
-    );
+    const p = look({ ziffer: '1', quantity: 1, multiplier: 1.3, chargedAmount: 0, raw: '' }, t);
     expect(p.isValid).toBe(false);
     expect(p.flags[0]?.code).toBe('multiplier_exceeds_limit');
   });
@@ -310,10 +315,7 @@ describe('lookupPosition — §5 multiplier limits (all four categories)', () =>
   it('does not flag when neither the entry nor the category sets a limit', () => {
     const t = makeTable([entry('1', { maxMultiplier: undefined as unknown as number })]);
     t.multiplierLimits.default = { regelhoechstsatz: null, hoechstsatz: null };
-    const p = lookupPosition(
-      { ziffer: '1', quantity: 1, multiplier: 9, chargedAmount: 0, raw: '' },
-      t,
-    );
+    const p = look({ ziffer: '1', quantity: 1, multiplier: 9, chargedAmount: 0, raw: '' }, t);
     expect(p.isValid).toBe(true);
   });
 });
@@ -322,7 +324,7 @@ describe('lookupPosition — unknown Ziffern', () => {
   const table = makeTable([entry('1')]);
 
   it('flags unknown Ziffern without crashing', () => {
-    const p = lookupPosition(
+    const p = look(
       { ziffer: '9999', quantity: 1, multiplier: 2.3, chargedAmount: 0, raw: '' },
       table,
     );
@@ -334,7 +336,7 @@ describe('lookupPosition — unknown Ziffern', () => {
   });
 
   it('matches despite leading zeros', () => {
-    const p = lookupPosition(
+    const p = look(
       { ziffer: '0001', quantity: 1, multiplier: 2.3, chargedAmount: 0, raw: '' },
       table,
     );
@@ -351,15 +353,12 @@ describe('lookupPosition — fixedFactor entries', () => {
   const table = makeTable([entry('52', { constraints: [fixed] })]);
 
   it('accepts the exact fixed factor (and skips the §5 limit check)', () => {
-    const p = lookupPosition(
-      { ziffer: '52', quantity: 1, multiplier: 1, chargedAmount: 0, raw: '' },
-      table,
-    );
+    const p = look({ ziffer: '52', quantity: 1, multiplier: 1, chargedAmount: 0, raw: '' }, table);
     expect(p.isValid).toBe(true);
   });
 
   it('flags a deviating factor', () => {
-    const p = lookupPosition(
+    const p = look(
       { ziffer: '52', quantity: 1, multiplier: 2.3, chargedAmount: 0, raw: '' },
       table,
     );
@@ -370,12 +369,12 @@ describe('lookupPosition — fixedFactor entries', () => {
 
 describe('lookupPosition — GOT (no §5 threshold, flags only above the absolute max)', () => {
   it('accepts a high factor up to the GOT maximum and flags above it', () => {
-    const ok = lookupPosition(
+    const ok = look(
       { ziffer: '1', quantity: 1, multiplier: 3, chargedAmount: 0, raw: '' },
       gotTable,
     );
     expect(ok.isValid).toBe(true);
-    const bad = lookupPosition(
+    const bad = look(
       { ziffer: '1', quantity: 1, multiplier: 3.5, chargedAmount: 0, raw: '' },
       gotTable,
     );
@@ -687,7 +686,7 @@ describe('parseInvoice — end to end on a synthetic table', () => {
 
 describe('integration with the generated GOÄ table', () => {
   it('looks up a known Ziffer and flags an over-limit factor', () => {
-    const p = lookupPosition(
+    const p = look(
       { ziffer: '1', quantity: 1, multiplier: 3.5, chargedAmount: 0, raw: '' },
       goaeTable,
     );
@@ -698,14 +697,8 @@ describe('integration with the generated GOÄ table', () => {
 
   it('detects the real 1829 / 1829a mutual-exclusion group', () => {
     const positions = [
-      lookupPosition(
-        { ziffer: '1829', quantity: 1, multiplier: 1.8, chargedAmount: 0, raw: '' },
-        goaeTable,
-      ),
-      lookupPosition(
-        { ziffer: '1829a', quantity: 1, multiplier: 1.8, chargedAmount: 0, raw: '' },
-        goaeTable,
-      ),
+      look({ ziffer: '1829', quantity: 1, multiplier: 1.8, chargedAmount: 0, raw: '' }, goaeTable),
+      look({ ziffer: '1829a', quantity: 1, multiplier: 1.8, chargedAmount: 0, raw: '' }, goaeTable),
     ];
     const v = validateInvoice(positions, goaeTable);
     expect(v.some((x) => x.type === 'excludes' && x.ruleId === 'excl-1829-1829a')).toBe(true);
