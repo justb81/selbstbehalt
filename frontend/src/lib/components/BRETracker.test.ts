@@ -19,7 +19,6 @@ const BASE_PERSON: InsuredPerson = {
   end_date: null,
   notes: null,
   created_at: '2022-01-01T00:00:00Z',
-  updated_at: '2022-01-01T00:00:00Z',
 };
 
 const PERSON_WITH_BRE: InsuredPerson = {
