@@ -44,11 +44,23 @@ export interface PaddleOcrServiceOptions {
   processing: { engine: 'canvas-native' };
 }
 
+/**
+ * The platform provider on a `PaddleOcrService` instance. Its `createCanvas` is
+ * DOM-bound (`document.createElement`) in the published web build, so we replace
+ * it with an `OffscreenCanvas` factory to run in a Web Worker (see
+ * {@link patchPlatformForWorker}).
+ */
+export interface PaddleOcrPlatformLike {
+  createCanvas?: (width: number, height: number) => unknown;
+}
+
 /** The `PaddleOcrService` instance surface this adapter drives. */
 export interface PaddleOcrServiceLike {
   initialize(): Promise<void>;
-  recognize(image: ImageData): Promise<PaddleRecognizeResult>;
+  /** Accepts a canvas-like source (the binding calls `.getContext()` on it). */
+  recognize(image: unknown): Promise<PaddleRecognizeResult>;
   destroy(): Promise<void> | void;
+  platform?: PaddleOcrPlatformLike;
 }
 
 /** The slice of the `ppu-paddle-ocr/web` module surface this adapter uses. */
@@ -60,6 +72,8 @@ export interface PaddleOcrModule {
 export interface CreatePaddleOcrEngineDeps {
   /** Loads the OCR module; defaults to a lazy import of `ppu-paddle-ocr/web`. */
   loadModule?: () => Promise<PaddleOcrModule>;
+  /** Converts an {@link ImageData} frame into a source the binding accepts. */
+  toImageSource?: (image: ImageData) => unknown;
 }
 
 /** Coerces a loosely-typed box into our quad-point arrays. */
@@ -97,6 +111,40 @@ function executionProviderFor(backend: OcrBackend): string {
 }
 
 /**
+ * Converts an {@link ImageData} frame into an `OffscreenCanvas` the binding can
+ * consume. `ppu-paddle-ocr`'s `recognize()` calls `.getContext()` on its input,
+ * so it needs a canvas — a raw `ImageData` (no `getContext`) makes it throw
+ * `t.getContext is not a function`.
+ */
+function defaultToImageSource(image: ImageData): unknown {
+  if (typeof OffscreenCanvas === 'undefined') {
+    throw new Error('OffscreenCanvas is unavailable; cannot prepare image for OCR.');
+  }
+  const canvas = new OffscreenCanvas(image.width, image.height);
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Could not acquire a 2D context for OCR input.');
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
+/**
+ * `ppu-paddle-ocr`'s web platform creates intermediate canvases (detection
+ * padding/resize) with `document.createElement`, which does not exist in a Web
+ * Worker. Swap in an `OffscreenCanvas` factory so recognition runs off the main
+ * thread (docs/design.md §4.2: OCR must not block the UI thread).
+ */
+function patchPlatformForWorker(service: PaddleOcrServiceLike): void {
+  if (typeof OffscreenCanvas === 'undefined') return;
+  const platform = service.platform;
+  if (!platform) return;
+  platform.createCanvas = (width: number, height: number) => {
+    const canvas = new OffscreenCanvas(width, height);
+    canvas.getContext('2d', { willReadFrequently: true });
+    return canvas;
+  };
+}
+
+/**
  * Local, same-origin directory the ONNX Runtime WASM assets are served from.
  * `scripts/copy-ort-wasm.mjs` populates `frontend/static/models/ort/` at build
  * time; the service worker caches `/models/**` on first use (docs/design.md §6.3).
@@ -127,6 +175,7 @@ export function createPaddleOcrEngine(
   deps: CreatePaddleOcrEngineDeps = {},
 ): OcrEngine {
   const loadModule = deps.loadModule ?? defaultLoadModule;
+  const toImageSource = deps.toImageSource ?? defaultToImageSource;
   let service: PaddleOcrServiceLike | null = null;
 
   return {
@@ -153,6 +202,7 @@ export function createPaddleOcrEngine(
         },
         processing: { engine: 'canvas-native' },
       });
+      patchPlatformForWorker(created);
       await created.initialize();
       service = created;
       onProgress?.({ phase: 'init', ratio: 1, message: 'OCR bereit.' });
@@ -160,7 +210,7 @@ export function createPaddleOcrEngine(
     async recognize(image, onProgress) {
       if (!service) throw new Error('PaddleOCR engine used before init().');
       onProgress?.({ phase: 'recognize', ratio: null, message: 'Text wird erkannt …' });
-      const raw = await service.recognize(image);
+      const raw = await service.recognize(toImageSource(image));
       const results = mapPaddleResult(raw);
       onProgress?.({ phase: 'recognize', ratio: 1 });
       return results;
