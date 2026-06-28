@@ -17,6 +17,9 @@ import type {
   InvoicePosition,
   InvoicePositionInput,
   InvoiceUpdate,
+  Person,
+  PersonCreate,
+  PersonUpdate,
   Submission,
   SubmissionInput,
   SubmissionUpdate,
@@ -27,9 +30,12 @@ import type {
   insuredPersons,
   invoicePositions,
   invoices,
+  persons,
   submissions,
 } from '../db/schema.js';
 
+type PersonRow = typeof persons.$inferSelect;
+type PersonInsert = typeof persons.$inferInsert;
 type ContractRow = typeof contracts.$inferSelect;
 type ContractInsert = typeof contracts.$inferInsert;
 type InsuredPersonRow = typeof insuredPersons.$inferSelect;
@@ -40,6 +46,31 @@ type PositionRow = typeof invoicePositions.$inferSelect;
 type PositionInsert = typeof invoicePositions.$inferInsert;
 type SubmissionRow = typeof submissions.$inferSelect;
 type SubmissionInsert = typeof submissions.$inferInsert;
+
+// ── Persons ──────────────────────────────────────────────────────────────────
+
+export function serializePerson(row: PersonRow): Person {
+  return {
+    id: row.id,
+    created_at: row.createdAt,
+    name: row.name,
+    birth_date: row.birthDate,
+  };
+}
+
+export function toPersonInsert(input: PersonCreate): PersonInsert {
+  return {
+    name: input.name,
+    birthDate: input.birth_date,
+  };
+}
+
+export function toPersonUpdate(input: PersonUpdate): Partial<PersonInsert> {
+  const u: Partial<PersonInsert> = {};
+  if (input.name !== undefined) u.name = input.name;
+  if (input.birth_date !== undefined) u.birthDate = input.birth_date;
+  return u;
+}
 
 // ── Contracts (Hauptvertrag) ─────────────────────────────────────────────────
 

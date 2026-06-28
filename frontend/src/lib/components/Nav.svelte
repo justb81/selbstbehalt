@@ -7,6 +7,7 @@
   // submit) are reached from within their section, not the primary nav.
   const items = [
     { href: '/', label: 'Dashboard' },
+    { href: '/persons', label: 'Personen' },
     { href: '/contracts', label: 'Verträge' },
     { href: '/invoices', label: 'Rechnungen' },
     { href: '/stats', label: 'Auswertung' },
