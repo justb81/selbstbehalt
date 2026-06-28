@@ -1,26 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 
-import { createPaddleOcrEngine, mapPaddleResult, type PaddleOcrModule } from './engine';
+import {
+  createPaddleOcrEngine,
+  mapPaddleResult,
+  type PaddleOcrModule,
+  type PaddleOcrServiceLike,
+} from './engine';
 import { DEFAULT_ENGINE_CONFIG, type OcrProgress } from './types';
 
 const image = { width: 2, height: 1, data: new Uint8ClampedArray(8) } as unknown as ImageData;
 
 describe('mapPaddleResult', () => {
-  it('pairs text with quad points and defaults confidence to 1', () => {
+  it('maps lines to text + quad points and carries the score through as confidence', () => {
     const results = mapPaddleResult({
-      text: ['Beratung', '10,72'],
-      points: [
-        [
-          [0, 0],
-          [10, 0],
-          [10, 5],
-          [0, 5],
-        ],
-        [
-          [0, 6],
-          [10, 6],
-        ],
+      text: 'Beratung\n10,72',
+      lines: [
+        {
+          text: 'Beratung',
+          box: [
+            [0, 0],
+            [10, 0],
+            [10, 5],
+            [0, 5],
+          ],
+          score: 0.97,
+        },
+        {
+          text: '10,72',
+          box: [
+            [0, 6],
+            [10, 6],
+          ],
+          score: 0.5,
+        },
       ],
     });
     expect(results).toEqual([
@@ -34,7 +47,7 @@ describe('mapPaddleResult', () => {
             [0, 5],
           ],
         },
-        confidence: 1,
+        confidence: 0.97,
       },
       {
         text: '10,72',
@@ -44,72 +57,121 @@ describe('mapPaddleResult', () => {
             [10, 6],
           ],
         },
-        confidence: 1,
+        confidence: 0.5,
       },
     ]);
   });
 
-  it('yields an empty bbox when points are missing or malformed', () => {
-    const results = mapPaddleResult({ text: ['only-text'], points: undefined });
+  it('clamps out-of-range scores and yields an empty bbox for malformed boxes', () => {
+    const results = mapPaddleResult({
+      text: 'only-text',
+      lines: [{ text: 'only-text', box: undefined as unknown as [number, number][], score: 1.4 }],
+    });
     expect(results).toEqual([{ text: 'only-text', bbox: { points: [] }, confidence: 1 }]);
+  });
+
+  it('returns no results when lines are missing', () => {
+    expect(mapPaddleResult({ text: '', lines: undefined as unknown as [] })).toEqual([]);
   });
 });
 
 describe('createPaddleOcrEngine', () => {
-  function fakeModule(): PaddleOcrModule {
+  function fakeService(): PaddleOcrServiceLike {
     return {
-      init: vi.fn().mockResolvedValue(undefined),
+      initialize: vi.fn().mockResolvedValue(undefined),
       recognize: vi.fn().mockResolvedValue({
-        text: ['Hallo'],
-        points: [
-          [
-            [0, 0],
-            [1, 1],
-          ],
+        text: 'Hallo',
+        lines: [
+          {
+            text: 'Hallo',
+            box: [
+              [0, 0],
+              [1, 1],
+            ],
+            score: 0.9,
+          },
         ],
       }),
+      destroy: vi.fn().mockResolvedValue(undefined),
     };
+  }
+
+  /** Builds a fake module and records the options the service was constructed with. */
+  function fakeModule(service: PaddleOcrServiceLike) {
+    const ctor = vi.fn().mockImplementation(function () {
+      return service;
+    });
+    const module = { PaddleOcrService: ctor } as unknown as PaddleOcrModule;
+    return { module, ctor };
   }
 
   it('records the backend it was built for', () => {
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
-      loadModule: async () => fakeModule(),
+      loadModule: async () => fakeModule(fakeService()).module,
     });
     expect(engine.backend).toBe('wasm');
   });
 
-  it('loads the model on init with the configured local URLs and reports progress', async () => {
-    const mod = fakeModule();
+  it('constructs the service with the local model URLs, execution provider, and reports progress', async () => {
+    const service = fakeService();
+    const { module, ctor } = fakeModule(service);
     const progress: OcrProgress[] = [];
     const engine = createPaddleOcrEngine(
       'webgpu',
-      { ...DEFAULT_ENGINE_CONFIG, modelUrls: { detection: '/m/det', recognition: '/m/rec' } },
-      { loadModule: async () => mod },
+      {
+        ...DEFAULT_ENGINE_CONFIG,
+        modelUrls: {
+          detection: '/m/det.onnx',
+          recognition: '/m/rec.onnx',
+          dictionary: '/m/dict.txt',
+        },
+      },
+      { loadModule: async () => module },
     );
     await engine.init((p) => progress.push(p));
-    expect(mod.init).toHaveBeenCalledWith('/m/det', '/m/rec');
+    expect(ctor).toHaveBeenCalledWith({
+      model: {
+        detection: '/m/det.onnx',
+        recognition: '/m/rec.onnx',
+        charactersDictionary: '/m/dict.txt',
+      },
+      session: { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' },
+      processing: { engine: 'canvas-native' },
+    });
+    expect(service.initialize).toHaveBeenCalledOnce();
     expect(progress.map((p) => p.phase)).toEqual(['init', 'init']);
     expect(progress.at(-1)?.ratio).toBe(1);
   });
 
+  it('forwards the wasm backend as the wasm execution provider', async () => {
+    const service = fakeService();
+    const { module, ctor } = fakeModule(service);
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+      loadModule: async () => module,
+    });
+    await engine.init();
+    expect(ctor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        session: { executionProviders: ['wasm'], graphOptimizationLevel: 'all' },
+      }),
+    );
+  });
+
   it('throws when recognize is called before init', async () => {
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
-      loadModule: async () => fakeModule(),
+      loadModule: async () => fakeModule(fakeService()).module,
     });
     await expect(engine.recognize(image)).rejects.toThrow(/before init/);
   });
 
-  it('converts the image and maps recognition output', async () => {
-    const mod = fakeModule();
-    const toImageSource = vi.fn().mockReturnValue('SOURCE');
+  it('recognises the image and maps recognition output', async () => {
+    const service = fakeService();
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
-      loadModule: async () => mod,
-      toImageSource,
+      loadModule: async () => fakeModule(service).module,
     });
     await engine.init();
     const results = await engine.recognize(image);
-    expect(toImageSource).toHaveBeenCalledWith(image);
-    expect(mod.recognize).toHaveBeenCalledWith('SOURCE');
+    expect(service.recognize).toHaveBeenCalledWith(image);
     expect(results).toEqual([
       {
         text: 'Hallo',
@@ -119,18 +181,33 @@ describe('createPaddleOcrEngine', () => {
             [1, 1],
           ],
         },
-        confidence: 1,
+        confidence: 0.9,
       },
     ]);
   });
 
-  it('dispose drops the model so a later recognize fails again', async () => {
+  it('destroys the previous service when init() is called again without dispose()', async () => {
+    const first = fakeService();
+    const second = fakeService();
+    const loadModule = vi
+      .fn()
+      .mockResolvedValueOnce(fakeModule(first).module)
+      .mockResolvedValueOnce(fakeModule(second).module);
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, { loadModule });
+    await engine.init();
+    await engine.init();
+    expect(first.destroy).toHaveBeenCalledOnce();
+    expect(second.initialize).toHaveBeenCalledOnce();
+  });
+
+  it('dispose destroys the service so a later recognize fails again', async () => {
+    const service = fakeService();
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
-      loadModule: async () => fakeModule(),
-      toImageSource: () => 'x',
+      loadModule: async () => fakeModule(service).module,
     });
     await engine.init();
-    engine.dispose();
+    await engine.dispose();
+    expect(service.destroy).toHaveBeenCalledOnce();
     await expect(engine.recognize(image)).rejects.toThrow(/before init/);
   });
 });

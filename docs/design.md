@@ -70,9 +70,9 @@ Bestehende Apps (PKV Go, RechnungsDoc Mobil, Belegkompass) lösen Teile davon, s
 | Schicht | Technologie | Begründung |
 |---|---|---|
 | **Frontend** | SvelteKit (TypeScript) | Leichtgewichtig, SSR optional, PWA-Support nativ |
-| **OCR Engine** | PaddleOCR.js 3.5 (PP-OCRv5) | Browser-native, WebGPU + WASM Fallback, 40+ Sprachen, kein Server [^5][^6] |
+| **OCR Engine** | PP-OCRv5 via `ppu-paddle-ocr` (ONNX Runtime) | Browser-native, WebGPU + WASM Fallback, Web-Worker-tauglich, kein Server [^6] |
 | **AI-Beschleunigung** | WebGPU API (Chrome/Edge) + WebNN (Android NPU) | Standard in Chrome seit 2025, ~82% Browser-Coverage [^7] |
-| **Fallback OCR** | WASM-Build von PaddleOCR | Wenn kein WebGPU verfügbar |
+| **Fallback OCR** | WASM-Execution-Provider (ONNX Runtime) | Wenn kein WebGPU verfügbar |
 | **GOÄ-Prüfung** | Statische JSON-Lookup-Tabelle + Regex-Parser | GOÄ ist öffentlich, kein LLM nötig |
 | **Backend API** | Hono (TypeScript) oder FastAPI (Python) | Minimal, Docker-freundlich |
 | **Datenbank** | SQLite (via Drizzle ORM) | Kein separater DB-Dienst nötig, Backup trivial |
@@ -290,7 +290,7 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
    - Kontrast-Verstärkung
    - Entzerrung (perspektivische Korrektur via Homographie, optional)
         ↓
-3. PaddleOCR.js PP-OCRv5 (WebGPU):
+3. PP-OCRv5 (`ppu-paddle-ocr`, ONNX Runtime, WebGPU/WASM):
    - Texterkennung → Array von { text, bbox, confidence }
         ↓
 4. GOÄ-Strukturparser:
@@ -301,37 +301,46 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 5. Ergebnis-JSON → Review-Screen → bei Bestätigung: API POST
 ```
 
-### 4.2 PaddleOCR.js Integration
+### 4.2 PP-OCRv5-Integration (`ppu-paddle-ocr`)
 
-PaddleOCR 3.5 bietet seit April 2026 ein offizielles JavaScript-SDK mit WebGPU-Beschleunigung für alle modernen Browser [^5][^6]. Die Initialisierung:
+PP-OCRv5 läuft im Browser über die `ppu-paddle-ocr`-Bindung (MIT) auf **ONNX
+Runtime**: WebGPU mit automatischem WASM-Fallback, lauffähig im **Web Worker**
+und mit einem {@link ImageData}-Frame als Eingabe — kein DOM-`HTMLImageElement`
+nötig [^6]. (Das ältere offizielle `@paddle-js-models/ocr` schied aus: WebGL-
+statt WebGPU-gebunden, DOM-/opencv-gebunden und damit nicht Worker-tauglich, und
+kein echtes PP-OCRv5.)
+
+Die Bindung sitzt hinter einem schmalen, injizierbaren Adapter-Seam
+(`frontend/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
+(`frontend/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
+Dinge explizit:
 
 ```typescript
-// ocr-worker.ts (Web Worker für Non-blocking UI)
-import { PPOCRv5 } from '@paddle-js-models/ocr';
+// frontend/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
+import { PaddleOcrService } from 'ppu-paddle-ocr/web';
 
-let ocrModel: PPOCRv5 | null = null;
-
-async function initOCR() {
-  ocrModel = new PPOCRv5({
-    backend: 'webgpu',   // Fallback: 'wasm'
-    language: 'de',      // Deutsch
-    quantized: true,     // INT8 für schnelleren Download
-  });
-  await ocrModel.init();
-}
-
-async function recognizeImage(imageData: ImageData): Promise<OCRResult[]> {
-  if (!ocrModel) await initOCR();
-  const results = await ocrModel.recognize(imageData);
-  return results.map(r => ({
-    text: r.text,
-    confidence: r.score,
-    bbox: r.bbox,
-  }));
-}
+const service = new PaddleOcrService({
+  // Immer lokale, gleich­ursprüngliche Modell-URLs — NIE die CDN-Defaults der
+  // Bindung (Privacy, §1.3/§8). Hosting: frontend/static/models/ocr/.
+  model: {
+    detection: '/models/ocr/det.onnx',
+    recognition: '/models/ocr/rec.onnx',
+    charactersDictionary: '/models/ocr/dict.txt',
+  },
+  // Backend-Wahl (WebGPU bevorzugt, sonst WASM) → ONNX-Execution-Provider.
+  session: { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' },
+  // Worker-tauglicher Bildpfad ohne DOM-gebundenes opencv.
+  processing: { engine: 'canvas-native' },
+});
+await service.initialize();
+const { lines } = await service.recognize(imageData); // [{ text, box, score }]
 ```
 
-**Wichtig:** OCR läuft in einem **Web Worker**, damit der UI-Thread während der Verarbeitung nicht blockiert.
+**Wichtig:** OCR läuft in einem **Web Worker**, damit der UI-Thread während der
+Verarbeitung nicht blockiert. Die schweren Laufzeit-Assets (ONNX-Runtime-WASM
+und die ~12 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
+Worker beim ersten Gebrauch gecacht (§6.3); kein Drittanbieter-Abruf zur
+Laufzeit.
 
 ### 4.3 GOÄ-Strukturparser
 
@@ -767,7 +776,7 @@ services:
 
 ### Phase 2: OCR-Integration
 
-- [ ] PaddleOCR.js 3.5 als Web Worker einbinden
+- [ ] PP-OCRv5 (`ppu-paddle-ocr`) als Web Worker einbinden
 - [ ] WebGPU-Verfügbarkeitsprüfung + WASM-Fallback
 - [ ] GOÄ-Lookup-Tabelle (JSON) aufbauen (GOÄ + GOZ)
 - [ ] OCR-Pipeline: Scan → Parse → Review-Screen
@@ -799,7 +808,7 @@ services:
 | UV-GOÄ / BG-Rechnungen | ❌ Not in Scope v1 | Separates Regelwerk für Arbeitsunfälle |
 | Auslandsbehandlungen | ❌ Not in Scope v1 | Keine EHI-Gebührentabellen-Prüfung |
 | OCR Handschrift | ⚠️ Limitiert | PP-OCRv5 begrenzt bei Handschrift – Fallback auf manuelle Eingabe |
-| PaddleOCR.js Lizenz | ✅ OK | Apache 2.0 [^6] |
+| OCR-Bindung Lizenz | ✅ OK | `ppu-paddle-ocr` MIT, ONNX Runtime MIT [^6] |
 | SvelteKit Lizenz | ✅ OK | MIT |
 
 ***
@@ -857,7 +866,8 @@ pkv-manager/
 
 | Paket | Version | Zweck |
 |---|---|---|
-| `@paddle-js-models/ocr` | ^3.5 | PaddleOCR.js Browser-OCR [^6] |
+| `ppu-paddle-ocr` | ^6.0 | PP-OCRv5 Browser-OCR (Web Worker, WebGPU/WASM) [^6] |
+| `onnxruntime-web` | ^1.27 | ONNX-Runtime-Backend für `ppu-paddle-ocr` |
 | `@hono/hono` | ^4.x | Backend-Framework |
 | `drizzle-orm` | ^0.30 | Type-safe ORM für SQLite |
 | `better-sqlite3` | ^9.x | SQLite Node.js Bindings |

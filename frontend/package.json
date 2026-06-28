@@ -22,7 +22,9 @@
   "dependencies": {
     "@selbstbehalt/shared": "workspace:*",
     "date-fns": "4.1.0",
+    "onnxruntime-web": "1.27.0",
     "pdfjs-dist": "^6.1.200",
+    "ppu-paddle-ocr": "6.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

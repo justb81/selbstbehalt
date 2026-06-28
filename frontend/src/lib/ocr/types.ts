@@ -52,7 +52,7 @@ export interface OcrProgress {
 
 /** Stable error codes so callers can branch without string matching. */
 export type OcrErrorCode =
-  'init_failed' | 'recognize_failed' | 'not_initialized' | 'unknown_message';
+  'init_failed' | 'recognize_failed' | 'dispose_failed' | 'not_initialized' | 'unknown_message';
 
 /** Serialisable error carried over the worker boundary. */
 export interface OcrErrorPayload {
@@ -61,28 +61,42 @@ export interface OcrErrorPayload {
 }
 
 /**
- * Optional local model locations. Defaults inside the engine point at
- * on-device/bundled assets — never a remote CDN — so images and the model both
- * stay local (docs/design.md §1.3; model caching is finalised in #27).
+ * Local URLs of the three OCR model assets the `ppu-paddle-ocr` binding needs:
+ * the PP-OCRv5 detection + recognition ONNX models and the character dictionary.
+ * These point at on-device, same-origin assets under `/models/ocr/` — never a
+ * remote CDN — so both the image and the model stay local (docs/design.md §1.3,
+ * §8). The service worker caches `/models/**` on first use (docs/design.md §6.3).
  */
 export interface OcrModelUrls {
-  detection?: string;
-  recognition?: string;
+  detection: string;
+  recognition: string;
+  dictionary: string;
 }
+
+/**
+ * Default, on-device model locations. The binding is *always* pointed at these
+ * local paths (never its built-in CDN defaults) so no model is fetched from a
+ * third party at runtime. The maintainer hosts the actual INT8 files here — see
+ * `frontend/static/models/ocr/README.md`.
+ */
+export const DEFAULT_MODEL_URLS: OcrModelUrls = {
+  detection: '/models/ocr/det.onnx',
+  recognition: '/models/ocr/rec.onnx',
+  dictionary: '/models/ocr/dict.txt',
+};
 
 /** Engine construction options shared by the worker and the engine factory. */
 export interface OcrEngineConfig {
-  /** Recognition language; the app targets German invoices. */
+  /** Recognition language; the app targets German (Latin-script) invoices. */
   language: 'de';
-  /** INT8-quantised models for a smaller download (docs/design.md §4.2). */
-  quantized: boolean;
-  modelUrls?: OcrModelUrls;
+  /** Local URLs of the PP-OCRv5 models + dictionary (defaults to {@link DEFAULT_MODEL_URLS}). */
+  modelUrls: OcrModelUrls;
 }
 
-/** Default engine configuration for German, quantised, on-device OCR. */
+/** Default engine configuration for German, on-device PP-OCRv5. */
 export const DEFAULT_ENGINE_CONFIG: OcrEngineConfig = {
   language: 'de',
-  quantized: true,
+  modelUrls: DEFAULT_MODEL_URLS,
 };
 
 // ---------------------------------------------------------------------------

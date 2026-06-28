@@ -139,6 +139,27 @@ describe('OCR worker core', () => {
     expect(posts).toEqual([{ type: 'disposed', id: 3 }]);
   });
 
+  it('reports dispose_failed (instead of hanging) and clears the engine when teardown rejects', async () => {
+    const engine = fakeEngine('wasm', {
+      dispose: vi.fn().mockRejectedValue(new Error('gpu teardown')),
+    });
+    const { core, posts } = setup({ createEngine: vi.fn(async () => engine) });
+    await core.handle({ type: 'init', id: 1 });
+    await core.handle({ type: 'dispose', id: 2 });
+    expect(posts.at(-1)).toEqual({
+      type: 'error',
+      id: 2,
+      error: { code: 'dispose_failed', message: 'gpu teardown' },
+    });
+    // The engine reference is dropped even on a failed teardown.
+    await core.handle({ type: 'recognize', id: 3, image });
+    expect(posts.at(-1)).toMatchObject({
+      type: 'error',
+      id: 3,
+      error: { code: 'not_initialized' },
+    });
+  });
+
   it('reports unknown messages as an error', async () => {
     const { core, posts } = setup();
     await core.handle({ type: 'frobnicate', id: 9 } as never);

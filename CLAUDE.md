@@ -8,7 +8,7 @@ The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Impl
 
 - **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
 - **`backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
-- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most UI pages (contracts/invoices/dashboard/settings) are still thin, and the OCR pipeline's heavy runtime deps + local model hosting (Phase 2/3) are **not yet wired** — see `docs/roadmap.md` and the open GitHub issues.
+- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR pipeline targets **PP-OCRv5 via `ppu-paddle-ocr`** (ONNX Runtime, Web Worker, WebGPU/WASM) behind an injectable engine seam, with the runtime deps declared and local model-hosting scaffolding in place (`frontend/static/models/ocr/`, `pnpm ocr:models`); the remaining on-device steps — bundling the ONNX-Runtime WASM assets and verifying WebGPU/WASM in a real browser — are tracked in #27. See `docs/roadmap.md` and the open GitHub issues.
 
 Reference material:
 
@@ -41,7 +41,7 @@ Monorepo via **pnpm workspaces** — `frontend/`, `backend/`, and `packages/shar
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
-- **OCR**: runs entirely client-side (PaddleOCR.js / PP-OCRv5) in a **Web Worker** with WebGPU + WASM fallback. Invoice images never leave the device.
+- **OCR**: runs entirely client-side (PP-OCRv5 via `ppu-paddle-ocr` on ONNX Runtime) in a **Web Worker** with WebGPU + WASM fallback. Invoice images never leave the device.
 - **Deployment**: Docker Compose (Proxmox LXC / NAS friendly), intended for home network + optional VPN.
 
 ### Non-negotiable design constraints (Privacy by Design)

@@ -7,6 +7,17 @@ packages:
 allowBuilds:
   esbuild: true
   better-sqlite3: true
+  # The browser PWA uses onnxruntime-web only; onnxruntime-node is pulled in as an
+  # (unused) peer of ppu-paddle-ocr — never build its native binary, and skip
+  # protobufjs' optional install script. Neither runs in the browser.
+  onnxruntime-node: false
+  protobufjs: false
+  # Note: @napi-rs/canvas (pulled in via ppu-paddle-ocr → ppu-ocv) needs NO entry
+  # here. It has no install/postinstall lifecycle script — only a manual `build`
+  # script that pnpm never runs on install — and ships prebuilt platform binaries
+  # as optional deps. It is also never loaded on the web OCR path (we use
+  # onnxruntime-web + the `canvas-native` engine), so an allowBuilds entry would
+  # be inert.
 
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
@@ -46,9 +57,12 @@ minimumReleaseAgeExclude:
   - eslint-plugin-svelte@3.20.0
   - eslint@10.6.0
   - globals@17.7.0
+  - onnxruntime-web@1.27.0
   - pdfjs-dist@6.1.200
   - playwright-core@1.61.1
   - playwright@1.61.1
+  - ppu-ocv@3.3.0
+  - ppu-paddle-ocr@6.0.0
   - prettier@3.9.0
   - svelte-check@4.7.1
   - svelte@5.56.4
