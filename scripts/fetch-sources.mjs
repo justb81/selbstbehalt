@@ -33,25 +33,42 @@ function refresh({ dir, url }) {
   const tmp = mkdtempSync(join(tmpdir(), 'fee-src-'));
   try {
     const zip = join(tmp, 'src.zip');
-    execFileSync(
-      'curl',
-      [
-        '-fsSL',
-        '--retry',
-        '5',
-        '--retry-delay',
-        '2',
-        '--retry-all-errors',
-        '--max-time',
-        '120',
-        '-A',
-        'selbstbehalt-fee-updater',
-        '-o',
-        zip,
-        url,
-      ],
-      { stdio: ['ignore', 'ignore', 'inherit'] },
-    );
+    // --connect-timeout bounds the connection phase on its own: without it a
+    // stalled connect (the gii host occasionally goes unreachable from CI
+    // egress) eats the whole --max-time per attempt, so the retries can't ride
+    // out a brief blip and the job hangs ~12 min before failing. --retry-max-time
+    // caps the total retry window.
+    try {
+      execFileSync(
+        'curl',
+        [
+          '-fsSL',
+          '--connect-timeout',
+          '30',
+          '--retry',
+          '5',
+          '--retry-delay',
+          '2',
+          '--retry-all-errors',
+          '--retry-max-time',
+          '300',
+          '--max-time',
+          '120',
+          '-A',
+          'selbstbehalt-fee-updater',
+          '-o',
+          zip,
+          url,
+        ],
+        { stdio: ['ignore', 'ignore', 'inherit'] },
+      );
+    } catch (err) {
+      throw new Error(
+        `Failed to download ${url} (curl exited ${err.status ?? err.code ?? '?'}). ` +
+          `gesetze-im-internet.de may be temporarily unreachable from this runner — ` +
+          `re-run the workflow; see the curl output above.`,
+      );
+    }
     execFileSync('unzip', ['-o', '-q', zip, '-d', tmp]);
     // The archive may also contain PDFs (e.g. GOZ) — only the legal-text XML matters.
     const xmls = readdirSync(tmp).filter((f) => f.toLowerCase().endsWith('.xml'));
