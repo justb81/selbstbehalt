@@ -69,7 +69,7 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 |---|---|---|
 | Dashboard | `/` | Übersicht |
 | Verträge | `/contracts`, `/contracts/[id]`, `/contracts/new` | Liste · Detail · Wizard (neu/bearbeiten) |
-| Rechnungen | `/invoices`, `/invoices/[id]`, `/invoices/scan` | Liste · Detail + GCP · Scan-Review |
+| Rechnungen | `/invoices`, `/invoices/new`, `/invoices/[id]` | Liste · Erfassung (manuell + OCR) · Detail + GCP |
 | Einstellungen | `/settings` | Einstellungen |
 | Stammdaten | (Teil von `/settings` / Personen-CRUD) | Personen-Verwaltung |
 
@@ -125,10 +125,14 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 - **GCPCard** (siehe §5).
 - Aktionen **Einreichen** / **Selbst zahlen** ändern Status + Entscheidung (Toast).
 
-### 3.7 Scan-Review (`#22`/§4 OCR)
-- Datenschutz-Hinweis „client-seitig erkannt, nicht hochgeladen".
-- Editierbare erkannte Felder (Person, Anbieter, Datum, Nr.), erkannte Positionen mit Markierung,
-  Summe, **Rechnung speichern**.
+### 3.7 Rechnung erfassen (`#22`/`#26`/§4 OCR, Route `/invoices/new`)
+- Einheitliches Formular für manuelle Erfassung und OCR-gestützte Erfassung.
+- **Scan-Schaltfläche** oben im Formular öffnet OCRScanner (Kamera oder Datei/PDF);
+  nach Erkennung werden erkannte Felder (Datum, Nr., Anbieter, Positionen) direkt in das Formular
+  übernommen; nicht erkannte Felder bleiben unverändert.
+- Felder und Positionen bleiben vollständig bearbeitbar; OCR-Zeilen mit geringer Konfidenz oder
+  §5-Auffälligkeiten werden mit Warnhinweis markiert.
+- Opt-in-Checkbox zum Speichern des OCR-Rohtexts (Datenminimierung, §8.2).
 
 ### 3.8 Einstellungen (`#20`)
 - **Stammdaten** → Personen verwalten.
@@ -192,8 +196,7 @@ Diskontrate aus den Einstellungen) und **Steuervorteil (§33 EStG)**.
 | `BRETracker` | BRE-Fortschritt + Staffelstufen (Detail, Dashboard, Wizard-Schritt 3) |
 | `InvoiceBadge` | Status-Badges (neu/geprüft/eingereicht/erstattet/abgelehnt/selbst_gezahlt) |
 | `GCPCard` | Günstigerprüfungs-Karte im Rechnungsdetail |
-| `InvoiceReview` | Scan-Review-Screen |
-| `OCRScanner` | Einstieg „Rechnung erfassen" → Review (OCR-Lauf gemockt) |
+| `OCRScanner` | Scan-Schaltfläche in `/invoices/new` (OCR-Lauf gemockt) |
 
 ---
 

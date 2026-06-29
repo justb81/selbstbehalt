@@ -598,7 +598,7 @@ Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnun
 /contracts/[id]         → Vertragsdetail + BRE-Jahresverlauf
 /contracts/new          → Neuer Vertrag
 /invoices               → Rechnungsarchiv (Filter, Suche)
-/invoices/scan          → Rechnungsscan-Flow (Kamera / Datei-Upload)
+/invoices/new           → Rechnung erfassen (manuell oder via OCR-Scan)
 /invoices/[id]          → Rechnungsdetail + Positionen + Günstigerprüfung
 /invoices/[id]/submit   → Einreichungsformular
 /stats                  → Jahresauswertung (Kosten, Erstattungen, BRE)
@@ -610,7 +610,6 @@ Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnun
 | Komponente | Datei | Zweck |
 |---|---|---|
 | `OCRScanner` | `lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
-| `InvoiceReview` | `lib/components/InvoiceReview.svelte` | Parsed Rechnung anzeigen + manuell korrigieren |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Ergebnis-Karte |
 | `ContractCard` | `lib/components/ContractCard.svelte` | Vertragszusammenfassung |
 | `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige |

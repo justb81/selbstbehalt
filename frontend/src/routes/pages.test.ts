@@ -39,7 +39,7 @@ import NewContract from './contracts/new/+page.svelte';
 import Contracts from './contracts/+page.svelte';
 import InvoiceDetail from './invoices/[id]/+page.svelte';
 import SubmitInvoice from './invoices/[id]/submit/+page.svelte';
-import Scan from './invoices/scan/+page.svelte';
+import NewInvoice from './invoices/new/+page.svelte';
 import Invoices from './invoices/+page.svelte';
 import PersonDetail from './persons/[id]/+page.svelte';
 import NewPerson from './persons/new/+page.svelte';
@@ -57,7 +57,7 @@ const pages: Array<{ name: string; Component: Component<Record<string, never>>; 
     { name: 'Neuer Vertrag', Component: NewContract, heading: 'Neuer Vertrag' },
     { name: 'Vertragsdetail', Component: ContractDetail, heading: 'Vertragsdetail' },
     { name: 'Rechnungen', Component: Invoices, heading: 'Rechnungen' },
-    { name: 'Rechnung scannen', Component: Scan, heading: 'Rechnung scannen' },
+    { name: 'Rechnung erfassen', Component: NewInvoice, heading: 'Rechnung erfassen' },
     { name: 'Rechnungsdetail', Component: InvoiceDetail, heading: 'Rechnungsdetail' },
     { name: 'Einreichung', Component: SubmitInvoice, heading: 'Einreichung' },
     { name: 'Auswertung', Component: Stats, heading: 'Auswertung' },

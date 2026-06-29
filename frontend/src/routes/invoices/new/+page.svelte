@@ -1,21 +1,34 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Manuelle Rechnungserfassung (docs/design.md §6.1, issue #22): form for
-  entering an invoice with GOÄ/GOZ/GOT positions without the OCR scanner.
+  Rechnungserfassung (docs/design.md §6.1, issues #22/#26/#109): unified invoice
+  creation form — fill manually or pre-fill via on-device OCR (optional).
+
+  Privacy by design: OCR runs in a Web Worker; images are discarded after
+  recognition and never leave the device (docs/design.md §1.3, §8).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
     goaeCategoryValues,
     providerTypeValues,
+    roundCents,
     type GoaeCategory,
     type InsuredPerson,
     type InvoicePositionInput,
     type ProviderType,
   } from '@selbstbehalt/shared';
+  import {
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    defaultProviderType,
+    disposeScanOcr,
+    toReviewPositions,
+    type ScanResult,
+  } from '$lib/ocr';
+  import OCRScanner from '$lib/components/OCRScanner.svelte';
+  import type { FeeScheduleId } from '$lib/data/fee-schedule';
 
   const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
     arzt: 'Arzt/Ärztin',
@@ -24,7 +37,7 @@
     sonstiges: 'Sonstiges',
   };
 
-  // ---- Load insured persons ----
+  // ---- Insured persons ----
   type InsuredOption = { id: string; label: string; insuredPerson: InsuredPerson };
   let insuredOptions = $state<InsuredOption[]>([]);
   let loadingPersons = $state(true);
@@ -54,6 +67,7 @@
   }
 
   onMount(loadPersons);
+  onDestroy(disposeScanOcr);
 
   // ---- Form state ----
   let insuredPersonId = $state('');
@@ -72,6 +86,10 @@
     multiplier: number;
     base_amount: number;
     charged_amount: number;
+    // OCR-derived fields; null/1.0 for manually added rows
+    is_valid: boolean | null;
+    flag_reason: string | null;
+    confidence: number;
   };
 
   let positions = $state<PositionRow[]>([]);
@@ -86,6 +104,9 @@
         multiplier: 2.3,
         base_amount: 0,
         charged_amount: 0,
+        is_valid: null,
+        flag_reason: null,
+        confidence: 1,
       },
     ];
   }
@@ -94,6 +115,43 @@
     positions = positions.filter((_, idx) => idx !== i);
   }
 
+  // ---- Scan ----
+  let scanResult = $state<ScanResult | null>(null);
+  let showScanner = $state(false);
+  let ocrSchedule = $state<FeeScheduleId>('GOÄ');
+  let saveOcrRaw = $state(false);
+
+  const hasScan = $derived(scanResult !== null);
+  const lowConfidence = $derived(
+    scanResult !== null && scanResult.meanConfidence < DEFAULT_CONFIDENCE_THRESHOLD,
+  );
+  const flaggedCount = $derived(positions.filter((p) => p.is_valid === false).length);
+
+  function onScanned(result: ScanResult): void {
+    scanResult = result;
+    showScanner = false;
+    // Pre-fill recognized fields; leave unrecognized fields unchanged (issue #109).
+    if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
+    if (result.parsed.invoiceNumber) invoiceNumber = result.parsed.invoiceNumber;
+    if (result.parsed.providerName) providerName = result.parsed.providerName;
+    providerType = defaultProviderType(result.schedule);
+    positions = toReviewPositions(result).map((p) => ({
+      goae_number: p.goaeNumber,
+      goae_category: result.schedule as GoaeCategory,
+      description: p.description ?? '',
+      multiplier: p.multiplier,
+      base_amount: p.baseAmount,
+      charged_amount: p.chargedAmount,
+      is_valid: p.isValid,
+      flag_reason: p.flagReason,
+      confidence: p.confidence,
+    }));
+    if (positions.length > 0) {
+      totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
+    }
+  }
+
+  // ---- Save ----
   let saving = $state(false);
   let formError = $state<string | null>(null);
 
@@ -119,8 +177,8 @@
       multiplier: p.multiplier,
       base_amount: p.base_amount,
       charged_amount: p.charged_amount,
-      is_valid: null,
-      flag_reason: null,
+      is_valid: p.is_valid,
+      flag_reason: p.flag_reason,
     }));
 
     saving = true;
@@ -134,6 +192,7 @@
         total_amount: totalAmount,
         eligible_amount: eligibleAmount,
         notes: notes.trim() || null,
+        ocr_raw: hasScan && saveOcrRaw ? (scanResult?.ocrText ?? null) : null,
         positions: positionInputs.length > 0 ? positionInputs : undefined,
       });
       await goto(resolve('/invoices/[id]', { id: invoice.id }));
@@ -153,7 +212,7 @@
   <div class="back-row">
     <a href={resolve('/invoices')} class="back-link">← Rechnungen</a>
   </div>
-  <h1>Rechnung manuell erfassen</h1>
+  <h1>Rechnung erfassen</h1>
 
   {#if loadingPersons}
     <p class="muted">Daten werden geladen …</p>
@@ -172,6 +231,52 @@
         void submit();
       }}
     >
+      <!-- Scan section -->
+      <div class="scan-section">
+        <div class="scan-row">
+          {#if !showScanner}
+            <button type="button" class="btn-secondary" onclick={() => (showScanner = true)}>
+              {hasScan ? 'Neu scannen / hochladen' : 'Rechnung scannen / hochladen'}
+            </button>
+            {#if hasScan}
+              <span class="scan-done">✓ Aus Scan übernommen – bitte prüfen</span>
+            {:else}
+              <span class="scan-hint">
+                Optional. Die Erkennung läuft auf diesem Gerät; das Bild verlässt es nie.
+              </span>
+            {/if}
+          {:else}
+            <button type="button" class="btn-text" onclick={() => (showScanner = false)}>
+              Schließen
+            </button>
+          {/if}
+        </div>
+
+        {#if showScanner}
+          <OCRScanner bind:schedule={ocrSchedule} {onScanned} />
+        {/if}
+      </div>
+
+      <!-- OCR warnings (shown after a scan) -->
+      {#if hasScan && lowConfidence}
+        <p class="notice warning" role="status">
+          Geringe Erkennungsgenauigkeit – bitte alle Felder und Positionen sorgfältig prüfen.
+        </p>
+      {/if}
+      {#if hasScan && flaggedCount > 0}
+        <p class="notice warning" role="status">
+          {flaggedCount}
+          {flaggedCount === 1 ? 'Position ist' : 'Positionen sind'} auffällig und markiert.
+        </p>
+      {/if}
+      {#if hasScan && (scanResult?.parsed.violations.length ?? 0) > 0}
+        <ul class="violations">
+          {#each scanResult?.parsed.violations ?? [] as violation (violation.message)}
+            <li>{violation.message}</li>
+          {/each}
+        </ul>
+      {/if}
+
       <h2>Rechnungskopf</h2>
       <div class="field-grid">
         <label class="field">
@@ -254,14 +359,22 @@
               <span></span>
             </div>
             {#each positions as pos, i (i)}
-              <div class="pos-row">
+              <div class="pos-row" class:flagged={pos.is_valid === false}>
                 <input type="text" bind:value={pos.goae_number} placeholder="z.B. 1" required />
                 <select bind:value={pos.goae_category}>
                   {#each goaeCategoryValues as cat (cat)}
                     <option value={cat}>{cat}</option>
                   {/each}
                 </select>
-                <input type="text" bind:value={pos.description} placeholder="optional" />
+                <div class="desc-cell">
+                  <input type="text" bind:value={pos.description} placeholder="optional" />
+                  {#if pos.is_valid === false && pos.flag_reason}
+                    <small class="flag">⚠ {pos.flag_reason}</small>
+                  {/if}
+                  {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
+                    <small class="uncertain">Unsichere Erkennung – bitte prüfen.</small>
+                  {/if}
+                </div>
                 <input
                   class="num"
                   type="number"
@@ -301,6 +414,14 @@
           <p class="muted">Noch keine Positionen. Positionen sind optional.</p>
         {/if}
       </div>
+
+      <!-- OCR opt-in (only after a scan) -->
+      {#if hasScan}
+        <label class="checkbox">
+          <input type="checkbox" bind:checked={saveOcrRaw} />
+          <span>OCR-Rohtext zur späteren Kontrolle speichern (optional, Opt-in)</span>
+        </label>
+      {/if}
 
       {#if formError}
         <p class="error" role="alert">{formError}</p>
@@ -351,6 +472,52 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
+  }
+
+  /* Scan section */
+  .scan-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .scan-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .scan-done {
+    font-size: var(--font-size-sm);
+    color: var(--color-success, #16a34a);
+  }
+
+  .scan-hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* OCR warnings */
+  .notice {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+  }
+
+  .notice.warning {
+    background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
+    color: var(--color-warning);
+  }
+
+  .violations {
+    margin: 0;
+    padding-left: var(--space-5);
+    color: var(--color-warning);
+    font-size: var(--font-size-sm);
   }
 
   .field-grid {
@@ -415,7 +582,7 @@
     display: grid;
     grid-template-columns: 5rem 4.5rem 1fr 5rem 7rem 7rem 2rem;
     gap: var(--space-2);
-    align-items: center;
+    align-items: start;
     padding: var(--space-2) var(--space-3);
   }
 
@@ -434,6 +601,10 @@
     border-bottom: none;
   }
 
+  .pos-row.flagged {
+    background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
+  }
+
   .pos-row input,
   .pos-row select {
     padding: var(--space-1) var(--space-2);
@@ -449,6 +620,38 @@
   }
   .pos-row input.num {
     text-align: right;
+  }
+
+  /* Description cell with optional OCR indicators */
+  .desc-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .desc-cell input {
+    width: 100%;
+  }
+
+  .flag {
+    font-size: var(--font-size-sm);
+    color: var(--color-warning);
+  }
+
+  .uncertain {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  /* OCR opt-in checkbox */
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
   }
 
   .actions {
@@ -487,6 +690,7 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
+    cursor: pointer;
   }
   .btn-secondary:hover {
     background: var(--color-bg);
