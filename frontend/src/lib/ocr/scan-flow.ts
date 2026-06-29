@@ -85,18 +85,18 @@ function positionConfidences(results: OcrResult[]): number[] {
 }
 
 /**
- * Parses recognised OCR lines into a {@link ScanResult} against the given fee
- * table. Pure: no I/O, no worker — feed it the OCR output, the schedule id and
- * its (lazily-loaded) table.
+ * Parses recognised OCR lines into a {@link ScanResult}. Pass an array of
+ * tables to support mixed invoices (e.g. `[gozTable, goaeTable]`); the first
+ * element is the primary/default schedule. A single table is also accepted.
  */
 export function buildScanResult(
   results: OcrResult[],
   schedule: FeeScheduleId,
-  table: FeeScheduleTable,
+  tables: FeeScheduleTable | FeeScheduleTable[],
   context: ValidationContext = {},
 ): ScanResult {
   const ocrText = ocrResultsToText(results);
-  const parsed = parseInvoice(ocrText, table, context);
+  const parsed = parseInvoice(ocrText, tables, context);
   return {
     schedule,
     ocrText,
@@ -122,6 +122,16 @@ export function defaultProviderType(schedule: FeeScheduleId): ProviderType {
 export interface ReviewPosition {
   /** Billing number (Ziffer). */
   goaeNumber: string;
+  /** Fee schedule this position is billed under (GOÄ / GOZ / GOT). */
+  goaeCategory: FeeScheduleId;
+  /** Anzahl (quantity). */
+  quantity: number;
+  /**
+   * Leistungsdatum (ISO YYYY-MM-DD) extracted from a per-line date prefix on
+   * Sammelrechnungen. `null` when not stated. Used for BRE year assignment and
+   * session-scoped constraint checking.
+   */
+  treatmentDate: string | null;
   description: string | null;
   multiplier: number;
   baseAmount: number;
@@ -155,6 +165,9 @@ export interface ReviewState {
 export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
   return scan.parsed.positions.map((p, i) => ({
     goaeNumber: p.ziffer,
+    goaeCategory: p.feeSchedule,
+    quantity: p.quantity,
+    treatmentDate: p.treatmentDate,
     description: p.description ?? null,
     multiplier: p.multiplier,
     baseAmount: p.baseAmount ?? 0,
@@ -174,7 +187,9 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
 export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
   const positions = state.positions.map((p) => ({
     goae_number: p.goaeNumber,
-    goae_category: state.schedule,
+    goae_category: p.goaeCategory,
+    quantity: p.quantity,
+    treatment_date: p.treatmentDate ?? null,
     description: p.description,
     multiplier: p.multiplier,
     base_amount: roundCents(p.baseAmount),

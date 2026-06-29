@@ -15,6 +15,13 @@ export const invoicePositionInputSchema = z
   .object({
     goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
     goae_category: goaeCategorySchema.nullish(),
+    /** Anzahl (quantity); omitted when not stated on the invoice line (backend defaults to 1). */
+    quantity: z.number().int().positive('Anzahl muss mindestens 1 sein').optional(),
+    /**
+     * Leistungsdatum (ISO YYYY-MM-DD). Relevant for BRE year assignment and
+     * for session-scoped constraint validation on Sammelrechnungen.
+     */
+    treatment_date: z.string().date().nullish(),
     description: z.string().nullish(),
     multiplier: z
       .number({ invalid_type_error: 'Steigerungsfaktor muss eine Zahl sein' })

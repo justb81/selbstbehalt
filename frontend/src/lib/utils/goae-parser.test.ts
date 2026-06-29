@@ -207,6 +207,8 @@ describe('parsePositionLine / extractPositions', () => {
       multiplier: 2.3,
       chargedAmount: 10.72,
       raw: '1   Beratung   2,3   10,72',
+      treatmentDate: null,
+      detectedSchedule: null,
     });
   });
 
@@ -258,6 +260,71 @@ describe('parsePositionLine / extractPositions', () => {
     ].join('\n');
     const positions = extractPositions(text);
     expect(positions.map((p) => p.ziffer)).toEqual(['1', '5']);
+  });
+
+  // --- Real-world OCR format variations ---
+
+  it('parses a Ä-prefixed GOÄ code (Factor Qty Amount column order)', () => {
+    const p = parsePositionLine('Ä6 Vollständige Untersuchung 2,3000 1 13.41');
+    expect(p).toMatchObject({ ziffer: '6', multiplier: 2.3, quantity: 1, chargedAmount: 13.41 });
+  });
+
+  it('strips an OK/UK region prefix before the Ziffer', () => {
+    const p = parsePositionLine('OK 6050 Starke Einengung 3,5000 1 59,05');
+    expect(p).toMatchObject({ ziffer: '6050', multiplier: 3.5, quantity: 1, chargedAmount: 59.05 });
+  });
+
+  it('strips a leading treatment date before the Ziffer', () => {
+    const p = parsePositionLine('07.05.24 1 Beratung 2,3 10,72');
+    expect(p).toMatchObject({ ziffer: '1', multiplier: 2.3, chargedAmount: 10.72 });
+  });
+
+  it('strips a date AND an OK/UK prefix before the Ziffer', () => {
+    const p = parsePositionLine('25.01.24 OK 6050 Beschreibung 3,5000 1 59,05');
+    expect(p).toMatchObject({ ziffer: '6050', multiplier: 3.5, quantity: 1, chargedAmount: 59.05 });
+  });
+
+  it('joins an orphaned bare-number amount onto the preceding line', () => {
+    const text = [
+      '07.05.24 Ä1 Beratung, auch mittels Fernsprecher 2,3000 1',
+      '10.72',
+      'Ä6 Vollständige Untersuchung eines spez. Organsystems 2,3000 1 13.41',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(2);
+    expect(positions[0]).toMatchObject({
+      ziffer: '1',
+      multiplier: 2.3,
+      quantity: 1,
+      chargedAmount: 10.72,
+    });
+    expect(positions[1]).toMatchObject({
+      ziffer: '6',
+      multiplier: 2.3,
+      quantity: 1,
+      chargedAmount: 13.41,
+    });
+  });
+
+  it('parses a realistic GOÄ/GOZ dental invoice with mixed prefixes and column order', () => {
+    const text = [
+      '25.01.24 OK 6050 Starke Einengung der Stützzonen. 3,5000 1 59,05',
+      'UK 6050 Starke Einengung der Stützzonen. 3,5000 1 59,05',
+      '6080 Einstellung der Kiefer, hoher Umfang 2,3000 1 38,81',
+      'Ä1 Beratung, auch telefonisch 2,3000 1 10,72',
+      'Ä5 Symptombezogene Untersuchung 2,3000 1 10,72',
+      '4020 Lokalbehandlung von Mundschleimhauterkrankungen 2,3000 1 5,82',
+      'Zwischensumme Honorar: 184,17',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['6050', '6050', '6080', '1', '5', '4020']);
+    expect(positions[0]).toMatchObject({ multiplier: 3.5, quantity: 1, chargedAmount: 59.05 });
+    expect(positions[3]).toMatchObject({
+      ziffer: '1',
+      multiplier: 2.3,
+      quantity: 1,
+      chargedAmount: 10.72,
+    });
   });
 });
 

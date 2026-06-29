@@ -127,6 +127,9 @@ describe('toReviewPositions / toInvoicePayload', () => {
     state.positions = [
       {
         goaeNumber: '1',
+        goaeCategory: 'GOÄ',
+        quantity: 1,
+        treatmentDate: null,
         description: 'Beratung',
         multiplier: 2.3,
         baseAmount: 4.66,

@@ -21,18 +21,26 @@
  *
  * ## Supported line layout
  *
- * A position line starts with a Ziffer and ends with a EUR amount, e.g.
+ * A position line starts with a Ziffer and ends with a EUR amount. Two column
+ * orders are recognised:
  *
  * ```
- * 1    Beratung                 2,3    10,72
- * 250  Infusion        2x       1,8     8,40
+ * 1    Beratung                 2,3    10,72        ← Faktor Betrag
+ * 250  Infusion        2x       1,8     8,40        ← Faktor (2×) Betrag
+ * 250  Infusion        3        1,8     8,40        ← Anzahl Faktor Betrag
+ * Ä6   Untersuchung             2,3000  1   13,41   ← Faktor Anzahl Betrag
  * ```
+ *
+ * The `Ä`/`Z` prefix that some printers add before GOÄ/GOZ codes is stripped.
+ * A leading treatment date (`DD.MM.YY[YY]`) is stripped before matching.
+ * A bare-number line following a position line (OCR split of the amount onto its
+ * own line) is joined back before parsing.
  *
  * The trailing run of numbers is read right-to-left as
- * `[… Anzahl] Faktor Betrag`. An explicit quantity marker (`2x` / `2×`)
- * is recognised anywhere in that run; otherwise a leading integer in a run of
- * three or more numbers is treated as the Anzahl. Provide a single total amount
- * per line (no separate Einzel-/Gesamtbetrag columns).
+ * `[… Anzahl] Faktor Betrag` (standard) or `Faktor Anzahl Betrag` (detected when
+ * the Faktor slot holds a whole integer and the preceding value is a decimal).
+ * An explicit quantity marker (`2x` / `2×`) overrides both heuristics.
+ * Provide a single total amount per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
 import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
@@ -64,6 +72,22 @@ export interface RawPosition {
   chargedAmount: number;
   /** The raw source line, kept for auditing the extraction. */
   raw: string;
+  /**
+   * Leistungsdatum (treatment date) as ISO `YYYY-MM-DD`, extracted from the
+   * per-line date prefix (e.g. `07.05.24`). `null` when the line has no prefix.
+   * Relevant for Sammelrechnungen: different positions may fall in different
+   * years, and the BRE always uses the treatment date, not the invoice date.
+   * Optional so tests that construct minimal `RawPosition` fixtures compile.
+   */
+  treatmentDate?: string | null;
+  /**
+   * Fee schedule identified from a prefix letter on the line (`Ä`→GOÄ,
+   * `Z`→GOZ). `null` means "use the invoice's primary/default schedule".
+   * Allows mixed GOÄ+GOZ invoices (e.g. an orthodontist billing GOZ codes plus
+   * GOÄ consultation codes on the same invoice).
+   * Optional so tests that construct minimal `RawPosition` fixtures compile.
+   */
+  detectedSchedule?: FeeScheduleId | null;
 }
 
 /** Why a single position was flagged during lookup / §5 validation. */
@@ -117,6 +141,19 @@ export interface ParsedPosition {
   durationMinutes?: number;
   /** The raw source line. */
   raw?: string;
+  /**
+   * Leistungsdatum (treatment date) as ISO `YYYY-MM-DD`. Set from the per-line
+   * date prefix on Sammelrechnungen. `null` when not stated on the line.
+   * The BRE always uses the treatment date, not the invoice date, for year
+   * assignment. Also used to scope `session`/`day` frequency constraints
+   * correctly across multi-date invoices.
+   */
+  treatmentDate: string | null;
+  /**
+   * Fee schedule this position was validated against (GOÄ / GOZ / GOT).
+   * Each position on a mixed invoice (e.g. GOZ + GOÄ) carries its own schedule.
+   */
+  feeSchedule: FeeScheduleId;
 }
 
 /** The type of cross-invoice rule a {@link ConstraintViolation} reports. */
@@ -280,7 +317,18 @@ export function extractInvoiceFields(text: string): {
 // Position extraction
 // ---------------------------------------------------------------------------
 
-const ZIFFER_RE = /^\s*(\d{1,5}[a-zA-Z]?)\b/;
+/**
+ * Optional treatment date that some invoices print at the start of each line,
+ * e.g. "07.05.24 Ä1 Beratung …". Groups: day · month · year.
+ */
+const DATE_PREFIX_RE = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+/;
+
+/**
+ * A Ziffer, preceded by an optional region tag (OK/UK for upper/lower jaw) and
+ * an optional schedule-prefix letter. Group 1 captures the prefix letter
+ * (Ä→GOÄ, Z→GOZ, A as OCR variant of Ä). Group 2 captures the billing number.
+ */
+const ZIFFER_RE = /^\s*(?:(?:OK|UK)\s+)?([ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b/;
 
 interface NumericToken {
   value: number;
@@ -305,10 +353,22 @@ function parseNumericToken(token: string): NumericToken | null {
 
 /** Parses one line into a {@link RawPosition}, or null if it is not one. */
 export function parsePositionLine(line: string): RawPosition | null {
-  const zm = ZIFFER_RE.exec(line);
-  const ziffer = zm?.[1];
+  // Extract and strip a leading treatment date (e.g. "07.05.24 ").
+  const dateM = DATE_PREFIX_RE.exec(line);
+  const treatmentDate =
+    dateM && dateM[1] && dateM[2] && dateM[3] ? toIso(dateM[1], dateM[2], dateM[3]) : null;
+  const stripped = dateM ? line.slice(dateM[0].length) : line;
+
+  const zm = ZIFFER_RE.exec(stripped);
+  const prefixLetter = zm?.[1]?.trim(); // 'Ä', 'A', 'Z' or undefined
+  const ziffer = zm?.[2];
   if (!zm || ziffer === undefined) return null;
-  const rest = line.slice(zm[0].length);
+
+  let detectedSchedule: FeeScheduleId | null = null;
+  if (prefixLetter === 'Ä' || prefixLetter === 'A') detectedSchedule = 'GOÄ';
+  else if (prefixLetter === 'Z') detectedSchedule = 'GOZ';
+
+  const rest = stripped.slice(zm[0].length);
   const tokens = rest.split(/\s+/).filter(Boolean);
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
@@ -330,26 +390,66 @@ export function parsePositionLine(line: string): RawPosition | null {
   if (!amountTok || !factorTok) return null;
 
   let quantity = 1;
-  if (explicitQty) {
-    quantity = explicitQty.value;
-  } else if (core.length >= 3) {
-    const qtyTok = core[0];
-    if (qtyTok?.integer) quantity = qtyTok.value;
+  let multiplier: number;
+
+  if (!explicitQty && factorTok.integer && core.length >= 3 && !core[0]?.integer) {
+    // Column order "Faktor Anzahl Betrag": the factor slot holds a whole integer
+    // and the value before it is a non-integer (the actual multiplier). This is
+    // common in GOÄ/GOZ invoices that print Factor before Quantity.
+    quantity = factorTok.value;
+    multiplier = core[core.length - 3]!.value;
+  } else {
+    // Standard column order "[Anzahl] Faktor Betrag".
+    if (explicitQty) {
+      quantity = explicitQty.value;
+    } else if (core.length >= 3) {
+      const qtyTok = core[0];
+      if (qtyTok?.integer) quantity = qtyTok.value;
+    }
+    multiplier = factorTok.value;
   }
 
   return {
     ziffer,
     quantity,
-    multiplier: factorTok.value,
+    multiplier,
     chargedAmount: amountTok.value,
     raw: line.trim(),
+    treatmentDate,
+    detectedSchedule,
   };
+}
+
+/**
+ * A "bare-number" line is just a number (optionally with EUR suffix) on its own
+ * — OCR sometimes wraps the amount onto the next line when the description is long.
+ */
+const BARE_NUMBER_RE = /^\s*\d[\d.,]*\s*(?:EUR)?\s*$/i;
+
+/**
+ * Joins lines where OCR has wrapped the amount onto its own line: e.g.
+ * ```
+ * Ä1 Beratung, auch mittels Fernsprecher 2,3000 1
+ * 10.72
+ * ```
+ * becomes a single line before `parsePositionLine` sees it.
+ */
+function joinContinuationLines(lines: string[]): string[] {
+  const result: string[] = [];
+  for (const line of lines) {
+    if (BARE_NUMBER_RE.test(line) && result.length > 0) {
+      result[result.length - 1] += ' ' + line.trim();
+    } else {
+      result.push(line);
+    }
+  }
+  return result;
 }
 
 /** Extracts every position line from invoice text. */
 export function extractPositions(text: string): RawPosition[] {
   const positions: RawPosition[] = [];
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of joinContinuationLines(text.split(/\r?\n/))) {
     const p = parsePositionLine(line);
     if (p) positions.push(p);
   }
@@ -411,6 +511,8 @@ export function lookupPosition(
       isValid: false,
       flags,
       raw: raw.raw,
+      treatmentDate: raw.treatmentDate ?? null,
+      feeSchedule: table.feeSchedule,
     };
   }
 
@@ -452,6 +554,8 @@ export function lookupPosition(
     isValid: flags.length === 0,
     flags,
     raw: raw.raw,
+    treatmentDate: raw.treatmentDate ?? null,
+    feeSchedule: table.feeSchedule,
   };
 }
 
@@ -574,15 +678,40 @@ export function validateInvoice(
           break;
         }
         case 'maxFrequency': {
-          const count = idxs.reduce((sum, i) => sum + (positions[i]?.quantity || 1), 0);
-          if (count > c.count) {
-            violations.push({
-              type: 'maxFrequency',
-              message: `Die Ziffer ${ziffer} ist höchstens ${c.count}× ${scopeLabel(c.scope)} berechnungsfähig, abgerechnet ${count}×.`,
-              sourceText: c.sourceText,
-              ziffern: [ziffer],
-              positionIndices: [...idxs],
-            });
+          if (c.scope === 'session' || c.scope === 'day') {
+            // Group positions by treatmentDate so a code that legitimately
+            // appears once per session on a Sammelrechnung is not flagged
+            // for the sum across all sessions on the invoice.
+            const byDate = new Map<string, number[]>();
+            for (const i of idxs) {
+              const key = positions[i]?.treatmentDate ?? '(unbekannt)';
+              const group = byDate.get(key) ?? [];
+              group.push(i);
+              byDate.set(key, group);
+            }
+            for (const [, groupIdxs] of byDate) {
+              const count = groupIdxs.reduce((sum, i) => sum + (positions[i]?.quantity || 1), 0);
+              if (count > c.count) {
+                violations.push({
+                  type: 'maxFrequency',
+                  message: `Die Ziffer ${ziffer} ist höchstens ${c.count}× ${scopeLabel(c.scope)} berechnungsfähig, abgerechnet ${count}×.`,
+                  sourceText: c.sourceText,
+                  ziffern: [ziffer],
+                  positionIndices: [...groupIdxs],
+                });
+              }
+            }
+          } else {
+            const count = idxs.reduce((sum, i) => sum + (positions[i]?.quantity || 1), 0);
+            if (count > c.count) {
+              violations.push({
+                type: 'maxFrequency',
+                message: `Die Ziffer ${ziffer} ist höchstens ${c.count}× ${scopeLabel(c.scope)} berechnungsfähig, abgerechnet ${count}×.`,
+                sourceText: c.sourceText,
+                ziffern: [ziffer],
+                positionIndices: [...idxs],
+              });
+            }
           }
           break;
         }
@@ -667,23 +796,66 @@ export function validateInvoice(
 // ---------------------------------------------------------------------------
 
 /**
- * Parses (OCR'd) invoice text against a fee schedule: extracts fields and
- * positions, looks them up, runs §5 per-position checks and the whole-invoice
- * dependency validation.
+ * Parses (OCR'd) invoice text against one or more fee schedules: extracts
+ * fields and positions, looks each position up in the appropriate table
+ * (detected from the line's prefix letter, falling back to the primary table),
+ * runs §5 per-position checks and per-schedule whole-invoice dependency
+ * validation.
+ *
+ * Pass an array to support mixed invoices (e.g. `[gozTable, goaeTable]` when
+ * the orthodontist bills GOZ positions plus `Ä1`/`Ä5` GOÄ consultation codes).
+ * The first element is the primary/default schedule.
  */
 export function parseInvoice(
   text: string,
-  table: FeeScheduleTable,
+  tables: FeeScheduleTable | FeeScheduleTable[],
   context: ValidationContext = {},
 ): ParsedInvoice {
+  const tableArray = Array.isArray(tables) ? tables : [tables];
+  const primaryTable = tableArray[0]!;
+
+  const tableBySchedule = new Map<
+    FeeScheduleId,
+    { table: FeeScheduleTable; index: Map<string, FeeEntry> }
+  >();
+  for (const t of tableArray) {
+    tableBySchedule.set(t.feeSchedule, { table: t, index: buildIndex(t) });
+  }
+  const primaryEntry = tableBySchedule.get(primaryTable.feeSchedule)!;
+
   const fields = extractInvoiceFields(text);
-  const index = buildIndex(table);
-  const positions = extractPositions(text).map((raw) => lookupPosition(raw, table, index));
-  const violations = validateInvoice(positions, table, context, index);
+  const rawPositions = extractPositions(text);
+
+  const positions = rawPositions.map((raw) => {
+    const scheduleId = raw.detectedSchedule ?? primaryTable.feeSchedule;
+    const { table, index } = tableBySchedule.get(scheduleId) ?? primaryEntry;
+    return lookupPosition(raw, table, index);
+  });
+
+  // Run constraint validation per schedule (GOÄ rules don't span GOZ positions).
+  const violations: ConstraintViolation[] = [];
+  for (const [scheduleId, { table, index }] of tableBySchedule) {
+    const schedIdxs: number[] = [];
+    const schedPos: ParsedPosition[] = [];
+    positions.forEach((p, i) => {
+      if (p.feeSchedule === scheduleId) {
+        schedIdxs.push(i);
+        schedPos.push(p);
+      }
+    });
+    if (schedPos.length === 0) continue;
+    for (const v of validateInvoice(schedPos, table, context, index)) {
+      violations.push({
+        ...v,
+        positionIndices: v.positionIndices.map((i) => schedIdxs[i] ?? i),
+      });
+    }
+  }
+
   const totalAmount = roundCents(positions.reduce((sum, p) => sum + p.chargedAmount, 0));
 
   return {
-    feeSchedule: table.feeSchedule,
+    feeSchedule: primaryTable.feeSchedule,
     invoiceDate: fields.invoiceDate,
     invoiceNumber: fields.invoiceNumber,
     providerName: fields.providerName,
