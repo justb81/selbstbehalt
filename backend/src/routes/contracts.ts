@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { contracts, persons } from '../db/schema.js';
+import { assertFkExists, requireRow, updateOrReturn } from '../lib/db-helpers.js';
 import { serializeContract, toContractInsert, toContractUpdate } from '../lib/serialize.js';
 import { parseJsonBody, parseQuery } from '../lib/validation.js';
 
@@ -28,14 +29,6 @@ const listQuerySchema = z.object({ policyholder_id: uuid.optional() });
 /** Look up a contract by id, or `undefined` if it does not exist. */
 function findContract(db: Database, id: string) {
   return db.select().from(contracts).where(eq(contracts.id, id)).get();
-}
-
-/** Throw 400 if the referenced policyholder does not exist (clearer than an FK 500). */
-function assertPersonExists(db: Database, personId: string): void {
-  const person = db.select({ id: persons.id }).from(persons).where(eq(persons.id, personId)).get();
-  if (!person) {
-    throw new HTTPException(400, { message: `Person ${personId} existiert nicht` });
-  }
 }
 
 export function createContractsRoute(db: Database) {
@@ -52,27 +45,37 @@ export function createContractsRoute(db: Database) {
     })
     .post('/', async (c) => {
       const input = await parseJsonBody(c, contractCreateSchema);
-      assertPersonExists(db, input.policyholder_id);
+      assertFkExists(
+        db,
+        persons,
+        input.policyholder_id,
+        `Person ${input.policyholder_id} existiert nicht`,
+      );
       const row = db.insert(contracts).values(toContractInsert(input)).returning().get();
       return c.json(serializeContract(row), 201);
     })
     .get('/:id', (c) => {
-      const row = findContract(db, c.req.param('id'));
-      if (!row) throw new HTTPException(404, { message: 'Vertrag nicht gefunden' });
+      const row = requireRow(() => findContract(db, c.req.param('id')), 'Vertrag nicht gefunden');
       return c.json(serializeContract(row));
     })
     .put('/:id', async (c) => {
       const id = c.req.param('id');
-      if (!findContract(db, id))
-        throw new HTTPException(404, { message: 'Vertrag nicht gefunden' });
+      const existing = requireRow(() => findContract(db, id), 'Vertrag nicht gefunden');
       const input = await parseJsonBody(c, contractUpdateSchema);
-      if (input.policyholder_id !== undefined) assertPersonExists(db, input.policyholder_id);
+      if (input.policyholder_id !== undefined)
+        assertFkExists(
+          db,
+          persons,
+          input.policyholder_id,
+          `Person ${input.policyholder_id} existiert nicht`,
+        );
 
       const changes = toContractUpdate(input);
-      const row =
-        Object.keys(changes).length > 0
-          ? db.update(contracts).set(changes).where(eq(contracts.id, id)).returning().get()
-          : findContract(db, id)!;
+      const row = updateOrReturn(
+        changes,
+        () => db.update(contracts).set(changes).where(eq(contracts.id, id)).returning().get()!,
+        existing,
+      );
       return c.json(serializeContract(row));
     })
     .delete('/:id', (c) => {

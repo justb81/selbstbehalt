@@ -22,6 +22,7 @@ import { HTTPException } from 'hono/http-exception';
 
 import type { Database } from '../db/client.js';
 import { contracts, insuredPersons, persons } from '../db/schema.js';
+import { assertFkExists, requireRow, updateOrReturn } from '../lib/db-helpers.js';
 import {
   serializeInsuredPerson,
   toInsuredPersonInsert,
@@ -34,20 +35,6 @@ const nestedCreateSchema = insuredPersonCreateSchema.omit({ contract_id: true })
 
 function findInsured(db: Database, id: string) {
   return db.select().from(insuredPersons).where(eq(insuredPersons.id, id)).get();
-}
-
-function assertContractExists(db: Database, contractId: string): void {
-  const row = db
-    .select({ id: contracts.id })
-    .from(contracts)
-    .where(eq(contracts.id, contractId))
-    .get();
-  if (!row) throw new HTTPException(400, { message: `Vertrag ${contractId} existiert nicht` });
-}
-
-function assertPersonExists(db: Database, personId: string): void {
-  const row = db.select({ id: persons.id }).from(persons).where(eq(persons.id, personId)).get();
-  if (!row) throw new HTTPException(400, { message: `Person ${personId} existiert nicht` });
 }
 
 // A person may be insured only once per contract (unique index on
@@ -77,7 +64,7 @@ export function createInsuredRoute(db: Database) {
   return new Hono()
     .get('/contracts/:contractId/insured', (c) => {
       const contractId = c.req.param('contractId');
-      assertContractExists(db, contractId);
+      assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
       const rows = db
         .select()
         .from(insuredPersons)
@@ -88,9 +75,9 @@ export function createInsuredRoute(db: Database) {
     })
     .post('/contracts/:contractId/insured', async (c) => {
       const contractId = c.req.param('contractId');
-      assertContractExists(db, contractId);
+      assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
       const input = await parseJsonBody(c, nestedCreateSchema);
-      assertPersonExists(db, input.person_id);
+      assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
       assertNoDuplicateInsured(db, contractId, input.person_id);
       const row = db
         .insert(insuredPersons)
@@ -100,17 +87,25 @@ export function createInsuredRoute(db: Database) {
       return c.json(serializeInsuredPerson(row), 201);
     })
     .get('/insured/:id', (c) => {
-      const row = findInsured(db, c.req.param('id'));
-      if (!row) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
+      const row = requireRow(
+        () => findInsured(db, c.req.param('id')),
+        'Versicherte Person nicht gefunden',
+      );
       return c.json(serializeInsuredPerson(row));
     })
     .put('/insured/:id', async (c) => {
       const id = c.req.param('id');
-      const existing = findInsured(db, id);
-      if (!existing) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
+      const existing = requireRow(() => findInsured(db, id), 'Versicherte Person nicht gefunden');
       const input = await parseJsonBody(c, insuredPersonUpdateSchema);
-      if (input.contract_id !== undefined) assertContractExists(db, input.contract_id);
-      if (input.person_id !== undefined) assertPersonExists(db, input.person_id);
+      if (input.contract_id !== undefined)
+        assertFkExists(
+          db,
+          contracts,
+          input.contract_id,
+          `Vertrag ${input.contract_id} existiert nicht`,
+        );
+      if (input.person_id !== undefined)
+        assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
       // Re-pointing the row at another contract/person must not collide with an
       // existing (contract, person) pair.
       if (input.contract_id !== undefined || input.person_id !== undefined) {
@@ -123,15 +118,17 @@ export function createInsuredRoute(db: Database) {
       }
 
       const changes = toInsuredPersonUpdate(input);
-      const row =
-        Object.keys(changes).length > 0
-          ? db
-              .update(insuredPersons)
-              .set(changes)
-              .where(eq(insuredPersons.id, id))
-              .returning()
-              .get()
-          : existing;
+      const row = updateOrReturn(
+        changes,
+        () =>
+          db
+            .update(insuredPersons)
+            .set(changes)
+            .where(eq(insuredPersons.id, id))
+            .returning()
+            .get()!,
+        existing,
+      );
       return c.json(serializeInsuredPerson(row));
     })
     .delete('/insured/:id', (c) => {

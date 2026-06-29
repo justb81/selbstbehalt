@@ -22,6 +22,7 @@ import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { insuredPersons, invoicePositions, invoices, submissions } from '../db/schema.js';
+import { assertFkExists, requireRow, updateOrReturn } from '../lib/db-helpers.js';
 import {
   serializeInvoice,
   serializePosition,
@@ -64,27 +65,13 @@ function likeContains(column: AnyColumn, term: string): SQL {
 
 /** Assemble the detail response: the invoice joined with its line items. */
 function invoiceWithPositions(db: Database, id: string): InvoiceWithPositions {
-  const invoice = findInvoice(db, id);
-  if (!invoice) throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
+  const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
   const positions = db
     .select()
     .from(invoicePositions)
     .where(eq(invoicePositions.invoiceId, id))
     .all();
   return { ...serializeInvoice(invoice), positions: positions.map(serializePosition) };
-}
-
-function assertInsuredPersonExists(db: Database, insuredPersonId: string): void {
-  const row = db
-    .select({ id: insuredPersons.id })
-    .from(insuredPersons)
-    .where(eq(insuredPersons.id, insuredPersonId))
-    .get();
-  if (!row) {
-    throw new HTTPException(400, {
-      message: `Versicherte Person ${insuredPersonId} existiert nicht`,
-    });
-  }
 }
 
 export function createInvoicesRoute(db: Database) {
@@ -109,31 +96,48 @@ export function createInvoicesRoute(db: Database) {
     })
     .post('/', async (c) => {
       const input = await parseJsonBody(c, invoiceCreatePayloadSchema);
-      assertInsuredPersonExists(db, input.insured_person_id);
+      assertFkExists(
+        db,
+        insuredPersons,
+        input.insured_person_id,
+        `Versicherte Person ${input.insured_person_id} existiert nicht`,
+      );
       const { positions, ...invoiceInput } = input;
 
       // Invoice + its positions are written in one transaction so a partial
       // insert can never leave an invoice without its lines (acceptance: atomic).
-      const created = db.transaction((tx) => {
+      // Returning both from the transaction avoids a re-SELECT after commit.
+      const { invoice, insertedPositions } = db.transaction((tx) => {
         const invoice = tx.insert(invoices).values(toInvoiceInsert(invoiceInput)).returning().get();
-        if (positions && positions.length > 0) {
-          tx.insert(invoicePositions)
-            .values(positions.map((p) => toPositionInsert(invoice.id, p)))
-            .run();
-        }
-        return invoice;
+        const insertedPositions =
+          positions && positions.length > 0
+            ? tx
+                .insert(invoicePositions)
+                .values(positions.map((p) => toPositionInsert(invoice.id, p)))
+                .returning()
+                .all()
+            : [];
+        return { invoice, insertedPositions };
       });
 
-      return c.json(invoiceWithPositions(db, created.id), 201);
+      const body: InvoiceWithPositions = {
+        ...serializeInvoice(invoice),
+        positions: insertedPositions.map(serializePosition),
+      };
+      return c.json(body, 201);
     })
     .get('/:id', (c) => c.json(invoiceWithPositions(db, c.req.param('id'))))
     .put('/:id', async (c) => {
       const id = c.req.param('id');
-      if (!findInvoice(db, id))
-        throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
+      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       const input = await parseJsonBody(c, invoiceUpdatePayloadSchema);
       if (input.insured_person_id !== undefined)
-        assertInsuredPersonExists(db, input.insured_person_id);
+        assertFkExists(
+          db,
+          insuredPersons,
+          input.insured_person_id,
+          `Versicherte Person ${input.insured_person_id} existiert nicht`,
+        );
 
       const { positions, ...invoiceInput } = input;
       const changes = toInvoiceUpdate(invoiceInput);
@@ -167,8 +171,7 @@ export function createInvoicesRoute(db: Database) {
     })
     .post('/:id/submit', async (c) => {
       const id = c.req.param('id');
-      const invoice = findInvoice(db, id);
-      if (!invoice) throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
+      const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       if (!SUBMITTABLE_FROM.includes(invoice.status)) {
         throw new HTTPException(409, {
           message: `Rechnung im Status '${invoice.status}' kann nicht eingereicht werden`,
@@ -194,8 +197,7 @@ export function createInvoicesRoute(db: Database) {
     })
     .put('/:id/refund', async (c) => {
       const id = c.req.param('id');
-      const invoice = findInvoice(db, id);
-      if (!invoice) throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
+      const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       if (invoice.status !== 'eingereicht') {
         throw new HTTPException(409, {
           message: `Erstattung nur für eingereichte Rechnungen möglich (Status: '${invoice.status}')`,
@@ -224,15 +226,17 @@ export function createInvoicesRoute(db: Database) {
 
       const updated = db.transaction((tx) => {
         const changes = toSubmissionUpdate(input);
-        const row =
-          Object.keys(changes).length > 0
-            ? tx
-                .update(submissions)
-                .set(changes)
-                .where(eq(submissions.id, submission.id))
-                .returning()
-                .get()
-            : submission;
+        const row = updateOrReturn(
+          changes,
+          () =>
+            tx
+              .update(submissions)
+              .set(changes)
+              .where(eq(submissions.id, submission.id))
+              .returning()
+              .get()!,
+          submission,
+        );
         tx.update(invoices).set({ status: newStatus }).where(eq(invoices.id, id)).run();
         return row;
       });
