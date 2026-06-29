@@ -16,6 +16,16 @@
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '$lib/components/ui/table';
 
   const STATUS_LABELS: Record<InvoiceStatus, string> = {
     neu: 'Neu',
@@ -64,12 +74,10 @@
 
 <svelte:head><title>Rechnungen · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <h1>Rechnungen</h1>
-    <div class="header-actions">
-      <a href={resolve('/invoices/new')} class="btn-primary">Rechnung erfassen</a>
-    </div>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Rechnungen</h1>
+    <Button href={resolve('/invoices/new')}>Rechnung erfassen</Button>
   </div>
 
   {#if loading}
@@ -77,237 +85,90 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else}
-    <div class="filters">
-      <label class="filter-field">
-        <span>Status</span>
-        <select bind:value={statusFilter}>
+    <div class="flex flex-wrap gap-4 p-4 rounded-md border border-border bg-card">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-muted-foreground font-medium" for="status-filter">Status</label>
+        <select
+          id="status-filter"
+          bind:value={statusFilter}
+          class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
           <option value="">Alle</option>
           {#each invoiceStatusValues as s (s)}
             <option value={s}>{STATUS_LABELS[s]}</option>
           {/each}
         </select>
-      </label>
+      </div>
 
-      <label class="filter-field search">
-        <span>Suche</span>
-        <input
+      <div class="flex flex-col gap-1 flex-1 min-w-56">
+        <label class="text-xs text-muted-foreground font-medium" for="search">Suche</label>
+        <Input
+          id="search"
           type="search"
           bind:value={searchQuery}
           placeholder="Leistungserbringer, Rechnungsnummer …"
         />
-      </label>
+      </div>
     </div>
 
     {#if filtered.length === 0}
-      <div class="empty">
+      <div class="flex flex-col items-center justify-center py-16 text-center">
         {#if invoices.length === 0}
-          <p>Noch keine Rechnungen vorhanden.</p>
-          <a href={resolve('/invoices/new')} class="btn-primary">Erste Rechnung erfassen</a>
+          <p class="text-muted-foreground">Noch keine Rechnungen vorhanden.</p>
+          <Button class="mt-4" href={resolve('/invoices/new')}>Erste Rechnung erfassen</Button>
         {:else}
-          <p>Keine Rechnungen entsprechen dem Filter.</p>
+          <p class="text-muted-foreground">Keine Rechnungen entsprechen dem Filter.</p>
         {/if}
       </div>
     {:else}
-      <div class="invoice-table">
-        <div class="table-head">
-          <span>Datum</span>
-          <span>Leistungserbringer</span>
-          <span class="num">Betrag</span>
-          <span>Status</span>
-          <span></span>
-        </div>
-
-        {#each filtered as invoice (invoice.id)}
-          <div class="table-row">
-            <span class="date">{invoice.invoice_date}</span>
-            <span class="provider">
-              {invoice.provider_name}
-              {#if invoice.invoice_number}
-                <small class="inv-num">Nr. {invoice.invoice_number}</small>
-              {/if}
-            </span>
-            <span class="num amount">{formatEur(invoice.total_amount)}</span>
-            <span><InvoiceBadge status={invoice.status} /></span>
-            <a href={resolve('/invoices/[id]', { id: invoice.id })} class="detail-link">
-              Details →
-            </a>
-          </div>
-        {/each}
+      <div class="rounded-md border border-border shadow-sm overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Datum</TableHead>
+              <TableHead>Leistungserbringer</TableHead>
+              <TableHead class="text-right">Betrag</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {#each filtered as invoice (invoice.id)}
+              <TableRow class="hover:bg-muted/50">
+                <TableCell class="text-muted-foreground text-sm">{invoice.invoice_date}</TableCell>
+                <TableCell>
+                  <div class="flex flex-col gap-0.5">
+                    <span>{invoice.provider_name}</span>
+                    {#if invoice.invoice_number}
+                      <small class="text-xs text-muted-foreground"
+                        >Nr. {invoice.invoice_number}</small
+                      >
+                    {/if}
+                  </div>
+                </TableCell>
+                <TableCell class="text-right font-medium tabular-nums"
+                  >{formatEur(invoice.total_amount)}</TableCell
+                >
+                <TableCell><InvoiceBadge status={invoice.status} /></TableCell>
+                <TableCell>
+                  <a
+                    href={resolve('/invoices/[id]', { id: invoice.id })}
+                    class="text-sm text-primary font-medium hover:underline whitespace-nowrap no-underline"
+                  >
+                    Details →
+                  </a>
+                </TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
       </div>
 
-      <p class="total-row">
+      <p class="text-sm text-muted-foreground text-right">
         {filtered.length} Rechnung{filtered.length === 1 ? '' : 'en'} · Gesamt: {formatEur(
           filtered.reduce((s, i) => s + i.total_amount, 0),
         )}
       </p>
     {/if}
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .header-actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .filter-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .filter-field.search {
-    flex: 1;
-    min-width: 14rem;
-  }
-
-  .filter-field input,
-  .filter-field select {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    background: var(--color-bg);
-    color: var(--color-text);
-  }
-
-  .invoice-table {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .table-head,
-  .table-row {
-    display: grid;
-    grid-template-columns: 7rem 1fr 8rem auto 6rem;
-    gap: var(--space-2);
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .table-head {
-    background: var(--color-bg);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .table-row {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .table-row:last-child {
-    border-bottom: none;
-  }
-
-  .table-row:hover {
-    background: var(--color-bg);
-  }
-
-  .date {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .provider {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .inv-num {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .num {
-    text-align: right;
-  }
-
-  .amount {
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .detail-link {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .detail-link:hover {
-    text-decoration: underline;
-  }
-
-  .total-row {
-    margin: 0;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-align: right;
-  }
-
-  .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-8);
-    text-align: center;
-    color: var(--color-text-muted);
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .btn-primary:hover {
-    background: var(--color-primary-strong);
-  }
-</style>
+</div>

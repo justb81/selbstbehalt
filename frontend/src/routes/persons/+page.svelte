@@ -10,6 +10,7 @@
   import type { Person } from '$lib/api/resources';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
 
   let persons = $state<Person[]>([]);
   let loading = $state(true);
@@ -32,10 +33,10 @@
 
 <svelte:head><title>Personen · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <h1>Personen</h1>
-    <a href={resolve('/persons/new')} class="btn-primary">+ Neue Person</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Personen</h1>
+    <Button href={resolve('/persons/new')}>+ Neue Person</Button>
   </div>
 
   {#if loading}
@@ -43,103 +44,23 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else if persons.length === 0}
-    <div class="empty">
-      <p>Noch keine Personen angelegt.</p>
-      <a href={resolve('/persons/new')} class="btn-primary">Erste Person anlegen</a>
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <p class="text-muted-foreground">Noch keine Personen angelegt.</p>
+      <Button class="mt-4" href={resolve('/persons/new')}>Erste Person anlegen</Button>
     </div>
   {:else}
-    <div class="person-grid">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each persons as person (person.id)}
-        <a href={resolve('/persons/[id]', { id: person.id })} class="person-card">
-          <span class="person-name">{person.name}</span>
+        <a
+          href={resolve('/persons/[id]', { id: person.id })}
+          class="flex flex-col gap-1 p-4 bg-card border border-border rounded-md shadow-sm no-underline text-foreground hover:border-primary transition-colors"
+        >
+          <span class="font-semibold">{person.name}</span>
           {#if person.birth_date}
-            <span class="person-meta">geb. {person.birth_date}</span>
+            <span class="text-sm text-muted-foreground">geb. {person.birth_date}</span>
           {/if}
         </a>
       {/each}
     </div>
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .person-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-    gap: var(--space-4);
-  }
-
-  .person-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-4) var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.15s;
-  }
-
-  .person-card:hover {
-    border-color: var(--color-primary);
-  }
-
-  .person-name {
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  .person-meta {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-8);
-    text-align: center;
-    color: var(--color-text-muted);
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover {
-    background: var(--color-primary-strong);
-  }
-</style>
+</div>

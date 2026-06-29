@@ -54,6 +54,15 @@ export default tseslint.config(
     },
   },
 
+  // shadcn-svelte generated UI components use plain <a href> links rather than
+  // SvelteKit's goto(); suppress the navigation rule for that directory only.
+  {
+    files: ['frontend/src/lib/components/ui/**/*.svelte'],
+    rules: {
+      'svelte/no-navigation-without-resolve': 'off',
+    },
+  },
+
   // Must come last: turns off stylistic rules that conflict with Prettier.
   prettier,
 );

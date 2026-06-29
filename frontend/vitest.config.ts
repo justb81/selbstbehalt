@@ -33,7 +33,14 @@ export default defineConfig({
       // carry no meaningful unit coverage. Route page components (.svelte files
       // directly under src/routes/) are integration points covered by the
       // Playwright E2E suite, not unit tests.
-      exclude: ['src/**/*.d.ts', 'src/routes/**/+layout.ts', 'src/routes/**/*.svelte'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/routes/**/+layout.ts',
+        'src/routes/**/*.svelte',
+        // shadcn-svelte generated components are vendored UI primitives;
+        // they are not authored here and do not need unit-test coverage.
+        'src/lib/components/ui/**',
+      ],
       thresholds: {
         statements: 80,
         functions: 80,

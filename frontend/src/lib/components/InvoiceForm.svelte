@@ -31,6 +31,27 @@
   import type { FeeScheduleId } from '$lib/data/fee-schedule';
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
   import OCRScanner from './OCRScanner.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Textarea } from '$lib/components/ui/textarea';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '$lib/components/ui/select';
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '$lib/components/ui/table';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { cn } from '$lib/utils';
 
   // ---------------------------------------------------------------------------
   // Types
@@ -337,10 +358,15 @@
       positions: positionInputs,
     });
   }
+
+  // Shared class for native <select> elements inside the positions table
+  // (styled to match shadcn Input dimensions).
+  const nativeSelectClass =
+    'border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50';
 </script>
 
 <form
-  class="card"
+  class="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-sm"
   novalidate
   onsubmit={(e) => {
     e.preventDefault();
@@ -349,28 +375,25 @@
 >
   <!-- OCR section (create mode only) -->
   {#if mode === 'create'}
-    <div class="scan-section">
-      <div class="scan-row">
+    <div class="flex flex-col gap-3 border-b border-border pb-4">
+      <div class="flex flex-wrap items-center gap-3">
         {#if !showScanner}
-          <button
-            type="button"
-            class="btn-secondary"
-            onclick={() => (showScanner = true)}
-            {disabled}
-          >
+          <Button type="button" variant="outline" onclick={() => (showScanner = true)} {disabled}>
             {hasScan ? 'Neu scannen / hochladen' : 'Rechnung scannen / hochladen'}
-          </button>
+          </Button>
           {#if hasScan}
-            <span class="scan-done">✓ Aus Scan übernommen – bitte prüfen</span>
+            <span class="text-sm text-green-600 dark:text-green-500">
+              ✓ Aus Scan übernommen – bitte prüfen
+            </span>
           {:else}
-            <span class="scan-hint">
+            <span class="text-sm text-muted-foreground">
               Optional. Die Erkennung läuft auf diesem Gerät; das Bild verlässt es nie.
             </span>
           {/if}
         {:else}
-          <button type="button" class="btn-text" onclick={() => (showScanner = false)}>
+          <Button type="button" variant="ghost" size="sm" onclick={() => (showScanner = false)}>
             Schließen
-          </button>
+          </Button>
         {/if}
       </div>
       {#if showScanner}
@@ -379,18 +402,22 @@
     </div>
 
     {#if hasScan && lowConfidence}
-      <p class="notice warning" role="status">
-        Geringe Erkennungsgenauigkeit – bitte alle Felder und Positionen sorgfältig prüfen.
-      </p>
+      <Alert>
+        <AlertDescription>
+          Geringe Erkennungsgenauigkeit – bitte alle Felder und Positionen sorgfältig prüfen.
+        </AlertDescription>
+      </Alert>
     {/if}
     {#if hasScan && flaggedCount > 0}
-      <p class="notice warning" role="status">
-        {flaggedCount}
-        {flaggedCount === 1 ? 'Position ist' : 'Positionen sind'} auffällig und markiert.
-      </p>
+      <Alert>
+        <AlertDescription>
+          {flaggedCount}
+          {flaggedCount === 1 ? 'Position ist' : 'Positionen sind'} auffällig und markiert.
+        </AlertDescription>
+      </Alert>
     {/if}
     {#if hasScan && (scanResult?.parsed.violations.length ?? 0) > 0}
-      <ul class="violations">
+      <ul class="list-disc pl-5 text-sm text-amber-600 dark:text-amber-500">
         {#each scanResult?.parsed.violations ?? [] as violation (violation.message)}
           <li>{violation.message}</li>
         {/each}
@@ -399,50 +426,101 @@
   {/if}
 
   <!-- Header fields -->
-  <h2>Rechnungskopf</h2>
-  <div class="field-grid">
-    <label class="field">
-      <span>Versicherte Person <span class="req">*</span></span>
-      <select bind:value={insuredPersonId} required {disabled}>
-        <option value="" disabled>Bitte wählen …</option>
-        {#each insuredOptions as opt (opt.id)}
-          <option value={opt.id}>{opt.label}</option>
-        {/each}
-      </select>
-    </label>
+  <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Rechnungskopf</p>
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-3">
+    <!-- Versicherte Person -->
+    <div class="space-y-1.5">
+      <Label for="field-insured">
+        Versicherte Person <span class="text-destructive">*</span>
+      </Label>
+      <Select
+        type="single"
+        value={insuredPersonId}
+        onValueChange={(v: string) => (insuredPersonId = v ?? '')}
+        disabled={disabled || insuredOptions.length === 0}
+      >
+        <SelectTrigger id="field-insured" class="w-full">
+          <SelectValue placeholder="Bitte wählen …" />
+        </SelectTrigger>
+        <SelectContent>
+          {#each insuredOptions as opt (opt.id)}
+            <SelectItem value={opt.id} label={opt.label} />
+          {/each}
+        </SelectContent>
+      </Select>
+    </div>
 
-    <label class="field">
-      <span>Rechnungsdatum <span class="req">*</span></span>
-      <input type="date" bind:value={invoiceDate} required {disabled} />
-    </label>
+    <!-- Rechnungsdatum -->
+    <div class="space-y-1.5">
+      <Label for="field-date">
+        Rechnungsdatum <span class="text-destructive">*</span>
+      </Label>
+      <Input id="field-date" type="date" bind:value={invoiceDate} required {disabled} />
+    </div>
 
-    <label class="field">
-      <span>Rechnungsnummer</span>
-      <input type="text" bind:value={invoiceNumber} placeholder="optional" {disabled} />
-    </label>
+    <!-- Rechnungsnummer -->
+    <div class="space-y-1.5">
+      <Label for="field-number">Rechnungsnummer</Label>
+      <Input
+        id="field-number"
+        type="text"
+        bind:value={invoiceNumber}
+        placeholder="optional"
+        {disabled}
+      />
+    </div>
 
-    <label class="field">
-      <span>Leistungserbringer <span class="req">*</span></span>
-      <input type="text" bind:value={providerName} required {disabled} />
-    </label>
+    <!-- Leistungserbringer -->
+    <div class="space-y-1.5">
+      <Label for="field-provider">
+        Leistungserbringer <span class="text-destructive">*</span>
+      </Label>
+      <Input id="field-provider" type="text" bind:value={providerName} required {disabled} />
+    </div>
 
-    <label class="field">
-      <span>Art</span>
-      <select bind:value={providerType} {disabled}>
-        {#each providerTypeValues as t (t)}
-          <option value={t}>{PROVIDER_TYPE_LABELS[t]}</option>
-        {/each}
-      </select>
-    </label>
+    <!-- Art -->
+    <div class="space-y-1.5">
+      <Label for="field-type">Art</Label>
+      <Select
+        type="single"
+        value={providerType}
+        onValueChange={(v: string) => {
+          if (v) providerType = v as ProviderType;
+        }}
+        {disabled}
+      >
+        <SelectTrigger id="field-type" class="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {#each providerTypeValues as t (t)}
+            <SelectItem value={t} label={PROVIDER_TYPE_LABELS[t]} />
+          {/each}
+        </SelectContent>
+      </Select>
+    </div>
 
-    <label class="field">
-      <span>Rechnungsbetrag (€) <span class="req">*</span></span>
-      <input type="number" bind:value={totalAmount} min="0" step="0.01" required {disabled} />
-    </label>
+    <!-- Rechnungsbetrag -->
+    <div class="space-y-1.5">
+      <Label for="field-total">
+        Rechnungsbetrag (€) <span class="text-destructive">*</span>
+      </Label>
+      <Input
+        id="field-total"
+        type="number"
+        bind:value={totalAmount}
+        min="0"
+        step="0.01"
+        required
+        {disabled}
+      />
+    </div>
 
-    <label class="field">
-      <span>Erstattungsfähiger Betrag (€)</span>
-      <input
+    <!-- Erstattungsfähiger Betrag -->
+    <div class="space-y-1.5">
+      <Label for="field-eligible">Erstattungsfähiger Betrag (€)</Label>
+      <Input
+        id="field-eligible"
         type="number"
         value={eligibleAmount ?? ''}
         oninput={(e) => {
@@ -454,470 +532,189 @@
         placeholder="optional"
         {disabled}
       />
-    </label>
+    </div>
   </div>
 
-  <label class="field">
-    <span>Notizen</span>
-    <textarea bind:value={notes} rows="2" {disabled}></textarea>
-  </label>
+  <!-- Notizen -->
+  <div class="space-y-1.5">
+    <Label for="field-notes">Notizen</Label>
+    <Textarea id="field-notes" bind:value={notes} rows={2} {disabled} />
+  </div>
 
   <!-- Positions -->
-  <div class="positions-section">
-    <div class="positions-header">
-      <h2>GOÄ/GOZ-Positionen</h2>
-      <div class="positions-header-actions">
-        <button
+  <div class="flex flex-col gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        GOÄ/GOZ-Positionen
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
           type="button"
-          class="btn-secondary"
+          variant="outline"
           onclick={revalidatePositions}
           disabled={revalidating || disabled || positions.length === 0}
         >
           {revalidating ? 'Wird geprüft …' : 'Positionen prüfen'}
-        </button>
-        <button type="button" class="btn-text" onclick={addPosition} {disabled}>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onclick={addPosition} {disabled}>
           + Position hinzufügen
-        </button>
+        </Button>
       </div>
     </div>
 
     {#if revalidateError}
-      <p class="error" role="alert">{revalidateError}</p>
+      <Alert variant="destructive">
+        <AlertDescription>{revalidateError}</AlertDescription>
+      </Alert>
     {/if}
 
     {#if positions.length > 0}
-      <div class="pos-table">
-        <div class="pos-head">
-          <span>Datum</span>
-          <span>Ziffer</span>
-          <span>Kat.</span>
-          <span>Beschreibung</span>
-          <span class="num">Faktor</span>
-          <span class="num">Anz.</span>
-          <span class="num">Basis (€)</span>
-          <span class="num">Betrag (€)</span>
-          <span></span>
-        </div>
-        {#each positions as pos, i (i)}
-          <div class="pos-row" class:flagged={pos.is_valid === false}>
-            <input type="date" bind:value={pos.treatment_date} {disabled} />
-            <input
-              type="text"
-              bind:value={pos.goae_number}
-              placeholder="z.B. 1"
-              required
-              {disabled}
-            />
-            <select bind:value={pos.goae_category} {disabled}>
-              {#each goaeCategoryValues as cat (cat)}
-                <option value={cat}>{cat}</option>
-              {/each}
-            </select>
-            <div class="desc-cell">
-              <input type="text" bind:value={pos.description} placeholder="optional" {disabled} />
-              {#if pos.is_valid === false && pos.flag_reason}
-                <small class="flag">⚠ {pos.flag_reason}</small>
-              {/if}
-              {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
-                <small class="uncertain">Unsichere Erkennung – bitte prüfen.</small>
-              {/if}
-            </div>
-            <input
-              class="num"
-              type="number"
-              bind:value={pos.multiplier}
-              min="0.01"
-              step="0.01"
-              required
-              {disabled}
-            />
-            <input
-              class="num"
-              type="number"
-              bind:value={pos.quantity}
-              min="1"
-              step="1"
-              required
-              {disabled}
-            />
-            <input
-              class="num"
-              type="number"
-              bind:value={pos.base_amount}
-              min="0"
-              step="0.01"
-              required
-              {disabled}
-            />
-            <input
-              class="num"
-              type="number"
-              bind:value={pos.charged_amount}
-              min="0"
-              step="0.01"
-              required
-              {disabled}
-            />
-            <button
-              type="button"
-              class="btn-icon danger"
-              onclick={() => removePosition(i)}
-              aria-label="Position {i + 1} entfernen"
-              {disabled}
-            >
-              ✕
-            </button>
-          </div>
-        {/each}
+      <div class="overflow-x-auto rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-32">Datum</TableHead>
+              <TableHead class="w-20">Ziffer</TableHead>
+              <TableHead class="w-16">Kat.</TableHead>
+              <TableHead>Beschreibung</TableHead>
+              <TableHead class="w-20 text-right">Faktor</TableHead>
+              <TableHead class="w-14 text-right">Anz.</TableHead>
+              <TableHead class="w-26 text-right">Basis (€)</TableHead>
+              <TableHead class="w-26 text-right">Betrag (€)</TableHead>
+              <TableHead class="w-8"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {#each positions as pos, i (i)}
+              <TableRow class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
+                <TableCell class="align-top p-1.5">
+                  <Input type="date" bind:value={pos.treatment_date} {disabled} />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Input
+                    type="text"
+                    bind:value={pos.goae_number}
+                    placeholder="z.B. 1"
+                    required
+                    {disabled}
+                  />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <select bind:value={pos.goae_category} {disabled} class={nativeSelectClass}>
+                    {#each goaeCategoryValues as cat (cat)}
+                      <option value={cat}>{cat}</option>
+                    {/each}
+                  </select>
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <div class="flex flex-col gap-1 min-w-0">
+                    <Input
+                      type="text"
+                      bind:value={pos.description}
+                      placeholder="optional"
+                      {disabled}
+                    />
+                    {#if pos.is_valid === false && pos.flag_reason}
+                      <p class="text-xs text-amber-600 dark:text-amber-500">
+                        ⚠ {pos.flag_reason}
+                      </p>
+                    {/if}
+                    {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
+                      <p class="text-xs italic text-muted-foreground">
+                        Unsichere Erkennung – bitte prüfen.
+                      </p>
+                    {/if}
+                  </div>
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Input
+                    type="number"
+                    bind:value={pos.multiplier}
+                    min="0.01"
+                    step="0.01"
+                    required
+                    {disabled}
+                    class="text-right"
+                  />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Input
+                    type="number"
+                    bind:value={pos.quantity}
+                    min="1"
+                    step="1"
+                    required
+                    {disabled}
+                    class="text-right"
+                  />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Input
+                    type="number"
+                    bind:value={pos.base_amount}
+                    min="0"
+                    step="0.01"
+                    required
+                    {disabled}
+                    class="text-right"
+                  />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Input
+                    type="number"
+                    bind:value={pos.charged_amount}
+                    min="0"
+                    step="0.01"
+                    required
+                    {disabled}
+                    class="text-right"
+                  />
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onclick={() => removePosition(i)}
+                    aria-label="Position {i + 1} entfernen"
+                    {disabled}
+                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    ✕
+                  </Button>
+                </TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
       </div>
     {:else}
-      <p class="muted">Noch keine Positionen. Positionen sind optional.</p>
+      <p class="text-sm text-muted-foreground">Noch keine Positionen. Positionen sind optional.</p>
     {/if}
   </div>
 
   <!-- OCR opt-in checkbox (create mode only, after a scan) -->
   {#if mode === 'create' && hasScan}
-    <label class="checkbox">
-      <input type="checkbox" bind:checked={saveOcrRaw} />
+    <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+      <input type="checkbox" bind:checked={saveOcrRaw} class="rounded border-border" />
       <span>OCR-Rohtext zur späteren Kontrolle speichern (optional, Opt-in)</span>
     </label>
   {/if}
 
   {#if displayError}
-    <p class="error" role="alert">{displayError}</p>
+    <Alert variant="destructive">
+      <AlertDescription>{displayError}</AlertDescription>
+    </Alert>
   {/if}
 
-  <div class="actions">
-    <button type="submit" class="btn-primary" disabled={saving || disabled}>
+  <div class="flex flex-wrap items-center gap-2">
+    <Button type="submit" disabled={saving || disabled}>
       {saving
         ? 'Wird gespeichert …'
         : mode === 'create'
           ? 'Rechnung speichern'
           : 'Änderungen speichern'}
-    </button>
+    </Button>
     {#if cancel}{@render cancel()}{/if}
   </div>
 </form>
-
-<style>
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-  }
-
-  /* Scan section */
-  .scan-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .scan-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .scan-done {
-    font-size: var(--font-size-sm);
-    color: var(--color-success, #16a34a);
-  }
-
-  .scan-hint {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  /* OCR warnings */
-  .notice {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-sm);
-  }
-
-  .notice.warning {
-    background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
-    color: var(--color-warning);
-  }
-
-  .violations {
-    margin: 0;
-    padding-left: var(--space-5);
-    color: var(--color-warning);
-    font-size: var(--font-size-sm);
-  }
-
-  /* Header fields */
-  .field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-    resize: vertical;
-  }
-
-  .field input:focus,
-  .field select:focus,
-  .field textarea:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .req {
-    color: var(--color-danger);
-  }
-
-  /* Positions */
-  .positions-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .positions-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .positions-header-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .pos-table {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    overflow-x: auto;
-  }
-
-  .pos-head,
-  .pos-row {
-    display: grid;
-    /* Datum | Ziffer | Kat. | Beschreibung | Faktor | Anz. | Basis | Betrag | Del */
-    grid-template-columns: 8rem 5rem 4rem 1fr 5rem 3.5rem 6.5rem 6.5rem 2rem;
-    gap: var(--space-2);
-    align-items: start;
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .pos-head {
-    background: var(--color-bg);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .pos-row {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .pos-row:last-child {
-    border-bottom: none;
-  }
-
-  .pos-row.flagged {
-    background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
-  }
-
-  .pos-row input,
-  .pos-row select {
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .pos-row input:focus,
-  .pos-row select:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .num {
-    text-align: right;
-  }
-
-  .pos-row input.num {
-    text-align: right;
-  }
-
-  .desc-cell {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 0;
-  }
-
-  .desc-cell input {
-    width: 100%;
-  }
-
-  .flag {
-    font-size: var(--font-size-sm);
-    color: var(--color-warning);
-  }
-
-  .uncertain {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-style: italic;
-  }
-
-  /* OCR opt-in */
-  .checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  /* Actions */
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  /* Buttons */
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-bg);
-  }
-
-  .btn-secondary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-text {
-    border: none;
-    background: none;
-    color: var(--color-primary);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
-  }
-
-  .btn-text:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-icon {
-    width: 1.8rem;
-    height: 1.8rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text-muted);
-    font: inherit;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-icon.danger:hover:not(:disabled) {
-    color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 10%, white);
-  }
-
-  .btn-icon:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .muted {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-</style>

@@ -119,7 +119,9 @@ test('scan → parse → save files a metadata-only invoice', async ({ page }) =
   await expect(page.getByLabel('Rechnungsdatum')).toHaveValue('2026-03-15');
   await expect(page.getByText(/Steigerungsfaktor/)).toBeVisible();
 
-  await page.getByLabel('Versicherte Person').selectOption(INSURED_ID);
+  // shadcn Select is not a native <select> — open the trigger, then click the option.
+  await page.getByLabel('Versicherte Person').click();
+  await page.getByRole('option', { name: 'AOK · PrivatComfort' }).click();
   await page.getByRole('button', { name: 'Rechnung speichern' }).click();
 
   // Lands on the invoice detail (where the Günstigerprüfung lives).

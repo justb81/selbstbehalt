@@ -28,6 +28,12 @@
   import BRETracker from '$lib/components/BRETracker.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   const TYPE_LABELS: Record<ContractType, string> = {
     vollversicherung: 'Vollversicherung',
@@ -495,18 +501,27 @@
   function personName(personId: string): string {
     return persons.find((p) => p.id === personId)?.name ?? personId;
   }
+
+  const inputClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-0';
 </script>
 
 <svelte:head>
   <title>{contract ? `${contract.insurer_name} · Vertrag` : 'Vertragsdetail'} · selbstbehalt</title>
 </svelte:head>
 
-<section class="page">
-  <div class="back-row">
-    <a href={resolve('/contracts')} class="back-link">← Verträge</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div>
+    <a
+      href={resolve('/contracts')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Verträge
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight mt-1">
+      {contract?.insurer_name ?? 'Vertragsdetail'}
+    </h1>
   </div>
-
-  <h1 class="page-title">{contract?.insurer_name ?? 'Vertragsdetail'}</h1>
 
   {#if loading}
     <LoadingState label="Vertragsdaten werden geladen …" />
@@ -514,1063 +529,621 @@
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if contract}
     <!-- Contract header -->
-    <div class="contract-header">
-      <div>
-        <span class="type-badge">{TYPE_LABELS[contract.type]}</span>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <Badge variant="secondary">{TYPE_LABELS[contract.type]}</Badge>
         {#if contract.contract_number}
-          <span class="contract-number">Nr. {contract.contract_number}</span>
+          <span class="text-sm text-muted-foreground">Nr. {contract.contract_number}</span>
         {/if}
       </div>
-      <div class="header-actions">
-        <button type="button" class="btn-secondary" onclick={startEditContract}>Bearbeiten</button>
-        <button
-          type="button"
-          class="btn-danger-outline"
+      <div class="flex gap-2 flex-wrap">
+        <Button variant="outline" size="sm" onclick={startEditContract}>Bearbeiten</Button>
+        <Button
+          variant="outline"
+          size="sm"
+          class="border-destructive text-destructive hover:bg-destructive/10"
           onclick={() => {
             confirmDelete = true;
           }}
         >
           Löschen
-        </button>
+        </Button>
       </div>
     </div>
 
-    <div class="meta-row">
-      <span>Versicherungsnehmer: <strong>{personName(contract.policyholder_id)}</strong></span>
+    <div class="flex flex-wrap gap-4 text-sm text-muted-foreground">
+      <span
+        >Versicherungsnehmer: <strong class="text-foreground"
+          >{personName(contract.policyholder_id)}</strong
+        ></span
+      >
       <span>seit {contract.start_date}{contract.end_date ? ` bis ${contract.end_date}` : ''}</span>
     </div>
 
     {#if contract.notes}
-      <p class="notes">{contract.notes}</p>
+      <p class="text-sm text-muted-foreground">{contract.notes}</p>
     {/if}
 
     {#if confirmDelete}
-      <div class="confirm-dialog" role="alertdialog">
-        <p>
+      <div
+        class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
+        role="alertdialog"
+      >
+        <p class="text-sm leading-relaxed">
           Vertrag <strong>{contract.insurer_name}</strong> wirklich löschen? Alle versicherten Personen
           und deren Rechnungen werden unwiderruflich entfernt.
         </p>
-        <div class="actions">
-          <button
-            type="button"
-            class="btn-danger"
-            onclick={deleteContract}
-            disabled={deletingContract}
-          >
+        <div class="flex flex-wrap gap-2">
+          <Button variant="destructive" onclick={deleteContract} disabled={deletingContract}>
             {deletingContract ? 'Wird gelöscht …' : 'Ja, löschen'}
-          </button>
-          <button
-            type="button"
-            class="btn-secondary"
+          </Button>
+          <Button
+            variant="outline"
             onclick={() => {
               confirmDelete = false;
-            }}
+            }}>Abbrechen</Button
           >
-            Abbrechen
-          </button>
         </div>
       </div>
     {/if}
 
     <!-- Insured persons -->
-    <div class="section-header">
-      <h2>Versicherte Personen</h2>
-      <button type="button" class="btn-primary" onclick={openNewInsuredForm}>
-        + Person hinzufügen
-      </button>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <h2 class="text-lg font-semibold">Versicherte Personen</h2>
+      <Button size="sm" onclick={openNewInsuredForm}>+ Person hinzufügen</Button>
     </div>
 
     {#if insuredPersons.length === 0}
-      <p class="muted">Noch keine versicherten Personen. Bitte mindestens eine hinzufügen.</p>
+      <p class="text-sm text-muted-foreground">
+        Noch keine versicherten Personen. Bitte mindestens eine hinzufügen.
+      </p>
     {:else}
-      <div class="insured-list">
+      <div class="space-y-3">
         {#each insuredPersons as ip (ip.id)}
-          <div class="insured-card">
-            <div class="insured-header">
-              <div>
-                <strong>{ip.tariff_name ?? 'Tarif nicht angegeben'}</strong>
-                <span class="insured-meta">
-                  {personName(ip.person_id)}
-                  {#if ip.kvnr}
-                    · KVNR: {ip.kvnr}{/if}
-                </span>
+          <Card>
+            <CardContent class="pt-4 space-y-3">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p class="font-semibold">{ip.tariff_name ?? 'Tarif nicht angegeben'}</p>
+                  <p class="text-sm text-muted-foreground">
+                    {personName(ip.person_id)}{#if ip.kvnr}
+                      · KVNR: {ip.kvnr}{/if}
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-semibold text-sm">{formatEur(ip.monthly_premium)} / Monat</span>
+                  {#if ip.self_retention > 0}
+                    <span class="text-sm text-muted-foreground"
+                      >SB: {formatEur(ip.self_retention)}</span
+                    >
+                  {/if}
+                  <button
+                    type="button"
+                    class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer border-none"
+                    title="Bearbeiten"
+                    onclick={() => openEditInsuredForm(ip)}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none"
+                    title="Entfernen"
+                    onclick={() => void removeInsured(ip.id)}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-              <div class="insured-actions">
-                <span class="premium">{formatEur(ip.monthly_premium)} / Monat</span>
-                {#if ip.self_retention > 0}
-                  <span class="retention">SB: {formatEur(ip.self_retention)}</span>
-                {/if}
-                <button
-                  type="button"
-                  class="btn-icon"
-                  title="Bearbeiten"
-                  onclick={() => openEditInsuredForm(ip)}
-                >
-                  ✎
-                </button>
-                <button
-                  type="button"
-                  class="btn-icon danger"
-                  title="Entfernen"
-                  onclick={() => void removeInsured(ip.id)}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <BRETracker insuredPerson={ip} />
-          </div>
+              <BRETracker insuredPerson={ip} />
+            </CardContent>
+          </Card>
         {/each}
       </div>
     {/if}
 
     <!-- Insured person form -->
     {#if showInsuredForm}
-      <div class="insured-form-card">
-        <h2>{editInsuredId ? 'Versicherte Person bearbeiten' : 'Neue versicherte Person'}</h2>
+      <Card class="border-primary border-2">
+        <CardHeader>
+          <CardTitle class="text-base"
+            >{editInsuredId
+              ? 'Versicherte Person bearbeiten'
+              : 'Neue versicherte Person'}</CardTitle
+          >
+        </CardHeader>
+        <CardContent>
+          <form
+            class="space-y-4"
+            onsubmit={(e) => {
+              e.preventDefault();
+              void saveInsuredPerson();
+            }}
+          >
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div class="space-y-1">
+                <Label>Person <span class="text-destructive">*</span></Label>
+                <select bind:value={ipPersonId} required class={inputClass}>
+                  <option value="" disabled>Bitte wählen …</option>
+                  {#each persons as person (person.id)}
+                    <option value={person.id}>{person.name}</option>
+                  {/each}
+                </select>
+              </div>
 
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            void saveInsuredPerson();
-          }}
-        >
-          <div class="field-grid">
-            <label class="field">
-              <span>Person <span class="req">*</span></span>
-              <select bind:value={ipPersonId} required>
-                <option value="" disabled>Bitte wählen …</option>
-                {#each persons as person (person.id)}
-                  <option value={person.id}>{person.name}</option>
-                {/each}
-              </select>
-            </label>
+              <div class="space-y-1">
+                <Label>KVNR</Label>
+                <Input type="text" bind:value={ipKvnr} placeholder="optional" />
+              </div>
 
-            <label class="field">
-              <span>KVNR</span>
-              <input type="text" bind:value={ipKvnr} placeholder="optional" />
-            </label>
+              <div class="space-y-1">
+                <Label>Tarifname</Label>
+                <Input type="text" bind:value={ipTariffName} placeholder="optional" />
+              </div>
 
-            <label class="field">
-              <span>Tarifname</span>
-              <input type="text" bind:value={ipTariffName} placeholder="optional" />
-            </label>
+              <div class="space-y-1">
+                <Label>Monatsbeitrag (€) <span class="text-destructive">*</span></Label>
+                <Input type="number" bind:value={ipMonthlyPremium} min="0" step="0.01" required />
+              </div>
 
-            <label class="field">
-              <span>Monatsbeitrag (€) <span class="req">*</span></span>
-              <input type="number" bind:value={ipMonthlyPremium} min="0" step="0.01" required />
-            </label>
+              <div class="space-y-1">
+                <Label>Jährlicher Selbstbehalt (€)</Label>
+                <Input type="number" bind:value={ipSelfRetention} min="0" step="0.01" />
+              </div>
 
-            <label class="field">
-              <span>Jährlicher Selbstbehalt (€)</span>
-              <input type="number" bind:value={ipSelfRetention} min="0" step="0.01" />
-            </label>
+              <div class="space-y-1">
+                <Label>Tarifbeginn</Label>
+                <Input type="date" bind:value={ipStartDate} />
+              </div>
 
-            <label class="field">
-              <span>Tarifbeginn</span>
-              <input type="date" bind:value={ipStartDate} />
-            </label>
+              <div class="space-y-1">
+                <Label>Tarifende</Label>
+                <Input type="date" bind:value={ipEndDate} />
+              </div>
+            </div>
 
-            <label class="field">
-              <span>Tarifende</span>
-              <input type="date" bind:value={ipEndDate} />
-            </label>
-          </div>
+            <div class="space-y-1">
+              <Label>Notizen</Label>
+              <textarea
+                bind:value={ipNotes}
+                rows="2"
+                class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              ></textarea>
+            </div>
 
-          <label class="field full">
-            <span>Notizen</span>
-            <textarea bind:value={ipNotes} rows="2"></textarea>
-          </label>
-
-          <!-- BRE Structure -->
-          <div class="bre-section">
-            <label class="checkbox-label">
-              <input type="checkbox" bind:checked={ipHasBre} />
-              <span>BRE-Staffel konfigurieren</span>
-            </label>
-
-            {#if ipHasBre}
-              <label class="field">
-                <span>Leistungsfreiheit begann am</span>
-                <input type="date" bind:value={ipStreakStart} />
+            <!-- BRE Structure -->
+            <div class="space-y-3 p-3 rounded-md border border-border bg-muted/30">
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" bind:checked={ipHasBre} class="rounded" />
+                <span>BRE-Staffel konfigurieren</span>
               </label>
 
-              <div class="bre-levels">
-                <div class="bre-levels-head">
-                  <span>Leistungsfreie Jahre</span>
-                  <span>Art</span>
-                  <span>Rückerstattung</span>
-                  <span></span>
+              {#if ipHasBre}
+                <div class="space-y-1">
+                  <Label>Leistungsfreiheit begann am</Label>
+                  <Input type="date" bind:value={ipStreakStart} class="max-w-xs" />
                 </div>
-                {#each ipBreLevels as level, i (i)}
-                  <div class="bre-level-row">
-                    <input
-                      type="number"
-                      bind:value={level.claim_free_years}
-                      min="1"
-                      step="1"
-                      required
-                    />
-                    <select bind:value={level.unit}>
-                      <option value="pct">% × Monate</option>
-                      <option value="eur">Fixer €-Betrag</option>
-                    </select>
-                    {#if level.unit === 'pct'}
-                      <span class="bre-pct-inputs">
-                        <input
-                          type="number"
-                          bind:value={level.bre_years}
-                          min="0"
-                          step="0.5"
-                          title="Anzahl Monatsbeiträge"
-                          required
-                        />
-                        <span class="bre-x">×</span>
-                        <input
-                          type="number"
-                          bind:value={level.pct_of_premium}
-                          min="0"
-                          max="100"
-                          step="1"
-                          title="Anteil am Monatsbeitrag (%)"
-                          required
-                        />
-                        <span class="bre-unit">%</span>
-                      </span>
-                    {:else}
-                      <span class="bre-eur-input">
-                        <input
-                          type="number"
-                          bind:value={level.fixed_amount_eur}
-                          min="0"
-                          step="0.01"
-                          title="Fixer Rückerstattungsbetrag (€)"
-                          required
-                        />
-                        <span class="bre-unit">€</span>
-                      </span>
-                    {/if}
-                    <button
-                      type="button"
-                      class="btn-icon danger"
-                      onclick={() => removeBreLevel(i)}
-                      disabled={ipBreLevels.length <= 1}
-                    >
-                      ✕
-                    </button>
+
+                <div class="space-y-2">
+                  <div
+                    class="grid grid-cols-[5rem_7rem_1fr_2rem] gap-2 text-xs font-semibold text-muted-foreground"
+                  >
+                    <span>Leistungsfreie Jahre</span>
+                    <span>Art</span>
+                    <span>Rückerstattung</span>
+                    <span></span>
                   </div>
-                {/each}
-                <button type="button" class="btn-text" onclick={addBreLevel}>
-                  + Stufe hinzufügen
-                </button>
-              </div>
-            {/if}
-          </div>
-
-          <!-- Included Benefits -->
-          <div class="benefits-section">
-            <label class="checkbox-label">
-              <input type="checkbox" bind:checked={ipHasIncludedBenefits} />
-              <span>Enthaltene Leistungen konfigurieren</span>
-            </label>
-
-            {#if ipHasIncludedBenefits}
-              {#if ipBenefits.length === 0}
-                <p class="muted benefits-empty">Noch kein Leistungsbereich hinzugefügt.</p>
-              {/if}
-
-              {#each ipBenefits as benefit, i (i)}
-                <div class="benefit-entry">
-                  <div class="benefit-header-row">
-                    <label class="field">
-                      <span>Leistungsbereich</span>
-                      <select bind:value={benefit.category}>
-                        {#each benefitCategoryValues as cat (cat)}
-                          <option value={cat}>{BENEFIT_CATEGORY_LABELS[cat]}</option>
-                        {/each}
+                  {#each ipBreLevels as level, i (i)}
+                    <div class="grid grid-cols-[5rem_7rem_1fr_2rem] gap-2 items-center">
+                      <input
+                        type="number"
+                        bind:value={level.claim_free_years}
+                        min="1"
+                        step="1"
+                        required
+                        class={inputClass}
+                      />
+                      <select bind:value={level.unit} class={inputClass}>
+                        <option value="pct">% × Monate</option>
+                        <option value="eur">Fixer €-Betrag</option>
                       </select>
-                    </label>
-                    <label class="field">
-                      <span>Wartezeit (Monate)</span>
-                      <input
-                        type="number"
-                        bind:value={benefit.waiting_period_months}
-                        min="0"
-                        step="1"
-                        placeholder="keine"
-                      />
-                    </label>
-                    <label class="field">
-                      <span>Beihilfe-Satz (%)</span>
-                      <input
-                        type="number"
-                        bind:value={benefit.beihilfe_satz}
-                        min="0"
-                        max="100"
-                        step="1"
-                        placeholder="–"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      class="btn-icon danger benefit-remove"
-                      title="Leistungsbereich entfernen"
-                      onclick={() => removeBenefit(i)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <!-- Tiers -->
-                  <div class="benefit-subsection">
-                    <label class="checkbox-label">
-                      <input type="checkbox" bind:checked={benefit.hasTiers} />
-                      <span>Erstattungsstaffel</span>
-                    </label>
-                    {#if benefit.hasTiers}
-                      <div class="tiers-grid">
-                        <span class="tiers-head">Bis (€)</span>
-                        <span class="tiers-head">Erstattung (%)</span>
-                        <span></span>
-                        {#each benefit.tiers as tier, j (j)}
-                          {#if j < benefit.tiers.length - 1}
-                            <input
-                              type="number"
-                              class="tier-input"
-                              bind:value={tier.up_to}
-                              min="0.01"
-                              step="0.01"
-                            />
-                          {:else}
-                            <span class="tier-unlimited">Unbegrenzt</span>
-                          {/if}
+                      {#if level.unit === 'pct'}
+                        <span class="flex items-center gap-1 min-w-0">
                           <input
                             type="number"
-                            class="tier-input"
-                            bind:value={tier.pct}
+                            bind:value={level.bre_years}
+                            min="0"
+                            step="0.5"
+                            title="Anzahl Monatsbeiträge"
+                            required
+                            class="{inputClass} w-16 flex-shrink-0"
+                          />
+                          <span class="text-xs text-muted-foreground whitespace-nowrap">×</span>
+                          <input
+                            type="number"
+                            bind:value={level.pct_of_premium}
                             min="0"
                             max="100"
                             step="1"
+                            title="Anteil am Monatsbeitrag (%)"
+                            required
+                            class="{inputClass} w-16 flex-shrink-0"
                           />
-                          <button
-                            type="button"
-                            class="btn-icon danger"
-                            onclick={() => removeTier(i, j)}
-                            disabled={j === benefit.tiers.length - 1}
-                          >
-                            ✕
-                          </button>
-                        {/each}
-                      </div>
-                      <button type="button" class="btn-text" onclick={() => addTier(i)}>
-                        + Stufe hinzufügen
-                      </button>
-                    {/if}
-                  </div>
-
-                  <!-- Limits -->
-                  <div class="benefit-subsection">
-                    <label class="checkbox-label">
-                      <input type="checkbox" bind:checked={benefit.hasLimits} />
-                      <span>Summengrenzen</span>
-                    </label>
-                    {#if benefit.hasLimits}
-                      {#each benefit.limits as lim, j (j)}
-                        <div class="limit-row">
-                          <label class="field">
-                            <span>Zeitraum</span>
-                            <select bind:value={lim.scope}>
-                              {#each benefitLimitScopeValues as s (s)}
-                                <option value={s}>{BENEFIT_LIMIT_SCOPE_LABELS[s]}</option>
-                              {/each}
-                            </select>
-                          </label>
-                          <label class="field">
-                            <span>Höchstbetrag (€)</span>
-                            <input
-                              type="number"
-                              bind:value={lim.max_amount}
-                              min="0"
-                              step="0.01"
-                              placeholder="unbegrenzt"
-                            />
-                          </label>
-                          <label class="field">
-                            <span>Alter von</span>
-                            <input
-                              type="number"
-                              bind:value={lim.age_min}
-                              min="0"
-                              step="1"
-                              placeholder="–"
-                            />
-                          </label>
-                          <label class="field">
-                            <span>Alter bis</span>
-                            <input
-                              type="number"
-                              bind:value={lim.age_max}
-                              min="0"
-                              step="1"
-                              placeholder="–"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            class="btn-icon danger limit-remove"
-                            onclick={() => removeLimit(i, j)}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      {/each}
-                      <button type="button" class="btn-text" onclick={() => addLimit(i)}>
-                        + Grenze hinzufügen
-                      </button>
-                    {/if}
-                  </div>
-
-                  <!-- Annual Staffel -->
-                  <div class="benefit-subsection">
-                    <label class="checkbox-label">
-                      <input type="checkbox" bind:checked={benefit.hasStaffel} />
-                      <span>Aufbaujahre (Zahnstaffel)</span>
-                    </label>
-                    {#if benefit.hasStaffel}
-                      <div class="staffel-grid">
-                        <span class="tiers-head">Versicherungsjahr</span>
-                        <span class="tiers-head">Kum. Höchstbetrag (€)</span>
-                        <span></span>
-                        {#each benefit.annual_staffel as entry, j (j)}
+                          <span class="text-xs text-muted-foreground whitespace-nowrap">%</span>
+                        </span>
+                      {:else}
+                        <span class="flex items-center gap-1 min-w-0">
                           <input
                             type="number"
-                            class="tier-input"
-                            bind:value={entry.policy_year}
-                            min="1"
-                            step="1"
-                          />
-                          <input
-                            type="number"
-                            class="tier-input"
-                            bind:value={entry.cumulative_cap}
+                            bind:value={level.fixed_amount_eur}
                             min="0"
                             step="0.01"
-                            placeholder="unbegrenzt"
+                            title="Fixer Rückerstattungsbetrag (€)"
+                            required
+                            class="{inputClass} w-24 flex-shrink-0"
                           />
+                          <span class="text-xs text-muted-foreground whitespace-nowrap">€</span>
+                        </span>
+                      {/if}
+                      <button
+                        type="button"
+                        class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none disabled:opacity-40"
+                        onclick={() => removeBreLevel(i)}
+                        disabled={ipBreLevels.length <= 1}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  {/each}
+                  <button
+                    type="button"
+                    class="text-sm text-primary underline cursor-pointer bg-transparent border-none p-0 self-start"
+                    onclick={addBreLevel}
+                  >
+                    + Stufe hinzufügen
+                  </button>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Included Benefits -->
+            <div class="space-y-3 p-3 rounded-md border border-border bg-muted/30">
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" bind:checked={ipHasIncludedBenefits} class="rounded" />
+                <span>Enthaltene Leistungen konfigurieren</span>
+              </label>
+
+              {#if ipHasIncludedBenefits}
+                {#if ipBenefits.length === 0}
+                  <p class="text-sm text-muted-foreground">
+                    Noch kein Leistungsbereich hinzugefügt.
+                  </p>
+                {/if}
+
+                {#each ipBenefits as benefit, i (i)}
+                  <div class="space-y-3 p-3 rounded-md border border-border bg-card">
+                    <div class="grid grid-cols-[2fr_1fr_1fr_2rem] gap-2 items-end">
+                      <div class="space-y-1">
+                        <Label>Leistungsbereich</Label>
+                        <select bind:value={benefit.category} class={inputClass}>
+                          {#each benefitCategoryValues as cat (cat)}
+                            <option value={cat}>{BENEFIT_CATEGORY_LABELS[cat]}</option>
+                          {/each}
+                        </select>
+                      </div>
+                      <div class="space-y-1">
+                        <Label>Wartezeit (Monate)</Label>
+                        <input
+                          type="number"
+                          bind:value={benefit.waiting_period_months}
+                          min="0"
+                          step="1"
+                          placeholder="keine"
+                          class={inputClass}
+                        />
+                      </div>
+                      <div class="space-y-1">
+                        <Label>Beihilfe-Satz (%)</Label>
+                        <input
+                          type="number"
+                          bind:value={benefit.beihilfe_satz}
+                          min="0"
+                          max="100"
+                          step="1"
+                          placeholder="–"
+                          class={inputClass}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none mb-0.5"
+                        title="Leistungsbereich entfernen"
+                        onclick={() => removeBenefit(i)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <!-- Tiers -->
+                    <div class="space-y-2 pl-3 border-l-2 border-border">
+                      <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" bind:checked={benefit.hasTiers} class="rounded" />
+                        <span>Erstattungsstaffel</span>
+                      </label>
+                      {#if benefit.hasTiers}
+                        <div class="space-y-1">
+                          <div
+                            class="grid grid-cols-[1fr_1fr_2rem] gap-2 text-xs font-semibold text-muted-foreground"
+                          >
+                            <span>Bis (€)</span>
+                            <span>Erstattung (%)</span>
+                            <span></span>
+                          </div>
+                          {#each benefit.tiers as tier, j (j)}
+                            <div class="grid grid-cols-[1fr_1fr_2rem] gap-2 items-center">
+                              {#if j < benefit.tiers.length - 1}
+                                <input
+                                  type="number"
+                                  bind:value={tier.up_to}
+                                  min="0.01"
+                                  step="0.01"
+                                  class={inputClass}
+                                />
+                              {:else}
+                                <span class="text-sm text-muted-foreground italic">Unbegrenzt</span>
+                              {/if}
+                              <input
+                                type="number"
+                                bind:value={tier.pct}
+                                min="0"
+                                max="100"
+                                step="1"
+                                class={inputClass}
+                              />
+                              <button
+                                type="button"
+                                class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none disabled:opacity-40"
+                                onclick={() => removeTier(i, j)}
+                                disabled={j === benefit.tiers.length - 1}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          {/each}
                           <button
                             type="button"
-                            class="btn-icon danger"
-                            onclick={() => removeStaffelEntry(i, j)}
+                            class="text-sm text-primary underline cursor-pointer bg-transparent border-none p-0 self-start"
+                            onclick={() => addTier(i)}
                           >
-                            ✕
+                            + Stufe hinzufügen
                           </button>
+                        </div>
+                      {/if}
+                    </div>
+
+                    <!-- Limits -->
+                    <div class="space-y-2 pl-3 border-l-2 border-border">
+                      <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" bind:checked={benefit.hasLimits} class="rounded" />
+                        <span>Summengrenzen</span>
+                      </label>
+                      {#if benefit.hasLimits}
+                        {#each benefit.limits as lim, j (j)}
+                          <div class="grid grid-cols-[1.5fr_1fr_0.7fr_0.7fr_2rem] gap-2 items-end">
+                            <div class="space-y-1">
+                              <Label>Zeitraum</Label>
+                              <select bind:value={lim.scope} class={inputClass}>
+                                {#each benefitLimitScopeValues as s (s)}
+                                  <option value={s}>{BENEFIT_LIMIT_SCOPE_LABELS[s]}</option>
+                                {/each}
+                              </select>
+                            </div>
+                            <div class="space-y-1">
+                              <Label>Höchstbetrag (€)</Label>
+                              <input
+                                type="number"
+                                bind:value={lim.max_amount}
+                                min="0"
+                                step="0.01"
+                                placeholder="unbegrenzt"
+                                class={inputClass}
+                              />
+                            </div>
+                            <div class="space-y-1">
+                              <Label>Alter von</Label>
+                              <input
+                                type="number"
+                                bind:value={lim.age_min}
+                                min="0"
+                                step="1"
+                                placeholder="–"
+                                class={inputClass}
+                              />
+                            </div>
+                            <div class="space-y-1">
+                              <Label>Alter bis</Label>
+                              <input
+                                type="number"
+                                bind:value={lim.age_max}
+                                min="0"
+                                step="1"
+                                placeholder="–"
+                                class={inputClass}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none mb-0.5"
+                              onclick={() => removeLimit(i, j)}
+                            >
+                              ✕
+                            </button>
+                          </div>
                         {/each}
-                      </div>
-                      <button type="button" class="btn-text" onclick={() => addStaffelEntry(i)}>
-                        + Jahr hinzufügen
-                      </button>
-                    {/if}
+                        <button
+                          type="button"
+                          class="text-sm text-primary underline cursor-pointer bg-transparent border-none p-0 self-start"
+                          onclick={() => addLimit(i)}
+                        >
+                          + Grenze hinzufügen
+                        </button>
+                      {/if}
+                    </div>
+
+                    <!-- Annual Staffel -->
+                    <div class="space-y-2 pl-3 border-l-2 border-border">
+                      <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" bind:checked={benefit.hasStaffel} class="rounded" />
+                        <span>Aufbaujahre (Zahnstaffel)</span>
+                      </label>
+                      {#if benefit.hasStaffel}
+                        <div class="space-y-1">
+                          <div
+                            class="grid grid-cols-[1fr_1fr_2rem] gap-2 text-xs font-semibold text-muted-foreground"
+                          >
+                            <span>Versicherungsjahr</span>
+                            <span>Kum. Höchstbetrag (€)</span>
+                            <span></span>
+                          </div>
+                          {#each benefit.annual_staffel as entry, j (j)}
+                            <div class="grid grid-cols-[1fr_1fr_2rem] gap-2 items-center">
+                              <input
+                                type="number"
+                                bind:value={entry.policy_year}
+                                min="1"
+                                step="1"
+                                class={inputClass}
+                              />
+                              <input
+                                type="number"
+                                bind:value={entry.cumulative_cap}
+                                min="0"
+                                step="0.01"
+                                placeholder="unbegrenzt"
+                                class={inputClass}
+                              />
+                              <button
+                                type="button"
+                                class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none"
+                                onclick={() => removeStaffelEntry(i, j)}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          {/each}
+                          <button
+                            type="button"
+                            class="text-sm text-primary underline cursor-pointer bg-transparent border-none p-0 self-start"
+                            onclick={() => addStaffelEntry(i)}
+                          >
+                            + Jahr hinzufügen
+                          </button>
+                        </div>
+                      {/if}
+                    </div>
                   </div>
-                </div>
-              {/each}
+                {/each}
 
-              <button type="button" class="btn-text" onclick={addBenefit}>
-                + Leistungsbereich hinzufügen
-              </button>
+                <button
+                  type="button"
+                  class="text-sm text-primary underline cursor-pointer bg-transparent border-none p-0 self-start"
+                  onclick={addBenefit}
+                >
+                  + Leistungsbereich hinzufügen
+                </button>
+              {/if}
+            </div>
+
+            {#if insuredSaveError}
+              <Alert variant="destructive">
+                <AlertDescription>{insuredSaveError}</AlertDescription>
+              </Alert>
             {/if}
-          </div>
 
-          {#if insuredSaveError}
-            <p class="error" role="alert">{insuredSaveError}</p>
-          {/if}
-
-          <div class="actions">
-            <button type="submit" class="btn-primary" disabled={savingInsured}>
-              {savingInsured ? 'Wird gespeichert …' : editInsuredId ? 'Speichern' : 'Hinzufügen'}
-            </button>
-            <button type="button" class="btn-secondary" onclick={cancelInsuredForm}>
-              Abbrechen
-            </button>
-          </div>
-        </form>
-      </div>
+            <div class="flex flex-wrap gap-2">
+              <Button type="submit" disabled={savingInsured}>
+                {savingInsured ? 'Wird gespeichert …' : editInsuredId ? 'Speichern' : 'Hinzufügen'}
+              </Button>
+              <Button type="button" variant="outline" onclick={cancelInsuredForm}>Abbrechen</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     {/if}
   {/if}
 
   <!-- Contract edit modal (inline) -->
   {#if editingContract && contract}
-    <div class="edit-overlay">
-      <div class="edit-card">
-        <h2>Vertrag bearbeiten</h2>
+    <div class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-card rounded-xl p-6 w-full max-w-lg space-y-4 shadow-lg">
+        <h2 class="text-lg font-semibold">Vertrag bearbeiten</h2>
         <form
+          class="space-y-4"
           onsubmit={(e) => {
             e.preventDefault();
             void saveContract();
           }}
         >
-          <div class="field-grid">
-            <label class="field">
-              <span>Versicherungsgesellschaft <span class="req">*</span></span>
-              <input type="text" bind:value={editInsurer} required />
-            </label>
-            <label class="field">
-              <span>Vertragsart</span>
-              <select bind:value={editType}>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <Label>Versicherungsgesellschaft <span class="text-destructive">*</span></Label>
+              <Input type="text" bind:value={editInsurer} required />
+            </div>
+            <div class="space-y-1">
+              <Label>Vertragsart</Label>
+              <select
+                bind:value={editType}
+                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
                 {#each contractTypeValues as t (t)}
                   <option value={t}>{TYPE_LABELS[t]}</option>
                 {/each}
               </select>
-            </label>
-            <label class="field">
-              <span>Vertragsnummer</span>
-              <input type="text" bind:value={editContractNumber} />
-            </label>
-            <label class="field">
-              <span>Beginn</span>
-              <input type="date" bind:value={editStartDate} required />
-            </label>
-            <label class="field">
-              <span>Ende</span>
-              <input type="date" bind:value={editEndDate} />
-            </label>
+            </div>
+            <div class="space-y-1">
+              <Label>Vertragsnummer</Label>
+              <Input type="text" bind:value={editContractNumber} />
+            </div>
+            <div class="space-y-1">
+              <Label>Beginn</Label>
+              <Input type="date" bind:value={editStartDate} required />
+            </div>
+            <div class="space-y-1">
+              <Label>Ende</Label>
+              <Input type="date" bind:value={editEndDate} />
+            </div>
           </div>
-          <label class="field full">
-            <span>Notizen</span>
-            <textarea bind:value={editNotes} rows="2"></textarea>
-          </label>
+          <div class="space-y-1">
+            <Label>Notizen</Label>
+            <textarea
+              bind:value={editNotes}
+              rows="2"
+              class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+            ></textarea>
+          </div>
 
           {#if contractSaveError}
-            <p class="error" role="alert">{contractSaveError}</p>
+            <Alert variant="destructive">
+              <AlertDescription>{contractSaveError}</AlertDescription>
+            </Alert>
           {/if}
 
-          <div class="actions">
-            <button type="submit" class="btn-primary" disabled={savingContract}>
+          <div class="flex flex-wrap gap-2">
+            <Button type="submit" disabled={savingContract}>
               {savingContract ? 'Wird gespeichert …' : 'Speichern'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              class="btn-secondary"
+              variant="outline"
               onclick={() => {
                 editingContract = false;
               }}
             >
               Abbrechen
-            </button>
+            </Button>
           </div>
         </form>
       </div>
     </div>
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .contract-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  h1 {
-    margin: 0 0 var(--space-1);
-  }
-  h2 {
-    margin: 0;
-  }
-
-  .type-badge {
-    display: inline-flex;
-    padding: 0.1em 0.6em;
-    border-radius: 999px;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    background: var(--color-primary-soft);
-    color: var(--color-primary-strong);
-    margin-right: var(--space-2);
-  }
-
-  .contract-number {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .header-actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .notes {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    margin-top: var(--space-3);
-  }
-
-  .insured-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .insured-card {
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .insured-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-
-  .insured-meta {
-    display: block;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-weight: 400;
-  }
-
-  .insured-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .premium {
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  .retention {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .insured-form-card {
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 2px solid var(--color-primary);
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    box-shadow: var(--shadow-md);
-  }
-
-  .insured-form-card form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .field.full {
-    grid-column: 1 / -1;
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-    resize: vertical;
-  }
-
-  .field input:focus,
-  .field select:focus,
-  .field textarea:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .req {
-    color: var(--color-danger);
-  }
-
-  .bre-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    background: var(--color-bg);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-  }
-
-  .benefits-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    background: var(--color-bg);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-  }
-
-  .benefits-empty {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .benefit-entry {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .benefit-header-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 2rem;
-    gap: var(--space-2);
-    align-items: end;
-  }
-
-  .benefit-remove {
-    margin-bottom: 0.1rem;
-  }
-
-  .benefit-subsection {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding-left: var(--space-3);
-    border-left: 2px solid var(--color-border);
-  }
-
-  .tiers-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 2rem;
-    gap: var(--space-2);
-    align-items: center;
-    margin-bottom: var(--space-1);
-  }
-
-  .staffel-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 2rem;
-    gap: var(--space-2);
-    align-items: center;
-    margin-bottom: var(--space-1);
-  }
-
-  .tiers-head {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-weight: 600;
-  }
-
-  .tier-input {
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .tier-unlimited {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-style: italic;
-  }
-
-  .limit-row {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr 0.7fr 0.7fr 2rem;
-    gap: var(--space-2);
-    align-items: end;
-  }
-
-  .bre-levels {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .bre-levels-head {
-    display: grid;
-    grid-template-columns: 5rem 7rem 1fr 2rem;
-    gap: var(--space-2);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-weight: 600;
-  }
-
-  .bre-level-row {
-    display: grid;
-    grid-template-columns: 5rem 7rem 1fr 2rem;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .bre-level-row input,
-  .bre-level-row select {
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .bre-pct-inputs,
-  .bre-eur-input {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-width: 0;
-  }
-
-  .bre-pct-inputs input,
-  .bre-eur-input input {
-    width: 4rem;
-    flex-shrink: 0;
-  }
-
-  .bre-x,
-  .bre-unit {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-bg);
-  }
-
-  .btn-danger-outline {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-danger);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-danger);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .btn-danger-outline:hover {
-    background: color-mix(in srgb, var(--color-danger) 8%, white);
-  }
-
-  .btn-danger {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-danger);
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-icon {
-    width: 2rem;
-    height: 2rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text-muted);
-    font: inherit;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .btn-icon:hover {
-    color: var(--color-primary);
-    background: var(--color-primary-soft);
-  }
-  .btn-icon.danger:hover {
-    color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 10%, white);
-  }
-  .btn-icon:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .btn-text {
-    border: none;
-    background: none;
-    color: var(--color-primary);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
-    align-self: flex-start;
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .muted {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .confirm-dialog {
-    padding: var(--space-4);
-    background: color-mix(in srgb, var(--color-danger) 5%, var(--color-surface));
-    border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .confirm-dialog p {
-    margin: 0;
-    font-size: var(--font-size-sm);
-    line-height: 1.6;
-  }
-
-  .back-row {
-    margin-bottom: var(--space-1);
-  }
-
-  .edit-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgb(0 0 0 / 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .edit-card {
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-    width: 100%;
-    max-width: 36rem;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    box-shadow: var(--shadow-md);
-  }
-
-  .edit-card form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-</style>
+</div>

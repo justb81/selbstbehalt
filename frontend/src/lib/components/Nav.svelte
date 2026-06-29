@@ -2,6 +2,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import { cn } from '$lib/utils';
 
   // Top-level sections from docs/design.md §6.1. Sub-routes (new, detail, scan,
   // submit) are reached from within their section, not the primary nav.
@@ -20,13 +21,20 @@
   }
 </script>
 
-<nav aria-label="Hauptnavigation" class="nav">
-  <ul>
+<nav aria-label="Hauptnavigation">
+  <ul class="flex flex-wrap gap-1 m-0 p-0 list-none">
     {#each items as item (item.href)}
+      {@const active = isActive(item.href, page.url.pathname)}
       <li>
         <a
           href={resolve(item.href)}
-          aria-current={isActive(item.href, page.url.pathname) ? 'page' : undefined}
+          aria-current={active ? 'page' : undefined}
+          class={cn(
+            'inline-block px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors',
+            active
+              ? 'bg-primary/10 text-primary font-semibold'
+              : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
+          )}
         >
           {item.label}
         </a>
@@ -34,34 +42,3 @@
     {/each}
   </ul>
 </nav>
-
-<style>
-  .nav ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .nav a {
-    display: inline-block;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .nav a:hover {
-    background: var(--color-primary-soft);
-    color: var(--color-primary-strong);
-  }
-
-  .nav a[aria-current='page'] {
-    background: var(--color-primary-soft);
-    color: var(--color-primary-strong);
-  }
-</style>

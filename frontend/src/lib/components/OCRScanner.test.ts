@@ -42,9 +42,11 @@ describe('OCRScanner', () => {
 
   it('parses against the selected schedule', async () => {
     const onScanned = vi.fn<(r: ScanResult) => void>();
-    render(OCRScanner, { props: { onScanned, deps: stubDeps() } });
+    // The schedule selector is a shadcn Select (bits-ui custom component), not a
+    // native <select>, so userEvent.selectOptions does not work in jsdom. Pass the
+    // schedule prop directly to test the parsing behaviour in isolation.
+    render(OCRScanner, { props: { onScanned, deps: stubDeps(), schedule: 'GOZ' } });
 
-    await userEvent.selectOptions(screen.getByLabelText('Gebührenordnung'), 'GOZ');
     await userEvent.upload(
       screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
       new File(['x'], 'r.png', { type: 'image/png' }),

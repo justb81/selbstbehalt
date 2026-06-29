@@ -6,6 +6,11 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { api, ApiError } from '$lib/api';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   let name = $state('');
   let birthDate = $state('');
@@ -37,161 +42,56 @@
 
 <svelte:head><title>Neue Person · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <a href={resolve('/persons')} class="back-link">← Personen</a>
-    <h1>Neue Person</h1>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="space-y-1">
+    <a
+      href={resolve('/persons')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Personen
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight">Neue Person</h1>
   </div>
 
   <form
-    class="card"
     onsubmit={(e) => {
       e.preventDefault();
       void submit();
     }}
   >
-    <div class="field-grid">
-      <label class="field">
-        <span>Name <span class="req">*</span></span>
-        <input type="text" bind:value={name} required placeholder="Vollständiger Name" />
-      </label>
+    <Card>
+      <CardContent class="pt-6 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <Label for="name">Name <span class="text-destructive">*</span></Label>
+            <Input
+              id="name"
+              type="text"
+              bind:value={name}
+              required
+              placeholder="Vollständiger Name"
+            />
+          </div>
 
-      <label class="field">
-        <span>Geburtsdatum</span>
-        <input type="date" bind:value={birthDate} />
-      </label>
-    </div>
+          <div class="space-y-1">
+            <Label for="birthDate">Geburtsdatum</Label>
+            <Input id="birthDate" type="date" bind:value={birthDate} />
+          </div>
+        </div>
 
-    {#if formError}
-      <p class="error" role="alert">{formError}</p>
-    {/if}
+        {#if formError}
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        {/if}
 
-    <div class="actions">
-      <button type="submit" class="btn-primary" disabled={saving}>
-        {saving ? 'Wird gespeichert …' : 'Person anlegen'}
-      </button>
-      <a href={resolve('/persons')} class="btn-secondary">Abbrechen</a>
-    </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Wird gespeichert …' : 'Person anlegen'}
+          </Button>
+          <Button variant="outline" href={resolve('/persons')}>Abbrechen</Button>
+        </div>
+      </CardContent>
+    </Card>
   </form>
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .page-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .field input {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-  }
-
-  .field input:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .req {
-    color: var(--color-danger);
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-</style>
+</div>

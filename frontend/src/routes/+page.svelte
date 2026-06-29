@@ -11,6 +11,9 @@
   import BRETracker from '$lib/components/BRETracker.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   // ---- State ----
   let invoices = $state<Invoice[]>([]);
@@ -61,12 +64,12 @@
 
 <svelte:head><title>Dashboard · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <h1>Dashboard</h1>
-    <div class="quick-actions">
-      <a href={resolve('/invoices/scan')} class="btn-primary">Rechnung scannen</a>
-      <a href={resolve('/contracts/new')} class="btn-secondary">Vertrag anlegen</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+    <div class="flex gap-2 flex-wrap">
+      <Button href={resolve('/invoices/scan')}>Rechnung scannen</Button>
+      <Button variant="outline" href={resolve('/contracts/new')}>Vertrag anlegen</Button>
     </div>
   </div>
 
@@ -74,57 +77,91 @@
     <LoadingState label="Dashboard wird geladen …" />
   {:else}
     <!-- Stats tiles -->
-    <div class="tiles">
-      <div class="tile">
-        <span class="tile-label">Offene Rechnungen</span>
-        <span class="tile-value">{openInvoices.length}</span>
-        {#if openInvoices.length > 0}
-          <a href={resolve('/invoices')} class="tile-link">Anzeigen →</a>
-        {/if}
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Offene Rechnungen</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-2xl font-bold tabular-nums">{openInvoices.length}</p>
+          {#if openInvoices.length > 0}
+            <a href={resolve('/invoices')} class="text-sm text-primary hover:underline font-medium">
+              Anzeigen →
+            </a>
+          {/if}
+        </CardContent>
+      </Card>
 
-      <div class="tile">
-        <span class="tile-label">Ausstehende Einreichungen</span>
-        <span class="tile-value">{pendingSubmissions.length}</span>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Ausstehende Einreichungen</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-2xl font-bold tabular-nums">{pendingSubmissions.length}</p>
+        </CardContent>
+      </Card>
 
-      <div class="tile">
-        <span class="tile-label">Rechnungen {year}</span>
-        <span class="tile-value"
-          >{invoices.filter((i) => i.invoice_date?.startsWith(String(year))).length}</span
-        >
-        {#if totalAmount > 0}
-          <span class="tile-sub">{formatEur(totalAmount)} gesamt</span>
-        {/if}
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Rechnungen {year}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-2xl font-bold tabular-nums">
+            {invoices.filter((i) => i.invoice_date?.startsWith(String(year))).length}
+          </p>
+          {#if totalAmount > 0}
+            <p class="text-sm text-muted-foreground">{formatEur(totalAmount)} gesamt</p>
+          {/if}
+        </CardContent>
+      </Card>
 
-      <div class="tile">
-        <span class="tile-label">Erstattungsfähig {year}</span>
-        <span class="tile-value amount">{formatEur(eligibleAmount)}</span>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Erstattungsfähig {year}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-xl font-bold tabular-nums">{formatEur(eligibleAmount)}</p>
+        </CardContent>
+      </Card>
 
-      <div class="tile">
-        <span class="tile-label">Verträge</span>
-        <span class="tile-value">{contractCount}</span>
-        <a href={resolve('/contracts')} class="tile-link">Verwalten →</a>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Verträge</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-2xl font-bold tabular-nums">{contractCount}</p>
+          <a href={resolve('/contracts')} class="text-sm text-primary hover:underline font-medium">
+            Verwalten →
+          </a>
+        </CardContent>
+      </Card>
     </div>
 
     <!-- Open invoices -->
     {#if openInvoices.length > 0}
-      <div class="section">
-        <h2>Offene Rechnungen</h2>
-        <div class="invoice-list">
+      <div class="space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Offene Rechnungen
+        </h2>
+        <div class="rounded-md border border-border bg-card shadow-sm overflow-hidden">
           {#each openInvoices.slice(0, 5) as invoice (invoice.id)}
-            <a href={resolve('/invoices/[id]', { id: invoice.id })} class="invoice-row">
-              <span class="inv-date">{invoice.invoice_date}</span>
-              <span class="inv-provider">{invoice.provider_name}</span>
-              <span class="inv-amount">{formatEur(invoice.total_amount)}</span>
+            <a
+              href={resolve('/invoices/[id]', { id: invoice.id })}
+              class="grid grid-cols-[7rem_1fr_8rem_auto] gap-2 items-center px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 text-sm no-underline text-foreground"
+            >
+              <span class="text-muted-foreground">{invoice.invoice_date}</span>
+              <span>{invoice.provider_name}</span>
+              <span class="text-right font-medium tabular-nums"
+                >{formatEur(invoice.total_amount)}</span
+              >
               <InvoiceBadge status={invoice.status} />
             </a>
           {/each}
           {#if openInvoices.length > 5}
-            <a href={resolve('/invoices')} class="more-link">
+            <a
+              href={resolve('/invoices')}
+              class="block px-4 py-2 text-center text-sm text-primary hover:underline border-t border-border bg-muted/30"
+            >
               + {openInvoices.length - 5} weitere →
             </a>
           {/if}
@@ -134,216 +171,27 @@
 
     <!-- BRE status -->
     {#if insuredPersons.length > 0}
-      <div class="section">
-        <h2>BRE-Status</h2>
-        <div class="bre-grid">
+      <div class="space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          BRE-Status
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {#each insuredPersons as ip (ip.id)}
             <BRETracker insuredPerson={ip} compact={true} />
           {/each}
         </div>
       </div>
     {:else if contractCount === 0}
-      <div class="empty-state">
-        <p>Noch keine Verträge angelegt.</p>
-        <a href={resolve('/contracts/new')} class="btn-primary">Ersten Vertrag anlegen</a>
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <p class="text-muted-foreground">Noch keine Verträge angelegt.</p>
+        <Button class="mt-4" href={resolve('/contracts/new')}>Ersten Vertrag anlegen</Button>
       </div>
     {/if}
 
     {#if hasError}
-      <p class="error-notice">Einige Daten konnten nicht geladen werden.</p>
+      <Alert variant="destructive">
+        <AlertDescription>Einige Daten konnten nicht geladen werden.</AlertDescription>
+      </Alert>
     {/if}
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  h1 {
-    margin: 0;
-  }
-  h2 {
-    margin: 0 0 var(--space-3);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-  }
-
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .quick-actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .tile {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .tile-label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .tile-value {
-    font-size: var(--font-size-xl);
-    font-weight: 700;
-    color: var(--color-text);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tile-value.amount {
-    font-size: var(--font-size-lg);
-  }
-
-  .tile-sub {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .tile-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-primary);
-    text-decoration: none;
-    font-weight: 500;
-    margin-top: auto;
-  }
-  .tile-link:hover {
-    text-decoration: underline;
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .invoice-list {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .invoice-row {
-    display: grid;
-    grid-template-columns: 7rem 1fr 8rem auto;
-    gap: var(--space-2);
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border);
-    text-decoration: none;
-    color: inherit;
-    font-size: var(--font-size-sm);
-  }
-  .invoice-row:last-of-type {
-    border-bottom: none;
-  }
-  .invoice-row:hover {
-    background: var(--color-bg);
-  }
-
-  .inv-date {
-    color: var(--color-text-muted);
-  }
-  .inv-amount {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-  }
-
-  .more-link {
-    display: block;
-    padding: var(--space-2) var(--space-4);
-    text-align: center;
-    font-size: var(--font-size-sm);
-    color: var(--color-primary);
-    text-decoration: none;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-bg);
-  }
-  .more-link:hover {
-    text-decoration: underline;
-  }
-
-  .bre-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-8);
-    text-align: center;
-    color: var(--color-text-muted);
-  }
-
-  .error-notice {
-    font-size: var(--font-size-sm);
-    color: var(--color-warning);
-    margin: 0;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .btn-primary:hover {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    text-decoration: none;
-  }
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-</style>
+</div>

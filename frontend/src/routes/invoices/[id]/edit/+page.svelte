@@ -16,6 +16,8 @@
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent } from '$lib/components/ui/card';
 
   const EDITABLE_STATUSES = new Set(['neu', 'geprüft', 'selbst_gezahlt']);
 
@@ -95,26 +97,35 @@
   </title>
 </svelte:head>
 
-<section class="page">
-  <div class="back-row">
-    <a href={resolve('/invoices/[id]', { id: invoiceId })} class="back-link">← Zurück</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div>
+    <a
+      href={resolve('/invoices/[id]', { id: invoiceId })}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Zurück
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight mt-1">
+      {invoice ? `${invoice.provider_name} bearbeiten` : 'Rechnung bearbeiten'}
+    </h1>
   </div>
-  <h1>{invoice ? `${invoice.provider_name} bearbeiten` : 'Rechnung bearbeiten'}</h1>
 
   {#if loading}
     <LoadingState label="Rechnungsdaten werden geladen …" />
   {:else if loadError}
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if invoice && !isEditable}
-    <div class="locked-notice">
-      <p>
-        Diese Rechnung hat den Status <strong>{invoice.status}</strong> und kann nicht mehr bearbeitet
-        werden.
-      </p>
-      <a href={resolve('/invoices/[id]', { id: invoice.id })} class="btn-secondary">
-        Zur Rechnung
-      </a>
-    </div>
+    <Card>
+      <CardContent class="pt-4 space-y-3">
+        <p class="text-sm text-muted-foreground">
+          Diese Rechnung hat den Status <strong class="text-foreground">{invoice.status}</strong> und
+          kann nicht mehr bearbeitet werden.
+        </p>
+        <Button variant="outline" href={resolve('/invoices/[id]', { id: invoice.id })}>
+          Zur Rechnung
+        </Button>
+      </CardContent>
+    </Card>
   {:else if invoice}
     {@const invoiceId = invoice.id}
     <InvoiceForm
@@ -126,64 +137,10 @@
       onSave={handleSave}
     >
       {#snippet cancel()}
-        <a href={resolve('/invoices/[id]', { id: invoiceId })} class="btn-secondary">Abbrechen</a>
+        <Button variant="outline" href={resolve('/invoices/[id]', { id: invoiceId })}
+          >Abbrechen</Button
+        >
       {/snippet}
     </InvoiceForm>
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .locked-notice {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .locked-notice p {
-    margin: 0;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-  }
-
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-</style>
+</div>

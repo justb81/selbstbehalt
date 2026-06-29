@@ -85,7 +85,8 @@ describe('error page', () => {
     state.status = 404;
     state.error = { message: 'Nicht gefunden' };
     render(ErrorPage);
-    expect(screen.getByRole('heading', { name: 'Fehler 404' })).toBeInTheDocument();
+    // ErrorState uses shadcn Alert (role="alert"), not a heading element.
+    expect(screen.getByText('Fehler 404')).toBeInTheDocument();
     expect(screen.getByText('Nicht gefunden')).toBeInTheDocument();
   });
 

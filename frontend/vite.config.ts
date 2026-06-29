@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
@@ -18,6 +19,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    tailwindcss(),
     sveltekit(),
     // PWA layer (docs/design.md §6.3, issue #27). `injectManifest` lets us ship a
     // hand-written service worker (src/service-worker.ts) that implements the

@@ -11,6 +11,7 @@
   import ContractCard from '$lib/components/ContractCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
 
   let contracts = $state<Contract[]>([]);
   let insuredCounts = $state<Record<string, number>>({});
@@ -46,10 +47,10 @@
 
 <svelte:head><title>Verträge · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <h1>Verträge</h1>
-    <a href={resolve('/contracts/new')} class="btn-primary">+ Neuer Vertrag</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Verträge</h1>
+    <Button href={resolve('/contracts/new')}>+ Neuer Vertrag</Button>
   </div>
 
   {#if loading}
@@ -57,70 +58,15 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else if contracts.length === 0}
-    <div class="empty">
-      <p>Noch keine Verträge angelegt.</p>
-      <a href={resolve('/contracts/new')} class="btn-primary">Ersten Vertrag anlegen</a>
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <p class="text-muted-foreground">Noch keine Verträge angelegt.</p>
+      <Button class="mt-4" href={resolve('/contracts/new')}>Ersten Vertrag anlegen</Button>
     </div>
   {:else}
-    <div class="contract-grid">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each contracts as contract (contract.id)}
         <ContractCard {contract} insuredCount={insuredCounts[contract.id] ?? 0} />
       {/each}
     </div>
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .contract-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: var(--space-4);
-  }
-
-  .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-8);
-    text-align: center;
-    color: var(--color-text-muted);
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover {
-    background: var(--color-primary-strong);
-  }
-</style>
+</div>
