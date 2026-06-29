@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createPaddleOcrEngine,
   mapPaddleResult,
+  type PaddleBox,
   type PaddleOcrModule,
   type PaddleOcrServiceLike,
 } from './engine';
@@ -12,38 +13,27 @@ import { DEFAULT_ENGINE_CONFIG, type OcrProgress } from './types';
 const image = { width: 2, height: 1, data: new Uint8ClampedArray(8) } as unknown as ImageData;
 
 describe('mapPaddleResult', () => {
-  it('maps lines to text + quad points and carries the score through as confidence', () => {
+  it('maps each grouped line to one OcrResult: joined text, line bbox, mean confidence', () => {
     const results = mapPaddleResult({
-      text: 'Beratung\n10,72',
+      text: 'Nr Beratung\n10,72',
       lines: [
-        {
-          text: 'Beratung',
-          box: [
-            [0, 0],
-            [10, 0],
-            [10, 5],
-            [0, 5],
-          ],
-          score: 0.97,
-        },
-        {
-          text: '10,72',
-          box: [
-            [0, 6],
-            [10, 6],
-          ],
-          score: 0.5,
-        },
+        // A line is an ARRAY of per-region items; they are concatenated L→R, the
+        // confidences averaged and the boxes unioned into a single line bbox.
+        [
+          { text: 'Nr', box: { x: 0, y: 0, width: 4, height: 5 }, confidence: 0.99 },
+          { text: 'Beratung', box: { x: 6, y: 0, width: 10, height: 5 }, confidence: 0.95 },
+        ],
+        [{ text: '10,72', box: { x: 0, y: 8, width: 10, height: 4 }, confidence: 0.5 }],
       ],
     });
     expect(results).toEqual([
       {
-        text: 'Beratung',
+        text: 'Nr Beratung',
         bbox: {
           points: [
             [0, 0],
-            [10, 0],
-            [10, 5],
+            [16, 0],
+            [16, 5],
             [0, 5],
           ],
         },
@@ -53,8 +43,10 @@ describe('mapPaddleResult', () => {
         text: '10,72',
         bbox: {
           points: [
-            [0, 6],
-            [10, 6],
+            [0, 8],
+            [10, 8],
+            [10, 12],
+            [0, 12],
           ],
         },
         confidence: 0.5,
@@ -62,10 +54,10 @@ describe('mapPaddleResult', () => {
     ]);
   });
 
-  it('clamps out-of-range scores and yields an empty bbox for malformed boxes', () => {
+  it('clamps out-of-range confidence and yields an empty bbox when a box is missing', () => {
     const results = mapPaddleResult({
       text: 'only-text',
-      lines: [{ text: 'only-text', box: undefined as unknown as [number, number][], score: 1.4 }],
+      lines: [[{ text: 'only-text', box: undefined as unknown as PaddleBox, confidence: 1.4 }]],
     });
     expect(results).toEqual([{ text: 'only-text', bbox: { points: [] }, confidence: 1 }]);
   });
@@ -81,16 +73,7 @@ describe('createPaddleOcrEngine', () => {
       initialize: vi.fn().mockResolvedValue(undefined),
       recognize: vi.fn().mockResolvedValue({
         text: 'Hallo',
-        lines: [
-          {
-            text: 'Hallo',
-            box: [
-              [0, 0],
-              [1, 1],
-            ],
-            score: 0.9,
-          },
-        ],
+        lines: [[{ text: 'Hallo', box: { x: 0, y: 0, width: 1, height: 1 }, confidence: 0.9 }]],
       }),
       destroy: vi.fn().mockResolvedValue(undefined),
     };
@@ -135,6 +118,7 @@ describe('createPaddleOcrEngine', () => {
         recognition: '/m/rec.onnx',
         charactersDictionary: '/m/dict.txt',
       },
+      detection: { maxSideLength: 1280 },
       session: { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' },
       processing: { engine: 'canvas-native' },
     });
@@ -183,7 +167,9 @@ describe('createPaddleOcrEngine', () => {
         bbox: {
           points: [
             [0, 0],
+            [1, 0],
             [1, 1],
+            [0, 1],
           ],
         },
         confidence: 0.9,

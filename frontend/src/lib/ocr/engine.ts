@@ -18,29 +18,46 @@
  */
 import type { OcrBackend, OcrEngine, OcrEngineConfig, OcrResult } from './types';
 
-/** One recognised line as returned by `ppu-paddle-ocr`'s `recognize()`. */
-export interface PaddleOcrLine {
-  text: string;
-  /** Quadrilateral corner points `[x, y]` in source-image pixels. */
-  box: Array<[number, number]>;
-  /** Recogniser confidence in `[0, 1]`. */
-  score: number;
+/** Axis-aligned box `ppu-paddle-ocr` reports for one recognised region. */
+export interface PaddleBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-/** Recognition payload returned by `PaddleOcrService.recognize()`. */
-export interface PaddleRecognizeResult {
-  /** The full recognised text (lines joined); unused — we map per line. */
+/** One recognised text region (a word/segment), as returned by the recogniser. */
+export interface PaddleOcrItem {
   text: string;
-  lines: PaddleOcrLine[];
+  box: PaddleBox;
+  /** Recogniser confidence in `[0, 1]`. */
+  confidence: number;
+}
+
+/**
+ * Recognition payload from `PaddleOcrService.recognize()` in its default
+ * (grouped) mode — i.e. without `flatten`. `lines` is an array of lines, each
+ * itself the array of per-region {@link PaddleOcrItem}s on that line, ordered
+ * left-to-right. (We map per line, so the joined `text` is unused.)
+ */
+export interface PaddleRecognizeResult {
+  text: string;
+  lines: PaddleOcrItem[][];
 }
 
 /** Construction options for `ppu-paddle-ocr`'s `PaddleOcrService` (the slice we set). */
 export interface PaddleOcrServiceOptions {
   /** Local URLs/buffers of the detection + recognition models and dictionary. */
   model: { detection: string; recognition: string; charactersDictionary: string };
+  /** Text-detection tuning; `maxSideLength` is raised for dense full-page invoices. */
+  detection: { maxSideLength: number };
   /** ONNX Runtime session config; `executionProviders` picks WebGPU vs WASM. */
   session: { executionProviders: string[]; graphOptimizationLevel: 'all' };
-  /** Image pre-processing engine; `canvas-native` avoids the DOM-bound opencv path. */
+  /**
+   * Image pre-processing engine. The web platform ships no OpenCV
+   * `imageProcessor`, so the binding only ever runs the `canvas-native` detection
+   * path (it silently falls back from `opencv`); we request it explicitly.
+   */
   processing: { engine: 'canvas-native' };
 }
 
@@ -87,14 +104,6 @@ export interface CreatePaddleOcrEngineDeps {
   toImageSource?: (image: ImageData) => unknown;
 }
 
-/** Coerces a loosely-typed box into our quad-point arrays. */
-function toBoxPoints(raw: unknown): Array<[number, number]> {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((pt): pt is [number, number] => Array.isArray(pt) && pt.length >= 2)
-    .map((pt) => [Number(pt[0]), Number(pt[1])] as [number, number]);
-}
-
 /** Clamps a recogniser score into the `[0, 1]` confidence range. */
 function clampConfidence(score: unknown): number {
   const n = Number(score);
@@ -103,17 +112,54 @@ function clampConfidence(score: unknown): number {
 }
 
 /**
- * Maps `ppu-paddle-ocr`'s `{ text, lines }` payload onto our `OcrResult[]`,
- * carrying the real per-line `score` through as confidence and a malformed or
- * missing box through as an empty bbox rather than dropping the line.
+ * Builds a clockwise four-point quad (top-left → top-right → bottom-right →
+ * bottom-left) from the union of a line's per-region boxes, so the bbox spans
+ * the whole recognised line. Returns an empty quad when no usable box is present.
+ */
+function lineBoxToPoints(items: PaddleOcrItem[]): Array<[number, number]> {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const { box } of items) {
+    if (!box || !Number.isFinite(box.x) || !Number.isFinite(box.y)) continue;
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxX = Math.max(maxX, box.x + box.width);
+    maxY = Math.max(maxY, box.y + box.height);
+  }
+  if (!Number.isFinite(minX)) return [];
+  return [
+    [minX, minY],
+    [maxX, minY],
+    [maxX, maxY],
+    [minX, maxY],
+  ];
+}
+
+/**
+ * Maps `ppu-paddle-ocr`'s grouped `{ text, lines }` payload onto our
+ * `OcrResult[]` — **one entry per recognised line**, which is the contract the
+ * scan flow relies on (`ocrResultsToText` newline-joins `text`, `meanConfidence`
+ * averages `confidence`). Each line's regions are concatenated left-to-right
+ * into the line text, their confidences averaged, and their boxes unioned into a
+ * line bbox. The binding nests `lines` as a per-line array of region objects
+ * (`{ text, box: { x, y, width, height }, confidence }`), so a line is an array
+ * — not a single object.
  */
 export function mapPaddleResult(raw: PaddleRecognizeResult): OcrResult[] {
   const lines = Array.isArray(raw.lines) ? raw.lines : [];
-  return lines.map((line) => ({
-    text: line.text,
-    bbox: { points: toBoxPoints(line.box) },
-    confidence: clampConfidence(line.score),
-  }));
+  return lines.map((line) => {
+    const items = Array.isArray(line) ? line : [];
+    const text = items.map((item) => item.text ?? '').join(' ');
+    const confidence =
+      items.length === 0
+        ? 0
+        : clampConfidence(
+            items.reduce((sum, item) => sum + (Number(item.confidence) || 0), 0) / items.length,
+          );
+    return { text, bbox: { points: lineBoxToPoints(items) }, confidence };
+  });
 }
 
 /** Maps our backend choice onto an ONNX Runtime execution provider. */
@@ -188,6 +234,15 @@ function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
 const ORT_WASM_PATH = '/models/ort/';
 
 /**
+ * Longest-side cap (px) the detector scales the frame to before inference. The
+ * binding defaults to 640, which shrinks a full-page A4 invoice photo until body
+ * text is only ~6 px tall and the detector misses most lines; 1280 keeps text
+ * legible (~13 px) for both detection and the recognition crops, while staying
+ * within WASM/WebGPU budgets.
+ */
+const DETECTION_MAX_SIDE_LENGTH = 1280;
+
+/**
  * Lazily loads the real binding. Kept dynamic so the heavy ONNX-Runtime/WASM
  * code lands in a worker-only chunk (never the main bundle), and so unit tests
  * can inject a fake loader without resolving the package at all.
@@ -232,6 +287,7 @@ export function createPaddleOcrEngine(
           recognition: config.modelUrls.recognition,
           charactersDictionary: config.modelUrls.dictionary,
         },
+        detection: { maxSideLength: DETECTION_MAX_SIDE_LENGTH },
         session: {
           executionProviders: [executionProviderFor(backend)],
           graphOptimizationLevel: 'all',
