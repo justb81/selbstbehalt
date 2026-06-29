@@ -22,6 +22,17 @@
   import GCPCard from '$lib/components/GCPCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '$lib/components/ui/table';
 
   const invoiceId = $derived(page.params.id as string);
 
@@ -126,12 +137,18 @@
   </title>
 </svelte:head>
 
-<section class="page">
-  <div class="back-row">
-    <a href={resolve('/invoices')} class="back-link">← Rechnungen</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div>
+    <a
+      href={resolve('/invoices')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Rechnungen
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight mt-1">
+      {invoice?.provider_name ?? 'Rechnungsdetail'}
+    </h1>
   </div>
-
-  <h1 class="page-title">{invoice?.provider_name ?? 'Rechnungsdetail'}</h1>
 
   {#if loading}
     <LoadingState label="Rechnungsdaten werden geladen …" />
@@ -139,73 +156,94 @@
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if invoice}
     <!-- Header -->
-    <div class="invoice-header">
-      <div>
-        <div class="header-meta">
-          <span>{invoice.invoice_date}</span>
-          {#if invoice.invoice_number}<span>Nr. {invoice.invoice_number}</span>{/if}
-          <InvoiceBadge status={invoice.status} />
-        </div>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
+        <span>{invoice.invoice_date}</span>
+        {#if invoice.invoice_number}<span>Nr. {invoice.invoice_number}</span>{/if}
+        <InvoiceBadge status={invoice.status} />
       </div>
-      <div class="header-actions">
+      <div class="flex gap-2 flex-wrap items-start">
         {#if invoice.status === 'neu' || invoice.status === 'geprüft' || invoice.status === 'selbst_gezahlt'}
-          <a href={resolve('/invoices/[id]/edit', { id: invoice.id })} class="btn-secondary">
+          <Button
+            variant="outline"
+            size="sm"
+            href={resolve('/invoices/[id]/edit', { id: invoice.id })}
+          >
             Bearbeiten
-          </a>
+          </Button>
         {/if}
         {#if invoice.status === 'neu' || invoice.status === 'geprüft'}
-          <a href={resolve('/invoices/[id]/submit', { id: invoice.id })} class="btn-primary">
+          <Button size="sm" href={resolve('/invoices/[id]/submit', { id: invoice.id })}>
             Einreichung erfassen
-          </a>
+          </Button>
         {/if}
-        <button
-          type="button"
-          class="btn-danger-outline"
+        <Button
+          variant="outline"
+          size="sm"
+          class="border-destructive text-destructive hover:bg-destructive/10"
           onclick={() => {
             confirmDeleteInvoice = true;
           }}
         >
           Löschen
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Summary -->
-    <div class="summary-grid">
-      <div class="summary-item">
-        <span class="summary-label">Gesamtbetrag</span>
-        <span class="summary-value">{formatEur(invoice.total_amount)}</span>
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card>
+        <CardHeader class="pb-2">
+          <CardDescription>Gesamtbetrag</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p class="text-lg font-semibold tabular-nums">{formatEur(invoice.total_amount)}</p>
+        </CardContent>
+      </Card>
       {#if invoice.eligible_amount != null}
-        <div class="summary-item">
-          <span class="summary-label">Erstattungsfähig</span>
-          <span class="summary-value">{formatEur(invoice.eligible_amount)}</span>
-        </div>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Erstattungsfähig</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-lg font-semibold tabular-nums">{formatEur(invoice.eligible_amount)}</p>
+          </CardContent>
+        </Card>
       {/if}
       {#if invoice.self_paid_amount > 0}
-        <div class="summary-item">
-          <span class="summary-label">Selbst gezahlt</span>
-          <span class="summary-value">{formatEur(invoice.self_paid_amount)}</span>
-        </div>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Selbst gezahlt</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-lg font-semibold tabular-nums">{formatEur(invoice.self_paid_amount)}</p>
+          </CardContent>
+        </Card>
       {/if}
       {#if insuredPerson}
-        <div class="summary-item">
-          <span class="summary-label">Versichert bei</span>
-          <span class="summary-value"
-            >{insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Unbekannt'}</span
-          >
-        </div>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Versichert bei</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-lg font-semibold">
+              {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Unbekannt'}
+            </p>
+          </CardContent>
+        </Card>
       {/if}
     </div>
 
     {#if invoice.notes}
-      <p class="notes">{invoice.notes}</p>
+      <p class="text-sm text-muted-foreground">{invoice.notes}</p>
     {/if}
 
     <!-- Günstigerprüfung -->
     {#if gcpResult}
-      <div class="section">
-        <h2>Günstigerprüfung</h2>
+      <div class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Günstigerprüfung
+        </h2>
         <GCPCard
           result={gcpResult}
           onSubmit={goToSubmit}
@@ -213,347 +251,102 @@
           loading={actioning}
         />
         {#if actionError}
-          <p class="error" role="alert">{actionError}</p>
+          <Alert variant="destructive">
+            <AlertDescription>{actionError}</AlertDescription>
+          </Alert>
         {/if}
       </div>
     {:else if invoice.eligible_amount == null}
-      <p class="muted-notice">
+      <div
+        class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
+      >
         Kein erstattungsfähiger Betrag angegeben — Günstigerprüfung nicht möglich.
-      </p>
+      </div>
     {:else if insuredPerson && !insuredPerson.bre_structure}
-      <p class="muted-notice">
+      <div
+        class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
+      >
         Keine BRE-Staffel für diese versicherte Person konfiguriert — Günstigerprüfung nicht
         möglich.
-      </p>
+      </div>
     {/if}
 
     <!-- Positions -->
     {#if invoice.positions.length > 0}
-      <div class="section">
-        <h2>Rechnungspositionen</h2>
-        <div class="positions-table">
-          <div class="pos-head">
-            <span>Ziffer</span>
-            <span>Beschreibung</span>
-            <span class="num">Faktor</span>
-            <span class="num">Betrag</span>
-          </div>
-          {#each invoice.positions as pos (pos.id)}
-            <div class="pos-row" class:flagged={pos.is_valid === false}>
-              <span class="goae-number">{pos.goae_number}</span>
-              <span class="description">
-                {pos.description ?? '—'}
-                {#if pos.is_valid === false && pos.flag_reason}
-                  <small class="flag-reason">⚠ {pos.flag_reason}</small>
-                {/if}
-                {#if pos.goae_category}
-                  <small class="category">{pos.goae_category}</small>
-                {/if}
-              </span>
-              <span class="num">{pos.multiplier.toFixed(2)}</span>
-              <span class="num amount">{formatEur(pos.charged_amount)}</span>
-            </div>
-          {/each}
-          <div class="pos-total">
-            <span></span>
-            <span></span>
-            <span class="num label">Gesamt</span>
-            <span class="num total-amount">
-              {formatEur(invoice.positions.reduce((s, p) => s + p.charged_amount, 0))}
-            </span>
-          </div>
+      <div class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Rechnungspositionen
+        </h2>
+        <div class="rounded-md border border-border shadow-sm overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ziffer</TableHead>
+                <TableHead>Beschreibung</TableHead>
+                <TableHead class="text-right">Faktor</TableHead>
+                <TableHead class="text-right">Betrag</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {#each invoice.positions as pos (pos.id)}
+                <TableRow
+                  class={pos.is_valid === false ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
+                >
+                  <TableCell class="font-semibold">{pos.goae_number}</TableCell>
+                  <TableCell>
+                    <div class="flex flex-col gap-0.5">
+                      <span>{pos.description ?? '—'}</span>
+                      {#if pos.is_valid === false && pos.flag_reason}
+                        <small class="text-yellow-600 dark:text-yellow-400 text-xs"
+                          >⚠ {pos.flag_reason}</small
+                        >
+                      {/if}
+                      {#if pos.goae_category}
+                        <small class="text-muted-foreground text-xs">{pos.goae_category}</small>
+                      {/if}
+                    </div>
+                  </TableCell>
+                  <TableCell class="text-right">{pos.multiplier.toFixed(2)}</TableCell>
+                  <TableCell class="text-right tabular-nums"
+                    >{formatEur(pos.charged_amount)}</TableCell
+                  >
+                </TableRow>
+              {/each}
+              <TableRow class="bg-muted/30 font-semibold border-t-2">
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell class="text-right text-muted-foreground">Gesamt</TableCell>
+                <TableCell class="text-right tabular-nums">
+                  {formatEur(invoice.positions.reduce((s, p) => s + p.charged_amount, 0))}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </div>
     {/if}
 
     <!-- Delete confirmation -->
     {#if confirmDeleteInvoice}
-      <div class="confirm-dialog" role="alertdialog">
-        <p>Rechnung von <strong>{invoice.provider_name}</strong> wirklich löschen?</p>
-        <div class="actions">
-          <button
-            type="button"
-            class="btn-danger"
-            onclick={deleteInvoice}
-            disabled={deletingInvoice}
-          >
+      <div
+        class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
+        role="alertdialog"
+      >
+        <p class="text-sm">
+          Rechnung von <strong>{invoice.provider_name}</strong> wirklich löschen?
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <Button variant="destructive" onclick={deleteInvoice} disabled={deletingInvoice}>
             {deletingInvoice ? 'Wird gelöscht …' : 'Ja, löschen'}
-          </button>
-          <button
-            type="button"
-            class="btn-secondary"
+          </Button>
+          <Button
+            variant="outline"
             onclick={() => {
               confirmDeleteInvoice = false;
-            }}
+            }}>Abbrechen</Button
           >
-            Abbrechen
-          </button>
         </div>
       </div>
     {/if}
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  h1 {
-    margin: 0;
-  }
-  h2 {
-    margin: 0 0 var(--space-2);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .invoice-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .header-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin-top: var(--space-1);
-  }
-
-  .header-actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .summary-item {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .summary-label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .summary-value {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--color-text);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .notes {
-    margin: 0;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .positions-table {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    overflow-x: auto;
-  }
-
-  .pos-head,
-  .pos-row,
-  .pos-total {
-    display: grid;
-    grid-template-columns: 5.5rem 1fr 5.5rem 8rem;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    align-items: start;
-  }
-
-  .pos-head {
-    background: var(--color-bg);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .pos-row {
-    border-bottom: 1px solid var(--color-border);
-    font-size: var(--font-size-sm);
-  }
-
-  .pos-row.flagged {
-    background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
-  }
-
-  .pos-total {
-    border-top: 2px solid var(--color-border);
-    background: var(--color-bg);
-    font-weight: 600;
-  }
-
-  .goae-number {
-    font-weight: 600;
-  }
-
-  .description {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .flag-reason {
-    color: var(--color-warning);
-  }
-  .category {
-    color: var(--color-text-muted);
-  }
-
-  .num {
-    text-align: right;
-  }
-  .amount {
-    font-variant-numeric: tabular-nums;
-  }
-  .total-amount {
-    font-variant-numeric: tabular-nums;
-    color: var(--color-text);
-  }
-  .label {
-    color: var(--color-text-muted);
-  }
-
-  .muted-notice {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    padding: var(--space-3);
-    background: var(--color-bg);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    margin: 0;
-  }
-
-  .confirm-dialog {
-    padding: var(--space-4);
-    background: color-mix(in srgb, var(--color-danger) 5%, var(--color-surface));
-    border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  .confirm-dialog p {
-    margin: 0;
-    font-size: var(--font-size-sm);
-  }
-
-  .actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .btn-primary:hover {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-
-  .btn-danger-outline {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-danger);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-danger);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .btn-danger-outline:hover {
-    background: color-mix(in srgb, var(--color-danger) 8%, white);
-  }
-
-  .btn-danger {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-danger);
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-</style>
+</div>
