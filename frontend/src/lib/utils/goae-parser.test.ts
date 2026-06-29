@@ -207,6 +207,8 @@ describe('parsePositionLine / extractPositions', () => {
       multiplier: 2.3,
       chargedAmount: 10.72,
       raw: '1   Beratung   2,3   10,72',
+      treatmentDate: null,
+      detectedSchedule: null,
     });
   });
 

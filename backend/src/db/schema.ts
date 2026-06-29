@@ -116,6 +116,10 @@ export const invoicePositions = sqliteTable('invoice_positions', {
     .references(() => invoices.id, { onDelete: 'cascade' }),
   goaeNumber: text('goae_number').notNull(),
   goaeCategory: text('goae_category').$type<GoaeCategory>(),
+  /** Anzahl (quantity); defaults to 1. */
+  quantity: integer('quantity').notNull().default(1),
+  /** Leistungsdatum (ISO YYYY-MM-DD); null when not stated per-line. */
+  treatmentDate: text('treatment_date'),
   description: text('description'),
   multiplier: real('multiplier').notNull(),
   baseAmount: real('base_amount').notNull(),
