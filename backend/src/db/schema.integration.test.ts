@@ -137,7 +137,7 @@ describe('entity chain', () => {
         monthlyPremium: 80,
         breStructure: {
           type: 'staffel',
-          levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+          levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
           current_streak_start: '2025-01-01',
         },
         includedBenefits: {

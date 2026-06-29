@@ -107,7 +107,7 @@ describe('insured-person mapping', () => {
       selfRetention: 600,
       breStructure: {
         type: 'staffel',
-        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+        levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
       },
       includedBenefits: {
         benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] }],

@@ -2,7 +2,7 @@
 //
 // BRE-Helfer — pure, deterministic helpers around the premium-refund
 // (Beitragsrückerstattung) ladder. See docs/design.md §3.2 (`bre_structure`
-// JSON) and §5.2 (`getCurrentStreakMonths`, `getProjectedBRE`).
+// JSON) and §5.2 (`getCurrentStreakYears`, `getProjectedBRE`).
 //
 // These functions are reused by the Günstigerprüfung (#18), the Stats API
 // (#13) and the BRETracker UI (#20), so they live in @selbstbehalt/shared.
@@ -10,11 +10,11 @@
 // Design rules (issue #17 acceptance criteria):
 //   - Pure & deterministic: the reference date is always injectable via `asOf`;
 //     there is no hidden `Date.now()` baked into the core math.
-//   - Robust against time zones and month boundaries: every input is reduced to
+//   - Robust against time zones and year boundaries: every input is reduced to
 //     a calendar day (year/month/day) and compared at local midnight, so the
 //     time component and the running time zone never shift the result.
 
-import { differenceInMonths } from 'date-fns';
+import { differenceInYears } from 'date-fns';
 
 import type { BRELevel, BREStructure } from '../schemas/insured-person.js';
 import { roundCents } from './money.js';
@@ -26,7 +26,7 @@ export type DateInput = Date | string;
  * Reduce any accepted date input to a `Date` at **local midnight** of that
  * calendar day. A `YYYY-MM-DD` string is read as a calendar date (never as a
  * UTC instant, which `new Date('2024-01-01')` would do), and a `Date` is
- * stripped of its time-of-day. This makes month math depend only on the
+ * stripped of its time-of-day. This makes year math depend only on the
  * calendar day, independent of time zone and time of day.
  */
 function toCalendarDate(value: DateInput): Date {
@@ -41,16 +41,16 @@ function toCalendarDate(value: DateInput): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
-/** Levels sorted by their `leistungsfrei_months` threshold, ascending. */
+/** Levels sorted by their `leistungsfrei_years` threshold, ascending. */
 function sortedLevels(breStructure: BREStructure): BRELevel[] {
-  return [...breStructure.levels].sort((a, b) => a.leistungsfrei_months - b.leistungsfrei_months);
+  return [...breStructure.levels].sort((a, b) => a.leistungsfrei_years - b.leistungsfrei_years);
 }
 
 /**
- * Whole claim-free months elapsed since `current_streak_start`, counted as
- * completed month anniversaries (same semantics as date-fns `differenceInMonths`):
- * a streak that started on the 1st reaches "11 months" only once the 11th
- * monthly anniversary has fully passed.
+ * Whole claim-free **calendar years** elapsed since `current_streak_start`,
+ * counted as completed year anniversaries (same semantics as date-fns
+ * `differenceInYears`): a streak that started on Jan 1 reaches "1 year" only
+ * once the first anniversary has fully passed.
  *
  * Returns `0` when there is no active streak (`current_streak_start` is
  * null/undefined) or when `asOf` precedes the streak start.
@@ -59,37 +59,41 @@ function sortedLevels(breStructure: BREStructure): BRELevel[] {
  * @param asOf reference day; defaults to today. Pass an explicit value in tests
  *   for deterministic results — there is no hidden `Date.now()` in the math.
  */
-export function getCurrentStreakMonths(
+export function getCurrentStreakYears(
   breStructure: BREStructure,
   asOf: DateInput = new Date(),
 ): number {
   const start = breStructure.current_streak_start;
   if (!start) return 0;
 
-  const months = differenceInMonths(toCalendarDate(asOf), toCalendarDate(start));
-  return Math.max(0, months);
+  const years = differenceInYears(toCalendarDate(asOf), toCalendarDate(start));
+  return Math.max(0, years);
 }
 
 /**
- * Compute the EUR refund a level yields for a given monthly premium:
- * `bre_months × monthlyPremium × pct_of_premium / 100`, rounded to whole cents.
+ * Compute the EUR refund a level yields for a given monthly premium.
+ * - Percentage mode: `bre_months × monthlyPremium × pct_of_premium / 100`
+ * - Fixed-amount mode: `fixed_amount_eur` (ignores monthlyPremium)
  */
 function levelAmount(level: BRELevel, monthlyPremium: number): number {
-  return roundCents(level.bre_months * monthlyPremium * (level.pct_of_premium / 100));
+  if (level.fixed_amount_eur !== undefined) {
+    return roundCents(level.fixed_amount_eur);
+  }
+  return roundCents((level.bre_months ?? 0) * monthlyPremium * ((level.pct_of_premium ?? 0) / 100));
 }
 
 /**
  * The staffel level a streak currently entitles the member to: the **highest**
- * level whose `leistungsfrei_months` threshold the streak has reached. Until the
+ * level whose `leistungsfrei_years` threshold the streak has reached. Until the
  * first threshold is met, the lowest level applies — it is the refund being
  * built toward (and the one at stake in the Günstigerprüfung).
  */
-function entitledLevel(breStructure: BREStructure, streakMonths: number): BRELevel {
+function entitledLevel(breStructure: BREStructure, streakYears: number): BRELevel {
   const levels = sortedLevels(breStructure);
   // `levels` is non-empty (schema enforces `.min(1)`), so `[0]` is defined.
   let applicable = levels[0]!;
   for (const level of levels) {
-    if (streakMonths >= level.leistungsfrei_months) {
+    if (streakYears >= level.leistungsfrei_years) {
       applicable = level;
     }
   }
@@ -98,17 +102,17 @@ function entitledLevel(breStructure: BREStructure, streakMonths: number): BRELev
 
 /**
  * Projected annual premium refund (in EUR) for a given number of claim-free
- * months — the refund of the {@link entitledLevel} that streak entitles to, at
+ * years — the refund of the {@link entitledLevel} that streak entitles to, at
  * the given monthly premium. Use this when the streak length is already known
- * (e.g. the per-year `bre_periods.streak_months` in the Stats API, #13) instead
+ * (e.g. the per-year `bre_periods.streak_years` in the Stats API, #13) instead
  * of deriving it from a reference date.
  */
 export function projectedBREForStreak(
   breStructure: BREStructure,
   monthlyPremium: number,
-  streakMonths: number,
+  streakYears: number,
 ): number {
-  return levelAmount(entitledLevel(breStructure, streakMonths), monthlyPremium);
+  return levelAmount(entitledLevel(breStructure, streakYears), monthlyPremium);
 }
 
 /**
@@ -127,21 +131,21 @@ export function getProjectedBRE(
   return projectedBREForStreak(
     breStructure,
     monthlyPremium,
-    getCurrentStreakMonths(breStructure, asOf),
+    getCurrentStreakYears(breStructure, asOf),
   );
 }
 
-/** The upcoming staffel level and how many claim-free months remain to reach it. */
+/** The upcoming staffel level and how many claim-free years remain to reach it. */
 export interface NextLevel {
   /** The next, not-yet-reached level on the ladder. */
   level: BRELevel;
-  /** Whole months still to go before its `leistungsfrei_months` threshold. */
-  monthsRemaining: number;
+  /** Whole years still to go before its `leistungsfrei_years` threshold. */
+  yearsRemaining: number;
 }
 
 /**
- * The next staffel level above the current streak and the months left to reach
- * it — the lowest level whose `leistungsfrei_months` strictly exceeds the
+ * The next staffel level above the current streak and the years left to reach
+ * it — the lowest level whose `leistungsfrei_years` strictly exceeds the
  * current streak. Returns `null` once the streak has reached the top level (no
  * further milestone to climb to).
  *
@@ -151,8 +155,8 @@ export function getNextLevel(
   breStructure: BREStructure,
   asOf: DateInput = new Date(),
 ): NextLevel | null {
-  const streak = getCurrentStreakMonths(breStructure, asOf);
-  const next = sortedLevels(breStructure).find((level) => level.leistungsfrei_months > streak);
+  const streak = getCurrentStreakYears(breStructure, asOf);
+  const next = sortedLevels(breStructure).find((level) => level.leistungsfrei_years > streak);
   if (!next) return null;
-  return { level: next, monthsRemaining: next.leistungsfrei_months - streak };
+  return { level: next, yearsRemaining: next.leistungsfrei_years - streak };
 }

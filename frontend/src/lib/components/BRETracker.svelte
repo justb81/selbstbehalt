@@ -6,7 +6,7 @@
 <script lang="ts">
   import {
     formatEur,
-    getCurrentStreakMonths,
+    getCurrentStreakYears,
     getNextLevel,
     getProjectedBRE,
     type InsuredPerson,
@@ -21,14 +21,14 @@
   } = $props();
 
   const bre = $derived(insuredPerson.bre_structure);
-  const streakMonths = $derived(bre ? getCurrentStreakMonths(bre) : 0);
+  const streakYears = $derived(bre ? getCurrentStreakYears(bre) : 0);
   const projectedBRE = $derived(bre ? getProjectedBRE(bre, insuredPerson.monthly_premium) : 0);
   const nextLevel = $derived(bre ? getNextLevel(bre) : null);
 
   const progressPct = $derived(() => {
     if (!bre || !nextLevel) return 100;
-    const target = nextLevel.level.leistungsfrei_months;
-    return Math.min(100, Math.round((streakMonths / target) * 100));
+    const target = nextLevel.level.leistungsfrei_years;
+    return Math.min(100, Math.round((streakYears / target) * 100));
   });
 
   const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
@@ -38,9 +38,11 @@
   <div class="tracker-header">
     <span class="tracker-label">{label}</span>
     {#if !compact}
-      <span class="streak-value">{streakMonths} Monate leistungsfrei</span>
+      <span class="streak-value"
+        >{streakYears} Jahr{streakYears === 1 ? '' : 'e'} leistungsfrei</span
+      >
     {:else}
-      <span class="streak-compact">{streakMonths} Mo.</span>
+      <span class="streak-compact">{streakYears} J.</span>
     {/if}
   </div>
 
@@ -48,9 +50,9 @@
     <div
       class="progress-bar"
       role="progressbar"
-      aria-valuenow={streakMonths}
+      aria-valuenow={streakYears}
       aria-valuemin={0}
-      aria-valuemax={nextLevel ? nextLevel.level.leistungsfrei_months : streakMonths}
+      aria-valuemax={nextLevel ? nextLevel.level.leistungsfrei_years : streakYears}
     >
       <div class="progress-fill" style="width: {progressPct()}%"></div>
     </div>
@@ -59,10 +61,17 @@
       <div class="tracker-details">
         {#if nextLevel}
           <span class="next-level">
-            Nächste Stufe in {nextLevel.monthsRemaining} Monat{nextLevel.monthsRemaining === 1
+            Nächste Stufe in {nextLevel.yearsRemaining} Jahr{nextLevel.yearsRemaining === 1
               ? ''
               : 'en'}
-            ({nextLevel.level.leistungsfrei_months} Monate → {nextLevel.level.pct_of_premium} %)
+            ({nextLevel.level.leistungsfrei_years} Jahr{nextLevel.level.leistungsfrei_years === 1
+              ? ''
+              : 'e'} →
+            {#if nextLevel.level.fixed_amount_eur !== undefined}
+              {formatEur(nextLevel.level.fixed_amount_eur)}
+            {:else}
+              {nextLevel.level.pct_of_premium} %
+            {/if})
           </span>
         {:else}
           <span class="top-level">Höchste Stufe erreicht</span>

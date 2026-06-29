@@ -23,13 +23,13 @@ let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
 let insuredPersonId: string;
 
-/** Three-tier ladder (12/24/36 months → 1/2/3 premiums) at a €200 premium. */
+/** Three-tier ladder (1/2/3 years → 1/2/3 premiums) at a €200 premium. */
 const ladder = {
   type: 'staffel' as const,
   levels: [
-    { leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 },
-    { leistungsfrei_months: 24, bre_months: 2, pct_of_premium: 100 },
-    { leistungsfrei_months: 36, bre_months: 3, pct_of_premium: 100 },
+    { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
+    { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
+    { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
   ],
   current_streak_start: '2024-01-01',
 };
@@ -115,9 +115,9 @@ beforeEach(() => {
   // BRE ladder progression across three years.
   db.insert(brePeriods)
     .values([
-      { insuredPersonId, year: 2024, streakMonths: 0, breAmount: 0 },
-      { insuredPersonId, year: 2025, streakMonths: 12, breAmount: 200 },
-      { insuredPersonId, year: 2026, streakMonths: 24, breAmount: 400 },
+      { insuredPersonId, year: 2024, streakYears: 0, breAmount: 0 },
+      { insuredPersonId, year: 2025, streakYears: 1, breAmount: 200 },
+      { insuredPersonId, year: 2026, streakYears: 2, breAmount: 400 },
     ])
     .run();
 });
@@ -207,11 +207,11 @@ describe('GET /api/stats/bre/:insuredPersonId', () => {
       insured_person_id: insuredPersonId,
       years: [
         // streak 0 still aims at the first level (1 × €200)
-        { year: 2024, streak_months: 0, bre_amount: 0, projected_bre: 200 },
-        // 12 months → first level (1 × €200)
-        { year: 2025, streak_months: 12, bre_amount: 200, projected_bre: 200 },
-        // 24 months → second level (2 × €200)
-        { year: 2026, streak_months: 24, bre_amount: 400, projected_bre: 400 },
+        { year: 2024, streak_years: 0, bre_amount: 0, projected_bre: 200 },
+        // 1 year → first level (1 × €200)
+        { year: 2025, streak_years: 1, bre_amount: 200, projected_bre: 200 },
+        // 2 years → second level (2 × €200)
+        { year: 2026, streak_years: 2, bre_amount: 400, projected_bre: 400 },
       ],
     });
   });
@@ -221,16 +221,16 @@ describe('GET /api/stats/bre/:insuredPersonId', () => {
     const bareId = makeInsured(db, 'Max', 'Allianz', { monthlyPremium: 50 });
     db.insert(brePeriods)
       .values([
-        { insuredPersonId: bareId, year: 2025, streakMonths: 12, breAmount: 0, projectedBre: 99 },
-        { insuredPersonId: bareId, year: 2026, streakMonths: 24, breAmount: 0 },
+        { insuredPersonId: bareId, year: 2025, streakYears: 1, breAmount: 0, projectedBre: 99 },
+        { insuredPersonId: bareId, year: 2026, streakYears: 2, breAmount: 0 },
       ])
       .run();
 
     const res = await app.request(`/api/stats/bre/${bareId}`);
     const body = await res.json();
     expect(body.years).toEqual([
-      { year: 2025, streak_months: 12, bre_amount: 0, projected_bre: 99 },
-      { year: 2026, streak_months: 24, bre_amount: 0, projected_bre: null },
+      { year: 2025, streak_years: 1, bre_amount: 0, projected_bre: 99 },
+      { year: 2026, streak_years: 2, bre_amount: 0, projected_bre: null },
     ]);
   });
 

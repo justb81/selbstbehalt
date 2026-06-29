@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 
 import { calculateGCP, DEFAULT_DISCOUNT_RATE, type GCP_Input } from './guenstiger-pruefung.js';
 
-/** The three-tier ladder from docs/design.md §3.2 (12/24/36 months → 1/2/3 months, 100 %). */
+/** The three-tier ladder from docs/design.md §3.2 (1/2/3 years → 1/2/3 months, 100 %). */
 function ladder(currentStreakStart: string | null): BREStructure {
   return {
     type: 'staffel',
     levels: [
-      { leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 },
-      { leistungsfrei_months: 24, bre_months: 2, pct_of_premium: 100 },
-      { leistungsfrei_months: 36, bre_months: 3, pct_of_premium: 100 },
+      { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
+      { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
+      { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
     ],
     current_streak_start: currentStreakStart,
   };
@@ -31,7 +31,7 @@ function input(overrides: Partial<GCP_Input> = {}): GCP_Input {
 
 describe('calculateGCP — worked example (design §5.3)', () => {
   // Dr. Müller bill: 85,00 € gross, 62,50 € reimbursable, 150,00 € deductible left,
-  // 11-month streak, 185 €/month premium → recommendation "selbst zahlen".
+  // ~11 months (< 1 year) streak, 185 €/month premium → recommendation "selbst zahlen".
   const result = calculateGCP(input());
 
   it('recommends self-paying', () => {
@@ -43,12 +43,12 @@ describe('calculateGCP — worked example (design §5.3)', () => {
     expect(result.breakdown.refundAfterDeductible).toBe(0);
   });
 
-  it('reads the streak as 11 months', () => {
-    expect(result.breakdown.currentStreakMonths).toBe(11);
+  it('reads the streak as 0 complete years (started 2023-06-01, asOf 2024-05-01)', () => {
+    expect(result.breakdown.currentStreakYears).toBe(0);
   });
 
-  it('projects the forfeited BRE at one monthly premium (lowest level)', () => {
-    // Streak 11 < 12 ⇒ lowest level: 1 × 185 € × 100 % = 185,00 €.
+  it('projects the forfeited BRE at one monthly premium (lowest level, below 1-year threshold)', () => {
+    // Streak 0 years < 1 year threshold ⇒ lowest level: 1 × 185 € × 100 % = 185,00 €.
     expect(result.breakdown.projectedBRELoss).toBe(185);
   });
 
@@ -198,9 +198,9 @@ describe('calculateGCP — discounting', () => {
 
 describe('calculateGCP — streak entitlement', () => {
   it('raises the projected loss as the streak climbs the ladder', () => {
-    const common = { monthlyPremium: 100, taxRate: 0, asOf: '2025-06-01' } as const;
-    const young = calculateGCP(input({ ...common, breStructure: ladder('2024-06-01') })); // ~12 mo
-    const old = calculateGCP(input({ ...common, breStructure: ladder('2022-06-01') })); // ~36 mo
+    const common = { monthlyPremium: 100, asOf: '2025-06-01' } as const;
+    const young = calculateGCP(input({ ...common, breStructure: ladder('2024-06-01') })); // ~1 yr
+    const old = calculateGCP(input({ ...common, breStructure: ladder('2022-06-01') })); // ~3 yr
     // 1 month premium at level 1 vs 3 months at the top level.
     expect(young.breakdown.projectedBRELoss).toBe(100);
     expect(old.breakdown.projectedBRELoss).toBe(300);

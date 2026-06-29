@@ -53,8 +53,8 @@ export type YearStats = z.infer<typeof yearStatsSchema>;
 /** One year on an insured person's premium-refund (BRE) progression (see #13). */
 export const breHistoryYearSchema = z.object({
   year: z.number().int(),
-  /** Claim-free months recorded for that year (`bre_periods.streak_months`). */
-  streak_months: z.number().int().nonnegative(),
+  /** Claim-free years recorded for that year (`bre_periods.streak_years`). */
+  streak_years: z.number().int().nonnegative(),
   /** Premium refund actually booked that year (`bre_periods.bre_amount`). */
   bre_amount: money,
   /**

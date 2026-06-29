@@ -7,7 +7,7 @@ import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
 
 const BREAKDOWN = {
   refundAfterDeductible: 200,
-  currentStreakMonths: 6,
+  currentStreakYears: 0,
   projectedBRELoss: 500,
   lostBREValue_NPV: 487,
   monthsToYearEnd: 4,
