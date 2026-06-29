@@ -300,6 +300,7 @@
 
 <form
   class="card"
+  novalidate
   onsubmit={(e) => {
     e.preventDefault();
     handleSubmit();
