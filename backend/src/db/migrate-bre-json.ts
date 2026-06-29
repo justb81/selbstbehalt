@@ -15,11 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { eq, isNotNull } from 'drizzle-orm';
 
 import { loadConfig } from '../config.js';
-import { createDb } from './client.js';
+import { createDb, type DbHandle } from './client.js';
 import { runMigrations } from './migrate.js';
 import { insuredPersons } from './schema.js';
 
-type LegacyLevel = {
+export type LegacyLevel = {
   leistungsfrei_months?: number;
   bre_months?: number;
   claim_free_years?: number;
@@ -28,7 +28,7 @@ type LegacyLevel = {
   fixed_amount_eur?: number;
 };
 
-function migrateLevel(level: LegacyLevel): LegacyLevel {
+export function migrateLevel(level: LegacyLevel): LegacyLevel {
   const out: LegacyLevel = { ...level };
 
   if ('leistungsfrei_months' in out && !('claim_free_years' in out)) {
@@ -44,40 +44,46 @@ function migrateLevel(level: LegacyLevel): LegacyLevel {
   return out;
 }
 
+/** Rewrite legacy bre_structure JSON in all insured_persons rows. Returns the count of updated rows. */
+export function migrateBreJson(handle: DbHandle): number {
+  const rows = handle.db
+    .select({ id: insuredPersons.id, breStructure: insuredPersons.breStructure })
+    .from(insuredPersons)
+    .where(isNotNull(insuredPersons.breStructure))
+    .all();
+
+  let migrated = 0;
+  for (const row of rows) {
+    const structure = row.breStructure;
+    if (!structure) continue;
+
+    const needsMigration = structure.levels.some(
+      (l: LegacyLevel) => 'leistungsfrei_months' in l || 'bre_months' in l,
+    );
+    if (!needsMigration) continue;
+
+    const updated = { ...structure, levels: structure.levels.map(migrateLevel) };
+    handle.db
+      .update(insuredPersons)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set({ breStructure: updated as any })
+      .where(eq(insuredPersons.id, row.id))
+      .run();
+    migrated++;
+  }
+
+  return migrated;
+}
+
 function run(): void {
   const { databasePath } = loadConfig();
   const handle = createDb(databasePath);
   try {
     runMigrations(handle);
-
-    const rows = handle.db
-      .select({ id: insuredPersons.id, breStructure: insuredPersons.breStructure })
-      .from(insuredPersons)
-      .where(isNotNull(insuredPersons.breStructure))
-      .all();
-
-    let migrated = 0;
-    for (const row of rows) {
-      const structure = row.breStructure;
-      if (!structure) continue;
-
-      const needsMigration = structure.levels.some(
-        (l: LegacyLevel) => 'leistungsfrei_months' in l || 'bre_months' in l,
-      );
-      if (!needsMigration) continue;
-
-      const updated = { ...structure, levels: structure.levels.map(migrateLevel) };
-      handle.db
-        .update(insuredPersons)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .set({ breStructure: updated as any })
-        .where(eq(insuredPersons.id, row.id))
-        .run();
-      migrated++;
-    }
-
+    const migrated = migrateBreJson(handle);
+    const total = handle.db.select().from(insuredPersons).all().length;
     console.log(
-      `Checked ${rows.length} insured person(s). Migrated ${migrated} bre_structure JSON field(s).`,
+      `Checked ${total} insured person(s). Migrated ${migrated} bre_structure JSON field(s).`,
     );
   } finally {
     handle.sqlite.close();
