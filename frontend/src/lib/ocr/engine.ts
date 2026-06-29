@@ -52,6 +52,7 @@ export interface PaddleOcrServiceOptions {
  */
 export interface PaddleOcrPlatformLike {
   createCanvas?: (width: number, height: number) => unknown;
+  isCanvas?: (image: unknown) => boolean;
 }
 
 /** The `PaddleOcrService` instance surface this adapter drives. */
@@ -128,10 +129,12 @@ function defaultToImageSource(image: ImageData): unknown {
 }
 
 /**
- * `ppu-paddle-ocr`'s web platform creates intermediate canvases (detection
- * padding/resize) with `document.createElement`, which does not exist in a Web
- * Worker. Swap in an `OffscreenCanvas` factory so recognition runs off the main
- * thread (docs/design.md §4.2: OCR must not block the UI thread).
+ * `ppu-paddle-ocr`'s web platform is written for the main thread: `createCanvas`
+ * uses `document.createElement` (absent in a Worker), and `isCanvas` does an
+ * unguarded `instanceof HTMLCanvasElement` (a window-only global, so the bare
+ * reference *throws* `HTMLCanvasElement is not defined` in a Worker). Swap both
+ * for `OffscreenCanvas`-based, worker-safe versions so recognition runs off the
+ * main thread (docs/design.md §4.2: OCR must not block the UI thread).
  */
 function patchPlatformForWorker(service: PaddleOcrServiceLike): void {
   if (typeof OffscreenCanvas === 'undefined') return;
@@ -141,6 +144,15 @@ function patchPlatformForWorker(service: PaddleOcrServiceLike): void {
     const canvas = new OffscreenCanvas(width, height);
     canvas.getContext('2d', { willReadFrequently: true });
     return canvas;
+  };
+  platform.isCanvas = (image: unknown): boolean => {
+    if (typeof OffscreenCanvas !== 'undefined' && image instanceof OffscreenCanvas) return true;
+    if (typeof HTMLCanvasElement !== 'undefined' && image instanceof HTMLCanvasElement) return true;
+    return (
+      typeof image === 'object' &&
+      image !== null &&
+      typeof (image as { getContext?: unknown }).getContext === 'function'
+    );
   };
 }
 
