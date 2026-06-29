@@ -1,28 +1,42 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungserfassung (docs/design.md §6.1, issues #22/#26/#109): thin wrapper
-  around InvoiceForm. OCR scanning and form state live in the shared component.
+  Rechnungsbearbeitung (issue #119): edit a saved invoice's header fields and
+  positions, and re-validate positions against the Gebührenordnung. Only
+  invoices with status 'neu', 'geprüft', or 'selbst_gezahlt' are editable
+  (before any formal submission to the insurer).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
-  import type { InsuredPerson } from '@selbstbehalt/shared';
+  import type { InsuredPerson, InvoiceWithPositions } from '@selbstbehalt/shared';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
+  import LoadingState from '$lib/components/LoadingState.svelte';
+  import ErrorState from '$lib/components/ErrorState.svelte';
+
+  const EDITABLE_STATUSES = new Set(['neu', 'geprüft', 'selbst_gezahlt']);
+
+  const invoiceId = $derived(page.params.id as string);
 
   type InsuredOption = { id: string; label: string; insuredPerson: InsuredPerson };
 
+  let invoice = $state<InvoiceWithPositions | null>(null);
   let insuredOptions = $state<InsuredOption[]>([]);
-  let loadingPersons = $state(true);
+  let loading = $state(true);
   let loadError = $state<string | null>(null);
 
-  async function loadPersons() {
-    loadingPersons = true;
+  async function load() {
+    loading = true;
     loadError = null;
     try {
-      const contracts = await api.contracts.list();
+      const [inv, contracts] = await Promise.all([
+        api.invoices.get(invoiceId),
+        api.contracts.list(),
+      ]);
+      invoice = inv;
       const lists = await Promise.all(
         contracts.map(async (c) => {
           const persons = await api.insured.list(c.id);
@@ -34,23 +48,26 @@
         }),
       );
       insuredOptions = lists.flat();
-    } catch {
-      loadError = 'Versicherte Personen konnten nicht geladen werden.';
+    } catch (e) {
+      loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
-      loadingPersons = false;
+      loading = false;
     }
   }
 
-  onMount(loadPersons);
+  onMount(load);
+
+  const isEditable = $derived(invoice ? EDITABLE_STATUSES.has(invoice.status) : false);
 
   let saving = $state(false);
   let formError = $state<string | null>(null);
 
   async function handleSave(payload: FormPayload) {
+    if (!invoice) return;
     formError = null;
     saving = true;
     try {
-      const invoice = await api.invoices.create({
+      await api.invoices.update(invoice.id, {
         insured_person_id: payload.insured_person_id,
         invoice_date: payload.invoice_date,
         invoice_number: payload.invoice_number,
@@ -59,43 +76,55 @@
         total_amount: payload.total_amount,
         eligible_amount: payload.eligible_amount,
         notes: payload.notes,
-        ocr_raw: payload.ocr_raw,
-        positions: payload.positions.length > 0 ? payload.positions : undefined,
+        positions: payload.positions,
       });
       await goto(resolve('/invoices/[id]', { id: invoice.id }));
     } catch (e) {
       formError =
         e instanceof ApiError || e instanceof Error
           ? e.message
-          : 'Rechnung konnte nicht gespeichert werden.';
+          : 'Änderungen konnten nicht gespeichert werden.';
       saving = false;
     }
   }
 </script>
 
-<svelte:head><title>Rechnung erfassen · selbstbehalt</title></svelte:head>
+<svelte:head>
+  <title>
+    {invoice ? `${invoice.provider_name} bearbeiten` : 'Rechnung bearbeiten'} · selbstbehalt
+  </title>
+</svelte:head>
 
 <section class="page">
   <div class="back-row">
-    <a href={resolve('/invoices')} class="back-link">← Rechnungen</a>
+    <a href={resolve('/invoices/[id]', { id: invoiceId })} class="back-link">← Zurück</a>
   </div>
-  <h1>Rechnung erfassen</h1>
+  <h1>{invoice ? `${invoice.provider_name} bearbeiten` : 'Rechnung bearbeiten'}</h1>
 
-  {#if loadingPersons}
-    <p class="muted">Daten werden geladen …</p>
+  {#if loading}
+    <LoadingState label="Rechnungsdaten werden geladen …" />
   {:else if loadError}
-    <p class="error" role="alert">{loadError}</p>
-  {:else if insuredOptions.length === 0}
-    <div class="empty-notice">
-      <p>Noch keine versicherten Personen vorhanden.</p>
-      <a href={resolve('/contracts/new')} class="btn-primary">Vertrag anlegen</a>
+    <ErrorState title="Fehler" message={loadError} onRetry={load} />
+  {:else if invoice && !isEditable}
+    <div class="locked-notice">
+      <p>
+        Diese Rechnung hat den Status <strong>{invoice.status}</strong> und kann nicht mehr bearbeitet
+        werden.
+      </p>
+      <a href={resolve('/invoices/[id]', { id: invoice.id })} class="btn-secondary">
+        Zur Rechnung
+      </a>
     </div>
-  {:else}
-    <InvoiceForm mode="create" {insuredOptions} {saving} {formError} onSave={handleSave}>
-      {#snippet cancel()}
-        <a href={resolve('/invoices')} class="btn-secondary">Abbrechen</a>
-      {/snippet}
-    </InvoiceForm>
+  {:else if invoice}
+    <InvoiceForm
+      mode="edit"
+      initialData={invoice}
+      {insuredOptions}
+      cancelHref={resolve('/invoices/[id]', { id: invoice.id })}
+      {saving}
+      {formError}
+      onSave={handleSave}
+    />
   {/if}
 </section>
 
@@ -120,39 +149,20 @@
     color: var(--color-primary);
   }
 
-  .muted {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .empty-notice {
+  .locked-notice {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: var(--space-3);
-    padding: var(--space-8);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
     color: var(--color-text-muted);
-    text-align: center;
   }
 
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
+  .locked-notice p {
+    margin: 0;
   }
 
   .btn-secondary {
@@ -166,6 +176,7 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
+    width: fit-content;
   }
 
   .btn-secondary:hover {

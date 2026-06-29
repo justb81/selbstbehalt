@@ -8,7 +8,7 @@
 import {
   invoiceCreatePayloadSchema,
   invoiceStatusValues,
-  invoiceUpdateSchema,
+  invoiceUpdatePayloadSchema,
   submissionInputSchema,
   submissionUpdateSchema,
   uuid,
@@ -131,12 +131,26 @@ export function createInvoicesRoute(db: Database) {
       const id = c.req.param('id');
       if (!findInvoice(db, id))
         throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
-      const input = await parseJsonBody(c, invoiceUpdateSchema);
+      const input = await parseJsonBody(c, invoiceUpdatePayloadSchema);
       if (input.insured_person_id !== undefined)
         assertInsuredPersonExists(db, input.insured_person_id);
 
-      const changes = toInvoiceUpdate(input);
-      if (Object.keys(changes).length > 0) {
+      const { positions, ...invoiceInput } = input;
+      const changes = toInvoiceUpdate(invoiceInput);
+
+      if (positions !== undefined) {
+        db.transaction((tx) => {
+          if (Object.keys(changes).length > 0) {
+            tx.update(invoices).set(changes).where(eq(invoices.id, id)).run();
+          }
+          tx.delete(invoicePositions).where(eq(invoicePositions.invoiceId, id)).run();
+          if (positions.length > 0) {
+            tx.insert(invoicePositions)
+              .values(positions.map((p) => toPositionInsert(id, p)))
+              .run();
+          }
+        });
+      } else if (Object.keys(changes).length > 0) {
         db.update(invoices).set(changes).where(eq(invoices.id, id)).run();
       }
       return c.json(invoiceWithPositions(db, id));
