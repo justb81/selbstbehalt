@@ -3,7 +3,8 @@
   Shared invoice form used by both the create page (/invoices/new) and the edit
   page (/invoices/[id]/edit). Mode-specific features:
     create — OCR scanner, OCR opt-in checkbox
-    edit   — "Positionen neu prüfen" re-validation button, pre-filled from initialData
+    edit   — pre-filled from initialData
+  "Positionen prüfen" is available in both modes whenever there are positions.
 -->
 <script lang="ts">
   import { onDestroy, untrack, type Snippet } from 'svelte';
@@ -11,9 +12,11 @@
     goaeCategoryValues,
     providerTypeValues,
     roundCents,
+    type BenefitCategory,
     type GoaeCategory,
     type InvoicePositionInput,
     type InvoiceWithPositions,
+    type InsuredPerson,
     type ProviderType,
   } from '@selbstbehalt/shared';
   import {
@@ -26,6 +29,7 @@
   import { loadFeeTable } from '$lib/data/fee-tables';
   import { buildIndex, lookupPosition, type RawPosition } from '$lib/utils/goae-parser';
   import type { FeeScheduleId } from '$lib/data/fee-schedule';
+  import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
   import OCRScanner from './OCRScanner.svelte';
 
   // ---------------------------------------------------------------------------
@@ -82,7 +86,7 @@
   }: {
     mode: 'create' | 'edit';
     initialData?: InvoiceWithPositions;
-    insuredOptions: { id: string; label: string }[];
+    insuredOptions: { id: string; label: string; insuredPerson?: InsuredPerson }[];
     /** Snippet rendered next to the submit button — typically a cancel link from the parent. */
     cancel?: Snippet;
     disabled?: boolean;
@@ -197,7 +201,7 @@
   onDestroy(disposeScanOcr);
 
   // ---------------------------------------------------------------------------
-  // Re-validate (edit mode only)
+  // Re-validate positions
   // ---------------------------------------------------------------------------
 
   let revalidating = $state(false);
@@ -221,6 +225,9 @@
       const tables = new Map(tableEntries);
       const indexes = new Map([...tables.entries()].map(([s, t]) => [s, buildIndex(t)]));
 
+      // Collect benefitCategory per position for eligible_amount computation below.
+      const benefitCategories: (BenefitCategory | null)[] = [];
+
       positions = positions.map((pos) => {
         const schedule = categoryToSchedule(pos.goae_category);
         const table = tables.get(schedule)!;
@@ -235,12 +242,46 @@
           detectedSchedule: null,
         };
         const result = lookupPosition(raw, table, index);
+        benefitCategories.push(result.benefitCategory);
         return {
           ...pos,
+          // Supplement description from fee table if currently empty.
+          description: pos.description || result.description || '',
+          // Always take base_amount from the table when the Ziffer is known.
+          base_amount: result.baseAmount ?? pos.base_amount,
           is_valid: result.isValid,
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
         };
       });
+
+      // Propagate treatment_date forward: positions without their own date
+      // inherit from the nearest preceding position that has one.
+      let lastDate = '';
+      positions = positions.map((pos) => {
+        if (pos.treatment_date) {
+          lastDate = pos.treatment_date;
+          return pos;
+        }
+        return lastDate ? { ...pos, treatment_date: lastDate } : pos;
+      });
+
+      // Recalculate eligible_amount when the insured person's tariff data is
+      // available. Positions with an unknown Ziffer (benefitCategory == null)
+      // fall back to 'sonstiges'; the tariff will return 0 for uncovered areas.
+      const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
+      if (insuredPerson?.included_benefits && insuredPerson.start_date) {
+        const erstattungPositions: ErstattungPosition[] = positions.map((pos, i) => ({
+          category: (benefitCategories[i] ?? 'sonstiges') as BenefitCategory,
+          chargedAmount: pos.charged_amount,
+        }));
+        const result = computeErstattung({
+          positions: erstattungPositions,
+          benefits: insuredPerson.included_benefits,
+          invoiceDate,
+          coverageStart: insuredPerson.start_date,
+        });
+        eligibleAmount = result.eligibleAmount;
+      }
     } catch (e) {
       revalidateError = e instanceof Error ? e.message : 'Neuprüfung fehlgeschlagen.';
     } finally {
@@ -426,16 +467,14 @@
     <div class="positions-header">
       <h2>GOÄ/GOZ-Positionen</h2>
       <div class="positions-header-actions">
-        {#if mode === 'edit'}
-          <button
-            type="button"
-            class="btn-secondary"
-            onclick={revalidatePositions}
-            disabled={revalidating || disabled || positions.length === 0}
-          >
-            {revalidating ? 'Wird geprüft …' : 'Positionen neu prüfen'}
-          </button>
-        {/if}
+        <button
+          type="button"
+          class="btn-secondary"
+          onclick={revalidatePositions}
+          disabled={revalidating || disabled || positions.length === 0}
+        >
+          {revalidating ? 'Wird geprüft …' : 'Positionen prüfen'}
+        </button>
         <button type="button" class="btn-text" onclick={addPosition} {disabled}>
           + Position hinzufügen
         </button>
