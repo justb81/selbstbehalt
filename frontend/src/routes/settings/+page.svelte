@@ -289,7 +289,10 @@
           {/if}
         </div>
         <label class="cursor-pointer">
-          <Button variant="outline" as="span">Backup auswählen …</Button>
+          <span
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground px-4 py-2 cursor-pointer"
+            >Backup auswählen …</span
+          >
           <input type="file" accept=".sqlite,.db,.sqlite3" onchange={onFileChosen} class="hidden" />
         </label>
       </div>
