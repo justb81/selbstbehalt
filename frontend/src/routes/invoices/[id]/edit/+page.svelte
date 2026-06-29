@@ -116,6 +116,7 @@
       </a>
     </div>
   {:else if invoice}
+    {@const invoiceId = invoice.id}
     <InvoiceForm
       mode="edit"
       initialData={invoice}
@@ -125,7 +126,7 @@
       onSave={handleSave}
     >
       {#snippet cancel()}
-        <a href={resolve('/invoices/[id]', { id: invoice.id })} class="btn-secondary">Abbrechen</a>
+        <a href={resolve('/invoices/[id]', { id: invoiceId })} class="btn-secondary">Abbrechen</a>
       {/snippet}
     </InvoiceForm>
   {/if}
