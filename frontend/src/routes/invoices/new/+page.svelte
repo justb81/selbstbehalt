@@ -11,6 +11,8 @@
   import type { InsuredPerson } from '@selbstbehalt/shared';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   type InsuredOption = { id: string; label: string; insuredPerson: InsuredPerson };
 
@@ -75,100 +77,33 @@
 
 <svelte:head><title>Rechnung erfassen · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="back-row">
-    <a href={resolve('/invoices')} class="back-link">← Rechnungen</a>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div>
+    <a
+      href={resolve('/invoices')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Rechnungen
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight mt-1">Rechnung erfassen</h1>
   </div>
-  <h1>Rechnung erfassen</h1>
 
   {#if loadingPersons}
-    <p class="muted">Daten werden geladen …</p>
+    <p class="text-sm text-muted-foreground">Daten werden geladen …</p>
   {:else if loadError}
-    <p class="error" role="alert">{loadError}</p>
+    <Alert variant="destructive">
+      <AlertDescription>{loadError}</AlertDescription>
+    </Alert>
   {:else if insuredOptions.length === 0}
-    <div class="empty-notice">
-      <p>Noch keine versicherten Personen vorhanden.</p>
-      <a href={resolve('/contracts/new')} class="btn-primary">Vertrag anlegen</a>
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <p class="text-muted-foreground">Noch keine versicherten Personen vorhanden.</p>
+      <Button class="mt-4" href={resolve('/contracts/new')}>Vertrag anlegen</Button>
     </div>
   {:else}
     <InvoiceForm mode="create" {insuredOptions} {saving} {formError} onSave={handleSave}>
       {#snippet cancel()}
-        <a href={resolve('/invoices')} class="btn-secondary">Abbrechen</a>
+        <Button variant="outline" href={resolve('/invoices')}>Abbrechen</Button>
       {/snippet}
     </InvoiceForm>
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .muted {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .empty-notice {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-8);
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-</style>
+</div>
