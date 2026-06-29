@@ -19,6 +19,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:migrate-bre-json": "tsx src/db/migrate-bre-json.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
