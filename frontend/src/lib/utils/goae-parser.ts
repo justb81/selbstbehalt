@@ -77,15 +77,17 @@ export interface RawPosition {
    * per-line date prefix (e.g. `07.05.24`). `null` when the line has no prefix.
    * Relevant for Sammelrechnungen: different positions may fall in different
    * years, and the BRE always uses the treatment date, not the invoice date.
+   * Optional so tests that construct minimal `RawPosition` fixtures compile.
    */
-  treatmentDate: string | null;
+  treatmentDate?: string | null;
   /**
    * Fee schedule identified from a prefix letter on the line (`Ä`→GOÄ,
    * `Z`→GOZ). `null` means "use the invoice's primary/default schedule".
    * Allows mixed GOÄ+GOZ invoices (e.g. an orthodontist billing GOZ codes plus
    * GOÄ consultation codes on the same invoice).
+   * Optional so tests that construct minimal `RawPosition` fixtures compile.
    */
-  detectedSchedule: FeeScheduleId | null;
+  detectedSchedule?: FeeScheduleId | null;
 }
 
 /** Why a single position was flagged during lookup / §5 validation. */
@@ -509,7 +511,7 @@ export function lookupPosition(
       isValid: false,
       flags,
       raw: raw.raw,
-      treatmentDate: raw.treatmentDate,
+      treatmentDate: raw.treatmentDate ?? null,
       feeSchedule: table.feeSchedule,
     };
   }
@@ -552,7 +554,7 @@ export function lookupPosition(
     isValid: flags.length === 0,
     flags,
     raw: raw.raw,
-    treatmentDate: raw.treatmentDate,
+    treatmentDate: raw.treatmentDate ?? null,
     feeSchedule: table.feeSchedule,
   };
 }

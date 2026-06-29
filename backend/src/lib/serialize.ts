@@ -232,6 +232,8 @@ export function serializePosition(row: PositionRow): InvoicePosition {
     invoice_id: row.invoiceId,
     goae_number: row.goaeNumber,
     goae_category: row.goaeCategory,
+    quantity: row.quantity,
+    treatment_date: row.treatmentDate ?? null,
     description: row.description,
     multiplier: row.multiplier,
     base_amount: row.baseAmount,
@@ -241,11 +243,18 @@ export function serializePosition(row: PositionRow): InvoicePosition {
   };
 }
 
-export function toPositionInsert(invoiceId: string, input: InvoicePositionInput): PositionInsert {
+// Zod 3 treats `.default()` fields as optional in the inferred input type when
+// the schema is embedded inside another schema (e.g. z.array). Accept quantity
+// as optional here and fall back to 1 — the DB column also defaults to 1.
+type PositionInputCompat = Omit<InvoicePositionInput, 'quantity'> & { quantity?: number };
+
+export function toPositionInsert(invoiceId: string, input: PositionInputCompat): PositionInsert {
   return {
     invoiceId,
     goaeNumber: input.goae_number,
     goaeCategory: input.goae_category,
+    quantity: input.quantity ?? 1,
+    treatmentDate: input.treatment_date,
     description: input.description,
     multiplier: input.multiplier,
     baseAmount: input.base_amount,
