@@ -306,6 +306,53 @@ describe('parsePositionLine / extractPositions', () => {
     });
   });
 
+  it('parses a line where € appears as a separate trailing token', () => {
+    // PVS-style invoices print "26,14 €" with the € as a standalone token.
+    // Before the fix the trailing-number loop stopped at € and returned null.
+    const p = parsePositionLine('800 Eingeh. neurologische Untersuchung 2,30 26,14 €');
+    expect(p).toMatchObject({ ziffer: '800', multiplier: 2.3, chargedAmount: 26.14, quantity: 1 });
+  });
+
+  it('joins a continuation line with € suffix onto the preceding line', () => {
+    // OCR wraps "17,43 €" onto its own line; BARE_NUMBER_RE must match €.
+    const text = ['75 Befundbericht 2,30', '17,43 €'].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(1);
+    expect(positions[0]).toMatchObject({ ziffer: '75', multiplier: 2.3, chargedAmount: 17.43 });
+  });
+
+  it('joins a multi-number continuation line (factor + amount) onto the preceding line', () => {
+    // OCR wraps both the factor and amount onto a single continuation line.
+    const text = ['5298 Zuschlag bei digitaler Radiographie', '1,00 1,46 €'].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(1);
+    expect(positions[0]).toMatchObject({ ziffer: '5298', multiplier: 1.0, chargedAmount: 1.46 });
+  });
+
+  it('parses a PVS-style invoice with € tokens, continuation lines, and missing Ziffern', () => {
+    // Regression test for real PVS Baden-Württemberg invoice format.
+    // Lines without a leading Ziffer (OCR column-layout failure) are silently ignored.
+    const text = [
+      '06.03.2026',
+      'Beratung, auch mittels Fernsprecher 2,30 10,72 €',
+      '800 Eingeh. neurologische Untersuchung 2,30 26,14 €',
+      '831 Vegetative Funktionsdiagnostik 2,30 10,72 €',
+      '75 Ausführl. Befund- od. Krankheitsbericht 2,30',
+      '17,43 €',
+      '5298 Zuschlag bei digitaler Radiographie',
+      '1,00 1,46 €',
+      '410 Ultraschalluntersuchung eines Organes',
+      '3,00 34,97 €',
+      '420 Ultraschalluntersuchung von bis zu drei 2,30 10,72 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['800', '831', '75', '5298', '410', '420']);
+    expect(positions[0]).toMatchObject({ multiplier: 2.3, chargedAmount: 26.14 });
+    expect(positions[2]).toMatchObject({ ziffer: '75', multiplier: 2.3, chargedAmount: 17.43 });
+    expect(positions[3]).toMatchObject({ ziffer: '5298', multiplier: 1.0, chargedAmount: 1.46 });
+    expect(positions[4]).toMatchObject({ ziffer: '410', multiplier: 3.0, chargedAmount: 34.97 });
+  });
+
   it('parses a realistic GOÄ/GOZ dental invoice with mixed prefixes and column order', () => {
     const text = [
       '25.01.24 OK 6050 Starke Einengung der Stützzonen. 3,5000 1 59,05',
