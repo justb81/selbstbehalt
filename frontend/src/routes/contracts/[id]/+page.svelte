@@ -11,9 +11,15 @@
   import { api, ApiError } from '$lib/api';
   import {
     contractTypeValues,
+    benefitCategoryValues,
+    benefitLimitScopeValues,
+    includedBenefitsSchema,
     formatEur,
     type BRELevel,
     type BREStructure,
+    type BenefitCategory,
+    type BenefitLimitScope,
+    type IncludedBenefits,
     type Contract,
     type ContractType,
     type InsuredPerson,
@@ -27,6 +33,24 @@
     vollversicherung: 'Vollversicherung',
     zusatztarif: 'Zusatztarif',
     beihilfe: 'Beihilfe',
+  };
+
+  const BENEFIT_CATEGORY_LABELS: Record<BenefitCategory, string> = {
+    ambulant: 'Ambulant',
+    stationaer: 'Stationär',
+    zahnbehandlung: 'Zahnbehandlung',
+    zahnersatz: 'Zahnersatz',
+    kieferorthopaedie: 'Kieferorthopädie',
+    heilmittel: 'Heilmittel',
+    hilfsmittel: 'Hilfsmittel',
+    wahlleistung: 'Wahlleistungen (Krankenhaus)',
+    sonstiges: 'Sonstiges',
+  };
+
+  const BENEFIT_LIMIT_SCOPE_LABELS: Record<BenefitLimitScope, string> = {
+    behandlung: 'Je Behandlungsfall',
+    jahr: 'Pro Kalenderjahr',
+    lebenslang: 'Lebenslang',
   };
 
   const contractId = $derived(page.params.id as string);
@@ -144,6 +168,29 @@
   let savingInsured = $state(false);
   let insuredSaveError = $state<string | null>(null);
 
+  // ---- Included benefits UI state ----
+  type UiBenefitTier = { up_to: number; pct: number };
+  type UiBenefitLimit = {
+    scope: BenefitLimitScope;
+    max_amount: number | undefined;
+    age_min: number | undefined;
+    age_max: number | undefined;
+  };
+  type UiAnnualStaffelEntry = { policy_year: number; cumulative_cap: number | undefined };
+  type UiBenefit = {
+    category: BenefitCategory;
+    waiting_period_months: number | undefined;
+    beihilfe_satz: number | undefined;
+    hasTiers: boolean;
+    tiers: UiBenefitTier[];
+    hasLimits: boolean;
+    limits: UiBenefitLimit[];
+    hasStaffel: boolean;
+    annual_staffel: UiAnnualStaffelEntry[];
+  };
+  let ipHasIncludedBenefits = $state(false);
+  let ipBenefits = $state<UiBenefit[]>([]);
+
   function addBreLevel() {
     ipBreLevels = [
       ...ipBreLevels,
@@ -153,6 +200,99 @@
 
   function removeBreLevel(i: number) {
     ipBreLevels = ipBreLevels.filter((_, idx) => idx !== i);
+  }
+
+  function defaultBenefit(): UiBenefit {
+    return {
+      category: 'ambulant',
+      waiting_period_months: undefined,
+      beihilfe_satz: undefined,
+      hasTiers: false,
+      tiers: [{ up_to: 1000, pct: 100 }],
+      hasLimits: false,
+      limits: [],
+      hasStaffel: false,
+      annual_staffel: [],
+    };
+  }
+
+  function addBenefit() {
+    ipBenefits.push(defaultBenefit());
+  }
+
+  function removeBenefit(i: number) {
+    ipBenefits.splice(i, 1);
+  }
+
+  function addTier(benefitIdx: number) {
+    const tiers = ipBenefits[benefitIdx]!.tiers;
+    const prevUpTo = tiers.length >= 2 ? tiers[tiers.length - 2]!.up_to : 0;
+    tiers.splice(tiers.length - 1, 0, { up_to: prevUpTo + 500, pct: 100 });
+  }
+
+  function removeTier(benefitIdx: number, tierIdx: number) {
+    const tiers = ipBenefits[benefitIdx]!.tiers;
+    if (tierIdx === tiers.length - 1) return;
+    tiers.splice(tierIdx, 1);
+  }
+
+  function addLimit(benefitIdx: number) {
+    ipBenefits[benefitIdx]!.limits.push({
+      scope: 'jahr',
+      max_amount: undefined,
+      age_min: undefined,
+      age_max: undefined,
+    });
+  }
+
+  function removeLimit(benefitIdx: number, limitIdx: number) {
+    ipBenefits[benefitIdx]!.limits.splice(limitIdx, 1);
+  }
+
+  function addStaffelEntry(benefitIdx: number) {
+    const staffel = ipBenefits[benefitIdx]!.annual_staffel;
+    const nextYear = staffel.length > 0 ? staffel[staffel.length - 1]!.policy_year + 1 : 1;
+    staffel.push({ policy_year: nextYear, cumulative_cap: undefined });
+  }
+
+  function removeStaffelEntry(benefitIdx: number, entryIdx: number) {
+    ipBenefits[benefitIdx]!.annual_staffel.splice(entryIdx, 1);
+  }
+
+  function buildIncludedBenefits(): IncludedBenefits | null {
+    if (!ipHasIncludedBenefits || ipBenefits.length === 0) return null;
+    return includedBenefitsSchema.parse({
+      benefits: ipBenefits.map((b) => {
+        const benefit: Record<string, unknown> = { category: b.category };
+        if (b.waiting_period_months !== undefined)
+          benefit['waiting_period_months'] = b.waiting_period_months;
+        if (b.beihilfe_satz !== undefined) benefit['beihilfe_satz'] = b.beihilfe_satz;
+        if (b.hasTiers && b.tiers.length > 0) {
+          benefit['tiers'] = b.tiers.map((t, idx) => ({
+            pct: t.pct,
+            up_to: idx === b.tiers.length - 1 ? null : t.up_to,
+          }));
+        }
+        if (b.hasLimits && b.limits.length > 0) {
+          benefit['limits'] = b.limits.map((l) => {
+            const limit: Record<string, unknown> = {
+              scope: l.scope,
+              max_amount: l.max_amount ?? null,
+            };
+            if (l.age_min !== undefined) limit['age_min'] = l.age_min;
+            if (l.age_max !== undefined) limit['age_max'] = l.age_max;
+            return limit;
+          });
+        }
+        if (b.hasStaffel && b.annual_staffel.length > 0) {
+          benefit['annual_staffel'] = b.annual_staffel.map((e) => ({
+            policy_year: e.policy_year,
+            cumulative_cap: e.cumulative_cap ?? null,
+          }));
+        }
+        return benefit;
+      }),
+    });
   }
 
   function openNewInsuredForm() {
@@ -168,6 +308,8 @@
     ipHasBre = false;
     ipStreakStart = '';
     ipBreLevels = [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }];
+    ipHasIncludedBenefits = false;
+    ipBenefits = [];
     insuredSaveError = null;
     showInsuredForm = true;
   }
@@ -190,6 +332,33 @@
       ipHasBre = false;
       ipStreakStart = '';
       ipBreLevels = [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }];
+    }
+    if (ip.included_benefits) {
+      ipHasIncludedBenefits = true;
+      ipBenefits = ip.included_benefits.benefits.map((b): UiBenefit => ({
+        category: b.category,
+        waiting_period_months: b.waiting_period_months,
+        beihilfe_satz: b.beihilfe_satz,
+        hasTiers: !!b.tiers && b.tiers.length > 0,
+        tiers: b.tiers
+          ? b.tiers.map((t) => ({ up_to: t.up_to ?? 0, pct: t.pct }))
+          : [{ up_to: 1000, pct: 100 }],
+        hasLimits: !!b.limits && b.limits.length > 0,
+        limits: (b.limits ?? []).map((l) => ({
+          scope: l.scope,
+          max_amount: l.max_amount ?? undefined,
+          age_min: l.age_min,
+          age_max: l.age_max,
+        })),
+        hasStaffel: !!b.annual_staffel && b.annual_staffel.length > 0,
+        annual_staffel: (b.annual_staffel ?? []).map((e) => ({
+          policy_year: e.policy_year,
+          cumulative_cap: e.cumulative_cap ?? undefined,
+        })),
+      }));
+    } else {
+      ipHasIncludedBenefits = false;
+      ipBenefits = [];
     }
     insuredSaveError = null;
     showInsuredForm = true;
@@ -218,6 +387,14 @@
         }
       : null;
 
+    let includedBenefits: IncludedBenefits | null;
+    try {
+      includedBenefits = buildIncludedBenefits();
+    } catch {
+      insuredSaveError = 'Leistungskonfiguration ist ungültig. Bitte die Felder prüfen.';
+      return;
+    }
+
     const body = {
       person_id: ipPersonId,
       kvnr: ipKvnr.trim() || null,
@@ -225,7 +402,7 @@
       monthly_premium: ipMonthlyPremium,
       self_retention: ipSelfRetention,
       bre_structure: breStructure,
-      included_benefits: null,
+      included_benefits: includedBenefits,
       start_date: ipStartDate.trim() || null,
       end_date: ipEndDate.trim() || null,
       notes: ipNotes.trim() || null,
@@ -517,6 +694,219 @@
             {/if}
           </div>
 
+          <!-- Included Benefits -->
+          <div class="benefits-section">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={ipHasIncludedBenefits} />
+              <span>Enthaltene Leistungen konfigurieren</span>
+            </label>
+
+            {#if ipHasIncludedBenefits}
+              {#if ipBenefits.length === 0}
+                <p class="muted benefits-empty">Noch kein Leistungsbereich hinzugefügt.</p>
+              {/if}
+
+              {#each ipBenefits as benefit, i (i)}
+                <div class="benefit-entry">
+                  <div class="benefit-header-row">
+                    <label class="field">
+                      <span>Leistungsbereich</span>
+                      <select bind:value={benefit.category}>
+                        {#each benefitCategoryValues as cat (cat)}
+                          <option value={cat}>{BENEFIT_CATEGORY_LABELS[cat]}</option>
+                        {/each}
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Wartezeit (Monate)</span>
+                      <input
+                        type="number"
+                        bind:value={benefit.waiting_period_months}
+                        min="0"
+                        step="1"
+                        placeholder="keine"
+                      />
+                    </label>
+                    <label class="field">
+                      <span>Beihilfe-Satz (%)</span>
+                      <input
+                        type="number"
+                        bind:value={benefit.beihilfe_satz}
+                        min="0"
+                        max="100"
+                        step="1"
+                        placeholder="–"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      class="btn-icon danger benefit-remove"
+                      title="Leistungsbereich entfernen"
+                      onclick={() => removeBenefit(i)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <!-- Tiers -->
+                  <div class="benefit-subsection">
+                    <label class="checkbox-label">
+                      <input type="checkbox" bind:checked={benefit.hasTiers} />
+                      <span>Erstattungsstaffel</span>
+                    </label>
+                    {#if benefit.hasTiers}
+                      <div class="tiers-grid">
+                        <span class="tiers-head">Bis (€)</span>
+                        <span class="tiers-head">Erstattung (%)</span>
+                        <span></span>
+                        {#each benefit.tiers as tier, j (j)}
+                          {#if j < benefit.tiers.length - 1}
+                            <input
+                              type="number"
+                              class="tier-input"
+                              bind:value={tier.up_to}
+                              min="0.01"
+                              step="0.01"
+                            />
+                          {:else}
+                            <span class="tier-unlimited">Unbegrenzt</span>
+                          {/if}
+                          <input
+                            type="number"
+                            class="tier-input"
+                            bind:value={tier.pct}
+                            min="0"
+                            max="100"
+                            step="1"
+                          />
+                          <button
+                            type="button"
+                            class="btn-icon danger"
+                            onclick={() => removeTier(i, j)}
+                            disabled={j === benefit.tiers.length - 1}
+                          >
+                            ✕
+                          </button>
+                        {/each}
+                      </div>
+                      <button type="button" class="btn-text" onclick={() => addTier(i)}>
+                        + Stufe hinzufügen
+                      </button>
+                    {/if}
+                  </div>
+
+                  <!-- Limits -->
+                  <div class="benefit-subsection">
+                    <label class="checkbox-label">
+                      <input type="checkbox" bind:checked={benefit.hasLimits} />
+                      <span>Summengrenzen</span>
+                    </label>
+                    {#if benefit.hasLimits}
+                      {#each benefit.limits as lim, j (j)}
+                        <div class="limit-row">
+                          <label class="field">
+                            <span>Zeitraum</span>
+                            <select bind:value={lim.scope}>
+                              {#each benefitLimitScopeValues as s (s)}
+                                <option value={s}>{BENEFIT_LIMIT_SCOPE_LABELS[s]}</option>
+                              {/each}
+                            </select>
+                          </label>
+                          <label class="field">
+                            <span>Höchstbetrag (€)</span>
+                            <input
+                              type="number"
+                              bind:value={lim.max_amount}
+                              min="0"
+                              step="0.01"
+                              placeholder="unbegrenzt"
+                            />
+                          </label>
+                          <label class="field">
+                            <span>Alter von</span>
+                            <input
+                              type="number"
+                              bind:value={lim.age_min}
+                              min="0"
+                              step="1"
+                              placeholder="–"
+                            />
+                          </label>
+                          <label class="field">
+                            <span>Alter bis</span>
+                            <input
+                              type="number"
+                              bind:value={lim.age_max}
+                              min="0"
+                              step="1"
+                              placeholder="–"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            class="btn-icon danger limit-remove"
+                            onclick={() => removeLimit(i, j)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      {/each}
+                      <button type="button" class="btn-text" onclick={() => addLimit(i)}>
+                        + Grenze hinzufügen
+                      </button>
+                    {/if}
+                  </div>
+
+                  <!-- Annual Staffel -->
+                  <div class="benefit-subsection">
+                    <label class="checkbox-label">
+                      <input type="checkbox" bind:checked={benefit.hasStaffel} />
+                      <span>Aufbaujahre (Zahnstaffel)</span>
+                    </label>
+                    {#if benefit.hasStaffel}
+                      <div class="staffel-grid">
+                        <span class="tiers-head">Versicherungsjahr</span>
+                        <span class="tiers-head">Kum. Höchstbetrag (€)</span>
+                        <span></span>
+                        {#each benefit.annual_staffel as entry, j (j)}
+                          <input
+                            type="number"
+                            class="tier-input"
+                            bind:value={entry.policy_year}
+                            min="1"
+                            step="1"
+                          />
+                          <input
+                            type="number"
+                            class="tier-input"
+                            bind:value={entry.cumulative_cap}
+                            min="0"
+                            step="0.01"
+                            placeholder="unbegrenzt"
+                          />
+                          <button
+                            type="button"
+                            class="btn-icon danger"
+                            onclick={() => removeStaffelEntry(i, j)}
+                          >
+                            ✕
+                          </button>
+                        {/each}
+                      </div>
+                      <button type="button" class="btn-text" onclick={() => addStaffelEntry(i)}>
+                        + Jahr hinzufügen
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+
+              <button type="button" class="btn-text" onclick={addBenefit}>
+                + Leistungsbereich hinzufügen
+              </button>
+            {/if}
+          </div>
+
           {#if insuredSaveError}
             <p class="error" role="alert">{insuredSaveError}</p>
           {/if}
@@ -791,6 +1181,95 @@
     background: var(--color-bg);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-border);
+  }
+
+  .benefits-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+  }
+
+  .benefits-empty {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .benefit-entry {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .benefit-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 2rem;
+    gap: var(--space-2);
+    align-items: end;
+  }
+
+  .benefit-remove {
+    margin-bottom: 0.1rem;
+  }
+
+  .benefit-subsection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--color-border);
+  }
+
+  .tiers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2rem;
+    gap: var(--space-2);
+    align-items: center;
+    margin-bottom: var(--space-1);
+  }
+
+  .staffel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2rem;
+    gap: var(--space-2);
+    align-items: center;
+    margin-bottom: var(--space-1);
+  }
+
+  .tiers-head {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-weight: 600;
+  }
+
+  .tier-input {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .tier-unlimited {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .limit-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 0.7fr 0.7fr 2rem;
+    gap: var(--space-2);
+    align-items: end;
   }
 
   .bre-levels {
