@@ -62,7 +62,10 @@ describe('GCPCard', () => {
 
   it('renders no action buttons when no callbacks provided', () => {
     render(GCPCard, { props: { result: SUBMIT_RESULT } });
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    // Collapsible trigger is always rendered; only the Einreichen/Selbst-zahlen
+    // action buttons should be absent when no callbacks are provided.
+    expect(screen.queryByRole('button', { name: 'Einreichen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Selbst zahlen' })).not.toBeInTheDocument();
   });
 
   it('calls onSubmit when the submit button is clicked', async () => {
@@ -79,13 +82,14 @@ describe('GCPCard', () => {
     expect(onSelfPay).toHaveBeenCalledOnce();
   });
 
-  it('disables buttons when loading=true', () => {
+  it('disables action buttons when loading=true', () => {
     render(GCPCard, {
       props: { result: SUBMIT_RESULT, onSubmit: vi.fn(), onSelfPay: vi.fn(), loading: true },
     });
-    for (const btn of screen.getAllByRole('button')) {
-      expect(btn).toBeDisabled();
-    }
+    // Only the action buttons (Einreichen / Selbst zahlen) should be disabled;
+    // the Collapsible breakdown toggle is not an action button and stays enabled.
+    expect(screen.getByRole('button', { name: 'Einreichen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Selbst zahlen' })).toBeDisabled();
   });
 
   it('renders the breakdown summary toggle', () => {
