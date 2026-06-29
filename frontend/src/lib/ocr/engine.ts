@@ -45,14 +45,21 @@ export interface PaddleOcrServiceOptions {
 }
 
 /**
- * The platform provider on a `PaddleOcrService` instance. Its `createCanvas` is
- * DOM-bound (`document.createElement`) in the published web build, so we replace
- * it with an `OffscreenCanvas` factory to run in a Web Worker (see
- * {@link patchPlatformForWorker}).
+ * A `WebPlatformProvider`. Its `createCanvas` is DOM-bound
+ * (`document.createElement`) and its `isCanvas` does an unguarded
+ * `instanceof HTMLCanvasElement`, so both are replaced with worker-safe versions
+ * (see {@link patchPlatformsForWorker}). The binding creates a *separate*
+ * provider for the service, the detector and the recognizer, so all three are
+ * patched.
  */
 export interface PaddleOcrPlatformLike {
   createCanvas?: (width: number, height: number) => unknown;
   isCanvas?: (image: unknown) => boolean;
+}
+
+/** A sub-service (detector/recognizer) that carries its own platform provider. */
+interface PaddleOcrSubService {
+  platform?: PaddleOcrPlatformLike;
 }
 
 /** The `PaddleOcrService` instance surface this adapter drives. */
@@ -62,6 +69,9 @@ export interface PaddleOcrServiceLike {
   recognize(image: unknown): Promise<PaddleRecognizeResult>;
   destroy(): Promise<void> | void;
   platform?: PaddleOcrPlatformLike;
+  /** Created during `initialize()`; each holds its own platform provider. */
+  detector?: PaddleOcrSubService;
+  recognitor?: PaddleOcrSubService;
 }
 
 /** The slice of the `ppu-paddle-ocr/web` module surface this adapter uses. */
@@ -128,32 +138,46 @@ function defaultToImageSource(image: ImageData): unknown {
   return canvas;
 }
 
+/** Worker-safe replacement for the platform's DOM-bound `createCanvas`. */
+function workerSafeCreateCanvas(width: number, height: number): OffscreenCanvas {
+  const canvas = new OffscreenCanvas(width, height);
+  canvas.getContext('2d', { willReadFrequently: true });
+  return canvas;
+}
+
+/** Worker-safe `isCanvas` that never references an unguarded `HTMLCanvasElement`. */
+function workerSafeIsCanvas(image: unknown): boolean {
+  if (typeof OffscreenCanvas !== 'undefined' && image instanceof OffscreenCanvas) return true;
+  if (typeof HTMLCanvasElement !== 'undefined' && image instanceof HTMLCanvasElement) return true;
+  return (
+    typeof image === 'object' &&
+    image !== null &&
+    typeof (image as { getContext?: unknown }).getContext === 'function'
+  );
+}
+
+/** Replaces one provider's DOM-bound methods with worker-safe ones. */
+function patchPlatform(platform: PaddleOcrPlatformLike | undefined): void {
+  if (!platform) return;
+  platform.createCanvas = workerSafeCreateCanvas;
+  platform.isCanvas = workerSafeIsCanvas;
+}
+
 /**
  * `ppu-paddle-ocr`'s web platform is written for the main thread: `createCanvas`
  * uses `document.createElement` (absent in a Worker), and `isCanvas` does an
  * unguarded `instanceof HTMLCanvasElement` (a window-only global, so the bare
- * reference *throws* `HTMLCanvasElement is not defined` in a Worker). Swap both
- * for `OffscreenCanvas`-based, worker-safe versions so recognition runs off the
- * main thread (docs/design.md §4.2: OCR must not block the UI thread).
+ * reference *throws* `HTMLCanvasElement is not defined` in a Worker). The binding
+ * instantiates a *separate* provider for the service, the detector and the
+ * recognizer, so all three are patched — the detector/recognizer ones only exist
+ * after `initialize()`. Lets recognition run off the main thread (docs/design.md
+ * §4.2: OCR must not block the UI thread).
  */
-function patchPlatformForWorker(service: PaddleOcrServiceLike): void {
+function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
   if (typeof OffscreenCanvas === 'undefined') return;
-  const platform = service.platform;
-  if (!platform) return;
-  platform.createCanvas = (width: number, height: number) => {
-    const canvas = new OffscreenCanvas(width, height);
-    canvas.getContext('2d', { willReadFrequently: true });
-    return canvas;
-  };
-  platform.isCanvas = (image: unknown): boolean => {
-    if (typeof OffscreenCanvas !== 'undefined' && image instanceof OffscreenCanvas) return true;
-    if (typeof HTMLCanvasElement !== 'undefined' && image instanceof HTMLCanvasElement) return true;
-    return (
-      typeof image === 'object' &&
-      image !== null &&
-      typeof (image as { getContext?: unknown }).getContext === 'function'
-    );
-  };
+  patchPlatform(service.platform);
+  patchPlatform(service.detector?.platform);
+  patchPlatform(service.recognitor?.platform);
 }
 
 /**
@@ -214,8 +238,10 @@ export function createPaddleOcrEngine(
         },
         processing: { engine: 'canvas-native' },
       });
-      patchPlatformForWorker(created);
+      // initialize() creates the detector + recognizer (each with its own
+      // platform provider), so patch all platforms afterwards.
       await created.initialize();
+      patchPlatformsForWorker(created);
       service = created;
       onProgress?.({ phase: 'init', ratio: 1, message: 'OCR bereit.' });
     },
