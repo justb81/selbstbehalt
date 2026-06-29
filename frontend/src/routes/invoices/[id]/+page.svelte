@@ -148,6 +148,11 @@
         </div>
       </div>
       <div class="header-actions">
+        {#if invoice.status === 'neu' || invoice.status === 'geprüft' || invoice.status === 'selbst_gezahlt'}
+          <a href={resolve('/invoices/[id]/edit', { id: invoice.id })} class="btn-secondary">
+            Bearbeiten
+          </a>
+        {/if}
         {#if invoice.status === 'neu' || invoice.status === 'geprüft'}
           <a href={resolve('/invoices/[id]/submit', { id: invoice.id })} class="btn-primary">
             Einreichung erfassen

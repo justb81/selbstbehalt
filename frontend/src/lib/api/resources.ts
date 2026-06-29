@@ -25,7 +25,7 @@ import {
   type InsuredPersonUpdate,
   type Invoice,
   type InvoiceCreatePayload,
-  type InvoiceUpdate,
+  type InvoiceUpdatePayload,
   type InvoiceWithPositions,
   type Person,
   type PersonCreate,
@@ -110,7 +110,7 @@ export function createResources(request: ApiRequester) {
       request(`/api/invoices/${id(invoiceId)}`, { schema: invoiceWithPositionsSchema }),
     create: (data: InvoiceCreatePayload) =>
       request('/api/invoices', { method: 'POST', body: data, schema: invoiceWithPositionsSchema }),
-    update: (invoiceId: string, data: InvoiceUpdate) =>
+    update: (invoiceId: string, data: InvoiceUpdatePayload) =>
       request(`/api/invoices/${id(invoiceId)}`, {
         method: 'PUT',
         body: data,

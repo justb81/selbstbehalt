@@ -48,8 +48,14 @@ export const invoiceWithPositionsSchema = invoiceSchema.extend({
 
 export const invoiceUpdateSchema = invoiceCreateSchema.partial();
 
+/** `PUT /api/invoices/:id` body: partial invoice fields plus optional positions replacement. */
+export const invoiceUpdatePayloadSchema = invoiceUpdateSchema.extend({
+  positions: z.array(invoicePositionInputSchema).optional(),
+});
+
 export type InvoiceCreate = z.infer<typeof invoiceCreateSchema>;
 export type InvoiceCreatePayload = z.infer<typeof invoiceCreatePayloadSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type InvoiceWithPositions = z.infer<typeof invoiceWithPositionsSchema>;
 export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;
+export type InvoiceUpdatePayload = z.infer<typeof invoiceUpdatePayloadSchema>;

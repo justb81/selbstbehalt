@@ -63,6 +63,30 @@ describe('createResources', () => {
     expect(calls[3]!.opts).toMatchObject({ method: 'PUT' });
   });
 
+  it('maps invoice update and remove to the correct endpoints', async () => {
+    const { request, calls } = stubRequester();
+    const { invoices } = createResources(request);
+
+    await invoices.update(UUID, { provider_name: 'Dr. Test' });
+    await invoices.remove(UUID);
+
+    expect(calls[0]!).toMatchObject({ path: `/api/invoices/${UUID}` });
+    expect(calls[0]!.opts).toMatchObject({ method: 'PUT' });
+    expect(calls[1]!).toMatchObject({ path: `/api/invoices/${UUID}` });
+    expect(calls[1]!.opts).toMatchObject({ method: 'DELETE' });
+  });
+
+  it('maps stats endpoints for year and BRE history', async () => {
+    const { request, calls } = stubRequester();
+    const { stats } = createResources(request);
+
+    await stats.year(2025);
+    await stats.bre(UUID);
+
+    expect(calls[0]!.path).toBe('/api/stats/year/2025');
+    expect(calls[1]!.path).toBe(`/api/stats/bre/${UUID}`);
+  });
+
   it('maps insured-person methods to the nested and item endpoints', async () => {
     const { request, calls } = stubRequester();
     const { insured } = createResources(request);
