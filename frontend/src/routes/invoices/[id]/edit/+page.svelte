@@ -120,11 +120,14 @@
       mode="edit"
       initialData={invoice}
       {insuredOptions}
-      cancelHref={resolve('/invoices/[id]', { id: invoice.id })}
       {saving}
       {formError}
       onSave={handleSave}
-    />
+    >
+      {#snippet cancel()}
+        <a href={resolve('/invoices/[id]', { id: invoice.id })} class="btn-secondary">Abbrechen</a>
+      {/snippet}
+    </InvoiceForm>
   {/if}
 </section>
 
