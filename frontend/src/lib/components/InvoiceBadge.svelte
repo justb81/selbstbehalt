@@ -2,6 +2,8 @@
 <!-- Status badge for an invoice (docs/design.md §6.2, issue #22). -->
 <script lang="ts">
   import type { InvoiceStatus } from '@selbstbehalt/shared';
+  import { Badge } from '$lib/components/ui/badge';
+  import { cn } from '$lib/utils';
 
   let { status }: { status: InvoiceStatus } = $props();
 
@@ -14,59 +16,35 @@
     selbst_gezahlt: 'Selbst gezahlt',
   };
 
-  const VARIANTS: Record<InvoiceStatus, string> = {
-    neu: 'neutral',
-    geprüft: 'info',
-    eingereicht: 'warning',
-    erstattet: 'success',
-    abgelehnt: 'danger',
-    selbst_gezahlt: 'muted',
+  type BadgeConfig = {
+    variant: 'secondary' | 'outline' | 'destructive';
+    class?: string;
   };
+
+  const VARIANTS: Record<InvoiceStatus, BadgeConfig> = {
+    neu: { variant: 'secondary' },
+    geprüft: {
+      variant: 'outline',
+      class:
+        'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300',
+    },
+    eingereicht: {
+      variant: 'outline',
+      class:
+        'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    },
+    erstattet: {
+      variant: 'outline',
+      class:
+        'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300',
+    },
+    abgelehnt: { variant: 'destructive' },
+    selbst_gezahlt: { variant: 'secondary' },
+  };
+
+  const config = $derived(VARIANTS[status]);
 </script>
 
-<span class="badge {VARIANTS[status]}">{LABELS[status]}</span>
-
-<style>
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.15em 0.65em;
-    border-radius: 999px;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    line-height: 1.5;
-    white-space: nowrap;
-  }
-
-  .neutral {
-    background: var(--color-bg);
-    color: var(--color-text-muted);
-    border: 1px solid var(--color-border);
-  }
-
-  .info {
-    background: var(--color-primary-soft);
-    color: var(--color-primary-strong);
-  }
-
-  .warning {
-    background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
-    color: var(--color-warning);
-  }
-
-  .success {
-    background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
-    color: var(--color-success);
-  }
-
-  .danger {
-    background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
-    color: var(--color-danger);
-  }
-
-  .muted {
-    background: var(--color-bg);
-    color: var(--color-text-muted);
-    border: 1px solid var(--color-border);
-  }
-</style>
+<Badge variant={config.variant} class={cn(config.class)}>
+  {LABELS[status]}
+</Badge>

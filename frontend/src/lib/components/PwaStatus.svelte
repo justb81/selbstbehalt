@@ -12,77 +12,57 @@
 </script>
 
 {#if $needRefresh}
-  <div class="pwa-banner pwa-banner--update" role="alert">
+  <div
+    class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm bg-primary/10 text-primary"
+    role="alert"
+  >
     <span>Eine neue Version ist verfügbar.</span>
-    <button type="button" onclick={() => updateServiceWorker(true)}>Neu laden</button>
-    <button type="button" class="pwa-dismiss" onclick={() => needRefresh.set(false)}>
+    <button
+      type="button"
+      class="cursor-pointer border border-current rounded-md bg-transparent px-3 py-1 font-[inherit] text-inherit hover:bg-primary/10 transition-colors"
+      onclick={() => updateServiceWorker(true)}
+    >
+      Neu laden
+    </button>
+    <button
+      type="button"
+      class="cursor-pointer border-0 bg-transparent px-3 py-1 font-[inherit] text-inherit underline underline-offset-2 hover:no-underline transition-colors"
+      onclick={() => needRefresh.set(false)}
+    >
       Später
     </button>
   </div>
 {:else if $offlineReady}
-  <div class="pwa-banner pwa-banner--ready" role="status">
+  <div
+    class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm bg-muted text-muted-foreground border-b border-border"
+    role="status"
+  >
     <span>App ist offline einsatzbereit.</span>
-    <button type="button" class="pwa-dismiss" onclick={() => offlineReady.set(false)}>OK</button>
+    <button
+      type="button"
+      class="cursor-pointer border-0 bg-transparent px-3 py-1 font-[inherit] text-inherit underline underline-offset-2 hover:no-underline transition-colors"
+      onclick={() => offlineReady.set(false)}
+    >
+      OK
+    </button>
   </div>
 {/if}
 
 {#if !$isOnline}
-  <div class="pwa-banner pwa-banner--offline" role="status">
+  <div
+    class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+    role="status"
+  >
     <span>Offline – Änderungen werden gespeichert.</span>
     {#if $pendingWrites > 0}
-      <span class="pwa-count">{$pendingWrites} ausstehend</span>
+      <span class="ml-auto tabular-nums">{$pendingWrites} ausstehend</span>
     {/if}
   </div>
 {:else if $pendingWrites > 0}
-  <div class="pwa-banner pwa-banner--syncing" role="status">
+  <div
+    class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm bg-muted text-muted-foreground border-b border-border"
+    role="status"
+  >
     <span>{$pendingWrites} Änderung(en) werden synchronisiert …</span>
   </div>
 {/if}
-
-<style>
-  .pwa-banner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-sm);
-  }
-
-  .pwa-banner button {
-    cursor: pointer;
-    border: 1px solid currentColor;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    padding: var(--space-1) var(--space-3);
-    font: inherit;
-    color: inherit;
-  }
-
-  .pwa-banner .pwa-dismiss {
-    border-color: transparent;
-    text-decoration: underline;
-  }
-
-  .pwa-banner--update {
-    background: var(--color-primary-soft);
-    color: var(--color-primary-strong);
-  }
-
-  .pwa-banner--ready,
-  .pwa-banner--syncing {
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .pwa-banner--offline {
-    background: #fef3c7;
-    color: #92400e;
-  }
-
-  .pwa-count {
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-  }
-</style>

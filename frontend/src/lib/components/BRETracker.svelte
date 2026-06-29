@@ -11,6 +11,8 @@
     getProjectedBRE,
     type InsuredPerson,
   } from '@selbstbehalt/shared';
+  import { Progress } from '$lib/components/ui/progress';
+  import { cn } from '$lib/utils';
 
   let {
     insuredPerson,
@@ -34,33 +36,36 @@
   const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
 </script>
 
-<div class="bre-tracker" class:compact>
-  <div class="tracker-header">
-    <span class="tracker-label">{label}</span>
+<div
+  class={cn(
+    'flex flex-col border border-border rounded-xl bg-card text-card-foreground',
+    compact ? 'gap-1 px-3 py-2' : 'gap-2 p-3',
+  )}
+>
+  <div class="flex justify-between items-center gap-2 flex-wrap">
+    <span class="font-semibold text-sm text-foreground">{label}</span>
     {#if !compact}
-      <span class="streak-value"
-        >{streakYears} Jahr{streakYears === 1 ? '' : 'e'} leistungsfrei</span
-      >
+      <span class="text-sm font-medium text-primary">
+        {streakYears} Jahr{streakYears === 1 ? '' : 'e'} leistungsfrei
+      </span>
     {:else}
-      <span class="streak-compact">{streakYears} J.</span>
+      <span class="text-sm text-muted-foreground">{streakYears} J.</span>
     {/if}
   </div>
 
   {#if bre}
-    <div
-      class="progress-bar"
-      role="progressbar"
+    <Progress
+      value={progressPct()}
+      max={100}
       aria-valuenow={streakYears}
       aria-valuemin={0}
       aria-valuemax={nextLevel ? nextLevel.level.claim_free_years : streakYears}
-    >
-      <div class="progress-fill" style="width: {progressPct()}%"></div>
-    </div>
+    />
 
     {#if !compact}
-      <div class="tracker-details">
+      <div class="flex flex-col gap-1 text-sm text-muted-foreground">
         {#if nextLevel}
-          <span class="next-level">
+          <span>
             Nächste Stufe in {nextLevel.yearsRemaining} Jahr{nextLevel.yearsRemaining === 1
               ? ''
               : 'en'}
@@ -74,105 +79,22 @@
             {/if})
           </span>
         {:else}
-          <span class="top-level">Höchste Stufe erreicht</span>
+          <span>Höchste Stufe erreicht</span>
         {/if}
         {#if projectedBRE > 0}
-          <span class="projected-bre"
-            >Projizierte BRE: <strong>{formatEur(projectedBRE)}</strong></span
+          <span
+            >Projizierte BRE: <strong class="text-green-600 dark:text-green-400"
+              >{formatEur(projectedBRE)}</strong
+            ></span
           >
         {/if}
       </div>
     {:else if projectedBRE > 0}
-      <span class="projected-bre-compact">{formatEur(projectedBRE)}</span>
+      <span class="text-sm font-medium text-green-600 dark:text-green-400"
+        >{formatEur(projectedBRE)}</span
+      >
     {/if}
   {:else}
-    <p class="no-bre">Keine BRE-Staffel konfiguriert.</p>
+    <p class="m-0 text-sm text-muted-foreground italic">Keine BRE-Staffel konfiguriert.</p>
   {/if}
 </div>
-
-<style>
-  .bre-tracker {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .bre-tracker.compact {
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-1);
-  }
-
-  .tracker-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .tracker-label {
-    font-weight: 600;
-    font-size: var(--font-size-sm);
-    color: var(--color-text);
-  }
-
-  .streak-value {
-    font-size: var(--font-size-sm);
-    color: var(--color-primary-strong);
-    font-weight: 500;
-  }
-
-  .streak-compact {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .progress-bar {
-    height: 0.5rem;
-    background: var(--color-border);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--color-primary);
-    border-radius: 999px;
-    transition: width 0.3s ease;
-    min-width: 0.25rem;
-  }
-
-  .tracker-details {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .next-level,
-  .top-level {
-    color: var(--color-text-muted);
-  }
-
-  .projected-bre strong {
-    color: var(--color-success);
-  }
-
-  .projected-bre-compact {
-    font-size: var(--font-size-sm);
-    color: var(--color-success);
-    font-weight: 500;
-  }
-
-  .no-bre {
-    margin: 0;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-style: italic;
-  }
-</style>
