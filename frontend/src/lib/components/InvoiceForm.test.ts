@@ -48,9 +48,9 @@ const SAMPLE_INVOICE: InvoiceWithPositions = {
   eligible_amount: 80.0,
   notes: 'Test-Notiz',
   status: 'neu',
+  self_paid_amount: 0,
   ocr_raw: null,
   created_at: '2025-03-15T10:00:00Z',
-  submission: null,
   positions: [
     {
       id: 'pos-1',
