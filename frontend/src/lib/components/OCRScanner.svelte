@@ -32,13 +32,7 @@
   import { Progress } from '$lib/components/ui/progress';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Label } from '$lib/components/ui/label';
-  import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from '$lib/components/ui/select';
+  import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
@@ -206,13 +200,14 @@
       <div class="flex flex-col gap-1.5 max-w-48">
         <Label for="fee-schedule-select">Gebührenordnung</Label>
         <Select
-          value={schedule}
-          onValueChange={(v) => {
-            if (v) schedule = v as FeeScheduleId;
+          type="single"
+          value={schedule as string}
+          onValueChange={(v: string) => {
+            schedule = v as FeeScheduleId;
           }}
         >
           <SelectTrigger id="fee-schedule-select" aria-label="Gebührenordnung">
-            <SelectValue />
+            {schedule}
           </SelectTrigger>
           <SelectContent>
             {#each FEE_SCHEDULE_IDS as id (id)}
