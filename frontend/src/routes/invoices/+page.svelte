@@ -68,8 +68,7 @@
   <div class="page-header">
     <h1>Rechnungen</h1>
     <div class="header-actions">
-      <a href={resolve('/invoices/new')} class="btn-secondary">Manuell erfassen</a>
-      <a href={resolve('/invoices/scan')} class="btn-primary">Rechnung scannen</a>
+      <a href={resolve('/invoices/new')} class="btn-primary">Rechnung erfassen</a>
     </div>
   </div>
 
@@ -103,7 +102,7 @@
       <div class="empty">
         {#if invoices.length === 0}
           <p>Noch keine Rechnungen vorhanden.</p>
-          <a href={resolve('/invoices/scan')} class="btn-primary">Erste Rechnung scannen</a>
+          <a href={resolve('/invoices/new')} class="btn-primary">Erste Rechnung erfassen</a>
         {:else}
           <p>Keine Rechnungen entsprechen dem Filter.</p>
         {/if}
@@ -310,22 +309,5 @@
   }
   .btn-primary:hover {
     background: var(--color-primary-strong);
-  }
-
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    text-decoration: none;
-  }
-  .btn-secondary:hover {
-    background: var(--color-bg);
   }
 </style>
