@@ -205,7 +205,14 @@ describe('createPaddleOcrEngine', () => {
     vi.stubGlobal('OffscreenCanvas', FakeOffscreenCanvas);
     try {
       const service = fakeService();
-      service.platform = { createCanvas: vi.fn() };
+      // The real platform's isCanvas does an unguarded `instanceof
+      // HTMLCanvasElement`, which throws in a Worker — model that here.
+      service.platform = {
+        createCanvas: vi.fn(),
+        isCanvas: () => {
+          throw new ReferenceError('HTMLCanvasElement is not defined');
+        },
+      };
       const original = service.platform.createCanvas;
       const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
         loadModule: async () => fakeModule(service).module,
@@ -215,6 +222,10 @@ describe('createPaddleOcrEngine', () => {
       // OffscreenCanvas one so detection/padding runs in a Web Worker.
       expect(service.platform.createCanvas).not.toBe(original);
       expect(service.platform.createCanvas?.(3, 4)).toBeInstanceOf(FakeOffscreenCanvas);
+      // isCanvas is replaced with a worker-safe version: no throw, and an
+      // OffscreenCanvas is recognised as a canvas.
+      expect(service.platform.isCanvas?.(new FakeOffscreenCanvas(1, 1))).toBe(true);
+      expect(service.platform.isCanvas?.({})).toBe(false);
 
       await engine.recognize(image);
       const arg = vi.mocked(service.recognize).mock.calls[0]?.[0];
