@@ -5,7 +5,7 @@
   import { offlineReplayRequester, offlineQueue } from '$lib/api/index.js';
   import AppShell from '$lib/components/AppShell.svelte';
   import { initOfflineSync } from '$lib/offline/index.js';
-  import '$lib/styles/app.css';
+  import '../app.css';
 
   let { children }: { children: Snippet } = $props();
 

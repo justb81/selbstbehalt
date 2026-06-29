@@ -102,6 +102,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 
 ## Conventions
 
+- **UI-Standard: shadcn-svelte + Tailwind CSS v4 (verbindlich)** — Alle UI-Komponenten und Seitenelemente verwenden ausschließlich shadcn-svelte-Komponenten (`$lib/components/ui/`) und Tailwind-CSS-Utilities. Kein Custom-CSS, keine `<style>`-Blöcke in `.svelte`-Dateien, keine eigenen CSS-Klassen für Layout, Karten, Tabellen, Buttons, Badges, Formulare oder Modals. Neue Elemente greifen auf [shadcn-svelte](https://shadcn-svelte.com/docs) zurück und erweitern bei Bedarf mit Tailwind-Klassen.
 - Validate API payloads and forms with Zod.
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
