@@ -54,7 +54,11 @@
       <dd>{formatEur(result.breakdown.refundAfterDeductible)}</dd>
 
       <dt>Aktuelle Leistungsfreizeit</dt>
-      <dd>{result.breakdown.currentStreakMonths} Monate</dd>
+      <dd>
+        {result.breakdown.currentStreakYears} Jahr{result.breakdown.currentStreakYears === 1
+          ? ''
+          : 'e'}
+      </dd>
 
       <dt>Drohender BRE-Verlust</dt>
       <dd>{formatEur(result.breakdown.projectedBRELoss)}</dd>

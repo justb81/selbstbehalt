@@ -98,13 +98,13 @@ export function createStatsRoute(db: Database) {
 
       const years: BREHistoryYear[] = rows.map((row) => ({
         year: row.year,
-        streak_months: row.streakMonths,
+        streak_years: row.streakYears,
         bre_amount: toCents(row.breAmount),
         // Project from the recorded streak via the shared helper (#17). Without a
         // bre_structure there is no ladder to project, so fall back to the stored
         // value (which is itself nullable).
         projected_bre: insured.breStructure
-          ? projectedBREForStreak(insured.breStructure, insured.monthlyPremium, row.streakMonths)
+          ? projectedBREForStreak(insured.breStructure, insured.monthlyPremium, row.streakYears)
           : (row.projectedBre ?? null),
       }));
 

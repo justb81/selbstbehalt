@@ -35,7 +35,7 @@
  */
 
 import {
-  getCurrentStreakMonths,
+  getCurrentStreakYears,
   getProjectedBRE,
   roundCents,
   type BREStructure,
@@ -81,8 +81,8 @@ export interface GCP_Result {
   breakdown: {
     /** Refund left after the open deductible: `max(0, R − S)`. */
     refundAfterDeductible: number;
-    /** Whole claim-free months of the current streak. */
-    currentStreakMonths: number;
+    /** Whole claim-free years of the current streak. */
+    currentStreakYears: number;
     /** Undiscounted BRE forfeited if the streak resets (design "Drohender BRE-Verlust"). */
     projectedBRELoss: number;
     /** Whole months from `asOf` to year-end used to discount the BRE. */
@@ -184,7 +184,7 @@ export function calculateGCP(input: GCP_Input): GCP_Result {
   );
 
   // BRE forfeited if submitting resets the streak to zero (worst case, design §5.2).
-  const currentStreakMonths = getCurrentStreakMonths(breStructure, asOf);
+  const currentStreakYears = getCurrentStreakYears(breStructure, asOf);
   const projectedBRELoss = getProjectedBRE(breStructure, monthlyPremium, asOf);
 
   // Discount that loss to today: the refund is paid out at year-end.
@@ -209,7 +209,7 @@ export function calculateGCP(input: GCP_Input): GCP_Result {
     netBenefitOfSubmitting,
     breakdown: {
       refundAfterDeductible,
-      currentStreakMonths,
+      currentStreakYears,
       projectedBRELoss,
       monthsToYearEnd,
       discountRate,

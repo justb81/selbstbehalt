@@ -147,7 +147,7 @@ export const brePeriods = sqliteTable('bre_periods', {
     .notNull()
     .references(() => insuredPersons.id, { onDelete: 'cascade' }),
   year: integer('year').notNull(),
-  streakMonths: integer('streak_months').notNull().default(0),
+  streakYears: integer('streak_years').notNull().default(0),
   breAmount: real('bre_amount').notNull().default(0),
   projectedBre: real('projected_bre'),
 });

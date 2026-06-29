@@ -66,7 +66,7 @@ describe('POST /api/contracts/:id/insured', () => {
       ...baseInsured(),
       bre_structure: {
         type: 'staffel',
-        levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+        levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
         current_streak_start: '2025-01-01',
       },
       included_benefits: {
@@ -77,7 +77,7 @@ describe('POST /api/contracts/:id/insured', () => {
       },
     });
     const body = await res.json();
-    expect(body.bre_structure.levels[0].bre_months).toBe(1);
+    expect(body.bre_structure.levels[0].bre_years).toBe(1);
     expect(body.included_benefits.benefits[1].tiers[0].pct).toBe(80);
   });
 

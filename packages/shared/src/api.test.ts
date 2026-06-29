@@ -80,8 +80,8 @@ describe('breHistorySchema', () => {
     const result = breHistorySchema.safeParse({
       insured_person_id: '11111111-1111-1111-1111-111111111111',
       years: [
-        { year: 2025, streak_months: 6, bre_amount: 0, projected_bre: 185 },
-        { year: 2026, streak_months: 18, bre_amount: 185, projected_bre: null },
+        { year: 2025, streak_years: 0, bre_amount: 0, projected_bre: 185 },
+        { year: 2026, streak_years: 1, bre_amount: 185, projected_bre: null },
       ],
     });
     expect(result.success).toBe(true);

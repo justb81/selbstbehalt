@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "38f24a10-b5c7-4d89-a3e2-61f8c9d0b475",
-  "prevId": "c57b2d94-7d52-4bb8-931b-083853e78383",
+  "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+  "prevId": "9ac925bd-a615-42bd-a335-ae019e2f2220",
   "tables": {
     "bre_periods": {
       "name": "bre_periods",
@@ -28,14 +28,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "streak_years": {
-          "name": "streak_years",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
         "bre_amount": {
           "name": "bre_amount",
           "type": "real",
@@ -50,6 +42,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "streak_years": {
+          "name": "streak_years",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         }
       },
       "indexes": {},
@@ -323,6 +323,21 @@
         },
         "goae_category": {
           "name": "goae_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "treatment_date": {
+          "name": "treatment_date",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

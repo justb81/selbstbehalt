@@ -25,7 +25,7 @@ const PERSON_WITH_BRE: InsuredPerson = {
   ...BASE_PERSON,
   bre_structure: {
     type: 'staffel',
-    levels: [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }],
+    levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
     current_streak_start: '2024-01-01',
   },
 };
@@ -58,13 +58,13 @@ describe('BRETracker', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
-  it('shows streak months in full mode', () => {
+  it('shows streak years in full mode', () => {
     render(BRETracker, { props: { insuredPerson: PERSON_WITH_BRE, compact: false } });
-    expect(screen.getByText(/Monate leistungsfrei/)).toBeInTheDocument();
+    expect(screen.getByText(/Jahr.*leistungsfrei/)).toBeInTheDocument();
   });
 
   it('shows streak in compact form when compact=true', () => {
     render(BRETracker, { props: { insuredPerson: PERSON_WITH_BRE, compact: true } });
-    expect(screen.getByText(/Mo\./)).toBeInTheDocument();
+    expect(screen.getByText(/J\./)).toBeInTheDocument();
   });
 });

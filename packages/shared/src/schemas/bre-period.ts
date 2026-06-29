@@ -13,7 +13,7 @@ export const brePeriodCreateSchema = z
       .min(1900, 'Jahr ist unplausibel')
       .max(2200, 'Jahr ist unplausibel'),
     // NOT NULL DEFAULT 0 — omittable on create.
-    streak_months: z.number().int().nonnegative().optional(),
+    streak_years: z.number().int().nonnegative().optional(),
     bre_amount: money.optional(),
     projected_bre: money.nullish(),
   })
@@ -22,7 +22,7 @@ export const brePeriodCreateSchema = z
 export const brePeriodSchema = brePeriodCreateSchema.extend({
   id: uuid,
   // Always present when read back (DB defaults applied).
-  streak_months: z.number().int().nonnegative(),
+  streak_years: z.number().int().nonnegative(),
   bre_amount: money,
 });
 

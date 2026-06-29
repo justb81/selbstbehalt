@@ -161,9 +161,22 @@
   // BRE structure
   let ipHasBre = $state(false);
   let ipStreakStart = $state('');
-  let ipBreLevels = $state<
-    { leistungsfrei_months: number; bre_months: number; pct_of_premium: number }[]
-  >([{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }]);
+  type BreLevelForm = {
+    claim_free_years: number;
+    unit: 'pct' | 'eur';
+    bre_years: number;
+    pct_of_premium: number;
+    fixed_amount_eur: number;
+  };
+  let ipBreLevels = $state<BreLevelForm[]>([
+    {
+      claim_free_years: 1,
+      unit: 'pct',
+      bre_years: 1,
+      pct_of_premium: 100,
+      fixed_amount_eur: 0,
+    },
+  ]);
 
   let savingInsured = $state(false);
   let insuredSaveError = $state<string | null>(null);
@@ -192,9 +205,16 @@
   let ipBenefits = $state<UiBenefit[]>([]);
 
   function addBreLevel() {
+    const nextYears = (ipBreLevels[ipBreLevels.length - 1]?.claim_free_years ?? 0) + 1;
     ipBreLevels = [
       ...ipBreLevels,
-      { leistungsfrei_months: 24, bre_months: 2, pct_of_premium: 100 },
+      {
+        claim_free_years: nextYears,
+        unit: 'pct',
+        bre_years: 1,
+        pct_of_premium: 100,
+        fixed_amount_eur: 0,
+      },
     ];
   }
 
@@ -307,7 +327,15 @@
     ipNotes = '';
     ipHasBre = false;
     ipStreakStart = '';
-    ipBreLevels = [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }];
+    ipBreLevels = [
+      {
+        claim_free_years: 1,
+        unit: 'pct',
+        bre_years: 1,
+        pct_of_premium: 100,
+        fixed_amount_eur: 0,
+      },
+    ];
     ipHasIncludedBenefits = false;
     ipBenefits = [];
     insuredSaveError = null;
@@ -327,11 +355,25 @@
     if (ip.bre_structure) {
       ipHasBre = true;
       ipStreakStart = ip.bre_structure.current_streak_start ?? '';
-      ipBreLevels = ip.bre_structure.levels.map((l) => ({ ...l }));
+      ipBreLevels = ip.bre_structure.levels.map((l) => ({
+        claim_free_years: l.claim_free_years,
+        unit: l.fixed_amount_eur !== undefined ? ('eur' as const) : ('pct' as const),
+        bre_years: l.bre_years ?? 1,
+        pct_of_premium: l.pct_of_premium ?? 100,
+        fixed_amount_eur: l.fixed_amount_eur ?? 0,
+      }));
     } else {
       ipHasBre = false;
       ipStreakStart = '';
-      ipBreLevels = [{ leistungsfrei_months: 12, bre_months: 1, pct_of_premium: 100 }];
+      ipBreLevels = [
+        {
+          claim_free_years: 1,
+          unit: 'pct',
+          bre_years: 1,
+          pct_of_premium: 100,
+          fixed_amount_eur: 0,
+        },
+      ];
     }
     if (ip.included_benefits) {
       ipHasIncludedBenefits = true;
@@ -382,7 +424,15 @@
     const breStructure: BREStructure | null = ipHasBre
       ? {
           type: 'staffel',
-          levels: ipBreLevels as BRELevel[],
+          levels: ipBreLevels.map((l): BRELevel =>
+            l.unit === 'eur'
+              ? { claim_free_years: l.claim_free_years, fixed_amount_eur: l.fixed_amount_eur }
+              : {
+                  claim_free_years: l.claim_free_years,
+                  bre_years: l.bre_years,
+                  pct_of_premium: l.pct_of_premium,
+                },
+          ),
           current_streak_start: ipStreakStart || null,
         }
       : null;
@@ -648,35 +698,59 @@
 
               <div class="bre-levels">
                 <div class="bre-levels-head">
-                  <span>Leistungsfreie Monate</span>
-                  <span>BRE-Monate</span>
-                  <span>Anteil (%)</span>
+                  <span>Leistungsfreie Jahre</span>
+                  <span>Art</span>
+                  <span>Rückerstattung</span>
                   <span></span>
                 </div>
                 {#each ipBreLevels as level, i (i)}
                   <div class="bre-level-row">
                     <input
                       type="number"
-                      bind:value={level.leistungsfrei_months}
+                      bind:value={level.claim_free_years}
                       min="1"
                       step="1"
                       required
                     />
-                    <input
-                      type="number"
-                      bind:value={level.bre_months}
-                      min="0"
-                      step="0.5"
-                      required
-                    />
-                    <input
-                      type="number"
-                      bind:value={level.pct_of_premium}
-                      min="0"
-                      max="100"
-                      step="1"
-                      required
-                    />
+                    <select bind:value={level.unit}>
+                      <option value="pct">% × Monate</option>
+                      <option value="eur">Fixer €-Betrag</option>
+                    </select>
+                    {#if level.unit === 'pct'}
+                      <span class="bre-pct-inputs">
+                        <input
+                          type="number"
+                          bind:value={level.bre_years}
+                          min="0"
+                          step="0.5"
+                          title="Anzahl Monatsbeiträge"
+                          required
+                        />
+                        <span class="bre-x">×</span>
+                        <input
+                          type="number"
+                          bind:value={level.pct_of_premium}
+                          min="0"
+                          max="100"
+                          step="1"
+                          title="Anteil am Monatsbeitrag (%)"
+                          required
+                        />
+                        <span class="bre-unit">%</span>
+                      </span>
+                    {:else}
+                      <span class="bre-eur-input">
+                        <input
+                          type="number"
+                          bind:value={level.fixed_amount_eur}
+                          min="0"
+                          step="0.01"
+                          title="Fixer Rückerstattungsbetrag (€)"
+                          required
+                        />
+                        <span class="bre-unit">€</span>
+                      </span>
+                    {/if}
                     <button
                       type="button"
                       class="btn-icon danger"
@@ -1280,7 +1354,7 @@
 
   .bre-levels-head {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 2rem;
+    grid-template-columns: 5rem 7rem 1fr 2rem;
     gap: var(--space-2);
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
@@ -1289,17 +1363,41 @@
 
   .bre-level-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 2rem;
+    grid-template-columns: 5rem 7rem 1fr 2rem;
     gap: var(--space-2);
     align-items: center;
   }
 
-  .bre-level-row input {
+  .bre-level-row input,
+  .bre-level-row select {
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     font: inherit;
     min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .bre-pct-inputs,
+  .bre-eur-input {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .bre-pct-inputs input,
+  .bre-eur-input input {
+    width: 4rem;
+    flex-shrink: 0;
+  }
+
+  .bre-x,
+  .bre-unit {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    white-space: nowrap;
   }
 
   .checkbox-label {
