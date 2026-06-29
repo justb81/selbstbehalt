@@ -636,6 +636,12 @@ Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnun
 }
 ```
 
+Der Manifest-Link (`app.html`) trägt `crossorigin="use-credentials"`: hinter der
+Reverse-Proxy-Basic-Auth (§7.2-Standard) lädt der Browser das Manifest – und die
+darin referenzierten Icons – sonst **ohne** Credentials, der Proxy antwortet mit
+401 + Login-HTML, das Manifest wird nie geparst und die App ist nicht
+installierbar. Mit dem Attribut wird die gespeicherte Basic Auth mitgesendet.
+
 Service Worker Strategie:
 - **Shell-Dateien** (App-Code, GOÄ-Tabelle): Cache First
 - **API-Aufrufe** (REST): Network First mit Offline-Queue für Schreiboperationen

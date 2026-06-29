@@ -11,6 +11,11 @@ test('exposes an installable web app manifest per §6.3', async ({ page }) => {
   const href = await page.getAttribute('link[rel="manifest"]', 'href');
   expect(href).toBeTruthy();
 
+  // Behind the §7.2 reverse-proxy Basic Auth the manifest must be fetched with
+  // credentials, else the proxy 401s it and the app is not installable.
+  const crossorigin = await page.getAttribute('link[rel="manifest"]', 'crossorigin');
+  expect(crossorigin).toBe('use-credentials');
+
   const manifest = await page.evaluate(async (url) => {
     const response = await fetch(url!);
     return (await response.json()) as {
