@@ -28,6 +28,17 @@
   import type { FeeScheduleId } from '$lib/data/fee-schedule';
   import type { OcrProgress, OcrResult } from '$lib/ocr/types';
   import LoadingState from './LoadingState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Progress } from '$lib/components/ui/progress';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Label } from '$lib/components/ui/label';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '$lib/components/ui/select';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
@@ -169,47 +180,64 @@
   onDestroy(teardownCamera);
 </script>
 
-<div class="scanner">
+<div class="flex flex-col gap-3">
   {#if phase === 'processing'}
-    <div class="processing">
+    <div class="flex flex-col gap-2">
       <LoadingState label={progress?.message ?? 'Rechnung wird erkannt …'} />
       {#if progress?.ratio != null}
-        <progress max="1" value={progress.ratio}></progress>
+        <Progress value={Math.round(progress.ratio * 100)} max={100} />
       {/if}
     </div>
   {:else if phase === 'camera'}
-    <div class="camera">
-      <video bind:this={video} playsinline aria-label="Kameravorschau"></video>
-      <div class="actions">
-        <button type="button" class="primary" onclick={capture}>Aufnehmen</button>
-        <button type="button" onclick={cancelCamera}>Abbrechen</button>
+    <div class="flex flex-col gap-3">
+      <video
+        bind:this={video}
+        playsinline
+        aria-label="Kameravorschau"
+        class="w-full max-h-[60vh] rounded-xl bg-black"
+      ></video>
+      <div class="flex flex-wrap gap-2">
+        <Button type="button" variant="default" onclick={capture}>Aufnehmen</Button>
+        <Button type="button" variant="outline" onclick={cancelCamera}>Abbrechen</Button>
       </div>
     </div>
   {:else}
-    <div class="capture">
-      <label class="field">
-        <span>Gebührenordnung</span>
-        <select bind:value={schedule} aria-label="Gebührenordnung">
-          {#each FEE_SCHEDULE_IDS as id (id)}
-            <option value={id}>{id}</option>
-          {/each}
-        </select>
-      </label>
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-col gap-1.5 max-w-48">
+        <Label for="fee-schedule-select">Gebührenordnung</Label>
+        <Select
+          value={schedule}
+          onValueChange={(v) => {
+            if (v) schedule = v as FeeScheduleId;
+          }}
+        >
+          <SelectTrigger id="fee-schedule-select" aria-label="Gebührenordnung">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {#each FEE_SCHEDULE_IDS as id (id)}
+              <SelectItem value={id} label={id} />
+            {/each}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <div class="actions">
-        <button type="button" class="primary" onclick={startCamera}>Kamera öffnen</button>
-        <button type="button" onclick={() => fileInput?.click()}>Datei wählen</button>
+      <div class="flex flex-wrap gap-2">
+        <Button type="button" variant="default" onclick={startCamera}>Kamera öffnen</Button>
+        <Button type="button" variant="outline" onclick={() => fileInput?.click()}>
+          Datei wählen
+        </Button>
       </div>
       <input
         bind:this={fileInput}
         type="file"
         accept="image/*,application/pdf"
         capture="environment"
-        class="visually-hidden"
+        class="sr-only"
         aria-label="Rechnungsdatei (Bild oder PDF)"
         onchange={onFileChange}
       />
-      <p class="hint">
+      <p class="text-muted-foreground text-sm">
         Foto, Bild oder PDF. Die Erkennung läuft vollständig auf diesem Gerät; das Bild verlässt es
         nie und wird nach der Erkennung verworfen.
       </p>
@@ -217,99 +245,8 @@
   {/if}
 
   {#if error}
-    <p class="error" role="alert">{error}</p>
+    <Alert variant="destructive">
+      <AlertDescription>{error}</AlertDescription>
+    </Alert>
   {/if}
 </div>
-
-<style>
-  .scanner {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    max-width: 12rem;
-  }
-
-  select {
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    background: var(--color-surface);
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  button {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  button.primary {
-    border-color: transparent;
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-  }
-
-  button.primary:hover {
-    background: var(--color-primary-strong);
-  }
-
-  .hint {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
-  }
-
-  .camera video {
-    width: 100%;
-    max-height: 60vh;
-    border-radius: var(--radius-md);
-    background: #000;
-  }
-
-  .processing {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  progress {
-    width: 100%;
-  }
-
-  .error {
-    margin: 0;
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
-  }
-</style>
