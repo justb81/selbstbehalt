@@ -36,7 +36,7 @@ COPY frontend/package.json frontend/package.json
 # fail — its sources don't exist in this layer yet. The frontend pulls in no
 # dependencies that need a postinstall build, and shared is compiled explicitly
 # below once its sources are in place.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+RUN --mount=type=cache,id=pnpm-store-frontend,target=/pnpm/store \
   pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..." --ignore-scripts
 
 # Sources for the frontend and its shared dependency. `scripts/` holds the OCR
