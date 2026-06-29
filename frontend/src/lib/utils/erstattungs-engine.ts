@@ -30,14 +30,16 @@
  */
 
 import { addMonths, differenceInYears, isBefore } from 'date-fns';
-import type {
-  AnnualStaffelEntry,
-  BenefitCategory,
-  BenefitLimit,
-  BenefitTier,
-  DateInput,
-  IncludedBenefit,
-  IncludedBenefits,
+import {
+  roundCents,
+  toCalendarDate,
+  type AnnualStaffelEntry,
+  type BenefitCategory,
+  type BenefitLimit,
+  type BenefitTier,
+  type DateInput,
+  type IncludedBenefit,
+  type IncludedBenefits,
 } from '@selbstbehalt/shared';
 
 /** A single invoice position reduced to what the engine needs. */
@@ -100,22 +102,6 @@ export interface ErstattungResult {
   byCategory: ErstattungByCategory[];
 }
 
-/** Round to whole cents (mirrors the `money` schema's 2-decimal rule). */
-function round2(amount: number): number {
-  return Math.round((amount + Number.EPSILON) * 100) / 100;
-}
-
-/** Reduce a `Date` or `YYYY-MM-DD` string to a `Date` at local midnight. */
-function toDate(value: DateInput): Date {
-  if (typeof value === 'string') {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-    if (!match) throw new RangeError(`Ungültiges Datum: "${value}" (erwartet JJJJ-MM-TT)`);
-    const [, y, m, d] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  }
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
-
 /**
  * Reimburse `amount` along an ascending threshold ladder: each tranche
  * `(lower, up_to]` at its `pct`, the open-ended final tier (`up_to: null`) for
@@ -165,9 +151,9 @@ function computeCategory(
 ): ErstattungByCategory {
   const base = (eligible: number, cappedBy: CappedBy, note?: string): ErstattungByCategory => ({
     category,
-    chargedAmount: round2(chargedAmount),
-    eligibleAmount: round2(Math.max(0, eligible)),
-    appliedPct: chargedAmount > 0 ? round2((Math.max(0, eligible) / chargedAmount) * 100) : 0,
+    chargedAmount: roundCents(chargedAmount),
+    eligibleAmount: roundCents(Math.max(0, eligible)),
+    appliedPct: chargedAmount > 0 ? roundCents((Math.max(0, eligible) / chargedAmount) * 100) : 0,
     cappedBy,
     note,
   });
@@ -180,8 +166,8 @@ function computeCategory(
   // 1. Wartezeit.
   const waiting = benefit.waiting_period_months ?? 0;
   if (waiting > 0) {
-    const waitingEnds = addMonths(toDate(input.coverageStart), waiting);
-    if (isBefore(toDate(input.invoiceDate), waitingEnds)) {
+    const waitingEnds = addMonths(toCalendarDate(input.coverageStart), waiting);
+    if (isBefore(toCalendarDate(input.invoiceDate), waitingEnds)) {
       return base(0, 'waiting_period', `Innerhalb der Wartezeit von ${waiting} Monaten.`);
     }
   }
@@ -228,7 +214,7 @@ function computeCategory(
     // count completed anniversary years (differenceInYears), not year boundaries
     // crossed (differenceInCalendarYears, which would jump on every 1 January).
     const policyYear =
-      differenceInYears(toDate(input.invoiceDate), toDate(input.coverageStart)) + 1;
+      differenceInYears(toCalendarDate(input.invoiceDate), toCalendarDate(input.coverageStart)) + 1;
     const cap = annualCap(benefit.annual_staffel, policyYear);
     if (cap !== null) {
       const prior = input.priorClaimsByCategory?.[category] ?? 0;
@@ -263,6 +249,6 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     byCategory.push(computeCategory(category, charged, benefit, input));
   }
 
-  const eligibleAmount = round2(byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0));
+  const eligibleAmount = roundCents(byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0));
   return { eligibleAmount, byCategory };
 }

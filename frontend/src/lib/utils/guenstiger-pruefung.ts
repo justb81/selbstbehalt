@@ -38,6 +38,7 @@ import {
   getCurrentStreakYears,
   getProjectedBRE,
   roundCents,
+  toCalendarDate,
   type BREStructure,
   type DateInput,
 } from '@selbstbehalt/shared';
@@ -98,24 +99,12 @@ export interface GCP_Result {
   explanation: string;
 }
 
-/** 0-based month index of a `DateInput`, parsed as a calendar date (TZ-safe for strings). */
-function monthIndex(value: DateInput): number {
-  if (typeof value === 'string') {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-    if (!match) {
-      throw new RangeError(`Ungültiges Datum: "${value}" (erwartet JJJJ-MM-TT)`);
-    }
-    return Number(match[2]) - 1;
-  }
-  return value.getMonth();
-}
-
 /**
  * Whole months from `asOf` to the end of the calendar year, when the BRE is paid
- * out: `12 − monthIndex` (January ⇒ 12, December ⇒ 1), matching design §5.2.
+ * out: `12 − month` (January ⇒ 12, December ⇒ 1), matching design §5.2.
  */
 function monthsUntilYearEnd(asOf: DateInput): number {
-  return 12 - monthIndex(asOf);
+  return 12 - toCalendarDate(asOf).getMonth();
 }
 
 /** Format a EUR amount as German plain text, e.g. `181,40 €`. */

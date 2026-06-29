@@ -10,6 +10,7 @@
 
 import {
   projectedBREForStreak,
+  roundCents,
   type BREHistory,
   type BREHistoryYear,
   type YearStats,
@@ -20,11 +21,6 @@ import { HTTPException } from 'hono/http-exception';
 
 import type { Database } from '../db/client.js';
 import { brePeriods, insuredPersons, invoices, submissions } from '../db/schema.js';
-
-/** Round a monetary sum to whole cents (REAL columns accumulate float drift). */
-function toCents(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 /** Parse and bounds-check the `:year` path param, throwing 400 on bad input. */
 function parseYear(raw: string): number {
@@ -72,11 +68,11 @@ export function createStatsRoute(db: Database) {
       const body: YearStats = {
         year,
         invoice_count: invoiceAgg?.count ?? 0,
-        total_amount: toCents(invoiceAgg?.total ?? 0),
-        eligible_amount: toCents(invoiceAgg?.eligible ?? 0),
-        self_paid_amount: toCents(invoiceAgg?.selfPaid ?? 0),
-        refund_amount: toCents(refundAgg?.refunds ?? 0),
-        bre_amount: toCents(breAgg?.bre ?? 0),
+        total_amount: roundCents(invoiceAgg?.total ?? 0),
+        eligible_amount: roundCents(invoiceAgg?.eligible ?? 0),
+        self_paid_amount: roundCents(invoiceAgg?.selfPaid ?? 0),
+        refund_amount: roundCents(refundAgg?.refunds ?? 0),
+        bre_amount: roundCents(breAgg?.bre ?? 0),
       };
       return c.json(body);
     })
@@ -99,7 +95,7 @@ export function createStatsRoute(db: Database) {
       const years: BREHistoryYear[] = rows.map((row) => ({
         year: row.year,
         streak_years: row.streakYears,
-        bre_amount: toCents(row.breAmount),
+        bre_amount: roundCents(row.breAmount),
         // Project from the recorded streak via the shared helper (#17). Without a
         // bre_structure there is no ladder to project, so fall back to the stored
         // value (which is itself nullable).
