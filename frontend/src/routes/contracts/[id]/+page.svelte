@@ -162,17 +162,17 @@
   let ipHasBre = $state(false);
   let ipStreakStart = $state('');
   type BreLevelForm = {
-    leistungsfrei_years: number;
+    claim_free_years: number;
     unit: 'pct' | 'eur';
-    bre_months: number;
+    bre_years: number;
     pct_of_premium: number;
     fixed_amount_eur: number;
   };
   let ipBreLevels = $state<BreLevelForm[]>([
     {
-      leistungsfrei_years: 1,
+      claim_free_years: 1,
       unit: 'pct',
-      bre_months: 1,
+      bre_years: 1,
       pct_of_premium: 100,
       fixed_amount_eur: 0,
     },
@@ -205,13 +205,13 @@
   let ipBenefits = $state<UiBenefit[]>([]);
 
   function addBreLevel() {
-    const nextYears = (ipBreLevels[ipBreLevels.length - 1]?.leistungsfrei_years ?? 0) + 1;
+    const nextYears = (ipBreLevels[ipBreLevels.length - 1]?.claim_free_years ?? 0) + 1;
     ipBreLevels = [
       ...ipBreLevels,
       {
-        leistungsfrei_years: nextYears,
+        claim_free_years: nextYears,
         unit: 'pct',
-        bre_months: 1,
+        bre_years: 1,
         pct_of_premium: 100,
         fixed_amount_eur: 0,
       },
@@ -329,9 +329,9 @@
     ipStreakStart = '';
     ipBreLevels = [
       {
-        leistungsfrei_years: 1,
+        claim_free_years: 1,
         unit: 'pct',
-        bre_months: 1,
+        bre_years: 1,
         pct_of_premium: 100,
         fixed_amount_eur: 0,
       },
@@ -356,9 +356,9 @@
       ipHasBre = true;
       ipStreakStart = ip.bre_structure.current_streak_start ?? '';
       ipBreLevels = ip.bre_structure.levels.map((l) => ({
-        leistungsfrei_years: l.leistungsfrei_years,
+        claim_free_years: l.claim_free_years,
         unit: l.fixed_amount_eur !== undefined ? ('eur' as const) : ('pct' as const),
-        bre_months: l.bre_months ?? 1,
+        bre_years: l.bre_years ?? 1,
         pct_of_premium: l.pct_of_premium ?? 100,
         fixed_amount_eur: l.fixed_amount_eur ?? 0,
       }));
@@ -367,9 +367,9 @@
       ipStreakStart = '';
       ipBreLevels = [
         {
-          leistungsfrei_years: 1,
+          claim_free_years: 1,
           unit: 'pct',
-          bre_months: 1,
+          bre_years: 1,
           pct_of_premium: 100,
           fixed_amount_eur: 0,
         },
@@ -426,10 +426,10 @@
           type: 'staffel',
           levels: ipBreLevels.map((l): BRELevel =>
             l.unit === 'eur'
-              ? { leistungsfrei_years: l.leistungsfrei_years, fixed_amount_eur: l.fixed_amount_eur }
+              ? { claim_free_years: l.claim_free_years, fixed_amount_eur: l.fixed_amount_eur }
               : {
-                  leistungsfrei_years: l.leistungsfrei_years,
-                  bre_months: l.bre_months,
+                  claim_free_years: l.claim_free_years,
+                  bre_years: l.bre_years,
                   pct_of_premium: l.pct_of_premium,
                 },
           ),
@@ -707,7 +707,7 @@
                   <div class="bre-level-row">
                     <input
                       type="number"
-                      bind:value={level.leistungsfrei_years}
+                      bind:value={level.claim_free_years}
                       min="1"
                       step="1"
                       required
@@ -720,7 +720,7 @@
                       <span class="bre-pct-inputs">
                         <input
                           type="number"
-                          bind:value={level.bre_months}
+                          bind:value={level.bre_years}
                           min="0"
                           step="0.5"
                           title="Anzahl Monatsbeiträge"

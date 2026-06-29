@@ -107,7 +107,7 @@ describe('insured-person mapping', () => {
       selfRetention: 600,
       breStructure: {
         type: 'staffel',
-        levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
+        levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
       },
       includedBenefits: {
         benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] }],
@@ -125,7 +125,7 @@ describe('insured-person mapping', () => {
       self_retention: 600,
       created_at: NOW,
     });
-    expect(result.bre_structure?.levels[0]?.bre_months).toBe(1);
+    expect(result.bre_structure?.levels[0]?.bre_years).toBe(1);
   });
 
   it('serializes a row with nullable columns null', () => {

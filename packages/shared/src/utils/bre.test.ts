@@ -14,9 +14,9 @@ function ladder(currentStreakStart: string | null): BREStructure {
   return {
     type: 'staffel',
     levels: [
-      { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
-      { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
-      { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
+      { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
+      { claim_free_years: 2, bre_years: 2, pct_of_premium: 100 },
+      { claim_free_years: 3, bre_years: 3, pct_of_premium: 100 },
     ],
     current_streak_start: currentStreakStart,
   };
@@ -91,9 +91,9 @@ describe('getCurrentStreakYears', () => {
     const shuffled: BREStructure = {
       type: 'staffel',
       levels: [
-        { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
-        { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
-        { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
+        { claim_free_years: 3, bre_years: 3, pct_of_premium: 100 },
+        { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
+        { claim_free_years: 2, bre_years: 2, pct_of_premium: 100 },
       ],
       current_streak_start: '2024-01-01',
     };
@@ -122,7 +122,7 @@ describe('getProjectedBRE', () => {
   it('applies pct_of_premium below 100', () => {
     const partial: BREStructure = {
       type: 'staffel',
-      levels: [{ leistungsfrei_years: 1, bre_months: 2, pct_of_premium: 50 }],
+      levels: [{ claim_free_years: 1, bre_years: 2, pct_of_premium: 50 }],
       current_streak_start: '2024-01-01',
     };
     // 2 × 200 × 50% = 200
@@ -132,7 +132,7 @@ describe('getProjectedBRE', () => {
   it('uses fixed_amount_eur when set, ignoring monthly premium', () => {
     const fixed: BREStructure = {
       type: 'staffel',
-      levels: [{ leistungsfrei_years: 1, fixed_amount_eur: 300 }],
+      levels: [{ claim_free_years: 1, fixed_amount_eur: 300 }],
       current_streak_start: '2024-01-01',
     };
     // Fixed €300 regardless of monthly premium.
@@ -143,7 +143,7 @@ describe('getProjectedBRE', () => {
   it('rounds the refund to whole cents', () => {
     const odd: BREStructure = {
       type: 'staffel',
-      levels: [{ leistungsfrei_years: 0, bre_months: 1, pct_of_premium: 33.33 }],
+      levels: [{ claim_free_years: 0, bre_years: 1, pct_of_premium: 33.33 }],
       current_streak_start: '2024-01-01',
     };
     // 1 × 100.1 × 33.33% = 33.363330 → 33.36 (rounded to whole cents)
@@ -166,7 +166,7 @@ describe('projectedBREForStreak', () => {
   it('handles fixed_amount_eur levels', () => {
     const fixed: BREStructure = {
       type: 'staffel',
-      levels: [{ leistungsfrei_years: 1, fixed_amount_eur: 400 }],
+      levels: [{ claim_free_years: 1, fixed_amount_eur: 400 }],
       current_streak_start: null,
     };
     expect(projectedBREForStreak(fixed, 999, 1)).toBe(400);
@@ -184,12 +184,12 @@ describe('projectedBREForStreak', () => {
 describe('getNextLevel', () => {
   it('reports the upcoming level and years remaining', () => {
     expect(getNextLevel(ladder('2024-01-01'), '2024-01-01')).toEqual({
-      level: { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
+      level: { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
       yearsRemaining: 1,
     });
     // Streak 0 → one year to the first level.
     expect(getNextLevel(ladder('2024-01-01'), '2024-12-31')).toEqual({
-      level: { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
+      level: { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
       yearsRemaining: 1,
     });
   });
@@ -197,11 +197,11 @@ describe('getNextLevel', () => {
   it('advances to the next milestone once a threshold is reached', () => {
     // At exactly 1 year the member is already entitled; the next goal is 2.
     expect(getNextLevel(ladder('2024-01-01'), '2025-01-01')).toEqual({
-      level: { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
+      level: { claim_free_years: 2, bre_years: 2, pct_of_premium: 100 },
       yearsRemaining: 1,
     });
     expect(getNextLevel(ladder('2024-01-01'), '2026-01-01')).toEqual({
-      level: { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
+      level: { claim_free_years: 3, bre_years: 3, pct_of_premium: 100 },
       yearsRemaining: 1,
     });
   });
@@ -213,7 +213,7 @@ describe('getNextLevel', () => {
 
   it('treats a missing streak as years remaining to the lowest level', () => {
     expect(getNextLevel(ladder(null), '2025-01-01')).toEqual({
-      level: { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
+      level: { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
       yearsRemaining: 1,
     });
   });

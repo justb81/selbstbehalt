@@ -104,7 +104,7 @@ describe('insuredPersonCreateSchema', () => {
       ...base,
       bre_structure: {
         type: 'staffel',
-        levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
+        levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
         current_streak_start: '2024-01-01',
       },
       included_benefits: {
@@ -125,7 +125,7 @@ describe('insuredPersonCreateSchema', () => {
     expect(
       breStructureSchema.safeParse({
         type: 'staffel',
-        levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 101 }],
+        levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 101 }],
       }).success,
     ).toBe(false);
   });

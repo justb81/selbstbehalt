@@ -73,9 +73,9 @@ export function seed(handle: DbHandle): void {
       breStructure: {
         type: 'staffel',
         levels: [
-          { leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 },
-          { leistungsfrei_years: 2, bre_months: 2, pct_of_premium: 100 },
-          { leistungsfrei_years: 3, bre_months: 3, pct_of_premium: 100 },
+          { claim_free_years: 1, bre_years: 1, pct_of_premium: 100 },
+          { claim_free_years: 2, bre_years: 2, pct_of_premium: 100 },
+          { claim_free_years: 3, bre_years: 3, pct_of_premium: 100 },
         ],
         current_streak_start: '2025-07-01',
       },

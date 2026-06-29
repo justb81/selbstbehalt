@@ -25,7 +25,7 @@ const PERSON_WITH_BRE: InsuredPerson = {
   ...BASE_PERSON,
   bre_structure: {
     type: 'staffel',
-    levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
+    levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
     current_streak_start: '2024-01-01',
   },
 };

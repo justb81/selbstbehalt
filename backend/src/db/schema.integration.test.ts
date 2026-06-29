@@ -137,7 +137,7 @@ describe('entity chain', () => {
         monthlyPremium: 80,
         breStructure: {
           type: 'staffel',
-          levels: [{ leistungsfrei_years: 1, bre_months: 1, pct_of_premium: 100 }],
+          levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
           current_streak_start: '2025-01-01',
         },
         includedBenefits: {
@@ -150,7 +150,7 @@ describe('entity chain', () => {
       .returning()
       .get();
 
-    expect(insured.breStructure?.levels[0]?.bre_months).toBe(1);
+    expect(insured.breStructure?.levels[0]?.bre_years).toBe(1);
     expect(insured.includedBenefits?.benefits[0]?.category).toBe('zahnbehandlung');
     expect(insured.includedBenefits?.benefits[1]?.tiers?.[0]?.pct).toBe(100);
   });

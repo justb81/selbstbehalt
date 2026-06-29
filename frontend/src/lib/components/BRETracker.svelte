@@ -27,7 +27,7 @@
 
   const progressPct = $derived(() => {
     if (!bre || !nextLevel) return 100;
-    const target = nextLevel.level.leistungsfrei_years;
+    const target = nextLevel.level.claim_free_years;
     return Math.min(100, Math.round((streakYears / target) * 100));
   });
 
@@ -52,7 +52,7 @@
       role="progressbar"
       aria-valuenow={streakYears}
       aria-valuemin={0}
-      aria-valuemax={nextLevel ? nextLevel.level.leistungsfrei_years : streakYears}
+      aria-valuemax={nextLevel ? nextLevel.level.claim_free_years : streakYears}
     >
       <div class="progress-fill" style="width: {progressPct()}%"></div>
     </div>
@@ -64,7 +64,7 @@
             Nächste Stufe in {nextLevel.yearsRemaining} Jahr{nextLevel.yearsRemaining === 1
               ? ''
               : 'en'}
-            ({nextLevel.level.leistungsfrei_years} Jahr{nextLevel.level.leistungsfrei_years === 1
+            ({nextLevel.level.claim_free_years} Jahr{nextLevel.level.claim_free_years === 1
               ? ''
               : 'e'} →
             {#if nextLevel.level.fixed_amount_eur !== undefined}

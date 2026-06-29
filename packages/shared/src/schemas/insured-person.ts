@@ -6,15 +6,15 @@ import { includedBenefitsSchema } from './included-benefits.js';
 
 /**
  * One tier of a premium-refund (Beitragsrückerstattung) ladder: stay
- * claim-free for `leistungsfrei_years` calendar years and you earn either
- * `bre_months × pct_of_premium / 100` months of premium back (percentage mode)
+ * claim-free for `claim_free_years` calendar years and you earn either
+ * `bre_years × pct_of_premium / 100` monthly premiums back (percentage mode)
  * or a `fixed_amount_eur` (fixed-amount mode). Exactly one mode must be set.
  */
 export const breLevelSchema = z
   .object({
-    leistungsfrei_years: z.number().int().nonnegative(),
-    // Percentage mode: bre_months × monthly_premium × pct_of_premium / 100
-    bre_months: z.number().nonnegative().optional(),
+    claim_free_years: z.number().int().nonnegative(),
+    // Percentage mode: bre_years × monthly_premium × pct_of_premium / 100
+    bre_years: z.number().nonnegative().optional(),
     pct_of_premium: z.number().min(0).max(100).optional(),
     // Fixed-amount mode: exact EUR refund regardless of premium
     fixed_amount_eur: money.optional(),
@@ -23,8 +23,8 @@ export const breLevelSchema = z
   .refine(
     (d) =>
       d.fixed_amount_eur !== undefined ||
-      (d.pct_of_premium !== undefined && d.bre_months !== undefined),
-    { message: 'Entweder fixed_amount_eur oder (bre_months + pct_of_premium) erforderlich.' },
+      (d.pct_of_premium !== undefined && d.bre_years !== undefined),
+    { message: 'Either fixed_amount_eur or (bre_years + pct_of_premium) is required.' },
   );
 
 /** Structured `insured_persons.bre_structure` (stored as JSON TEXT). */
