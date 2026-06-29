@@ -438,6 +438,7 @@
         value={insuredPersonId}
         onValueChange={(v: string) => (insuredPersonId = v ?? '')}
         disabled={disabled || insuredOptions.length === 0}
+        items={insuredOptions.map((o) => ({ value: o.id, label: o.label }))}
       >
         <SelectTrigger id="field-insured" class="w-full">
           <SelectValue placeholder="Bitte wählen …" />
@@ -488,6 +489,7 @@
           if (v) providerType = v as ProviderType;
         }}
         {disabled}
+        items={providerTypeValues.map((t) => ({ value: t, label: PROVIDER_TYPE_LABELS[t] }))}
       >
         <SelectTrigger id="field-type" class="w-full">
           <SelectValue />

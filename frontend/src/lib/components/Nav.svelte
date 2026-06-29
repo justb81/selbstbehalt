@@ -31,7 +31,7 @@
   });
 </script>
 
-<nav aria-label="Hauptnavigation">
+<nav aria-label="Hauptnavigation" class="ml-auto sm:ml-0">
   <!-- Hamburger toggle — only visible on mobile -->
   <button
     class="sm:hidden flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
