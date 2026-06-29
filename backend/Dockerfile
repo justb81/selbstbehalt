@@ -36,7 +36,7 @@ COPY frontend/package.json frontend/package.json
 # fail — its sources don't exist in this layer yet (shared is compiled
 # explicitly below). Skipping scripts also skips better-sqlite3's native build,
 # so rebuild just that one afterwards to compile its binding into the store.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+RUN --mount=type=cache,id=pnpm-store-backend,target=/pnpm/store \
   pnpm install --frozen-lockfile --filter "@selbstbehalt/backend..." --ignore-scripts \
   && pnpm rebuild better-sqlite3
 
@@ -51,7 +51,7 @@ RUN pnpm --filter @selbstbehalt/shared build \
 # Self-contained production bundle in /app (dist + prod node_modules, with the
 # built shared package copied in). inject-workspace-packages lets `deploy` copy
 # from the local store instead of re-resolving from the registry.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+RUN --mount=type=cache,id=pnpm-store-backend,target=/pnpm/store \
   pnpm --filter @selbstbehalt/backend \
   --config.inject-workspace-packages=true \
   deploy --prod /app
