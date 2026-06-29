@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CaptureError,
   captureVideoFrame,
+  fileToAllImageData,
   fileToImageData,
   requestCameraStream,
   stopStream,
@@ -142,5 +143,26 @@ describe('fileToImageData', () => {
     const err = new CaptureError('no_camera', 'msg');
     expect(err).toBeInstanceOf(Error);
     expect(err.code).toBe('no_camera');
+  });
+});
+
+describe('fileToAllImageData', () => {
+  it('delegates a PDF to renderAllPdfPages and returns all pages', async () => {
+    const page1 = sentinel;
+    const page2 = { data: new Uint8ClampedArray(4), width: 2, height: 1 } as unknown as ImageData;
+    const file = new File([new Uint8Array([1])], 'invoice.pdf', { type: 'application/pdf' });
+    const renderAllPdfPages = vi.fn().mockResolvedValue([page1, page2]);
+    const results = await fileToAllImageData(file, { renderAllPdfPages });
+    expect(results).toEqual([page1, page2]);
+    expect(renderAllPdfPages).toHaveBeenCalledWith(file);
+  });
+
+  it('wraps a single image in a one-element array', async () => {
+    const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' });
+    const close = vi.fn();
+    const decode = vi.fn().mockResolvedValue({ width: 1, height: 1, close });
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+    const results = await fileToAllImageData(file, { decode, toImageData });
+    expect(results).toEqual([sentinel]);
   });
 });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 
-import { renderPdfPage, type PdfJsLike, type RenderPdfDeps } from './pdf';
+import { renderAllPdfPages, renderPdfPage, type PdfJsLike, type RenderPdfDeps } from './pdf';
 
 const sentinel = { data: new Uint8ClampedArray(4), width: 1, height: 1 } as unknown as ImageData;
 
@@ -75,5 +75,39 @@ describe('renderPdfPage', () => {
       createCanvas: () => ({ getContext: () => null }) as unknown as OffscreenCanvas,
     };
     await expect(renderPdfPage(pdfFile(), 1, {}, deps)).rejects.toThrow(/2D-Canvas-Kontext/);
+  });
+});
+
+describe('renderAllPdfPages', () => {
+  it('renders every page and returns one ImageData per page', async () => {
+    const { pdfjs, getPage } = fakePdfJs(3);
+    const sentinels = [sentinel, sentinel, sentinel];
+    let callCount = 0;
+    const getImageData = vi.fn().mockImplementation(() => sentinels[callCount++]);
+    const context = { getImageData };
+    const createCanvas = vi.fn().mockReturnValue({ getContext: () => context });
+    const deps: RenderPdfDeps = { loadPdfJs: async () => pdfjs, createCanvas };
+
+    const results = await renderAllPdfPages(pdfFile(), {}, deps);
+    expect(results).toHaveLength(3);
+    expect(getPage).toHaveBeenNthCalledWith(1, 1);
+    expect(getPage).toHaveBeenNthCalledWith(2, 2);
+    expect(getPage).toHaveBeenNthCalledWith(3, 3);
+    expect(getImageData).toHaveBeenCalledTimes(3);
+  });
+
+  it('returns a single-element array for a one-page PDF', async () => {
+    const { pdfjs } = fakePdfJs(1);
+    const { deps } = fakeCanvasDeps(pdfjs);
+    const results = await renderAllPdfPages(pdfFile(), {}, deps);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toBe(sentinel);
+  });
+
+  it('honours scale via options', async () => {
+    const { pdfjs, getViewport } = fakePdfJs(1);
+    const { deps } = fakeCanvasDeps(pdfjs);
+    await renderAllPdfPages(pdfFile(), { scale: 3 }, deps);
+    expect(getViewport).toHaveBeenCalledWith({ scale: 3 });
   });
 });

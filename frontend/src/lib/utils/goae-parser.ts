@@ -373,10 +373,13 @@ export function parsePositionLine(line: string): RawPosition | null {
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
   // so description text before the numbers is ignored).
+  // Standalone currency symbols (€, EUR) are skipped — OCR often separates
+  // "26,14 €" into two tokens, and the € would otherwise break collection.
   const trailing: NumericToken[] = [];
   for (let i = tokens.length - 1; i >= 0; i--) {
     const token = tokens[i];
     if (token === undefined) break;
+    if (/^[€$]$|^EUR$/i.test(token)) continue;
     const parsed = parseNumericToken(token);
     if (!parsed) break;
     trailing.unshift(parsed);
@@ -421,10 +424,11 @@ export function parsePositionLine(line: string): RawPosition | null {
 }
 
 /**
- * A "bare-number" line is just a number (optionally with EUR suffix) on its own
- * — OCR sometimes wraps the amount onto the next line when the description is long.
+ * A "bare-number" line consists only of numbers (with optional currency suffix)
+ * — OCR sometimes wraps the amount, or both factor and amount, onto the next
+ * line when the description is long. Matches "17,43 €", "1,00 1,46 €", etc.
  */
-const BARE_NUMBER_RE = /^\s*\d[\d.,]*\s*(?:EUR)?\s*$/i;
+const BARE_NUMBER_RE = /^\s*\d[\d.,]*(?:\s+\d[\d.,]*)*\s*(?:[€$]|EUR)?\s*$/i;
 
 /**
  * Joins lines where OCR has wrapped the amount onto its own line: e.g.

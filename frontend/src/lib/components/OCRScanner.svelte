@@ -22,7 +22,7 @@
     CaptureError,
   } from '$lib/ocr/capture';
   import { preprocess as defaultPreprocess } from '$lib/ocr/preprocess';
-  import { loadInvoiceImage, recognizeInvoiceImage } from '$lib/ocr/scan-ocr';
+  import { loadAllInvoiceImages, recognizeInvoiceImage } from '$lib/ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '$lib/ocr/scan-flow';
   import { FEE_SCHEDULE_IDS, loadFeeTable } from '$lib/data/fee-tables';
   import type { FeeScheduleId } from '$lib/data/fee-schedule';
@@ -31,7 +31,7 @@
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
-    fileToImageData: (file: File) => Promise<ImageData>;
+    fileToImages: (file: File) => Promise<ImageData[]>;
     preprocess: (image: ImageData) => ImageData;
     recognize: (
       image: ImageData,
@@ -57,7 +57,7 @@
   // `deps` is injected once (tests) and never changes; capturing the initial
   // value here is intentional, so silence the seed-once reactivity warning.
   // svelte-ignore state_referenced_locally
-  const fileToImageData = deps.fileToImageData ?? ((f: File) => loadInvoiceImage(f));
+  const fileToImages = deps.fileToImages ?? ((f: File) => loadAllInvoiceImages(f));
   // svelte-ignore state_referenced_locally
   const preprocess =
     deps.preprocess ?? ((img: ImageData) => defaultPreprocess(img, { contrast: 1.2 }));
@@ -85,21 +85,25 @@
     return 'Die Rechnung konnte nicht verarbeitet werden.';
   }
 
-  /** Preprocess → OCR → parse a captured frame, then surface the result. */
-  async function processImage(image: ImageData): Promise<void> {
+  /**
+   * Preprocess → OCR → parse one or more frames, then surface the result.
+   * For multi-page PDFs each page is recognised in order and the results are
+   * concatenated before parsing, so the full document is treated as one invoice.
+   * Frames are discarded as soon as recognition finishes (Datenminimierung §8.2).
+   */
+  async function processImages(images: ImageData[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
-      const prepared = preprocess(image);
-      // Recognise and load the (lazy) fee table for the chosen schedule together.
-      const [results, table] = await Promise.all([
-        recognize(prepared, (p) => (progress = p)),
-        loadFeeTable(schedule),
-      ]);
-      // The frame is no longer referenced past this point — only text/metadata
-      // continues through the flow (datenminimierung, §8.2).
-      onScanned(buildScanResult(results, schedule, table));
+      const table = await loadFeeTable(schedule);
+      const allResults: OcrResult[] = [];
+      for (const image of images) {
+        const prepared = preprocess(image);
+        const results = await recognize(prepared, (p) => (progress = p));
+        allResults.push(...results);
+      }
+      onScanned(buildScanResult(allResults, schedule, table));
       phase = 'idle';
       progress = null;
     } catch (err) {
@@ -116,8 +120,8 @@
     input.value = '';
     if (!file) return;
     try {
-      const image = await fileToImageData(file);
-      await processImage(image);
+      const images = await fileToImages(file);
+      await processImages(images);
     } catch (err) {
       error = messageFor(err);
     }
@@ -155,7 +159,7 @@
     try {
       const image = await captureVideoFrame(video);
       teardownCamera();
-      await processImage(image);
+      await processImages([image]);
     } catch (err) {
       // Never leave the camera running on a failed capture.
       teardownCamera();
