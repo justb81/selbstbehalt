@@ -21,21 +21,22 @@ export {
   stopStream,
   captureVideoFrame,
   fileToImageData,
+  fileToAllImageData,
   CaptureError,
   REAR_CAMERA_CONSTRAINTS,
 } from './capture';
 export type { CaptureDeps, CaptureErrorCode } from './capture';
-export { renderPdfPage } from './pdf';
+export { renderPdfPage, renderAllPdfPages } from './pdf';
 export type { RenderPdfOptions, RenderPdfDeps } from './pdf';
 export {
   recognizeInvoiceImage,
-  loadInvoiceImage,
+  loadAllInvoiceImages,
   setOcrRecognizer,
-  setImageLoader,
+  setAllImageLoader,
   disposeScanOcr,
   textToOcrResults,
 } from './scan-ocr';
-export type { OcrRecognizer, ImageLoader } from './scan-ocr';
+export type { OcrRecognizer, MultiImageLoader } from './scan-ocr';
 export {
   buildScanResult,
   ocrResultsToText,

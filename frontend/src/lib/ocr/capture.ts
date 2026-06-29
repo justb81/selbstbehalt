@@ -11,7 +11,10 @@
  * ever happens here (docs/design.md §1.3, §8). Canvas/codec/PDF dependencies are
  * injectable, keeping the control flow unit-testable without a real DOM.
  */
-import { renderPdfPage as defaultRenderPdfPage } from './pdf';
+import {
+  renderAllPdfPages as defaultRenderAllPdfPages,
+  renderPdfPage as defaultRenderPdfPage,
+} from './pdf';
 
 /** Stable reasons a capture can fail. */
 export type CaptureErrorCode =
@@ -43,8 +46,10 @@ export interface CaptureDeps {
   ) => Promise<ImageData> | ImageData;
   /** Decodes an image blob (defaults to `createImageBitmap`). */
   decode?: (blob: Blob) => Promise<ImageBitmap>;
-  /** Renders a PDF page to {@link ImageData} (defaults to {@link renderPdfPage}). */
+  /** Renders a single PDF page to {@link ImageData} (defaults to {@link renderPdfPage}). */
   renderPdfPage?: (file: Blob, pageNumber: number) => Promise<ImageData>;
+  /** Renders all PDF pages to an array of {@link ImageData}s (defaults to {@link renderAllPdfPages}). */
+  renderAllPdfPages?: (file: Blob) => Promise<ImageData[]>;
 }
 
 /** Default camera constraints: rear-facing video, no audio. */
@@ -127,6 +132,21 @@ export async function captureVideoFrame(
   }
   const toImageData = deps.toImageData ?? defaultToImageData;
   return toImageData(video, width, height);
+}
+
+/**
+ * Loads every page of a user-selected file as {@link ImageData}s: PDFs produce
+ * one entry per page, images produce a single-element array. This is the
+ * multi-page counterpart of {@link fileToImageData} — prefer it when the full
+ * document must be scanned (e.g. a two-page invoice).
+ */
+export async function fileToAllImageData(file: File, deps: CaptureDeps = {}): Promise<ImageData[]> {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (isPdf) {
+    const renderAll = deps.renderAllPdfPages ?? defaultRenderAllPdfPages;
+    return renderAll(file);
+  }
+  return [await fileToImageData(file, {}, deps)];
 }
 
 /**

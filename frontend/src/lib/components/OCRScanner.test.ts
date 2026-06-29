@@ -15,7 +15,7 @@ function dummyImage(): ImageData {
 
 function stubDeps(recognizeText = SAMPLE) {
   return {
-    fileToImageData: vi.fn(async () => dummyImage()),
+    fileToImages: vi.fn(async () => [dummyImage()]),
     preprocess: vi.fn((img: ImageData) => img),
     recognize: vi.fn(async () => textToOcrResults(recognizeText)),
   };
@@ -32,7 +32,7 @@ describe('OCRScanner', () => {
     await userEvent.upload(input, file);
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToImageData).toHaveBeenCalledWith(file);
+    expect(deps.fileToImages).toHaveBeenCalledWith(file);
     expect(deps.preprocess).toHaveBeenCalled();
 
     const result = onScanned.mock.calls[0]?.[0] as ScanResult;
@@ -52,6 +52,33 @@ describe('OCRScanner', () => {
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
     expect((onScanned.mock.calls[0]?.[0] as ScanResult).schedule).toBe('GOZ');
+  });
+
+  it('concatenates OCR results from a multi-page PDF into one parsed invoice', async () => {
+    const page1 = ['250  Blutentnahme  2,3  5,36'].join('\n');
+    const page2 = ['75  Bericht  3,5  26,53'].join('\n');
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      fileToImages: vi.fn(async () => [dummyImage(), dummyImage()]),
+      preprocess: vi.fn((img: ImageData) => img),
+      // Each call returns OCR results for one page.
+      recognize: vi
+        .fn()
+        .mockResolvedValueOnce(textToOcrResults(page1))
+        .mockResolvedValueOnce(textToOcrResults(page2)),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.upload(
+      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      new File(['x'], 'rechnung.pdf', { type: 'application/pdf' }),
+    );
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    const result = onScanned.mock.calls[0]?.[0] as ScanResult;
+    // Both pages' positions must appear in the single result.
+    expect(result.parsed.positions).toHaveLength(2);
+    expect(deps.recognize).toHaveBeenCalledTimes(2);
   });
 
   it('surfaces a recognition failure without emitting a result', async () => {

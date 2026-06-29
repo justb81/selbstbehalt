@@ -12,7 +12,7 @@
  * **Privacy:** the image is transferred into the worker and recognised
  * on-device; it never reaches the network (docs/design.md §1.3, §8).
  */
-import { fileToImageData } from './capture';
+import { fileToAllImageData } from './capture';
 import { OcrClient } from './ocr-client';
 import type { OcrBackend, OcrProgress, OcrResult } from './types';
 
@@ -22,13 +22,13 @@ export type OcrRecognizer = (
   onProgress?: (progress: OcrProgress) => void,
 ) => Promise<OcrResult[]>;
 
-/** Loads a user-selected file into an {@link ImageData} frame. */
-export type ImageLoader = (file: File) => Promise<ImageData>;
+/** Loads all pages of a user-selected file as {@link ImageData} frames. */
+export type MultiImageLoader = (file: File) => Promise<ImageData[]>;
 
 let client: OcrClient | null = null;
 let initPromise: Promise<OcrBackend> | null = null;
 let override: OcrRecognizer | null = null;
-let loaderOverride: ImageLoader | null = null;
+let multiLoaderOverride: MultiImageLoader | null = null;
 
 /**
  * Default recognizer: a shared worker-backed client, initialised once on first
@@ -58,9 +58,9 @@ export function recognizeInvoiceImage(
   return (override ?? defaultRecognize)(image, onProgress);
 }
 
-/** Loads an invoice frame from a file via the active loader (override or default). */
-export function loadInvoiceImage(file: File): Promise<ImageData> {
-  return (loaderOverride ?? fileToImageData)(file);
+/** Loads all invoice pages from a file via the active loader (override or default). */
+export function loadAllInvoiceImages(file: File): Promise<ImageData[]> {
+  return (multiLoaderOverride ?? fileToAllImageData)(file);
 }
 
 /** Overrides the recognizer (tests/E2E); pass `null` to restore the default. */
@@ -68,9 +68,9 @@ export function setOcrRecognizer(recognizer: OcrRecognizer | null): void {
   override = recognizer;
 }
 
-/** Overrides the file→image loader (tests/E2E); pass `null` to restore the default. */
-export function setImageLoader(loader: ImageLoader | null): void {
-  loaderOverride = loader;
+/** Overrides the file→images loader (tests/E2E); pass `null` to restore the default. */
+export function setAllImageLoader(loader: MultiImageLoader | null): void {
+  multiLoaderOverride = loader;
 }
 
 /** Tears down the shared client (e.g. when leaving the scan screen). */
@@ -98,7 +98,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   (
     window as unknown as { __selbstbehaltStubScan?: (text: string) => void }
   ).__selbstbehaltStubScan = (text: string) => {
-    setImageLoader(async () => new ImageData(1, 1));
+    setAllImageLoader(async () => [new ImageData(1, 1)]);
     setOcrRecognizer(async () => textToOcrResults(text));
   };
 }

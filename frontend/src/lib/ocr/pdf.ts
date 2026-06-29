@@ -65,6 +65,43 @@ async function defaultLoadPdfJs(): Promise<PdfJsLike> {
 }
 
 /**
+ * Renders every page of a PDF to an {@link ImageData} array (one entry per page,
+ * in document order). Loads the document once and renders all pages sequentially.
+ */
+export async function renderAllPdfPages(
+  file: Blob,
+  options: RenderPdfOptions = {},
+  deps: RenderPdfDeps = {},
+): Promise<ImageData[]> {
+  const loadPdfJs = deps.loadPdfJs ?? defaultLoadPdfJs;
+  const createCanvas = deps.createCanvas ?? defaultCreateCanvas;
+  const scale = options.scale ?? 2;
+
+  const pdfjs = await loadPdfJs();
+  if (options.workerSrc && pdfjs.GlobalWorkerOptions) {
+    pdfjs.GlobalWorkerOptions.workerSrc = options.workerSrc;
+  }
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+
+  const images: ImageData[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const viewport = page.getViewport({ scale });
+    const width = Math.max(1, Math.ceil(viewport.width));
+    const height = Math.max(1, Math.ceil(viewport.height));
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext('2d') as
+      CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!context) throw new Error('Kein 2D-Canvas-Kontext zum Rendern des PDFs verfügbar.');
+    await page.render({ canvasContext: context, viewport }).promise;
+    images.push(context.getImageData(0, 0, width, height));
+  }
+  return images;
+}
+
+/**
  * Renders one page of a PDF (1-based) to {@link ImageData}. Throws a `RangeError`
  * when the page is out of range.
  */
