@@ -9,6 +9,11 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import { contractTypeValues, type ContractType, type Person } from '@selbstbehalt/shared';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   const TYPE_LABELS: Record<ContractType, string> = {
     vollversicherung: 'Vollversicherung',
@@ -95,268 +100,166 @@
 
 <svelte:head><title>Neuer Vertrag · selbstbehalt</title></svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <a href={resolve('/contracts')} class="back-link">← Verträge</a>
-    <h1>Neuer Vertrag</h1>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="space-y-1">
+    <a
+      href={resolve('/contracts')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Verträge
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight">Neuer Vertrag</h1>
   </div>
 
   <form
-    class="card"
     onsubmit={(e) => {
       e.preventDefault();
       void submit();
     }}
   >
-    <h2>Vertragsdetails</h2>
-
-    <div class="field-grid">
-      <label class="field">
-        <span>Versicherungsgesellschaft <span class="req">*</span></span>
-        <input type="text" bind:value={insurerName} required placeholder="z.B. DEVK, Allianz …" />
-      </label>
-
-      <label class="field">
-        <span>Vertragsart <span class="req">*</span></span>
-        <select bind:value={type} required>
-          {#each contractTypeValues as t (t)}
-            <option value={t}>{TYPE_LABELS[t]}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label class="field">
-        <span>Vertragsnummer</span>
-        <input type="text" bind:value={contractNumber} placeholder="optional" />
-      </label>
-
-      <label class="field">
-        <span>Beginn <span class="req">*</span></span>
-        <input type="date" bind:value={startDate} required />
-      </label>
-
-      <label class="field">
-        <span>Ende</span>
-        <input type="date" bind:value={endDate} />
-      </label>
-    </div>
-
-    <label class="field">
-      <span>Notizen</span>
-      <textarea bind:value={notes} rows="3" placeholder="optional"></textarea>
-    </label>
-
-    <h2>Versicherungsnehmer <span class="req">*</span></h2>
-
-    {#if loadingPersons}
-      <p class="muted">Personen werden geladen …</p>
-    {:else if personError}
-      <p class="error">{personError}</p>
-    {:else}
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={useNewPerson} />
-        <span>Neue Person anlegen</span>
-      </label>
-
-      {#if useNewPerson}
-        <label class="field">
-          <span>Name <span class="req">*</span></span>
-          <input type="text" bind:value={newPersonName} placeholder="Vollständiger Name" />
-        </label>
-      {:else}
-        <label class="field">
-          <span>Person auswählen <span class="req">*</span></span>
-          {#if persons.length === 0}
-            <p class="muted">
-              Noch keine Personen vorhanden.
-              <button
-                type="button"
-                class="link"
-                onclick={() => {
-                  useNewPerson = true;
-                }}>Neue Person anlegen</button
+    <Card>
+      <CardContent class="pt-6 space-y-6">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+            Vertragsdetails
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <Label for="insurer"
+                >Versicherungsgesellschaft <span class="text-destructive">*</span></Label
               >
-            </p>
+              <Input
+                id="insurer"
+                type="text"
+                bind:value={insurerName}
+                required
+                placeholder="z.B. DEVK, Allianz …"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <Label for="type">Vertragsart <span class="text-destructive">*</span></Label>
+              <select
+                id="type"
+                bind:value={type}
+                required
+                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {#each contractTypeValues as t (t)}
+                  <option value={t}>{TYPE_LABELS[t]}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div class="space-y-1">
+              <Label for="contractNumber">Vertragsnummer</Label>
+              <Input
+                id="contractNumber"
+                type="text"
+                bind:value={contractNumber}
+                placeholder="optional"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <Label for="startDate">Beginn <span class="text-destructive">*</span></Label>
+              <Input id="startDate" type="date" bind:value={startDate} required />
+            </div>
+
+            <div class="space-y-1">
+              <Label for="endDate">Ende</Label>
+              <Input id="endDate" type="date" bind:value={endDate} />
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <Label for="notes">Notizen</Label>
+          <textarea
+            id="notes"
+            bind:value={notes}
+            rows="3"
+            placeholder="optional"
+            class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+          ></textarea>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Versicherungsnehmer <span class="text-destructive">*</span>
+          </p>
+
+          {#if loadingPersons}
+            <p class="text-sm text-muted-foreground">Personen werden geladen …</p>
+          {:else if personError}
+            <Alert variant="destructive">
+              <AlertDescription>{personError}</AlertDescription>
+            </Alert>
           {:else}
-            <select bind:value={policyholderPersonId} required>
-              <option value="" disabled>Bitte wählen …</option>
-              {#each persons as person (person.id)}
-                <option value={person.id}
-                  >{person.name}{person.birth_date ? ` (geb. ${person.birth_date})` : ''}</option
-                >
-              {/each}
-            </select>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" bind:checked={useNewPerson} class="rounded" />
+              <span>Neue Person anlegen</span>
+            </label>
+
+            {#if useNewPerson}
+              <div class="space-y-1">
+                <Label for="newName">Name <span class="text-destructive">*</span></Label>
+                <Input
+                  id="newName"
+                  type="text"
+                  bind:value={newPersonName}
+                  placeholder="Vollständiger Name"
+                />
+              </div>
+            {:else}
+              <div class="space-y-1">
+                <Label for="person">Person auswählen <span class="text-destructive">*</span></Label>
+                {#if persons.length === 0}
+                  <p class="text-sm text-muted-foreground">
+                    Noch keine Personen vorhanden.
+                    <button
+                      type="button"
+                      class="text-primary underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+                      onclick={() => {
+                        useNewPerson = true;
+                      }}
+                    >
+                      Neue Person anlegen
+                    </button>
+                  </p>
+                {:else}
+                  <select
+                    id="person"
+                    bind:value={policyholderPersonId}
+                    required
+                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="" disabled>Bitte wählen …</option>
+                    {#each persons as person (person.id)}
+                      <option value={person.id}>
+                        {person.name}{person.birth_date ? ` (geb. ${person.birth_date})` : ''}
+                      </option>
+                    {/each}
+                  </select>
+                {/if}
+              </div>
+            {/if}
           {/if}
-        </label>
-      {/if}
-    {/if}
+        </div>
 
-    {#if formError}
-      <p class="error" role="alert">{formError}</p>
-    {/if}
+        {#if formError}
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        {/if}
 
-    <div class="actions">
-      <button type="submit" class="btn-primary" disabled={saving}>
-        {saving ? 'Wird gespeichert …' : 'Vertrag anlegen'}
-      </button>
-      <a href={resolve('/contracts')} class="btn-secondary">Abbrechen</a>
-    </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Wird gespeichert …' : 'Vertrag anlegen'}
+          </Button>
+          <Button variant="outline" href={resolve('/contracts')}>Abbrechen</Button>
+        </div>
+      </CardContent>
+    </Card>
   </form>
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .page-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-  }
-
-  .field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-    resize: vertical;
-  }
-
-  .field input:focus,
-  .field select:focus,
-  .field textarea:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .req {
-    color: var(--color-danger);
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-
-  .muted {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .link {
-    border: none;
-    background: none;
-    color: var(--color-primary);
-    font: inherit;
-    cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
-  }
-</style>
+</div>
