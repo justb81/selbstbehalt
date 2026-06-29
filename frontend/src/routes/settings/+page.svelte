@@ -7,6 +7,12 @@
   import { z } from 'zod';
   import { importResultSchema } from '@selbstbehalt/shared';
   import { settings, resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Separator } from '$lib/components/ui/separator';
 
   const settingsSchema = z.object({
     apiUrl: z.string(),
@@ -134,312 +140,179 @@
 
 <svelte:head><title>Einstellungen · selbstbehalt</title></svelte:head>
 
-<section class="settings-page">
-  <h1>Einstellungen</h1>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight">Einstellungen</h1>
 
   <form
-    class="card"
     onsubmit={(e) => {
       e.preventDefault();
       save();
     }}
   >
-    <h2>Verbindung</h2>
+    <Card>
+      <CardContent class="pt-6 space-y-6">
+        <div class="space-y-4">
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Verbindung
+          </p>
 
-    <label class="field">
-      <span>Server-URL</span>
-      <input
-        type="url"
-        bind:value={apiUrl}
-        placeholder="https://backend.example.com"
-        autocomplete="url"
-      />
-      <small
-        >Leer lassen für gleiche Origin (Standard): <code>/api</code> wird vom Reverse Proxy ans Backend
-        weitergeleitet. Nur setzen, wenn das Backend auf einer eigenen Origin läuft (dann auch X-API-Key
-        nötig).</small
-      >
-    </label>
+          <div class="space-y-1">
+            <Label for="apiUrl">Server-URL</Label>
+            <Input
+              id="apiUrl"
+              type="url"
+              bind:value={apiUrl}
+              placeholder="https://backend.example.com"
+              autocomplete="url"
+            />
+            <p class="text-xs text-muted-foreground">
+              Leer lassen für gleiche Origin (Standard): <code class="font-mono">/api</code> wird vom
+              Reverse Proxy ans Backend weitergeleitet. Nur setzen, wenn das Backend auf einer eigenen
+              Origin läuft (dann auch X-API-Key nötig).
+            </p>
+          </div>
 
-    <label class="field">
-      <span>X-API-Key <span class="optional">(optional)</span></span>
-      <input
-        type="password"
-        bind:value={apiKey}
-        placeholder="Nur für VPN/externen Zugriff erforderlich"
-        autocomplete="off"
-      />
-    </label>
+          <div class="space-y-1">
+            <Label for="apiKey">
+              X-API-Key <span class="font-normal italic text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="apiKey"
+              type="password"
+              bind:value={apiKey}
+              placeholder="Nur für VPN/externen Zugriff erforderlich"
+              autocomplete="off"
+            />
+          </div>
+        </div>
 
-    <h2>Günstigerprüfung</h2>
+        <Separator />
 
-    <div class="field-row">
-      <label class="field">
-        <span>Grenzsteuersatz (%)</span>
-        <input type="number" bind:value={taxRatePct} min="0" max="100" step="0.5" required />
-        <small>Wird für den §33-EStG-Steuervorteil benötigt (0–100 %).</small>
-      </label>
+        <div class="space-y-4">
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Günstigerprüfung
+          </p>
 
-      <label class="field">
-        <span>Diskontrate (% p.a.)</span>
-        <input type="number" bind:value={discountRatePct} min="0" step="0.1" required />
-        <small>Abdiskontierung des BRE-Vorteils; Design-Standard: 3 %.</small>
-      </label>
-    </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <Label for="taxRate">Grenzsteuersatz (%)</Label>
+              <Input
+                id="taxRate"
+                type="number"
+                bind:value={taxRatePct}
+                min="0"
+                max="100"
+                step="0.5"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Wird für den §33-EStG-Steuervorteil benötigt (0–100 %).
+              </p>
+            </div>
 
-    {#if saveError}
-      <p class="msg error" role="alert">{saveError}</p>
-    {/if}
-    {#if savedOk}
-      <p class="msg success" role="status">Einstellungen gespeichert.</p>
-    {/if}
+            <div class="space-y-1">
+              <Label for="discountRate">Diskontrate (% p.a.)</Label>
+              <Input
+                id="discountRate"
+                type="number"
+                bind:value={discountRatePct}
+                min="0"
+                step="0.1"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Abdiskontierung des BRE-Vorteils; Design-Standard: 3 %.
+              </p>
+            </div>
+          </div>
+        </div>
 
-    <div class="actions">
-      <button type="submit" class="btn-primary">Speichern</button>
-    </div>
+        {#if saveError}
+          <Alert variant="destructive">
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        {/if}
+        {#if savedOk}
+          <Alert>
+            <AlertDescription>Einstellungen gespeichert.</AlertDescription>
+          </Alert>
+        {/if}
+
+        <Button type="submit">Speichern</Button>
+      </CardContent>
+    </Card>
   </form>
 
-  <div class="card">
-    <h2>Datenbank-Backup</h2>
+  <Card>
+    <CardContent class="pt-6 space-y-6">
+      <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        Datenbank-Backup
+      </p>
 
-    <div class="backup-row">
-      <div>
-        <strong>Exportieren</strong>
-        <p class="backup-desc">Aktuelle Datenbank als SQLite-Datei herunterladen.</p>
-        {#if exportError}
-          <p class="msg error" role="alert">{exportError}</p>
-        {/if}
-      </div>
-      <button type="button" class="btn-secondary" onclick={exportDb} disabled={exporting}>
-        {exporting ? 'Wird exportiert …' : 'Export herunterladen'}
-      </button>
-    </div>
-
-    <hr />
-
-    <div class="backup-row">
-      <div>
-        <strong>Importieren</strong>
-        <p class="backup-desc">
-          SQLite-Backup wiederherstellen. <em>Achtung: überschreibt alle aktuellen Daten.</em>
-        </p>
-        {#if importError}
-          <p class="msg error" role="alert">{importError}</p>
-        {/if}
-        {#if importResult}
-          <p class="msg success" role="status">
-            Import erfolgreich: {importResult.tables_imported} Tabellen,
-            {importResult.rows_imported} Datensätze.
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="space-y-1">
+          <p class="font-medium">Exportieren</p>
+          <p class="text-sm text-muted-foreground">
+            Aktuelle Datenbank als SQLite-Datei herunterladen.
           </p>
-        {/if}
-      </div>
-      <label class="btn-secondary file-label">
-        Backup auswählen …
-        <input type="file" accept=".sqlite,.db,.sqlite3" onchange={onFileChosen} hidden />
-      </label>
-    </div>
-
-    {#if importConfirmFile}
-      <div class="import-confirm" role="alertdialog" aria-modal="true">
-        <p>
-          <strong>Wirklich importieren?</strong><br />
-          Die Datei <code>{importConfirmFile.name}</code> überschreibt alle aktuellen Daten unwiderruflich.
-        </p>
-        <div class="actions">
-          <button type="button" class="btn-danger" onclick={confirmImport} disabled={importing}>
-            {importing ? 'Wird importiert …' : 'Ja, jetzt importieren'}
-          </button>
-          <button type="button" class="btn-secondary" onclick={cancelImport} disabled={importing}>
-            Abbrechen
-          </button>
+          {#if exportError}
+            <Alert variant="destructive" class="mt-2">
+              <AlertDescription>{exportError}</AlertDescription>
+            </Alert>
+          {/if}
         </div>
+        <Button variant="outline" onclick={exportDb} disabled={exporting}>
+          {exporting ? 'Wird exportiert …' : 'Export herunterladen'}
+        </Button>
       </div>
-    {/if}
-  </div>
-</section>
 
-<style>
-  .settings-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
+      <Separator />
 
-  h1 {
-    margin: 0;
-  }
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="space-y-1">
+          <p class="font-medium">Importieren</p>
+          <p class="text-sm text-muted-foreground">
+            SQLite-Backup wiederherstellen. <em>Achtung: überschreibt alle aktuellen Daten.</em>
+          </p>
+          {#if importError}
+            <Alert variant="destructive" class="mt-2">
+              <AlertDescription>{importError}</AlertDescription>
+            </Alert>
+          {/if}
+          {#if importResult}
+            <Alert class="mt-2">
+              <AlertDescription>
+                Import erfolgreich: {importResult.tables_imported} Tabellen,
+                {importResult.rows_imported} Datensätze.
+              </AlertDescription>
+            </Alert>
+          {/if}
+        </div>
+        <label class="cursor-pointer">
+          <Button variant="outline" as="span">Backup auswählen …</Button>
+          <input type="file" accept=".sqlite,.db,.sqlite3" onchange={onFileChosen} class="hidden" />
+        </label>
+      </div>
 
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-base);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.8rem;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    flex: 1;
-  }
-
-  .field input {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-  }
-
-  .field input:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .field small {
-    color: var(--color-text-muted);
-  }
-
-  .optional {
-    font-weight: 400;
-    font-style: italic;
-  }
-
-  .field-row {
-    display: flex;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-bg);
-  }
-
-  .btn-danger {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-danger);
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-danger) 85%, black);
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .file-label {
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .backup-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .backup-desc {
-    margin: var(--space-1) 0 0;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid var(--color-border);
-    margin: 0;
-  }
-
-  .import-confirm {
-    padding: var(--space-4);
-    border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-danger) 5%, var(--color-surface));
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .import-confirm p {
-    margin: 0;
-    font-size: var(--font-size-sm);
-    line-height: 1.6;
-  }
-
-  .msg {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-sm);
-  }
-
-  .msg.error {
-    background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
-    color: var(--color-danger);
-  }
-
-  .msg.success {
-    background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
-    color: var(--color-success);
-  }
-</style>
+      {#if importConfirmFile}
+        <div
+          class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
+          role="alertdialog"
+          aria-modal="true"
+        >
+          <p class="text-sm leading-relaxed">
+            <strong>Wirklich importieren?</strong><br />
+            Die Datei <code class="font-mono">{importConfirmFile.name}</code> überschreibt alle aktuellen
+            Daten unwiderruflich.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="destructive" onclick={confirmImport} disabled={importing}>
+              {importing ? 'Wird importiert …' : 'Ja, jetzt importieren'}
+            </Button>
+            <Button variant="outline" onclick={cancelImport} disabled={importing}>Abbrechen</Button>
+          </div>
+        </div>
+      {/if}
+    </CardContent>
+  </Card>
+</div>

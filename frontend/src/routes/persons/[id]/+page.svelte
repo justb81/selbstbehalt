@@ -12,6 +12,11 @@
   import type { Person } from '$lib/api/resources';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
   const personId = $derived(page.params.id as string);
 
@@ -98,10 +103,15 @@
   <title>{person ? `${person.name} · selbstbehalt` : 'Personendetail · selbstbehalt'}</title>
 </svelte:head>
 
-<section class="page">
-  <div class="page-header">
-    <a href={resolve('/persons')} class="back-link">← Personen</a>
-    <h1>Personendetail</h1>
+<div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
+  <div class="space-y-1">
+    <a
+      href={resolve('/persons')}
+      class="text-sm text-muted-foreground hover:text-primary no-underline"
+    >
+      ← Personen
+    </a>
+    <h1 class="text-2xl font-bold tracking-tight">Personendetail</h1>
   </div>
 
   {#if loading}
@@ -111,281 +121,90 @@
   {:else if person}
     {#if editing}
       <form
-        class="card"
         onsubmit={(e) => {
           e.preventDefault();
           void save();
         }}
       >
-        <h2>Person bearbeiten</h2>
+        <Card>
+          <CardContent class="pt-6 space-y-4">
+            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Person bearbeiten
+            </p>
 
-        <div class="field-grid">
-          <label class="field">
-            <span>Name <span class="req">*</span></span>
-            <input type="text" bind:value={editName} required />
-          </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <Label for="editName">Name <span class="text-destructive">*</span></Label>
+                <Input id="editName" type="text" bind:value={editName} required />
+              </div>
 
-          <label class="field">
-            <span>Geburtsdatum</span>
-            <input type="date" bind:value={editBirthDate} />
-          </label>
-        </div>
+              <div class="space-y-1">
+                <Label for="editBirthDate">Geburtsdatum</Label>
+                <Input id="editBirthDate" type="date" bind:value={editBirthDate} />
+              </div>
+            </div>
 
-        {#if saveError}
-          <p class="error" role="alert">{saveError}</p>
-        {/if}
+            {#if saveError}
+              <Alert variant="destructive">
+                <AlertDescription>{saveError}</AlertDescription>
+              </Alert>
+            {/if}
 
-        <div class="actions">
-          <button type="submit" class="btn-primary" disabled={saving}>
-            {saving ? 'Wird gespeichert …' : 'Speichern'}
-          </button>
-          <button type="button" class="btn-secondary" onclick={cancelEdit} disabled={saving}>
-            Abbrechen
-          </button>
-        </div>
+            <div class="flex flex-wrap gap-2">
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Wird gespeichert …' : 'Speichern'}
+              </Button>
+              <Button type="button" variant="outline" onclick={cancelEdit} disabled={saving}>
+                Abbrechen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     {:else}
-      <div class="card">
-        <div class="detail-header">
-          <div>
-            <p class="label">Name</p>
-            <p class="value">{person.name}</p>
-          </div>
-          {#if person.birth_date}
+      <Card>
+        <CardContent class="pt-6 space-y-6">
+          <div class="flex flex-wrap gap-6">
             <div>
-              <p class="label">Geburtsdatum</p>
-              <p class="value">{person.birth_date}</p>
+              <p class="text-xs text-muted-foreground mb-1">Name</p>
+              <p class="font-semibold">{person.name}</p>
             </div>
-          {/if}
-        </div>
+            {#if person.birth_date}
+              <div>
+                <p class="text-xs text-muted-foreground mb-1">Geburtsdatum</p>
+                <p class="font-semibold">{person.birth_date}</p>
+              </div>
+            {/if}
+          </div>
 
-        <div class="actions">
-          <button type="button" class="btn-secondary" onclick={startEdit}>Bearbeiten</button>
-          <a href={resolve('/contracts')} class="btn-secondary">Verträge anzeigen</a>
-          {#if confirmDelete}
-            <span class="confirm-text">Wirklich löschen?</span>
-            <button
-              type="button"
-              class="btn-danger"
-              disabled={deleting}
-              onclick={() => void deletePerson()}
-            >
-              {deleting ? 'Wird gelöscht …' : 'Ja, löschen'}
-            </button>
-            <button
-              type="button"
-              class="btn-secondary"
-              onclick={() => {
-                confirmDelete = false;
-              }}
-            >
-              Abbrechen
-            </button>
-          {:else}
-            <button
-              type="button"
-              class="btn-danger-outline"
-              onclick={() => {
-                confirmDelete = true;
-              }}
-            >
-              Löschen
-            </button>
-          {/if}
-        </div>
-      </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <Button variant="outline" onclick={startEdit}>Bearbeiten</Button>
+            <Button variant="outline" href={resolve('/contracts')}>Verträge anzeigen</Button>
+            {#if confirmDelete}
+              <span class="text-sm text-destructive">Wirklich löschen?</span>
+              <Button variant="destructive" disabled={deleting} onclick={() => void deletePerson()}>
+                {deleting ? 'Wird gelöscht …' : 'Ja, löschen'}
+              </Button>
+              <Button
+                variant="outline"
+                onclick={() => {
+                  confirmDelete = false;
+                }}>Abbrechen</Button
+              >
+            {:else}
+              <Button
+                variant="outline"
+                class="border-destructive text-destructive hover:bg-destructive/10"
+                onclick={() => {
+                  confirmDelete = true;
+                }}
+              >
+                Löschen
+              </Button>
+            {/if}
+          </div>
+        </CardContent>
+      </Card>
     {/if}
   {/if}
-</section>
-
-<style>
-  .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .page-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  .back-link {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-  }
-
-  .detail-header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-5);
-  }
-
-  .label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin: 0 0 var(--space-1);
-  }
-
-  .value {
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .field input {
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-  }
-
-  .field input:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-  }
-
-  .req {
-    color: var(--color-danger);
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .confirm-text {
-    font-size: var(--font-size-sm);
-    color: var(--color-danger);
-  }
-
-  .btn-primary {
-    padding: var(--space-2) var(--space-5);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: var(--color-primary-contrast);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-strong);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-bg);
-  }
-
-  .btn-secondary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-danger {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-danger);
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-danger:hover:not(:disabled) {
-    filter: brightness(0.9);
-  }
-
-  .btn-danger:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-danger-outline {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-danger);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-danger);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .btn-danger-outline:hover {
-    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-</style>
+</div>
