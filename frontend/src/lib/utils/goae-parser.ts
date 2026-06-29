@@ -21,18 +21,26 @@
  *
  * ## Supported line layout
  *
- * A position line starts with a Ziffer and ends with a EUR amount, e.g.
+ * A position line starts with a Ziffer and ends with a EUR amount. Two column
+ * orders are recognised:
  *
  * ```
- * 1    Beratung                 2,3    10,72
- * 250  Infusion        2x       1,8     8,40
+ * 1    Beratung                 2,3    10,72        ← Faktor Betrag
+ * 250  Infusion        2x       1,8     8,40        ← Faktor (2×) Betrag
+ * 250  Infusion        3        1,8     8,40        ← Anzahl Faktor Betrag
+ * Ä6   Untersuchung             2,3000  1   13,41   ← Faktor Anzahl Betrag
  * ```
+ *
+ * The `Ä`/`Z` prefix that some printers add before GOÄ/GOZ codes is stripped.
+ * A leading treatment date (`DD.MM.YY[YY]`) is stripped before matching.
+ * A bare-number line following a position line (OCR split of the amount onto its
+ * own line) is joined back before parsing.
  *
  * The trailing run of numbers is read right-to-left as
- * `[… Anzahl] Faktor Betrag`. An explicit quantity marker (`2x` / `2×`)
- * is recognised anywhere in that run; otherwise a leading integer in a run of
- * three or more numbers is treated as the Anzahl. Provide a single total amount
- * per line (no separate Einzel-/Gesamtbetrag columns).
+ * `[… Anzahl] Faktor Betrag` (standard) or `Faktor Anzahl Betrag` (detected when
+ * the Faktor slot holds a whole integer and the preceding value is a decimal).
+ * An explicit quantity marker (`2x` / `2×`) overrides both heuristics.
+ * Provide a single total amount per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
 import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
@@ -280,7 +288,18 @@ export function extractInvoiceFields(text: string): {
 // Position extraction
 // ---------------------------------------------------------------------------
 
-const ZIFFER_RE = /^\s*(\d{1,5}[a-zA-Z]?)\b/;
+/**
+ * Optional treatment date that some invoices print at the start of each line,
+ * e.g. "07.05.24 Ä1 Beratung …". Stripped before Ziffer matching.
+ */
+const DATE_PREFIX_RE = /^\s*\d{1,2}\.\d{1,2}\.\d{2,4}\s+/;
+
+/**
+ * A Ziffer, preceded by an optional region tag (OK/UK for upper/lower jaw) and
+ * an optional schedule-prefix letter (Ä for GOÄ, Z for GOZ, A as OCR variant of Ä).
+ * The prefix characters are consumed but not captured.
+ */
+const ZIFFER_RE = /^\s*(?:(?:OK|UK)\s+)?(?:[ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b/;
 
 interface NumericToken {
   value: number;
@@ -305,10 +324,12 @@ function parseNumericToken(token: string): NumericToken | null {
 
 /** Parses one line into a {@link RawPosition}, or null if it is not one. */
 export function parsePositionLine(line: string): RawPosition | null {
-  const zm = ZIFFER_RE.exec(line);
+  // Strip a leading treatment date (e.g. "07.05.24 ") before matching the Ziffer.
+  const stripped = line.replace(DATE_PREFIX_RE, '');
+  const zm = ZIFFER_RE.exec(stripped);
   const ziffer = zm?.[1];
   if (!zm || ziffer === undefined) return null;
-  const rest = line.slice(zm[0].length);
+  const rest = stripped.slice(zm[0].length);
   const tokens = rest.split(/\s+/).filter(Boolean);
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
@@ -330,26 +351,64 @@ export function parsePositionLine(line: string): RawPosition | null {
   if (!amountTok || !factorTok) return null;
 
   let quantity = 1;
-  if (explicitQty) {
-    quantity = explicitQty.value;
-  } else if (core.length >= 3) {
-    const qtyTok = core[0];
-    if (qtyTok?.integer) quantity = qtyTok.value;
+  let multiplier: number;
+
+  if (!explicitQty && factorTok.integer && core.length >= 3 && !core[0]?.integer) {
+    // Column order "Faktor Anzahl Betrag": the factor slot holds a whole integer
+    // and the value before it is a non-integer (the actual multiplier). This is
+    // common in GOÄ/GOZ invoices that print Factor before Quantity.
+    quantity = factorTok.value;
+    multiplier = core[core.length - 3]!.value;
+  } else {
+    // Standard column order "[Anzahl] Faktor Betrag".
+    if (explicitQty) {
+      quantity = explicitQty.value;
+    } else if (core.length >= 3) {
+      const qtyTok = core[0];
+      if (qtyTok?.integer) quantity = qtyTok.value;
+    }
+    multiplier = factorTok.value;
   }
 
   return {
     ziffer,
     quantity,
-    multiplier: factorTok.value,
+    multiplier,
     chargedAmount: amountTok.value,
     raw: line.trim(),
   };
 }
 
+/**
+ * A "bare-number" line is just a number (optionally with EUR suffix) on its own
+ * — OCR sometimes wraps the amount onto the next line when the description is long.
+ */
+const BARE_NUMBER_RE = /^\s*\d[\d.,]*\s*(?:EUR)?\s*$/i;
+
+/**
+ * Joins lines where OCR has wrapped the amount onto its own line: e.g.
+ * ```
+ * Ä1 Beratung, auch mittels Fernsprecher 2,3000 1
+ * 10.72
+ * ```
+ * becomes a single line before `parsePositionLine` sees it.
+ */
+function joinContinuationLines(lines: string[]): string[] {
+  const result: string[] = [];
+  for (const line of lines) {
+    if (BARE_NUMBER_RE.test(line) && result.length > 0) {
+      result[result.length - 1] += ' ' + line.trim();
+    } else {
+      result.push(line);
+    }
+  }
+  return result;
+}
+
 /** Extracts every position line from invoice text. */
 export function extractPositions(text: string): RawPosition[] {
   const positions: RawPosition[] = [];
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of joinContinuationLines(text.split(/\r?\n/))) {
     const p = parsePositionLine(line);
     if (p) positions.push(p);
   }
