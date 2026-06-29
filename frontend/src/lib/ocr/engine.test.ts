@@ -204,28 +204,38 @@ describe('createPaddleOcrEngine', () => {
     }
     vi.stubGlobal('OffscreenCanvas', FakeOffscreenCanvas);
     try {
-      const service = fakeService();
       // The real platform's isCanvas does an unguarded `instanceof
-      // HTMLCanvasElement`, which throws in a Worker — model that here.
-      service.platform = {
+      // HTMLCanvasElement`, which throws in a Worker — model that here. The
+      // binding builds a SEPARATE provider for the service, the detector and the
+      // recognizer (the latter two only after initialize()), so all three must
+      // be patched.
+      const makePlatform = () => ({
         createCanvas: vi.fn(),
         isCanvas: () => {
           throw new ReferenceError('HTMLCanvasElement is not defined');
         },
-      };
+      });
+      const service = fakeService();
+      service.platform = makePlatform();
+      service.detector = { platform: makePlatform() };
+      service.recognitor = { platform: makePlatform() };
       const original = service.platform.createCanvas;
       const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
         loadModule: async () => fakeModule(service).module,
       });
       await engine.init();
-      // The DOM-bound `document.createElement` factory is replaced with an
-      // OffscreenCanvas one so detection/padding runs in a Web Worker.
+      // Every provider is made worker-safe: DOM-bound createCanvas → OffscreenCanvas,
+      // and the throwing isCanvas → a guarded version.
+      for (const platform of [
+        service.platform,
+        service.detector.platform,
+        service.recognitor.platform,
+      ]) {
+        expect(platform?.createCanvas?.(3, 4)).toBeInstanceOf(FakeOffscreenCanvas);
+        expect(platform?.isCanvas?.(new FakeOffscreenCanvas(1, 1))).toBe(true);
+        expect(platform?.isCanvas?.({})).toBe(false);
+      }
       expect(service.platform.createCanvas).not.toBe(original);
-      expect(service.platform.createCanvas?.(3, 4)).toBeInstanceOf(FakeOffscreenCanvas);
-      // isCanvas is replaced with a worker-safe version: no throw, and an
-      // OffscreenCanvas is recognised as a canvas.
-      expect(service.platform.isCanvas?.(new FakeOffscreenCanvas(1, 1))).toBe(true);
-      expect(service.platform.isCanvas?.({})).toBe(false);
 
       await engine.recognize(image);
       const arg = vi.mocked(service.recognize).mock.calls[0]?.[0];
