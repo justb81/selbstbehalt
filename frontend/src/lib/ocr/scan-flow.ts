@@ -161,21 +161,31 @@ export interface ReviewState {
   ocrRaw?: string | null;
 }
 
-/** Builds the initial editable positions from a scan, carrying per-row confidence. */
+/**
+ * Builds the initial editable positions from a scan, carrying per-row confidence.
+ * Propagates treatment dates forward: a position without its own date inherits
+ * the date from the nearest preceding position that carries one (Sammelrechnung
+ * convention — the date printed once at the top of a block applies to all lines
+ * below until a new date appears).
+ */
 export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
-  return scan.parsed.positions.map((p, i) => ({
-    goaeNumber: p.ziffer,
-    goaeCategory: p.feeSchedule,
-    quantity: p.quantity,
-    treatmentDate: p.treatmentDate,
-    description: p.description ?? null,
-    multiplier: p.multiplier,
-    baseAmount: p.baseAmount ?? 0,
-    chargedAmount: p.chargedAmount,
-    isValid: p.isValid,
-    flagReason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
-    confidence: scan.positionConfidence[i] ?? 1,
-  }));
+  let lastDate: string | null = null;
+  return scan.parsed.positions.map((p, i) => {
+    if (p.treatmentDate !== null) lastDate = p.treatmentDate;
+    return {
+      goaeNumber: p.ziffer,
+      goaeCategory: p.feeSchedule,
+      quantity: p.quantity,
+      treatmentDate: p.treatmentDate ?? lastDate,
+      description: p.description ?? null,
+      multiplier: p.multiplier,
+      baseAmount: p.baseAmount ?? 0,
+      chargedAmount: p.chargedAmount,
+      isValid: p.isValid,
+      flagReason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
+      confidence: scan.positionConfidence[i] ?? 1,
+    };
+  });
 }
 
 /**

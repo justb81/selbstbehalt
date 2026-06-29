@@ -77,11 +77,11 @@ describe('InvoiceForm — create mode', () => {
     expect(screen.getByText('Rechnung scannen / hochladen')).toBeInTheDocument();
   });
 
-  it('does not render the re-validate button', () => {
+  it('renders the "Positionen prüfen" button, disabled when there are no positions', () => {
     render(InvoiceForm, {
       props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave: vi.fn() },
     });
-    expect(screen.queryByText('Positionen neu prüfen')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeDisabled();
   });
 
   it('shows the "Rechnung speichern" submit label', () => {
@@ -207,7 +207,7 @@ describe('InvoiceForm — create mode', () => {
 });
 
 describe('InvoiceForm — edit mode', () => {
-  it('shows "Positionen neu prüfen" button', () => {
+  it('shows "Positionen prüfen" button', () => {
     render(InvoiceForm, {
       props: {
         mode: 'edit',
@@ -216,7 +216,7 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
-    expect(screen.getByRole('button', { name: 'Positionen neu prüfen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeInTheDocument();
   });
 
   it('does not render the OCR scan button', () => {
@@ -292,7 +292,7 @@ describe('InvoiceForm — edit mode', () => {
     expect(payload.positions[0]!.quantity).toBe(2);
   });
 
-  it('calls lookupPosition when "Positionen neu prüfen" is clicked', async () => {
+  it('calls lookupPosition when "Positionen prüfen" is clicked', async () => {
     const user = userEvent.setup();
     render(InvoiceForm, {
       props: {
@@ -303,12 +303,12 @@ describe('InvoiceForm — edit mode', () => {
       },
     });
 
-    await user.click(screen.getByRole('button', { name: 'Positionen neu prüfen' }));
+    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
 
     await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
   });
 
-  it('disables "Positionen neu prüfen" when there are no positions', () => {
+  it('disables "Positionen prüfen" when there are no positions', () => {
     render(InvoiceForm, {
       props: {
         mode: 'edit',
@@ -317,6 +317,6 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
-    expect(screen.getByRole('button', { name: 'Positionen neu prüfen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeDisabled();
   });
 });
