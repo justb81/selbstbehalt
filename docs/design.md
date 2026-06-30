@@ -740,18 +740,37 @@ Jahres zusammen. Die einzelne Rechnung zeigt **kein** eigenes Verdikt mehr, sond
 ### 6.1 Seitenstruktur / Routing
 
 ```
-/                       → Dashboard (Übersicht, offene Rechnungen, BRE-Status)
+/                       → Dashboard (offene Aktionen, BRE-Schnellstatus — kein Ersatz für Auswertung)
 /contracts              → Vertragsliste
-/contracts/[id]         → Vertragsdetail + BRE-Jahresverlauf
+/contracts/[id]         → Vertragsdetail + Verwaltung der versicherten Personen
 /contracts/new          → Neuer Vertrag
+/insured                → Alle versicherten Personen (Top-Level-Einstieg, gruppiert nach Vertrag)
+/insured/[id]           → Versicherte Person: BRE-Staffel + Günstigerprüfungs-Verdikt je Leistungsjahr + Rechnungsliste
 /invoices               → Rechnungsarchiv (Filter, Suche)
 /invoices/new           → Rechnung erfassen (manuell oder via OCR-Scan)
 /invoices/[id]          → Rechnungsdetail + Positionen + Status-Workflow + GP-Marginalanzeige
 /invoices/[id]/submit   → Einreichungsformular
-/insured/[id]           → Versicherte Person: BRE-Verlauf + Günstigerprüfung je Leistungsjahr (Verdikt)
-/stats                  → Jahresauswertung (Kosten, Erstattungen, BRE)
+/persons                → Personen (Versicherungsnehmer und Haushaltsmitglieder als Identitäten)
+/persons/[id]           → Personendetail + Bearbeitung
+/stats                  → Jahresauswertung (Kosten, Erstattungen, BRE — vollständige Analyse, geplant)
 /settings               → Server-URL, Steuersatz, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Datenbankexport
 ```
+
+**Informationsarchitektur und Rollentrennung:**
+
+- **Dashboard** (`/`) — offene Aktionen (unbearbeitete / eingereichte Rechnungen) und BRE-Schnellstatus (kompakt, verlinkt auf `/insured/[id]`). Keine vollständige Jahresanalyse — das ist Aufgabe der Auswertung.
+- **Auswertung** (`/stats`) — vollständige Jahresanalyse (Kosten, Erstattungen, BRE-Jahresverlauf, Export). Geplant für einen späteren Release.
+- **Versicherte** (`/insured`, `/insured/[id]`) — zentraler Knoten für versicherte Personen: Tarif, KVNR, Selbstbehalt, BRE-Staffel, Günstigerprüfungs-Verdikt je Leistungsjahr, Rechnungsliste. Primärer Ort für BRE-Information (vollständig).
+- **Verträge** (`/contracts/[id]`) — Verwaltung des Vertrags und seiner versicherten Personen (kompakter BRE-Status mit Link auf `/insured/[id]`).
+- **Personen** (`/persons`) — Verwaltung natürlicher Personen (Versicherungsnehmer, Haushaltsmitglieder). Versicherungsspezifische Daten (KVNR, Tarif, BRE) leben ausschließlich in `insured_persons`, nicht hier.
+
+**Begriffliche Trennung (UI-Labels):**
+
+| Begriff | Bedeutung | Primäre Route |
+|---|---|---|
+| Person | Natürliche Person (Name, Geburtsdatum) | `/persons` |
+| Versicherungsnehmer (VN) | Person als Vertragsinhaber | `/contracts/[id]` |
+| Versicherte Person | Person mit Tarif, KVNR, BRE auf einem Vertrag | `/insured/[id]` |
 
 Das **maßgebliche Günstigerprüfungs-Verdikt** liegt auf `/insured/[id]` (pro Leistungsjahr,
 aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur die Marginalanzeige
@@ -766,7 +785,7 @@ aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur 
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
 | `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position |
 | `ContractCard` | `lib/components/ContractCard.svelte` | Vertragszusammenfassung |
-| `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige |
+| `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige; `compact` + optionaler `href` für verlinkte Kompaktkarten (Dashboard, Vertragsdetail) |
 | `InvoiceBadge` | `lib/components/InvoiceBadge.svelte` | Status-Badge für Rechnungen |
 
 ### 6.3 PWA-Konfiguration

@@ -35,7 +35,14 @@
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
   <div class="flex items-center justify-between flex-wrap gap-3">
-    <h1 class="text-2xl font-bold tracking-tight">Personen</h1>
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">Personen</h1>
+      <p class="text-sm text-muted-foreground mt-0.5">
+        Versicherungsnehmer und Haushaltsmitglieder. Versicherte Personen (mit Tarif, KVNR, BRE)
+        werden im
+        <a href={resolve('/contracts')} class="underline hover:text-primary">Vertrag</a> verwaltet.
+      </p>
+    </div>
     <Button href={resolve('/persons/new')}>+ Neue Person</Button>
   </div>
 

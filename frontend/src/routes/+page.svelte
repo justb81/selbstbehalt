@@ -172,12 +172,21 @@
     <!-- BRE status -->
     {#if insuredPersons.length > 0}
       <div class="space-y-3">
-        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          BRE-Status
-        </h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            BRE-Status
+          </h2>
+          <a href={resolve('/insured')} class="text-xs text-primary hover:underline font-medium">
+            Alle Versicherten →
+          </a>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {#each insuredPersons as ip (ip.id)}
-            <BRETracker insuredPerson={ip} compact={true} />
+            <BRETracker
+              insuredPerson={ip}
+              compact={true}
+              href={resolve('/insured/[id]', { id: ip.id })}
+            />
           {/each}
         </div>
       </div>

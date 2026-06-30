@@ -12,6 +12,7 @@
   import ReceiptIcon from '@lucide/svelte/icons/receipt';
   import ScanLineIcon from '@lucide/svelte/icons/scan-line';
   import SettingsIcon from '@lucide/svelte/icons/settings';
+  import UserCheckIcon from '@lucide/svelte/icons/user-check';
   import UsersIcon from '@lucide/svelte/icons/users';
 
   // Daily-goal items flanking the center FAB.
@@ -26,6 +27,7 @@
   const overflowItems = [
     { href: '/persons', label: 'Personen', icon: UsersIcon },
     { href: '/contracts', label: 'Verträge', icon: FileBadgeIcon },
+    { href: '/insured', label: 'Versicherte', icon: UserCheckIcon },
     { href: '/settings', label: 'Einstellungen', icon: SettingsIcon },
   ] as const;
 
