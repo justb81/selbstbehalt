@@ -169,13 +169,18 @@ created_at            DATETIME
 {
   "type": "staffel",
   "levels": [
-    { "leistungsfrei_months": 12, "bre_months": 1, "pct_of_premium": 100 },
-    { "leistungsfrei_months": 24, "bre_months": 2, "pct_of_premium": 100 },
-    { "leistungsfrei_months": 36, "bre_months": 3, "pct_of_premium": 100 }
+    { "claim_free_years": 1, "bre_years": 1, "pct_of_premium": 100 },
+    { "claim_free_years": 2, "bre_years": 2, "pct_of_premium": 100 },
+    { "claim_free_years": 3, "bre_years": 3, "pct_of_premium": 100 }
   ],
   "current_streak_start": "2024-01-01"
 }
 ```
+
+Jede Stufe (`level`) bindet eine Anzahl **leistungsfreier Kalenderjahre** (`claim_free_years`) an
+eine Rückerstattung — entweder im Prozent-Modus (`bre_years × Monatsbeitrag × pct_of_premium / 100`)
+oder als Festbetrag (`fixed_amount_eur`). `current_streak_start` ist der Beginn der aktuell
+laufenden leistungsfreien Strähne (ISO `YYYY-MM-TT`).
 
 **`included_benefits` JSON-Beispiel:**
 
@@ -222,48 +227,99 @@ Beihilfeanspruch (`beihilfe_satz`).
 | `annual_staffel` | Aufbaujahres-Staffel (Zahnstaffel): kumuliertes Limit `cumulative_cap` (EUR) je `policy_year`; letzter Eintrag mit `cumulative_cap: null` = ab diesem Jahr unbegrenzt |
 
 #### `invoices`
+
+Die Summen-Felder der Rechnung (`eligible_amount`, `self_paid_amount`) sind **abgeleitet** und
+werden ausschließlich aus den Positionen neu berechnet (read-only in der API, bei jeder
+Positionsänderung aktualisiert). Quelle der Wahrheit für Erstattungsfähigkeit und tatsächliche
+Erstattung sind die **Positionen** — denn das für BRE/Selbstbehalt maßgebliche Leistungsjahr hängt
+am `treatment_date` der Position, nicht an der Rechnung (§5.2). `total_amount` bleibt der erfasste
+Kopfbetrag der Rechnung (Abgleich gegen Σ `charged_amount`).
+
 ```sql
 id                TEXT PRIMARY KEY
 insured_person_id TEXT REFERENCES insured_persons(id)  -- welche versicherte Person die Rechnung betrifft
-invoice_date      DATE NOT NULL
+invoice_date      DATE NOT NULL        -- Ausstellungsdatum der Rechnung (NICHT BRE-relevant, siehe §5.2)
 invoice_number    TEXT
 provider_name     TEXT NOT NULL        -- Name des Arztes / der Einrichtung
 provider_type     TEXT                 -- 'arzt' | 'zahnarzt' | 'krankenhaus' | 'sonstiges'
-total_amount      REAL NOT NULL        -- Rechnungsbetrag brutto in EUR
-eligible_amount   REAL                 -- Nach GOÄ erstattungsfähiger Betrag
-self_paid_amount  REAL DEFAULT 0       -- Selbst getragener Betrag (inkl. Selbstbehalt)
-status            TEXT DEFAULT 'neu'   -- 'neu' | 'geprüft' | 'eingereicht' | 'erstattet' | 'abgelehnt' | 'selbst_gezahlt'
-decision          TEXT                 -- 'einreichen' | 'selbst_zahlen' (Günstigerprüfung-Ergebnis)
+total_amount      REAL NOT NULL        -- Rechnungsbetrag brutto in EUR (erfasster Kopfbetrag)
+eligible_amount   REAL                 -- ABGELEITET: Σ positions.eligible_amount (read-only)
+self_paid_amount  REAL DEFAULT 0       -- ABGELEITET: selbst getragener Anteil aus den Positionen (read-only)
+status            TEXT DEFAULT 'neu'   -- 'neu' | 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet'
 file_path         TEXT                 -- Pfad zur gespeicherten PDF/Bild-Datei (optional)
 ocr_raw           TEXT                 -- Roh-OCR-Text (für Debugging)
 notes             TEXT
 created_at        DATETIME
 ```
 
+**Status-Workflow (Zustandsmaschine):**
+
+```
+neu ↔ geprüft → bezahlt → eingereicht → erstattet
+```
+
+- **`neu`/`geprüft`** — bearbeitbar; in der Günstigerprüfung wird **nur `neu` ignoriert**.
+- **`bezahlt`** — die Rechnung wurde beglichen; eine Einreichungsentscheidung ist damit *noch nicht*
+  getroffen. **Ab `bezahlt` ist die Rechnung gesperrt** (nicht mehr editierbar).
+- **„Selbst zahlen"** ist *kein* eigener Status, sondern eine Rechnung, die auf `bezahlt` stehen
+  bleibt und nie eingereicht wird.
+- **`eingereicht`** — bei der PKV eingereicht.
+- **`erstattet`** — von der PKV bearbeitet; der **tatsächliche Erstattungsbetrag wird je Position**
+  erfasst (`positions.refund_amount`). **„Abgelehnt"** ist *kein* eigener Status, sondern
+  `erstattet` mit `refund_amount = 0`.
+- Jeder Statuswechsel wird mit Zeitstempel in `invoice_status_events` protokolliert (s. u.).
+
 #### `invoice_positions`
+
+Trägt sowohl den **geschätzten** erstattungsfähigen Betrag (`eligible_amount`, aus der
+Erstattungs-Engine §5.1) als auch den **tatsächlichen** Erstattungsbetrag (`refund_amount`, erfasst
+beim Übergang nach `erstattet`). Das **`treatment_date` (Leistungsdatum) ist Pflicht** — es ordnet
+die Position ihrem BRE-/Selbstbehalt-Jahr zu (§5.2). Eine Sammelrechnung kann Positionen aus
+mehreren Leistungsjahren enthalten.
+
 ```sql
 id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
+treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
 goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'UV-GOÄ'
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup
+quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3
 base_amount      REAL NOT NULL      -- 1-facher Betrag laut GOÄ
 charged_amount   REAL NOT NULL      -- In Rechnung gestellter Betrag
+eligible_amount  REAL               -- Geschätzt erstattungsfähig (Erstattungs-Engine, §5.1)
+refund_amount    REAL               -- Tatsächlich erstattet (erfasst bei Status 'erstattet'); 0 = abgelehnt
 is_valid         BOOLEAN            -- Steigerungsfaktor innerhalb Regelgrenze?
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
+#### `invoice_status_events`
+
+Protokolliert jeden Statuswechsel einer Rechnung mit Zeitstempel — eine eigene Tabelle (statt
+fixer `*_at`-Spalten), damit sich der Workflow künftig ohne Schema-Bruch erweitern lässt.
+
+```sql
+id               TEXT PRIMARY KEY
+invoice_id       TEXT REFERENCES invoices(id)
+status           TEXT NOT NULL        -- der neue Status ('neu' | 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet')
+changed_at       DATETIME NOT NULL    -- Zeitpunkt des Wechsels
+note             TEXT                 -- optionale Notiz
+```
+
 #### `submissions`
+
+Hält die Einreichungs-Metadaten. Der **tatsächliche Erstattungsbetrag liegt je Position**
+(`invoice_positions.refund_amount`); `submissions` führt deshalb keinen aggregierten Erstattungs-
+oder Ablehnungsbetrag mehr.
+
 ```sql
 id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
 submitted_at     DATETIME
 submitted_via    TEXT          -- 'app' | 'post' | 'email'
-expected_refund  REAL          -- Erwartete Erstattung
-actual_refund    REAL          -- Tatsächlich erhaltene Erstattung
-refund_date      DATE
-rejection_reason TEXT
+expected_refund  REAL          -- Erwartete Erstattung (Schätzung zum Einreichungszeitpunkt)
+refund_date      DATE          -- Datum des Erstattungseingangs
 ```
 
 #### `bre_periods`
@@ -271,7 +327,7 @@ rejection_reason TEXT
 id                TEXT PRIMARY KEY
 insured_person_id TEXT REFERENCES insured_persons(id)
 year              INTEGER NOT NULL
-streak_months     INTEGER DEFAULT 0    -- Leistungsfreie Monate
+streak_years      INTEGER DEFAULT 0    -- Leistungsfreie Jahre
 bre_amount        REAL DEFAULT 0       -- Bereits erzielte BRE in diesem Jahr
 projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 ```
@@ -428,7 +484,7 @@ interface ErstattungInput {
   benefits: IncludedBenefits;       // included_benefits der versicherten Person
   invoiceDate: Date | string;       // für Wartezeit-/Aufbaujahres-Prüfung (injizierbar)
   coverageStart: Date | string;     // Beginn des Versicherungsschutzes der Person (insured_persons.start_date)
-  patientAge?: number;              // Alter bei Rechnungsdatum, für altersabhängige limits
+  patientAge?: number;              // Alter bei Leistungsdatum (treatment_date), für altersabhängige limits
   priorClaimsByCategory?: Partial<Record<BenefitCategory, number>>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
 }
 
@@ -459,46 +515,145 @@ werden vom Aufrufer aufgelöst. Berechnungsschritte je Kategorie-Gruppe:
 5. **Aufbaujahres-Staffel (`annual_staffel`) kappen** — kumuliertes Limit des relevanten
    Policenjahres unter Berücksichtigung von `priorClaimsByCategory`.
 
-Das Ergebnis (`eligibleAmount`) fließt als `erstattungsBetrag` (= $$R$$) in die Günstigerprüfung
-(§5.3) ein.
+**Attribution je Position:** Die Engine kappt zwar je Kategorie-Gruppe, muss die erstattungsfähige
+Summe aber **auf die einzelnen Positionen zurückverteilen** (→ `invoice_positions.eligible_amount`),
+weil die Günstigerprüfung pro **Leistungsjahr** aggregiert (§5.2) und Positionen derselben Kategorie
+in unterschiedliche Leistungsjahre fallen können. Verteilungsregel: **anteilig nach
+`charged_amount`** innerhalb der Kategorie. Da `annual_staffel`/`jahr`-Limits ohnehin policenjahres-
+bezogen sind, wird `priorClaimsByCategory` aus den bereits erfassten Positionen des relevanten Jahres
+gespeist. Altersabhängige `limits` beziehen sich auf das **`treatment_date`** der Position, nicht auf
+das Rechnungsdatum.
+
+Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
+die Günstigerprüfung (§5.2/§5.3) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
 
 ### 5.2 Entscheidungslogik
 
-Die Günstigerprüfung beantwortet: **Lohnt es sich, eine Rechnung einzureichen, oder soll ich sie selbst zahlen, um meine Beitragsrückerstattungs-Staffel nicht zu unterbrechen?**
+Die Günstigerprüfung beantwortet: **Lohnt es sich, die Arztrechnungen einzureichen, oder soll ich sie selbst zahlen, um meine Beitragsrückerstattungs-Staffel nicht zu unterbrechen?**
 
-Die relevanten Variablen:
+#### 5.2.1 Aggregationseinheit: versicherte Person × Leistungsjahr
+
+Die Entscheidung fällt **nicht pro Rechnung**, sondern pro **versicherter Person und Leistungsjahr**.
+Drei Eigenschaften der PKV erzwingen das:
+
+1. **Der Selbstbehalt ist eine Jahresgröße.** Erstattet wird nur, was die *kumulierte*
+   erstattungsfähige Summe eines Jahres über den Selbstbehalt hinaus übersteigt — nicht jede
+   Rechnung für sich.
+2. **Der BRE-Verlust fällt pro Jahr genau einmal an.** Einreichen *an sich* bricht die Staffel
+   nicht — erst eine **tatsächlich ausgezahlte Erstattung** (d. h. wenn die Jahressumme den
+   Selbstbehalt reißt). Unterhalb des Selbstbehalts ist Einreichen folgenlos.
+3. **Das maßgebliche Jahr ist das Leistungsjahr der Position (`treatment_date`), nicht das
+   Rechnungs- oder Einreichungsdatum.** Eine im Januar gestellte Rechnung mit Dezember-Leistungen
+   des Vorjahres betrifft die **Vorjahres**-BRE und den Vorjahres-Selbstbehalt. Eine Sammelrechnung
+   kann sich auf mehrere Leistungsjahre verteilen.
+
+Die Aggregation läuft daher über **Positionen, gruppiert nach Leistungsjahr `Y`**, je versicherter
+Person, über alle Rechnungen außer im Status `neu`. Der pro Jahr maßgebliche Betrag `R_Y` ist
+statusabhängig:
+
+| Rechnungsstatus | Beitrag der Position zu `R_Y` |
+|---|---|
+| `erstattet` | `refund_amount` (tatsächliche Erstattung; `0` = abgelehnt) |
+| `geprüft` / `bezahlt` / `eingereicht` | `eligible_amount` (Schätzung der Erstattungs-Engine §5.1) |
+| `neu` | — (ignoriert) |
+
+#### 5.2.2 Variablen
 
 | Variable | Quelle |
 |---|---|
-| $$R$$ | Erstattungsbetrag der Rechnung (eligible_amount) |
-| $$S$$ | Verbleibender Selbstbehalt im Kalenderjahr |
-| $$B_n$$ | BRE bei Leistungsfreiheit noch n Monate (aus bre_structure) |
-| $$P$$ | Monatlicher Beitrag |
-| $$i$$ | Diskontierungsrate (Standard: 3% p.a.) |
-| $$\text{Steuervorteil}(R)$$ | Steuerersparnis bei Selbstzahlung — extern berechnet und in die Engine injiziert (Default 0), siehe unten |
+| $$R_Y$$ | Summe der maßgeblichen Positionsbeträge mit `treatment_date` in Jahr $$Y$$ (s. Tabelle oben) |
+| $$S$$ | Selbstbehalt p.a. der versicherten Person (`self_retention`) |
+| $$B(k)$$ | Jahres-BRE bei $$k$$ aufeinanderfolgenden leistungsfreien Jahren (aus `bre_structure`); $$B(0)=0$$ |
+| $$s$$ | Aktuelle leistungsfreie Jahre vor $$Y$$ |
+| $$n_{\max}$$ | Höchste Staffel-Stufe |
+| $$i$$ | Diskontierungsrate (Standard: 3 % p.a.) |
+| $$p$$ | Wahrscheinlichkeit, in einem künftigen Jahr leistungsfrei zu bleiben (Standard: 0,7) |
+| $$\tau_j$$ | Monate von `asOf` bis zum BRE-Auszahlungstermin des Jahres $$Y+j$$ |
+| $$\text{Steuervorteil}$$ | Steuerersparnis bei Selbstzahlung — extern berechnet, injiziert (Default 0), siehe unten |
 
-**Entscheidungsregel:**
+#### 5.2.3 Entscheidungsregel (All-or-Nothing pro Jahr)
 
-Einreichen lohnt sich, wenn:
+Weil der Staffelbruch ein binäres Jahresereignis ist, ist die Entscheidung pro Jahr binär:
+Entweder das Jahr bleibt unter dem Selbstbehalt (alles selbst zahlen, BRE erhalten) — oder die
+Schwelle wird überschritten, und dann wird **alles** Erstattungsfähige eingereicht (jeder Euro
+oberhalb von $$S$$ wird voll erstattet, der BRE-Verlust fällt nur einmal an).
 
-$$ R - S > \text{NPV}(\Delta \text{BRE}) + \text{Steuervorteil}(R) $$
+$$ \max(0,\; R_Y - S) \;>\; \text{NPV}(\Delta \text{BRE}) + \text{Steuervorteil} $$
 
-wobei $$\text{NPV}(\Delta \text{BRE})$$ der Kapitalwert des entgehenden BRE-Vorteils durch die Unterbrechung der Leistungsfreiheits-Staffel ist [^9]. Sowohl der BRE-Verlust als auch der Steuervorteil sind Vorteile, die nur bei **Selbstzahlung** anfallen; beide erhöhen daher die Schwelle für das Einreichen und stehen auf derselben Seite der Ungleichung.
+**Sonderfall „Staffel bereits gebrochen":** Ist für Jahr $$Y$$ bereits eine Erstattung geflossen
+(eine Position mit `treatment_date` in $$Y$$ auf einer `erstattet`-Rechnung mit `refund_amount > 0`),
+ist die BRE für $$Y$$ versenkt: $$\text{NPV}(\Delta \text{BRE}) = 0$$ ⇒ für $$Y$$ **alles einreichen**.
 
-**Steuervorteil — nicht in der Engine geschätzt:** Selbst gezahlte Arztrechnungen sind nur als **außergewöhnliche Belastungen (§33 EStG)** absetzbar, und auch nur der Teil **oberhalb der zumutbaren Belastung** — einer einkommensabhängigen, über das Jahr kumulierten Schwelle (≈ 1–7 % des Gesamtbetrags der Einkünfte, gestaffelt nach Familienstand und Kinderzahl), die eine einzelne Rechnung selten überschreitet. Eine korrekte Berechnung braucht Einkommen, Veranlagungsart, Kinderzahl und die bereits selbst getragenen Jahreskosten; die Günstigerprüfung-Engine berechnet den Wert daher **nicht** selbst, sondern erhält ihn vom Aufrufer (`taxSavingFromSelfPay`, Default `0` — kein erfundener Vorteil). Ein eigener §33-Helfer liefert den Wert später (Folge-Issue).
+#### 5.2.4 BRE-Verlust als Differenz zweier abgezinster Ströme
+
+Verglichen werden zwei Zahlungsströme, abgezinst auf den Entscheidungstag `asOf`:
+
+- **Einreichen:** $$R_Y - S$$ fließt **sofort** (≈ keine Abzinsung) → dafür entfällt die BRE für $$Y$$
+  und die Staffel fällt auf 0 zurück ($$B(0)=0$$).
+- **Selbst zahlen:** die BRE für $$Y$$ wird im **Auszahlungsmonat des Folgejahres** (Standard: Juli
+  von $$Y+1$$) zur dann geltenden Staffel ausgezahlt — **und** die Staffel läuft weiter, sodass
+  künftige Jahre höhere BREs bringen, bis $$n_{\max}$$ erreicht ist.
+
+Die Kosten des Einreichens sind also die **Differenz beider BRE-Ströme** — nicht nur der eine
+Jahresbetrag. Der Selbstzahl-Pfad erreicht am Ende von $$Y+j$$ die Stufe $$\min(s+1+j,\,n_{\max})$$,
+der Einreich-Pfad (Reset) nur $$\min(j,\,n_{\max})$$. Abgezinst und mit der Erreichens-
+Wahrscheinlichkeit $$p^j$$ gewichtet:
+
+$$ \text{NPV}(\Delta \text{BRE}) = \sum_{j=0}^{n_{\max}-1} \Big[\, B(\min(s{+}1{+}j,\,n_{\max})) - B(\min(j,\,n_{\max})) \,\Big] \cdot p^{\,j} \cdot \frac{1}{(1 + i/12)^{\tau_j}} $$
+
+- **$$j=0$$** — der **sichere** Sofort-Term ($$p^0 = 1$$): $$B(\min(s{+}1,\,n_{\max})) - B(0)$$. Das ist
+  die unmittelbar entgehende Jahres-BRE, korrekt auf das **Leistungsjahr** abgezinst.
+- **$$j \ge 1$$** — die **Wiederaufstiegs-Transiente**: der Vorsprung, den der Selbstzahl-Pfad in den
+  Folgejahren behält, geometrisch mit $$p^j$$ gedämpft (abnehmende Wahrscheinlichkeit, die höheren
+  Stufen tatsächlich zu erreichen). Die Summe endet von selbst, sobald beide Pfade $$n_{\max}$$
+  erreichen — also nach höchstens $$n_{\max}$$ Termen.
+
+**Abzinsungsziel $$\tau_j$$:** Die BRE für ein Leistungsjahr $$Y$$ wird im **Juli von $$Y+1$$**
+ausgezahlt; $$\tau_j$$ ist die Monatsdistanz von `asOf` bis zum Juli von $$Y+1+j$$, mindestens 0
+(ist `asOf` bereits nach dem Auszahlungstermin — Entscheidung über ein vergangenes Jahr —, ist der
+Verlust sofort/realisiert, keine Abzinsung). Der Auszahlungsmonat ist vorerst fest Juli; ihn pro
+Vertrag konfigurierbar zu machen ist ein Folge-Issue.
+
+**Steuervorteil — nicht in der Engine geschätzt:** Selbst gezahlte Arztrechnungen sind nur als **außergewöhnliche Belastungen (§33 EStG)** absetzbar, und auch nur der Teil **oberhalb der zumutbaren Belastung** — einer einkommensabhängigen, über das Jahr kumulierten Schwelle (≈ 1–7 % des Gesamtbetrags der Einkünfte, gestaffelt nach Familienstand und Kinderzahl), die eine einzelne Rechnung selten überschreitet. Eine korrekte Berechnung braucht Einkommen, Veranlagungsart, Kinderzahl und die bereits selbst getragenen Jahreskosten; die Günstigerprüfung-Engine berechnet den Wert daher **nicht** selbst, sondern erhält ihn vom Aufrufer (`taxSavingFromSelfPay`, Default `0` — kein erfundener Vorteil). Ein eigener §33-Helfer liefert den Wert später (Folge-Issue). Da der Selbstbehalt und die Selbstzahl-Summe ohnehin Jahresgrößen sind, gehört auch der Steuervorteil auf Jahresebene.
+
+#### 5.2.5 Rechenbeispiel
+
+Staffel $$B(0..3{+}) = 0 / 200 / 350 / 500\,€$$, Top $$n_{\max}=3$$; aktueller Streak $$s=2$$ (dieses
+Jahr wäre Jahr 3 → 500 €). $$i=3\,\%$$, $$p=0{,}7$$, Entscheidung im Juli von $$Y$$ (Auszahlungen
+Juli $$Y{+}1$$/$$Y{+}2$$/$$Y{+}3$$, also $$\tau = 12/24/36$$ Monate):
+
+| $$j$$ | Selbstzahl $$B$$ | Reset $$B$$ | Gap | $$\times p^j$$ | $$\times$$ Diskont | Beitrag |
+|---|---|---|---|---|---|---|
+| 0 | 500 | 0 | 500 | 1,00 | 0,971 | **485 €** |
+| 1 | 500 | 200 | 300 | 0,70 | 0,943 | **198 €** |
+| 2 | 500 | 350 | 150 | 0,49 | 0,915 | **67 €** |
+| 3+ | 500 | 500 | 0 | — | — | 0 |
+| | | | | | **Σ** | **≈ 751 €** |
+
+Eine reine Ein-Jahres-Betrachtung sähe nur die 485 € (Zeile $$j=0$$). Der Wiederaufstieg hebt die
+Einreich-Schwelle hier auf ~751 € — ökonomisch korrekt, weil das Brechen der Staffel auch das
+mehrjährige Hochklettern kostet.
 
 ### 5.3 Implementierung
+
+Die Engine arbeitet **pro versicherter Person × Leistungsjahr**. Ein vorgelagerter Aggregations-
+Helfer bündelt die Positionen aller Rechnungen (außer `neu`) nach Leistungsjahr und liefert je Jahr
+`R_Y` (statusabhängig: tatsächlich erstattet vs. geschätzt) sowie das Flag „bereits gebrochen".
 
 ```typescript
 // guenstiger-pruefung.ts
 
-interface GCP_Input {
-  erstattungsBetrag: number;       // Was die PKV erstatten würde
-  verbleibenderSelbstbehalt: number;  // Noch offener Selbstbehalt dieses Jahr
+interface GCP_YearInput {
+  year: number;                    // Leistungsjahr Y
+  erstattungsBetrag: number;       // R_Y — aggregiert über Positionen mit treatment_date in Y
+  alreadyBroken: boolean;          // Y bereits gebrochen? (Erstattung > 0 für Y bereits geflossen)
+  selbstbehalt: number;            // S — Selbstbehalt p.a. der Person (self_retention)
   breStructure: BREStructure;
   monthlyPremium: number;
   taxSavingFromSelfPay?: number;   // Steuervorteil (§33 EStG), extern berechnet; Default 0
-  discountRate?: number;           // Default: 0.03
+  discountRate?: number;           // i — Default: 0.03
+  claimFreeProbability?: number;   // p — Default: 0.7
+  payoutMonth?: number;            // BRE-Auszahlungsmonat (1–12); Default: 7 (Juli)
   asOf?: Date | string;            // Stichtag; injizierbar (kein verstecktes Date.now())
 }
 
@@ -506,84 +661,76 @@ interface GCP_Result {
   recommendation: 'einreichen' | 'selbst_zahlen';
   netBenefitOfSubmitting: number;  // > 0 = Einreichen lohnt; ≤ 0 = selbst zahlen
   breakdown: {
-    refundAfterDeductible: number;  // max(0, R − S)
-    currentStreakMonths: number;    // aktuelle leistungsfreie Monate
-    projectedBRELoss: number;       // unabgezinster BRE-Verlust (Worst Case)
-    monthsToYearEnd: number;        // Monate bis Jahresende (Abzinsungsdauer)
-    discountRate: number;           // angewandte Diskontrate
-    lostBREValue_NPV: number;       // abgezinster BRE-Verlust
-    taxSavingFromSelfPay: number;   // Steuervorteil bei Selbstzahlung
+    year: number;
+    refundAfterDeductible: number; // max(0, R_Y − S)
+    currentStreakYears: number;    // s
+    alreadyBroken: boolean;        // war die Staffel für Y schon gebrochen?
+    lostBREValue_NPV: number;      // Σ über j (= 0, wenn alreadyBroken)
+    ladderTerms: Array<{           // Aufschlüsselung der NPV-Summe (Transparenz/UI)
+      j: number;
+      gross: number;               // B(min(s+1+j,nMax)) − B(min(j,nMax))
+      probability: number;         // p^j
+      monthsToPayout: number;      // τ_j
+      discounted: number;          // gewichteter, abgezinster Beitrag
+    }>;
+    discountRate: number;
+    claimFreeProbability: number;
+    taxSavingFromSelfPay: number;
   };
-  explanation: string;              // deutscher Klartext
+  explanation: string;             // deutscher Klartext
 }
 
-function calculateGCP(input: GCP_Input): GCP_Result {
-  const {
-    erstattungsBetrag,
-    verbleibenderSelbstbehalt,
-    breStructure,
-    monthlyPremium,
-    taxSavingFromSelfPay = 0,
-    discountRate = 0.03,
-    asOf = new Date(),
-  } = input;
-
-  // Nettoerstattung nach Selbstbehalt
-  const refundAfterDeductible = Math.max(0, erstattungsBetrag - verbleibenderSelbstbehalt);
-
-  // BRE-Verlust durch Unterbrechung der Staffel (Stichtag injizierbar)
-  const currentStreak = getCurrentStreakMonths(breStructure, asOf);
-  const potentialBRE = getProjectedBRE(breStructure, monthlyPremium, asOf);
-  const lostBRE = potentialBRE; // Worst case: Staffel auf 0 zurückgesetzt
-
-  // Abzinsung des BRE-Wertes auf heute (er wird erst am Jahresende ausgezahlt)
-  const monthsToYearEnd = 12 - asOf.getMonth();
-  const lostBREValue_NPV = lostBRE / Math.pow(1 + discountRate / 12, monthsToYearEnd);
-
-  // Steuervorteil: vom Aufrufer geliefert (§33 EStG, Default 0 — siehe §5.1). Er
-  // entsteht NUR bei Selbstzahlung und ist damit – wie der BRE-Verlust – ein
-  // Kostenfaktor des Einreichens (vgl. Entscheidungsregel §5.1).
-  const netBenefitOfSubmitting = refundAfterDeductible - lostBREValue_NPV - taxSavingFromSelfPay;
-
-  return {
-    recommendation: netBenefitOfSubmitting > 0 ? 'einreichen' : 'selbst_zahlen',
-    netBenefitOfSubmitting,
-    breakdown: {
-      refundAfterDeductible,
-      currentStreakMonths: currentStreak,
-      projectedBRELoss: lostBRE,
-      monthsToYearEnd,
-      discountRate,
-      lostBREValue_NPV,
-      taxSavingFromSelfPay,
-    },
-    explanation: buildExplanation(netBenefitOfSubmitting, refundAfterDeductible, lostBREValue_NPV),
-  };
-}
+// NPV(ΔBRE): Differenz aus Selbstzahl- und Reset-Pfad, p^j-gedämpft, auf asOf abgezinst.
+// Bei alreadyBroken === true ist die BRE für Y bereits versenkt ⇒ NPV = 0.
+function calculateGCP(input: GCP_YearInput): GCP_Result { /* … siehe §5.2.4 … */ }
 ```
+
+Die **Marginalanzeige** auf der Einzelrechnung (§5.4) ist nur eine Sicht auf diese Jahres-Aggregation:
+Sie zeigt, was die Rechnung je Leistungsjahr beiträgt und ob das Jahr dadurch die Schwelle reißt —
+das eigentliche Verdikt lebt auf der Person-×-Jahr-Ansicht.
 
 ### 5.4 Benutzeroberfläche der Günstigerprüfung
 
-Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnungsscan angezeigt:
+Das **Verdikt** lebt auf der **Person-×-Jahr-Ansicht** (§6.1): pro Leistungsjahr eine Karte mit
+`R_Y`, Selbstbehalt, Schwellenstatus, NPV(ΔBRE) und der Empfehlung für *alle* Rechnungen dieses
+Jahres zusammen. Die einzelne Rechnung zeigt **kein** eigenes Verdikt mehr, sondern nur eine
+**Marginalanzeige**: ihren Beitrag je Leistungsjahr und ob das Jahr dadurch die Schwelle reißt.
+
+**Person-×-Jahr-Verdikt (maßgeblich):**
 
 ```
-┌─────────────────────────────────────────┐
-│  💡 Günstigerprüfung                    │
-│─────────────────────────────────────────│
-│  Rechnung: Dr. Müller          85,00 €  │
-│  Erstattung PKV (est.):        62,50 €  │
-│  Verbl. Selbstbehalt:         150,00 €  │
-│  Nettoerstattung:               0,00 €  │
-│─────────────────────────────────────────│
-│  Aktuelle BRE-Staffel:     11 Monate   │
-│  Drohender BRE-Verlust:   185,00 €     │
-│  NPV BRE-Verlust:         181,40 €     │
-│─────────────────────────────────────────│
-│  ✅ Empfehlung: SELBST ZAHLEN           │
-│  Vorteil ggü. Einreichen: ~181 €        │
-│─────────────────────────────────────────│
-│  [Trotzdem einreichen]  [Selbst zahlen] │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  💡 Günstigerprüfung — Max Müller · 2025     │
+│───────────────────────────────────────────── │
+│  Erstattungsfähig 2025 (R):     1.240,00 €   │
+│  Selbstbehalt (S):                500,00 €   │
+│  Nettoerstattung max(0, R−S):     740,00 €   │
+│───────────────────────────────────────────── │
+│  Aktuelle Staffel:               3 Jahre     │
+│  NPV BRE-Verlust (inkl. Leiter):  751,00 €   │
+│   davon Sofort (j=0):             485,00 €   │
+│   davon Wiederaufstieg:           266,00 €   │
+│───────────────────────────────────────────── │
+│  ⚠️ Knapp: Einreichen +ø, prüfen             │
+│  [Alle 2025er einreichen]                    │
+└─────────────────────────────────────────────┘
+```
+
+**Marginalanzeige auf der Einzelrechnung (kein Verdikt):**
+
+```
+┌─────────────────────────────────────────────┐
+│  Beitrag dieser Rechnung zur Günstigerprüfung│
+│───────────────────────────────────────────── │
+│  Leistung 2024:  120,00 €                    │
+│   2024: R 480 € / SB 500 € → unter Schwelle  │
+│   Staffel sicher                             │
+│  Leistung 2025:  310,00 €                    │
+│   2025: R 1.240 € / SB 500 € → Schwelle      │
+│   gerissen — Einreichen bricht 2025er-Staffel│
+│───────────────────────────────────────────── │
+│  → volles Verdikt: Max Müller · 2024 / 2025  │
+└─────────────────────────────────────────────┘
 ```
 
 ***
@@ -599,18 +746,25 @@ Die Günstigerprüfung wird als interaktiver Card-Screen direkt nach dem Rechnun
 /contracts/new          → Neuer Vertrag
 /invoices               → Rechnungsarchiv (Filter, Suche)
 /invoices/new           → Rechnung erfassen (manuell oder via OCR-Scan)
-/invoices/[id]          → Rechnungsdetail + Positionen + Günstigerprüfung
+/invoices/[id]          → Rechnungsdetail + Positionen + Status-Workflow + GP-Marginalanzeige
 /invoices/[id]/submit   → Einreichungsformular
+/insured/[id]           → Versicherte Person: BRE-Verlauf + Günstigerprüfung je Leistungsjahr (Verdikt)
 /stats                  → Jahresauswertung (Kosten, Erstattungen, BRE)
-/settings               → Server-URL, Steuersatz, Diskontrate, Datenbankexport
+/settings               → Server-URL, Steuersatz, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Datenbankexport
 ```
+
+Das **maßgebliche Günstigerprüfungs-Verdikt** liegt auf `/insured/[id]` (pro Leistungsjahr,
+aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur die Marginalanzeige
+(Beitrag dieser Rechnung je Leistungsjahr) sowie den Status-Workflow (§3.2).
 
 ### 6.2 Kern-Komponenten
 
 | Komponente | Datei | Zweck |
 |---|---|---|
 | `OCRScanner` | `lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
-| `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Ergebnis-Karte |
+| `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
+| `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
+| `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position |
 | `ContractCard` | `lib/components/ContractCard.svelte` | Vertragszusammenfassung |
 | `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige |
 | `InvoiceBadge` | `lib/components/InvoiceBadge.svelte` | Status-Badge für Rechnungen |
@@ -674,12 +828,13 @@ DELETE /api/insured/:id               → Versicherte Person entfernen
 
 GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params)
 POST   /api/invoices                  → Neue Rechnung speichern
-GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen
-PUT    /api/invoices/:id              → Rechnung aktualisieren
+GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + Status-Events
+PUT    /api/invoices/:id              → Rechnung aktualisieren (nur Status 'neu'/'geprüft'; ab 'bezahlt' gesperrt)
 DELETE /api/invoices/:id              → Rechnung löschen
 
-POST   /api/invoices/:id/submit       → Einreichung erfassen
-PUT    /api/invoices/:id/refund       → Erstattungseingang erfassen
+POST   /api/invoices/:id/status       → Statuswechsel (schreibt invoice_status_events mit Zeitstempel)
+POST   /api/invoices/:id/submit       → Einreichung erfassen (→ Status 'eingereicht')
+PUT    /api/invoices/:id/refund       → Erstattungseingang je Position erfassen (→ Status 'erstattet')
 
 GET    /api/stats/year/:year          → Jahresauswertung
 GET    /api/stats/bre/:insuredPersonId → BRE-Verlauf einer versicherten Person
