@@ -128,6 +128,7 @@ describe('toReviewPositions / toInvoicePayload', () => {
       {
         goaeNumber: '1',
         goaeCategory: 'GOÄ',
+        positionCategory: 'leistung',
         quantity: 1,
         treatmentDate: null,
         description: 'Beratung',

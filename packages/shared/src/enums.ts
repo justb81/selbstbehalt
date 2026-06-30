@@ -38,6 +38,16 @@ export const goaeCategoryValues = ['GOÄ', 'GOZ', 'GOT', 'UV-GOÄ'] as const;
 export const goaeCategorySchema = z.enum(goaeCategoryValues);
 export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
 
+/**
+ * Funktionale Art einer Position (`invoice_positions.position_category`):
+ * `leistung` (ärztliche/zahnärztliche Leistung, Regelfall) oder
+ * `auslagenersatz` (Auslagenersatz nach §10 GOÄ, z. B. Porto-/Versandkosten —
+ * stets voll erstattungsfähig, unabhängig von Tarifstufen/Wartezeiten/Limits).
+ */
+export const positionCategoryValues = ['leistung', 'auslagenersatz'] as const;
+export const positionCategorySchema = z.enum(positionCategoryValues);
+export type PositionCategory = z.infer<typeof positionCategorySchema>;
+
 /** Channel an invoice was submitted through (`submissions.submitted_via`). */
 export const submissionChannelValues = ['app', 'post', 'email'] as const;
 export const submissionChannelSchema = z.enum(submissionChannelValues);

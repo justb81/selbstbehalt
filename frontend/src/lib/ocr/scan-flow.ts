@@ -19,6 +19,7 @@ import {
   invoiceCreatePayloadSchema,
   roundCents,
   type InvoiceCreatePayload,
+  type PositionCategory,
   type ProviderType,
 } from '@selbstbehalt/shared';
 
@@ -124,6 +125,12 @@ export interface ReviewPosition {
   goaeNumber: string;
   /** Fee schedule this position is billed under (GOÄ / GOZ / GOT). */
   goaeCategory: FeeScheduleId;
+  /**
+   * Funktionale Art der Position — `auslagenersatz` (§10 GOÄ, z. B. Porto-/
+   * Versandkosten, stets voll erstattet) or `leistung`. Detected from the
+   * description; overridable by the user in the review UI.
+   */
+  positionCategory: PositionCategory;
   /** Anzahl (quantity). */
   quantity: number;
   /**
@@ -175,6 +182,7 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
     return {
       goaeNumber: p.ziffer,
       goaeCategory: p.feeSchedule,
+      positionCategory: p.positionCategory,
       quantity: p.quantity,
       treatmentDate: p.treatmentDate ?? lastDate,
       description: p.description ?? null,
@@ -198,6 +206,7 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
   const positions = state.positions.map((p) => ({
     goae_number: p.goaeNumber,
     goae_category: p.goaeCategory,
+    position_category: p.positionCategory,
     quantity: p.quantity,
     treatment_date: p.treatmentDate ?? state.invoiceDate,
     description: p.description,
