@@ -2,6 +2,25 @@
 // Registers @testing-library/jest-dom matchers (e.g. toBeInTheDocument) with Vitest.
 import '@testing-library/jest-dom/vitest';
 
+// JSDOM does not implement window.matchMedia; svelte-sonner's Toaster calls it in a
+// $effect. Provide a minimal stub so component tests that include the AppShell don't
+// blow up with "window.matchMedia is not a function".
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 // Node.js v26 defines globalThis.localStorage as a configurable getter that returns
 // undefined when --localstorage-file is not provided. In vitest's jsdom environment,
 // globalThis IS the jsdom window, so jsdom cannot override this getter via assignment.

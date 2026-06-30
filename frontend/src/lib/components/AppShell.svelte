@@ -7,6 +7,7 @@
   import Breadcrumbs from './Breadcrumbs.svelte';
   import Nav from './Nav.svelte';
   import PwaStatus from './PwaStatus.svelte';
+  import { Toaster } from '$lib/components/ui/sonner/index.js';
 
   let { children }: { children: Snippet } = $props();
 </script>
@@ -14,6 +15,7 @@
 <!-- pb-16 sm:pb-0: reserve space for the fixed mobile bottom nav -->
 <div class="flex flex-col min-h-dvh pb-16 sm:pb-0">
   <PwaStatus />
+  <Toaster richColors />
 
   <header
     class="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center gap-x-5 px-4"
