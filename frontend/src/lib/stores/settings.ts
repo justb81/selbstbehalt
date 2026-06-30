@@ -17,9 +17,17 @@ export interface Settings {
   taxRate: number;
   /** Jährliche Diskontrate ≥ 0 (z.B. 0.03 = 3 %) für den BRE-NPV (design §5.1). */
   discountRate: number;
+  /** Wahrscheinlichkeit 0–1, in einem künftigen Jahr leistungsfrei zu bleiben (design §5.2.2). */
+  claimFreeProbability: number;
 }
 
-const DEFAULTS: Settings = { apiUrl: '', apiKey: '', taxRate: 0.25, discountRate: 0.03 };
+const DEFAULTS: Settings = {
+  apiUrl: '',
+  apiKey: '',
+  taxRate: 0.25,
+  discountRate: 0.03,
+  claimFreeProbability: 0.7,
+};
 
 /** True only in a browser context with usable localStorage. */
 function hasStorage(): boolean {

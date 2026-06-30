@@ -11,6 +11,7 @@
     invoices: { label: 'Rechnungen', entityLabel: 'Rechnung', newLabel: 'Neue Rechnung' },
     contracts: { label: 'Verträge', entityLabel: 'Vertrag', newLabel: 'Neuer Vertrag' },
     persons: { label: 'Personen', entityLabel: 'Person', newLabel: 'Neue Person' },
+    insured: { label: 'Versicherte', entityLabel: 'Versicherte Person', newLabel: '' },
     stats: { label: 'Auswertung', entityLabel: '', newLabel: '' },
     settings: { label: 'Einstellungen', entityLabel: '', newLabel: '' },
   };

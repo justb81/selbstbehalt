@@ -286,9 +286,9 @@ describe('calculateGCP — Sofort-Term NPV (j=0)', () => {
     expect(result.breakdown.ladderTerms[0]?.probability).toBe(1);
   });
 
-  it('produces exactly one ladder term (j=0 only in issue #140)', () => {
+  it('produces at least one ladder term (j=0 always present when not alreadyBroken)', () => {
     const result = calculateGCP(input());
-    expect(result.breakdown.ladderTerms).toHaveLength(1);
+    expect(result.breakdown.ladderTerms.length).toBeGreaterThanOrEqual(1);
     expect(result.breakdown.ladderTerms[0]?.j).toBe(0);
   });
 });
@@ -302,7 +302,8 @@ describe('calculateGCP — τ₀ discounting', () => {
     const gross = result.breakdown.ladderTerms[0]!.gross;
     const expected = roundCents(gross / Math.pow(1 + 0.03 / 12, 12));
     expect(result.breakdown.ladderTerms[0]?.discounted).toBe(expected);
-    expect(result.breakdown.lostBREValue_NPV).toBe(expected);
+    // Total NPV ≥ j=0 term (multi-year sum includes j≥1 recovery terms)
+    expect(result.breakdown.lostBREValue_NPV).toBeGreaterThanOrEqual(expected);
   });
 
   it('τ₀ = 6 for a December service year decided in January (Dezember-Position)', () => {
@@ -312,15 +313,16 @@ describe('calculateGCP — τ₀ discounting', () => {
     expect(result.breakdown.ladderTerms[0]?.monthsToPayout).toBe(6);
   });
 
-  it('τ₀ = 0 for a past year (rückwirkendes Jahr — no discounting)', () => {
+  it('τ₀ = 0 for a past year (rückwirkendes Jahr — no discounting on j=0)', () => {
     // Year Y=2023, asOf=2025-01-01, payoutMonth=7 → payout was July 2024 (past)
     // τ₀ = max(0, (2024-2025)*12 + (6-0)) = max(0,-6) = 0
     const result = calculateGCP(input({ year: 2023, asOf: '2025-01-01' }));
     expect(result.breakdown.ladderTerms[0]?.monthsToPayout).toBe(0);
-    // discounted = gross * 1 / (1+i/12)^0 = gross * 1 = gross
-    const gross = result.breakdown.ladderTerms[0]!.gross;
-    expect(result.breakdown.ladderTerms[0]?.discounted).toBe(gross);
-    expect(result.breakdown.lostBREValue_NPV).toBe(gross);
+    // j=0: discounted = gross * 1 / (1+i/12)^0 = gross (no discounting)
+    const j0 = result.breakdown.ladderTerms[0]!;
+    expect(j0.discounted).toBe(j0.gross);
+    // j≥1 terms may still be discounted (τ_j > 0 for future years)
+    expect(result.breakdown.lostBREValue_NPV).toBeGreaterThanOrEqual(j0.discounted);
   });
 
   it('τ₀ = 0 when asOf is exactly the payout month of Y+1', () => {
@@ -338,8 +340,12 @@ describe('calculateGCP — τ₀ discounting', () => {
 
   it('does not discount when discountRate = 0', () => {
     const result = calculateGCP(input({ discountRate: 0, asOf: '2024-01-01' }));
-    const gross = result.breakdown.ladderTerms[0]!.gross;
-    expect(result.breakdown.lostBREValue_NPV).toBe(gross);
+    // When discountRate=0 each term's time-discount factor is 1 → discounted = gross * probability
+    result.breakdown.ladderTerms.forEach((t) => {
+      expect(t.discounted).toBeCloseTo(roundCents(t.gross * t.probability), 2);
+    });
+    const sumDiscounted = result.breakdown.ladderTerms.reduce((s, t) => s + t.discounted, 0);
+    expect(result.breakdown.lostBREValue_NPV).toBeCloseTo(sumDiscounted, 2);
   });
 
   it('respects a custom payoutMonth', () => {
@@ -381,46 +387,65 @@ describe('calculateGCP — alreadyBroken special case', () => {
 
 describe('calculateGCP — recommendation thresholds', () => {
   it('treats exact tie (netBenefit = 0) as selbst_zahlen', () => {
-    // discountRate=0 → NPV = gross = B(1). streak=0 (< 1 yr) → B(1) = 1×100€ = 100€.
-    // asOf = 2024-05-01 (11 months into streak started 2023-06-01) → streak=0. ✓
-    const result = calculateGCP(
-      input({
-        erstattungsBetrag: 100,
-        selbstbehalt: 0,
-        monthlyPremium: 100,
-        discountRate: 0,
-        asOf: '2024-05-01',
-      }),
-    );
+    // Use a single-level ladder (nMax=1) so the NPV has exactly one term (j=0).
+    // discountRate=0, s=0 → NPV = B(1)-B(0) = 100. erstattungsBetrag=100, selbstbehalt=0
+    // → refundAfterDeductible=100, netBenefit = 100-100 = 0.
+    const singleLevel: BREStructure = {
+      type: 'staffel',
+      levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
+      current_streak_start: '2023-06-01',
+    };
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 100,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: singleLevel,
+      monthlyPremium: 100,
+      discountRate: 0,
+      asOf: '2024-05-01',
+    });
     expect(result.netBenefitOfSubmitting).toBe(0);
     expect(result.recommendation).toBe('selbst_zahlen');
     expect(result.explanation).toContain('gleichwertig');
   });
 
   it('tips to einreichen one cent above the tie', () => {
-    const result = calculateGCP(
-      input({
-        erstattungsBetrag: 100.01,
-        selbstbehalt: 0,
-        monthlyPremium: 100,
-        discountRate: 0,
-        asOf: '2024-05-01',
-      }),
-    );
+    const singleLevel: BREStructure = {
+      type: 'staffel',
+      levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
+      current_streak_start: '2023-06-01',
+    };
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 100.01,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: singleLevel,
+      monthlyPremium: 100,
+      discountRate: 0,
+      asOf: '2024-05-01',
+    });
     expect(result.netBenefitOfSubmitting).toBeCloseTo(0.01, 2);
     expect(result.recommendation).toBe('einreichen');
   });
 
   it('tips to selbst_zahlen one cent below the tie', () => {
-    const result = calculateGCP(
-      input({
-        erstattungsBetrag: 99.99,
-        selbstbehalt: 0,
-        monthlyPremium: 100,
-        discountRate: 0,
-        asOf: '2024-05-01',
-      }),
-    );
+    const singleLevel: BREStructure = {
+      type: 'staffel',
+      levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
+      current_streak_start: '2023-06-01',
+    };
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 99.99,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: singleLevel,
+      monthlyPremium: 100,
+      discountRate: 0,
+      asOf: '2024-05-01',
+    });
     expect(result.recommendation).toBe('selbst_zahlen');
   });
 
@@ -604,6 +629,160 @@ describe('exported constants', () => {
 
   it('DEFAULT_PAYOUT_MONTH is 7 (July)', () => {
     expect(DEFAULT_PAYOUT_MONTH).toBe(7);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-year NPV (issue #141, design §5.2.4 + §5.2.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ladder matching design §5.2.5 reference example:
+ *   B(0)=0, B(1)=200, B(2)=350, B(3)=500; nMax=3.
+ */
+function ladderDesign525(currentStreakStart: string | null): BREStructure {
+  return {
+    type: 'staffel',
+    levels: [
+      { claim_free_years: 1, fixed_amount_eur: 200 },
+      { claim_free_years: 2, fixed_amount_eur: 350 },
+      { claim_free_years: 3, fixed_amount_eur: 500 },
+    ],
+    current_streak_start: currentStreakStart,
+  };
+}
+
+describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
+  it('reproduces design §5.2.5 example: B=[0,200,350,500], s=2, i=3%, p=0.7, τ_j=12*(j+1) → ≈751€', () => {
+    // s=2 (streak started 2022-07-01, asOf=2024-07-01 → exactly 2 years)
+    // payoutMonth=7, year=2024, asOf=2024-07-01 → τ_0=12, τ_1=24, τ_2=36
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 10_000, // large → always einreichen, focus on NPV
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: ladderDesign525('2022-07-01'),
+      monthlyPremium: 1, // B values are fixed_amount_eur → monthlyPremium doesn't matter
+      discountRate: 0.03,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    // Three terms: j=0 (gap=500), j=1 (gap=300), j=2 (gap=150)
+    expect(result.breakdown.ladderTerms).toHaveLength(3);
+    // Exact NPV ≈ 750.21 € with per-cent rounding; design §5.2.5 says "≈751€" (unrounded).
+    expect(result.breakdown.lostBREValue_NPV).toBeCloseTo(750.21, 0);
+  });
+
+  it('p=1 (no dampening): all recovery terms have full weight', () => {
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 10_000,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: ladder('2023-01-01'),
+      monthlyPremium: 100,
+      discountRate: 0,
+      claimFreeProbability: 1,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    // p=1, discountRate=0 → NPV = Σ gross over all terms
+    const sumGross = result.breakdown.ladderTerms.reduce((s, t) => s + t.gross, 0);
+    expect(result.breakdown.lostBREValue_NPV).toBeCloseTo(sumGross, 2);
+    result.breakdown.ladderTerms.forEach((t) => {
+      expect(t.probability).toBeCloseTo(1, 5);
+    });
+  });
+
+  it('p=0: only j=0 term contributes (j≥1 have weight 0)', () => {
+    // p=0 → p^j = 0 for j≥1 → discounted = 0 for j≥1
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 10_000,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: ladder('2022-01-01'), // s=2 so there are recovery terms
+      monthlyPremium: 100,
+      discountRate: 0,
+      claimFreeProbability: 0,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    const j1Plus = result.breakdown.ladderTerms.filter((t) => t.j > 0);
+    j1Plus.forEach((t) => {
+      expect(t.probability).toBe(0);
+      expect(t.discounted).toBe(0);
+    });
+    // Total NPV = only j=0 term
+    const j0 = result.breakdown.ladderTerms.find((t) => t.j === 0)!;
+    expect(result.breakdown.lostBREValue_NPV).toBeCloseTo(j0.discounted, 2);
+  });
+
+  it('s ≥ nMax: only immediate term (both reset-paths reach nMax, no recovery gap)', () => {
+    // s=5 >> nMax=3: reset path B(min(j,3)), gain path B(min(6+j,3))=B(3) for all j
+    // j=0: B(min(6,3))-B(min(0,3))=B(3)-B(0)=300-0=300
+    // j=1: B(min(7,3))-B(min(1,3))=B(3)-B(1)=300-100=200
+    // j=2: B(min(8,3))-B(min(2,3))=B(3)-B(2)=300-200=100
+    // j=3 would be 0 → loop breaks; so actually 3 terms up to j=2 (nMax-1=2)
+    // Wait: nMax=3, loop is j=0 to nMax-1=2. Let me check the loop...
+    // The loop runs j < nMax, so j=0,1,2. The "break" only triggers when gap=0.
+    // At j=0: B(3)-B(0)=300, j=1: B(3)-B(1)=200, j=2: B(3)-B(2)=100 → no break needed.
+    // So s≥nMax gives exactly nMax terms. The "only immediate term" case is when nMax=1.
+    const singleLevelLadder: BREStructure = {
+      type: 'staffel',
+      levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
+      current_streak_start: '2020-01-01', // s=4 >> nMax=1
+    };
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 10_000,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: singleLevelLadder,
+      monthlyPremium: 100,
+      discountRate: 0,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    // nMax=1: j=0 only (j=1 would be j < 1, loop doesn't run)
+    expect(result.breakdown.ladderTerms).toHaveLength(1);
+    expect(result.breakdown.ladderTerms[0]?.j).toBe(0);
+  });
+
+  it('alreadyBroken → NPV=0, no ladder terms (inherited from #140, unaffected by #141)', () => {
+    const result = calculateGCP({
+      year: 2024,
+      erstattungsBetrag: 10_000,
+      alreadyBroken: true,
+      selbstbehalt: 0,
+      breStructure: ladder('2022-01-01'),
+      monthlyPremium: 100,
+      discountRate: 0.03,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    expect(result.breakdown.lostBREValue_NPV).toBe(0);
+    expect(result.breakdown.ladderTerms).toHaveLength(0);
+  });
+
+  it('multi-year NPV is larger than single-term NPV for p=1', () => {
+    const base = {
+      year: 2024,
+      erstattungsBetrag: 10_000,
+      alreadyBroken: false,
+      selbstbehalt: 0,
+      breStructure: ladder('2023-01-01'), // s=1 → still has recovery transient
+      monthlyPremium: 100,
+      discountRate: 0.03,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    };
+    const multi = calculateGCP({ ...base, claimFreeProbability: 1 });
+    const single = calculateGCP({ ...base, claimFreeProbability: 0 });
+    expect(multi.breakdown.lostBREValue_NPV).toBeGreaterThan(single.breakdown.lostBREValue_NPV);
   });
 });
 

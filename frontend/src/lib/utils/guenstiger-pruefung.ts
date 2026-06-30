@@ -23,18 +23,16 @@
  * Special case `alreadyBroken`: if a refund for year Y already flowed,
  * NPV(ΔBRE) = 0 — always recommend submitting for that year.
  *
- * ## NPV formula — Sofort-Term j=0 (issue #140)
- *
- * This release implements only the immediate term (j=0, the guaranteed BRE
- * for year Y). The multi-year recovery transient (j≥1, probability-weighted)
- * is added in issue #141.
+ * ## NPV formula — full multi-year sum (issues #140 + #141)
  *
  * ```
- *   NPV(ΔBRE) = B(min(s+1, n_max)) / (1 + i/12)^τ₀
+ *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
  * ```
  *
- * where B(0) = 0, and τ₀ = months from `asOf` to July of Y+1, floor at 0
- * (past payout date → no discounting).
+ * - j=0: the guaranteed immediate BRE step (p^0 = 1).
+ * - j≥1: recovery transient, dampened by `p^j` (probability of staying claim-free).
+ * - Loop stops early once the gap B(s+1+j,nMax)−B(j,nMax) reaches 0 (both paths at nMax).
+ * - τ_j = months from `asOf` to July of Y+1+j, floor at 0.
  */
 
 import {
@@ -244,6 +242,7 @@ function buildExplanation(
   year: number,
   alreadyBroken: boolean,
   costOfSubmitting: number,
+  ladderTerms: GCP_LadderTerm[],
 ): string {
   if (alreadyBroken) {
     return (
@@ -255,23 +254,28 @@ function buildExplanation(
   const refund = formatEur(refundAfterDeductible);
   const advantage = formatEur(Math.abs(netBenefit));
   const cost = formatEur(costOfSubmitting);
+  const recoveryTerms = ladderTerms.filter((t) => t.j > 0);
+  const recoveryHint =
+    recoveryTerms.length > 0
+      ? ` inkl. Wiederaufstieg über ${recoveryTerms.length} Jahr${recoveryTerms.length === 1 ? '' : 'e'}`
+      : '';
 
   if (netBenefit === 0) {
     return (
       `Beide Optionen sind für Leistungsjahr ${year} mit ${refund} Nettoerstattung ` +
-      `gegenüber ${cost} entgehendem Vorteil etwa gleichwertig. Im Zweifel selbst ` +
+      `gegenüber ${cost} entgehendem Vorteil${recoveryHint} etwa gleichwertig. Im Zweifel selbst ` +
       `zahlen, um die BRE-Staffel zu erhalten.`
     );
   }
   if (recommendation === 'einreichen') {
     return (
       `Einreichen lohnt sich für Leistungsjahr ${year}: Die Nettoerstattung von ${refund} ` +
-      `übersteigt den entgehenden Vorteil aus BRE und Steuerersparnis (${cost}) um ${advantage}.`
+      `übersteigt den entgehenden Vorteil aus BRE${recoveryHint} und Steuerersparnis (${cost}) um ${advantage}.`
     );
   }
   return (
     `Selbst zahlen lohnt sich für Leistungsjahr ${year}: Der entgehende Vorteil aus ` +
-    `BRE und Steuerersparnis (${cost}) übersteigt die Nettoerstattung von ${refund} um ${advantage}.`
+    `BRE${recoveryHint} und Steuerersparnis (${cost}) übersteigt die Nettoerstattung von ${refund} um ${advantage}.`
   );
 }
 
@@ -282,8 +286,8 @@ function buildExplanation(
 /**
  * Run the Günstigerprüfung for one versicherter Person × Leistungsjahr.
  *
- * Issue #140: implements only the Sofort-Term (j=0) of the NPV(ΔBRE) sum.
- * Multi-year recovery terms (j≥1) are added in issue #141.
+ * Implements the full multi-year NPV(ΔBRE) sum (design §5.2.4, issues #140 + #141):
+ *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
  *
  * @throws RangeError if `taxSavingFromSelfPay` is negative, `discountRate ≤ −1`,
  *   `claimFreeProbability` outside [0, 1], or `payoutMonth` outside [1, 12].
@@ -331,17 +335,20 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
     ladderTerms = [];
     lostBREValue_NPV = 0;
   } else {
-    // Sofort-Term j=0 (issue #140). Multi-year recovery j≥1 follows in issue #141.
-    const j = 0;
-    const gross = roundCents(
-      breAtStreak(breStructure, monthlyPremium, Math.min(currentStreakYears + 1 + j, nMax)) -
-        breAtStreak(breStructure, monthlyPremium, Math.min(j, nMax)),
-    );
-    const probability = 1; // p^0 = 1; claimFreeProbability stored for #141
-    const tau = monthsToPayout(year, j, payoutMonth, asOf);
-    const discounted = roundCents((gross * probability) / Math.pow(1 + discountRate / 12, tau));
-    ladderTerms = [{ j, gross, probability, monthsToPayout: tau, discounted }];
-    lostBREValue_NPV = discounted;
+    // Full multi-year NPV sum (design §5.2.4, issues #140 + #141).
+    ladderTerms = [];
+    for (let j = 0; j < nMax; j++) {
+      const gross = roundCents(
+        breAtStreak(breStructure, monthlyPremium, Math.min(currentStreakYears + 1 + j, nMax)) -
+          breAtStreak(breStructure, monthlyPremium, Math.min(j, nMax)),
+      );
+      if (gross === 0) break; // both paths have reached nMax — no further gain
+      const probability = roundCents(Math.pow(claimFreeProbability, j));
+      const tau = monthsToPayout(year, j, payoutMonth, asOf);
+      const discounted = roundCents((gross * probability) / Math.pow(1 + discountRate / 12, tau));
+      ladderTerms.push({ j, gross, probability, monthsToPayout: tau, discounted });
+    }
+    lostBREValue_NPV = roundCents(ladderTerms.reduce((sum, t) => sum + t.discounted, 0));
   }
 
   const netBenefitOfSubmitting = roundCents(
@@ -372,6 +379,7 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
       year,
       alreadyBroken,
       costOfSubmitting,
+      ladderTerms,
     ),
   };
 }

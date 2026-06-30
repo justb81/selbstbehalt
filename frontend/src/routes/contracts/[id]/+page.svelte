@@ -596,7 +596,12 @@
             <CardContent class="pt-4 space-y-3">
               <div class="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <p class="font-semibold">{ip.tariff_name ?? 'Tarif nicht angegeben'}</p>
+                  <a
+                    href={resolve('/insured/[id]', { id: ip.id })}
+                    class="font-semibold hover:text-primary hover:underline transition-colors"
+                  >
+                    {ip.tariff_name ?? 'Tarif nicht angegeben'}
+                  </a>
                   <p class="text-sm text-muted-foreground">
                     {personName(ip.person_id)}{#if ip.kvnr}
                       · KVNR: {ip.kvnr}{/if}
