@@ -421,7 +421,6 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
-
     const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
       goae_number: p.goae_number,
       goae_category: p.goae_category,
@@ -664,7 +663,9 @@
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead class="w-32">Datum</TableHead>
+              <TableHead class="w-32"
+                >Datum <span class="text-destructive" aria-hidden="true">*</span></TableHead
+              >
               <TableHead class="w-20">Ziffer</TableHead>
               <TableHead class="w-16">Kat.</TableHead>
               <TableHead>Beschreibung</TableHead>

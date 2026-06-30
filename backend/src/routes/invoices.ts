@@ -38,6 +38,7 @@ import { assertFkExists, requireRow } from '../lib/db-helpers.js';
 import {
   serializeInvoice,
   serializePosition,
+  serializeStatusEvent,
   serializeSubmission,
   toInvoiceInsert,
   toInvoiceUpdate,
@@ -199,6 +200,17 @@ export function createInvoicesRoute(db: Database) {
         positions: insertedPositions.map(serializePosition),
       };
       return c.json(body, 201);
+    })
+    .get('/:id/events', (c) => {
+      const id = c.req.param('id');
+      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
+      const rows = db
+        .select()
+        .from(invoiceStatusEvents)
+        .where(eq(invoiceStatusEvents.invoiceId, id))
+        .orderBy(desc(invoiceStatusEvents.changedAt))
+        .all();
+      return c.json(rows.map(serializeStatusEvent));
     })
     .get('/:id', (c) => c.json(invoiceWithPositions(db, c.req.param('id'))))
     .put('/:id', async (c) => {

@@ -10,6 +10,7 @@ import {
   healthBodySchema,
   insuredPersonSchema,
   invoiceSchema,
+  invoiceStatusEventSchema,
   invoiceWithPositionsSchema,
   personSchema,
   submissionSchema,
@@ -136,6 +137,10 @@ export function createResources(request: ApiRequester) {
         method: 'PUT',
         body: data,
         schema: invoiceWithPositionsSchema,
+      }),
+    events: (invoiceId: string) =>
+      request(`/api/invoices/${id(invoiceId)}/events`, {
+        schema: z.array(invoiceStatusEventSchema),
       }),
   };
 
