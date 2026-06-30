@@ -73,6 +73,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #32 | Privacy-/DSGVO-Review (Datenfluss-Audit) | #26, #31, #27 | ⬜ |
 | #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | ⬜ |
 | #34 | Docs (Self-Hosting-README, OpenAPI) | #11–#14, #30 | ⬜ |
+| #133 | Navigationsstruktur optimieren (Bottom-Nav, Bündelung, Breadcrumbs, shadcn-Migration) | #19, #26, #29 | ⬜ |
+| #134 | Informationsarchitektur an das Domänenmodell ausrichten (versicherte Person als Knoten) | #133, #23, #28 | ⬜ |
 
 ## Phase 4 — Erweiterungen
 
@@ -115,6 +117,7 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 #5,#30 ── #33                             (Release)
 #19,#24 ── #27 ── #29                      (PWA → Polish)
 #13,#23 ── #28                             (Stats-Seite)
+#19,#26 ── #133 ── #134 ◀── #23,#28       (Nav-Mechanik → IA-Neuordnung)
 ```
 
 ### Kritischer Pfad zum nutzbaren MVP
