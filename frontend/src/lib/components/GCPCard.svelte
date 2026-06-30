@@ -94,6 +94,9 @@
         <dl
           class="bg-background mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-md p-3 text-sm"
         >
+          <dt class="text-muted-foreground">Leistungsjahr</dt>
+          <dd class="text-right font-medium tabular-nums">{result.breakdown.year}</dd>
+
           <dt class="text-muted-foreground">Erstattungsbetrag nach Selbstbehalt</dt>
           <dd class="text-right font-medium tabular-nums">
             {formatEur(result.breakdown.refundAfterDeductible)}
@@ -106,20 +109,23 @@
               : 'e'}
           </dd>
 
-          <dt class="text-muted-foreground">Drohender BRE-Verlust</dt>
-          <dd class="text-right font-medium tabular-nums">
-            {formatEur(result.breakdown.projectedBRELoss)}
-          </dd>
+          {#if result.breakdown.alreadyBroken}
+            <dt class="col-span-2 text-xs text-amber-600 dark:text-amber-400">
+              Staffel für dieses Leistungsjahr bereits gebrochen
+            </dt>
+          {/if}
 
           <dt class="text-muted-foreground">Barwert BRE-Verlust (NPV)</dt>
           <dd class="text-right font-medium tabular-nums">
             {formatEur(result.breakdown.lostBREValue_NPV)}
           </dd>
 
-          <dt class="text-muted-foreground">Restliche Monate bis Jahresende</dt>
-          <dd class="text-right font-medium tabular-nums">
-            {result.breakdown.monthsToYearEnd}
-          </dd>
+          {#if result.breakdown.ladderTerms[0]}
+            <dt class="text-muted-foreground">Monate bis BRE-Auszahlung</dt>
+            <dd class="text-right font-medium tabular-nums">
+              {result.breakdown.ladderTerms[0].monthsToPayout}
+            </dd>
+          {/if}
 
           <dt class="text-muted-foreground">Diskontrate</dt>
           <dd class="text-right font-medium tabular-nums">

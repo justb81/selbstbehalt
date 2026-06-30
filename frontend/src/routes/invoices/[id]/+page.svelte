@@ -17,8 +17,7 @@
     type InvoiceWithPositions,
   } from '@selbstbehalt/shared';
   import { settings } from '$lib/stores/settings';
-  import { calculateGCP } from '$lib/utils/guenstiger-pruefung';
-  import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
+  import { calculateGCP, type GCP_Result } from '$lib/utils/guenstiger-pruefung';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
   import GCPCard from '$lib/components/GCPCard.svelte';
@@ -55,24 +54,33 @@
       const ip = await api.insured.get(inv.insured_person_id);
       insuredPerson = ip;
 
-      // Compute remaining deductible: self_retention - self_paid YTD for this insured person
+      // Compute year-based Günstigerprüfung for this invoice's service year.
+      // Uses invoice_date year as a proxy for service year; treatment_date aggregation
+      // across all invoices of the person is implemented in the Person×Year view (Issue 5/5).
       if (inv.eligible_amount != null && ip.bre_structure) {
-        const year = new Date().getFullYear();
-        const allInvoices = await api.invoices.list();
-        const selfPaidYtd = allInvoices
-          .filter(
-            (i) =>
-              i.insured_person_id === ip.id &&
-              i.invoice_date?.startsWith(String(year)) &&
-              i.id !== inv.id,
-          )
-          .reduce((sum, i) => sum + i.self_paid_amount, 0);
+        const year = inv.invoice_date
+          ? parseInt(inv.invoice_date.substring(0, 4), 10)
+          : new Date().getFullYear();
 
-        const verbleibenderSelbstbehalt = roundCents(Math.max(0, ip.self_retention - selfPaidYtd));
+        const allInvoices = await api.invoices.list();
+        const relatedInvoices = allInvoices.filter(
+          (i) =>
+            i.insured_person_id === ip.id &&
+            i.invoice_date?.startsWith(String(year)) &&
+            i.status !== 'neu',
+        );
+        const R_Y = roundCents(
+          relatedInvoices.reduce((sum, i) => sum + (i.eligible_amount ?? 0), 0),
+        );
+        const alreadyBroken = relatedInvoices.some(
+          (i) => i.status === 'erstattet' && i.total_amount - i.self_paid_amount > 0,
+        );
 
         gcpResult = calculateGCP({
-          erstattungsBetrag: inv.eligible_amount,
-          verbleibenderSelbstbehalt,
+          year,
+          erstattungsBetrag: R_Y,
+          alreadyBroken,
+          selbstbehalt: ip.self_retention,
           breStructure: ip.bre_structure,
           monthlyPremium: ip.monthly_premium,
           discountRate: $settings.discountRate,
