@@ -43,15 +43,7 @@
 <svelte:head><title>Neue Person · selbstbehalt</title></svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <div class="space-y-1">
-    <a
-      href={resolve('/persons')}
-      class="text-sm text-muted-foreground hover:text-primary no-underline"
-    >
-      ← Personen
-    </a>
-    <h1 class="text-2xl font-bold tracking-tight">Neue Person</h1>
-  </div>
+  <h1 class="text-2xl font-bold tracking-tight">Neue Person</h1>
 
   <form
     onsubmit={(e) => {

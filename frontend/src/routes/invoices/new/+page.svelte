@@ -78,15 +78,7 @@
 <svelte:head><title>Rechnung erfassen · selbstbehalt</title></svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <div>
-    <a
-      href={resolve('/invoices')}
-      class="text-sm text-muted-foreground hover:text-primary no-underline"
-    >
-      ← Rechnungen
-    </a>
-    <h1 class="text-2xl font-bold tracking-tight mt-1">Rechnung erfassen</h1>
-  </div>
+  <h1 class="text-2xl font-bold tracking-tight">Rechnung erfassen</h1>
 
   {#if loadingPersons}
     <p class="text-sm text-muted-foreground">Daten werden geladen …</p>
