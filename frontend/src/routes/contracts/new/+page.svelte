@@ -101,15 +101,7 @@
 <svelte:head><title>Neuer Vertrag · selbstbehalt</title></svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <div class="space-y-1">
-    <a
-      href={resolve('/contracts')}
-      class="text-sm text-muted-foreground hover:text-primary no-underline"
-    >
-      ← Verträge
-    </a>
-    <h1 class="text-2xl font-bold tracking-tight">Neuer Vertrag</h1>
-  </div>
+  <h1 class="text-2xl font-bold tracking-tight">Neuer Vertrag</h1>
 
   <form
     onsubmit={(e) => {

@@ -511,17 +511,9 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <div>
-    <a
-      href={resolve('/contracts')}
-      class="text-sm text-muted-foreground hover:text-primary no-underline"
-    >
-      ← Verträge
-    </a>
-    <h1 class="text-2xl font-bold tracking-tight mt-1">
-      {contract?.insurer_name ?? 'Vertragsdetail'}
-    </h1>
-  </div>
+  <h1 class="text-2xl font-bold tracking-tight">
+    {contract?.insurer_name ?? 'Vertragsdetail'}
+  </h1>
 
   {#if loading}
     <LoadingState label="Vertragsdaten werden geladen …" />

@@ -138,17 +138,9 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <div>
-    <a
-      href={resolve('/invoices')}
-      class="text-sm text-muted-foreground hover:text-primary no-underline"
-    >
-      ← Rechnungen
-    </a>
-    <h1 class="text-2xl font-bold tracking-tight mt-1">
-      {invoice?.provider_name ?? 'Rechnungsdetail'}
-    </h1>
-  </div>
+  <h1 class="text-2xl font-bold tracking-tight">
+    {invoice?.provider_name ?? 'Rechnungsdetail'}
+  </h1>
 
   {#if loading}
     <LoadingState label="Rechnungsdaten werden geladen …" />
