@@ -24,6 +24,10 @@
     discountRatePct: z
       .number({ invalid_type_error: 'Muss eine Zahl sein' })
       .min(0, 'Muss ≥ 0 % sein'),
+    claimFreeProbabilityPct: z
+      .number({ invalid_type_error: 'Muss eine Zahl sein' })
+      .min(0, 'Muss ≥ 0 % sein')
+      .max(100, 'Muss ≤ 100 % sein'),
   });
 
   // Local editable copies (displayed as %)
@@ -31,6 +35,7 @@
   let apiKey = $state($settings.apiKey);
   let taxRatePct = $state($settings.taxRate * 100);
   let discountRatePct = $state($settings.discountRate * 100);
+  let claimFreeProbabilityPct = $state($settings.claimFreeProbability * 100);
 
   let saveError = $state<string | null>(null);
   let savedOk = $state(false);
@@ -38,7 +43,13 @@
   function save() {
     saveError = null;
     savedOk = false;
-    const result = settingsSchema.safeParse({ apiUrl, apiKey, taxRatePct, discountRatePct });
+    const result = settingsSchema.safeParse({
+      apiUrl,
+      apiKey,
+      taxRatePct,
+      discountRatePct,
+      claimFreeProbabilityPct,
+    });
     if (!result.success) {
       saveError = result.error.issues.map((i) => i.message).join(' · ');
       return;
@@ -49,6 +60,7 @@
       apiKey: apiKey.trim(),
       taxRate: taxRatePct / 100,
       discountRate: discountRatePct / 100,
+      claimFreeProbability: claimFreeProbabilityPct / 100,
     }));
     savedOk = true;
     setTimeout(() => (savedOk = false), 3000);
@@ -193,7 +205,7 @@
             Günstigerprüfung
           </p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="space-y-1">
               <Label for="taxRate">Grenzsteuersatz (%)</Label>
               <Input
@@ -222,6 +234,23 @@
               />
               <p class="text-xs text-muted-foreground">
                 Abdiskontierung des BRE-Vorteils; Design-Standard: 3 %.
+              </p>
+            </div>
+
+            <div class="space-y-1">
+              <Label for="claimFreeProbability">Leistungsfreiheit-Wahrscheinlichkeit (%)</Label>
+              <Input
+                id="claimFreeProbability"
+                type="number"
+                bind:value={claimFreeProbabilityPct}
+                min="0"
+                max="100"
+                step="1"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Wahrscheinlichkeit, ein weiteres Jahr leistungsfrei zu bleiben (p, Design-Standard:
+                70 %).
               </p>
             </div>
           </div>

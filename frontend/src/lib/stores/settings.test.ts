@@ -10,7 +10,13 @@ import { resolveApiBaseUrl, settings, type Settings } from './settings';
 
 const STORAGE_KEY = 'selbstbehalt:settings';
 
-const defaults: Settings = { apiUrl: '', apiKey: '', taxRate: 0.25, discountRate: 0.03 };
+const defaults: Settings = {
+  apiUrl: '',
+  apiKey: '',
+  taxRate: 0.25,
+  discountRate: 0.03,
+  claimFreeProbability: 0.7,
+};
 
 beforeEach(() => {
   localStorage.clear();

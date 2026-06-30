@@ -1,14 +1,15 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungsdetail (docs/design.md §6.1, issue #22, issue #142): invoice with
-  positions, §5-validation flags, Günstigerprüfung (GCPCard), and the full
-  status-workflow card (InvoiceStatusFlow).
+  Rechnungsdetail (docs/design.md §6.1, issue #22, issue #134, issue #142): invoice with
+  positions, §5-validation flags, GCPContributionCard (marginal contribution per service year),
+  and the full status-workflow card (InvoiceStatusFlow).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
   import {
     formatEur,
@@ -16,11 +17,10 @@
     type InsuredPerson,
     type InvoiceWithPositions,
   } from '@selbstbehalt/shared';
-  import { settings } from '$lib/stores/settings';
-  import { calculateGCP, type GCP_Result } from '$lib/utils/guenstiger-pruefung';
+  import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
-  import GCPCard from '$lib/components/GCPCard.svelte';
+  import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -39,14 +39,13 @@
 
   let invoice = $state<InvoiceWithPositions | null>(null);
   let insuredPerson = $state<InsuredPerson | null>(null);
-  let gcpResult = $state<GCP_Result | null>(null);
+  let allPersonInvoices = $state<InvoiceWithPositions[]>([]);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
 
   async function load() {
     loading = true;
     loadError = null;
-    gcpResult = null;
     try {
       const inv = await api.invoices.get(invoiceId);
       invoice = inv;
@@ -54,39 +53,9 @@
       const ip = await api.insured.get(inv.insured_person_id);
       insuredPerson = ip;
 
-      // Compute year-based Günstigerprüfung for this invoice's service year.
-      // Uses invoice_date year as a proxy for service year; treatment_date aggregation
-      // across all invoices of the person is implemented in the Person×Year view (Issue 5/5).
-      if (inv.eligible_amount != null && ip.bre_structure) {
-        const year = inv.invoice_date
-          ? parseInt(inv.invoice_date.substring(0, 4), 10)
-          : new Date().getFullYear();
-
-        const allInvoices = await api.invoices.list();
-        const relatedInvoices = allInvoices.filter(
-          (i) =>
-            i.insured_person_id === ip.id &&
-            i.invoice_date?.startsWith(String(year)) &&
-            i.status !== 'neu',
-        );
-        const R_Y = roundCents(
-          relatedInvoices.reduce((sum, i) => sum + (i.eligible_amount ?? 0), 0),
-        );
-        const alreadyBroken = relatedInvoices.some(
-          (i) => i.status === 'erstattet' && i.total_amount - i.self_paid_amount > 0,
-        );
-
-        gcpResult = calculateGCP({
-          year,
-          erstattungsBetrag: R_Y,
-          alreadyBroken,
-          selbstbehalt: ip.self_retention,
-          breStructure: ip.bre_structure,
-          monthlyPremium: ip.monthly_premium,
-          discountRate: $settings.discountRate,
-          taxSavingFromSelfPay: 0,
-        });
-      }
+      // Load all invoices for this person to compute accurate total R_Y per service year.
+      const invList = await api.invoices.list({ insured_person_id: ip.id });
+      allPersonInvoices = await Promise.all(invList.map((i) => api.invoices.get(i.id)));
     } catch (e) {
       loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
@@ -95,6 +64,52 @@
   }
 
   onMount(load);
+
+  // ---------------------------------------------------------------------------
+  // Contribution of this invoice's positions per service year
+  // ---------------------------------------------------------------------------
+
+  interface YearContribution {
+    year: number;
+    amount: number;
+    totalR_Y: number;
+    selbstbehalt: number;
+    alreadyBroken: boolean;
+  }
+
+  const contributions = $derived.by((): YearContribution[] => {
+    if (!invoice || !insuredPerson || invoice.status === 'neu') return [];
+
+    // Aggregate R_Y over all invoices of this person.
+    const allAggregates = new Map(
+      aggregateByYear(
+        allPersonInvoices.map((inv) => ({ status: inv.status, positions: inv.positions })),
+      ).map((a) => [a.year, a]),
+    );
+
+    // Aggregate this invoice's positions by service year.
+    const byYear = new SvelteMap<number, number>();
+    for (const pos of invoice.positions) {
+      if (!pos.treatment_date) continue;
+      const year = parseInt(pos.treatment_date.substring(0, 4), 10);
+      const amount =
+        invoice.status === 'erstattet' ? (pos.refund_amount ?? 0) : (pos.eligible_amount ?? 0);
+      byYear.set(year, (byYear.get(year) ?? 0) + amount);
+    }
+
+    return Array.from(byYear.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([year, amount]) => {
+        const agg = allAggregates.get(year);
+        return {
+          year,
+          amount: roundCents(amount),
+          totalR_Y: agg?.R_Y ?? roundCents(amount),
+          selbstbehalt: insuredPerson!.self_retention,
+          alreadyBroken: agg?.alreadyBroken ?? false,
+        };
+      });
+  });
 
   let deletingInvoice = $state(false);
   let confirmDeleteInvoice = $state(false);
@@ -194,12 +209,15 @@
       {#if insuredPerson}
         <Card>
           <CardHeader class="pb-2">
-            <CardDescription>Versichert bei</CardDescription>
+            <CardDescription>Versicherte Person</CardDescription>
           </CardHeader>
           <CardContent>
-            <p class="text-lg font-semibold">
+            <a
+              href={resolve('/insured/[id]', { id: insuredPerson.id })}
+              class="text-lg font-semibold hover:text-primary hover:underline transition-colors"
+            >
               {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Unbekannt'}
-            </p>
+            </a>
           </CardContent>
         </Card>
       {/if}
@@ -212,27 +230,24 @@
     <!-- Status workflow: transitions, refund capture, history -->
     <InvoiceStatusFlow {invoice} onChanged={load} />
 
-    <!-- Günstigerprüfung -->
-    {#if gcpResult}
-      <div class="space-y-2">
-        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Günstigerprüfung
-        </h2>
-        <!-- Action buttons removed: status transitions are handled by InvoiceStatusFlow above -->
-        <GCPCard result={gcpResult} />
-      </div>
-    {:else if invoice.eligible_amount == null}
+    <!-- Günstigerprüfung: marginal contribution per service year -->
+    {#if contributions.length > 0 && insuredPerson}
+      <GCPContributionCard
+        {contributions}
+        insuredPersonId={insuredPerson.id}
+        insuredLabel={insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
+      />
+    {:else if invoice.status === 'neu'}
       <div
         class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
       >
-        Kein erstattungsfähiger Betrag angegeben — Günstigerprüfung nicht möglich.
+        Rechnung im Status „neu" — Günstigerprüfung erst nach Prüfung der Positionen möglich.
       </div>
-    {:else if insuredPerson && !insuredPerson.bre_structure}
+    {:else if invoice.positions.every((p) => !p.treatment_date)}
       <div
         class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
       >
-        Keine BRE-Staffel für diese versicherte Person konfiguriert — Günstigerprüfung nicht
-        möglich.
+        Kein Leistungsdatum in den Positionen — Günstigerprüfung nicht möglich.
       </div>
     {/if}
 
