@@ -54,6 +54,26 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #23 | Dashboard | #21, #22, #13 | ⬜ |
 | #30 | Containerisierung (Docker Compose) | #9, #19 | ✅ |
 
+## Günstigerprüfung-Redesign (Epic #146)
+
+Die Günstigerprüfung wird von **pro Rechnung** auf **pro versicherter Person × Leistungsjahr**
+umgestellt (Selbstbehalt als Jahresgröße, BRE-Verlust einmal pro Jahr und erst bei tatsächlicher
+Erstattung, Leistungsjahr = `treatment_date` der Position; BRE-Verlust als Differenz zweier
+abgezinster Ströme inkl. Mehrjahres-Wiederaufstieg). Siehe `docs/design.md` §3.2 + §5. **Strikt
+sequentiell, ohne inkonsistenten Zwischenstand.**
+
+| Issue | Titel | Abhängig von | Hinweis | Status |
+|---|---|---|---|---|
+| #139 | Datenmodell-Umstellung (Positionen als Quelle der Wahrheit, Status-Workflow, Leistungsjahr) | #8, #10, #12, #66, #65 | ⚠️ **ATOMAR**: shared+backend+frontend in einem PR | ⬜ |
+| #140 | Engine: Aggregation Person × Leistungsjahr + korrigierte Abzinsung (Sofort-Term) | #139 | Signaturänderung ⇒ Aufrufstellen mitziehen | ⬜ |
+| #141 | Engine: Mehrjahres-Leiter-NPV mit Wahrscheinlichkeits-Dämpfung (`p`) | #140 | rein additiv | ⬜ |
+| #142 | Frontend: Status-Workflow-UI + Erstattungs-Erfassung je Position | #139 | parallel zu #140/#141 möglich | ⬜ |
+| #143 | Frontend: Person-×-Jahr-Verdikt + Marginalanzeige auf der Rechnung | #140, #141, #142 | löst Pro-Rechnungs-Verdikt (#18/#22) ab | ⬜ |
+| #144 | Folge: BRE-Auszahlungsmonat pro Vertrag konfigurierbar | #140 | nicht blockierend (Default Juli) | ⬜ |
+| #145 | Folge: `p` datengetrieben aus der Historie schätzen | #141 | nicht blockierend (Default 0,7) | ⬜ |
+
+Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #143**, danach #144/#145 nach Bedarf.
+
 ## Phase 2 — OCR (client-seitig)
 
 | Issue | Titel | Abhängig von | Status |
@@ -110,6 +130,11 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 #65,#66 ── #82 ──┬─ #83 ── #84 ◀── #22   (Rezept-Belege, Phase 4: Schema → API → UI)
                  └─ #85 ◀── #26          (Beleg-OCR, Phase 4)
 
+#139 ─┬─ #140 ── #141 ──┐                 (Günstigerprüfung-Redesign, Epic #146)
+      │                 ├─ #143
+      └─ #142 ──────────┘
+       #140 ── #144 · #141 ── #145         (Folge-Issues, nicht blockierend)
+
 #19 ─┬─ #24 ─┐
      └─ #25 ─┴─ #26 ◀── #16,#22          (Scan-Flow)
 
@@ -125,6 +150,8 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 `#2 → #3 → {#8,#9,#10} → {#11,#12} → #19 → {#21,#22} → #23`
 
 Paralleler Domänen-Strang: `#15 → #16`, `#17 → #18` und `#65 → #66`, die in #22 (Rechnungs-UI/GCPCard) einfließen.
+
+> **Hinweis:** Die Pro-Rechnungs-Günstigerprüfung aus #18/#22 wird durch das **Günstigerprüfung-Redesign** (Epic #146, #139–#143) abgelöst — Entscheidung pro versicherter Person × Leistungsjahr. Siehe den eigenen Abschnitt oben.
 
 ### Erweiterung: Rezept-Belege (Hilfsmittel, Arznei- & Heilmittel)
 
