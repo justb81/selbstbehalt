@@ -68,11 +68,11 @@ sequentiell, ohne inkonsistenten Zwischenstand.**
 | #140 | Engine: Aggregation Person × Leistungsjahr + korrigierte Abzinsung (Sofort-Term) | #139 | Signaturänderung ⇒ Aufrufstellen mitziehen | ⬜ |
 | #141 | Engine: Mehrjahres-Leiter-NPV mit Wahrscheinlichkeits-Dämpfung (`p`) | #140 | rein additiv | ⬜ |
 | #142 | Frontend: Status-Workflow-UI + Erstattungs-Erfassung je Position | #139 | parallel zu #140/#141 möglich | ⬜ |
-| #143 | Frontend: Person-×-Jahr-Verdikt + Marginalanzeige auf der Rechnung | #140, #141, #142 | löst Pro-Rechnungs-Verdikt (#18/#22) ab | ⬜ |
+| #134 | Frontend: Person-×-Jahr-Verdikt + Marginalanzeige (zusammengeführt mit IA „Person als Knoten") | #140, #141, #142 | löst Pro-Rechnungs-Verdikt (#18/#22) ab; ehem. #143 | ⬜ |
 | #144 | Folge: BRE-Auszahlungsmonat pro Vertrag konfigurierbar | #140 | nicht blockierend (Default Juli) | ⬜ |
 | #145 | Folge: `p` datengetrieben aus der Historie schätzen | #141 | nicht blockierend (Default 0,7) | ⬜ |
 
-Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #143**, danach #144/#145 nach Bedarf.
+Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #144/#145 nach Bedarf. (Schritt 5/5, ehemals #143, wurde in #134 „versicherte Person als Knoten" eingegliedert.)
 
 ## Phase 2 — OCR (client-seitig)
 
@@ -94,7 +94,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #143**, danach #14
 | #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | ⬜ |
 | #34 | Docs (Self-Hosting-README, OpenAPI) | #11–#14, #30 | ⬜ |
 | #133 | Navigationsstruktur optimieren (Bottom-Nav, Bündelung, Breadcrumbs, shadcn-Migration) | #19, #26, #29 | ⬜ |
-| #134 | Informationsarchitektur an das Domänenmodell ausrichten (versicherte Person als Knoten) | #133, #23, #28 | ⬜ |
+| #134 | Versicherte Person als Knoten: IA-Neuordnung + Günstigerprüfung-Verdikt je Leistungsjahr (Redesign 5/5, ehem. #143) | #133, #23, #28, #140, #141, #142 | ⬜ |
 
 ## Phase 4 — Erweiterungen
 
@@ -131,7 +131,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #143**, danach #14
                  └─ #85 ◀── #26          (Beleg-OCR, Phase 4)
 
 #139 ─┬─ #140 ── #141 ──┐                 (Günstigerprüfung-Redesign, Epic #146)
-      │                 ├─ #143
+      │                 ├─ #134           (Verdikt + Marginalanzeige; inkl. IA „Person als Knoten")
       └─ #142 ──────────┘
        #140 ── #144 · #141 ── #145         (Folge-Issues, nicht blockierend)
 
