@@ -14,6 +14,7 @@ export * from './schemas/included-benefits.js';
 export * from './schemas/insured-person.js';
 export * from './schemas/invoice.js';
 export * from './schemas/invoice-position.js';
+export * from './schemas/invoice-status-event.js';
 export * from './schemas/submission.js';
 export * from './schemas/bre-period.js';
 export * from './utils/bre.js';

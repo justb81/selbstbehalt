@@ -197,7 +197,6 @@ describe('invoice mapping', () => {
       eligibleAmount: 62.5,
       selfPaidAmount: 0,
       status: 'neu',
-      decision: 'selbst_zahlen',
       filePath: null,
       ocrRaw: null,
       notes: 'x',
@@ -230,15 +229,12 @@ describe('invoice mapping', () => {
       provider_name: 'Dr. B',
       provider_type: 'zahnarzt',
       total_amount: 100,
-      eligible_amount: 90,
-      self_paid_amount: 10,
       status: 'geprüft',
-      decision: 'einreichen',
       file_path: '/x',
       ocr_raw: 'raw',
       notes: 'n',
     });
-    expect(Object.keys(update)).toHaveLength(13);
+    expect(Object.keys(update)).toHaveLength(10);
     expect(update.status).toBe('geprüft');
   });
 
@@ -283,14 +279,12 @@ describe('submission mapping', () => {
       submittedAt: NOW,
       submittedVia: 'email',
       expectedRefund: 62.5,
-      actualRefund: 60,
       refundDate: '2026-07-01',
-      rejectionReason: null,
     });
     expect(result).toMatchObject({
       invoice_id: ID,
       submitted_via: 'email',
-      actual_refund: 60,
+      expected_refund: 62.5,
     });
   });
 
@@ -304,12 +298,10 @@ describe('submission mapping', () => {
       submitted_at: NOW,
       submitted_via: 'app',
       expected_refund: 50,
-      actual_refund: 48,
       refund_date: '2026-07-02',
-      rejection_reason: 'x',
     });
-    expect(Object.keys(update)).toHaveLength(6);
-    expect(update.actualRefund).toBe(48);
+    expect(Object.keys(update)).toHaveLength(4);
+    expect(update.submittedVia).toBe('app');
   });
 
   it('produces an empty patch for an empty update', () => {

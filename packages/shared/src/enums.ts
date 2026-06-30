@@ -17,22 +17,21 @@ export const providerTypeValues = ['arzt', 'zahnarzt', 'krankenhaus', 'sonstiges
 export const providerTypeSchema = z.enum(providerTypeValues);
 export type ProviderType = z.infer<typeof providerTypeSchema>;
 
-/** Lifecycle status of an invoice (`invoices.status`). */
+/**
+ * Lifecycle status of an invoice (`invoices.status`).
+ * Allowed transitions: neu↔geprüft → bezahlt → eingereicht → erstattet.
+ * Rejection (Ablehnung) is modelled as erstattet with refund_amount = 0 per position.
+ * Self-pay (Selbstzahlung) leaves the invoice in bezahlt without proceeding to eingereicht.
+ */
 export const invoiceStatusValues = [
   'neu',
   'geprüft',
+  'bezahlt',
   'eingereicht',
   'erstattet',
-  'abgelehnt',
-  'selbst_gezahlt',
 ] as const;
 export const invoiceStatusSchema = z.enum(invoiceStatusValues);
 export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
-
-/** Result of the Günstigerprüfung (`invoices.decision`). */
-export const invoiceDecisionValues = ['einreichen', 'selbst_zahlen'] as const;
-export const invoiceDecisionSchema = z.enum(invoiceDecisionValues);
-export type InvoiceDecision = z.infer<typeof invoiceDecisionSchema>;
 
 /** Fee-schedule a position is billed under (`invoice_positions.goae_category`). */
 export const goaeCategoryValues = ['GOÄ', 'GOZ', 'GOT', 'UV-GOÄ'] as const;

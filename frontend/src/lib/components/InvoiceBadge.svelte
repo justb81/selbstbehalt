@@ -10,10 +10,9 @@
   const LABELS: Record<InvoiceStatus, string> = {
     neu: 'Neu',
     geprüft: 'Geprüft',
+    bezahlt: 'Bezahlt',
     eingereicht: 'Eingereicht',
     erstattet: 'Erstattet',
-    abgelehnt: 'Abgelehnt',
-    selbst_gezahlt: 'Selbst gezahlt',
   };
 
   type BadgeConfig = {
@@ -28,6 +27,7 @@
       class:
         'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300',
     },
+    bezahlt: { variant: 'secondary' },
     eingereicht: {
       variant: 'outline',
       class:
@@ -38,8 +38,6 @@
       class:
         'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300',
     },
-    abgelehnt: { variant: 'destructive' },
-    selbst_gezahlt: { variant: 'secondary' },
   };
 
   const config = $derived(VARIANTS[status]);

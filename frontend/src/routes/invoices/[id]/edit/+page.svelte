@@ -19,7 +19,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
 
-  const EDITABLE_STATUSES = new Set(['neu', 'geprüft', 'selbst_gezahlt']);
+  const EDITABLE_STATUSES = new Set(['neu', 'geprüft']);
 
   const invoiceId = $derived(page.params.id as string);
 
@@ -76,7 +76,6 @@
         provider_name: payload.provider_name,
         provider_type: payload.provider_type ?? undefined,
         total_amount: payload.total_amount,
-        eligible_amount: payload.eligible_amount,
         notes: payload.notes,
         positions: payload.positions,
       });

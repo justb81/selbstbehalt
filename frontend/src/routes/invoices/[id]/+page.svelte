@@ -94,12 +94,8 @@
     actioning = true;
     actionError = null;
     try {
-      const updated = await api.invoices.update(invoice.id, {
-        status: 'selbst_gezahlt',
-        decision: 'selbst_zahlen',
-        self_paid_amount: invoice.total_amount,
-      });
-      invoice = updated;
+      await api.invoices.changeStatus(invoice.id, { status: 'bezahlt' });
+      invoice = await api.invoices.get(invoice.id);
     } catch (e) {
       actionError =
         e instanceof ApiError || e instanceof Error ? e.message : 'Aktualisierung fehlgeschlagen.';
@@ -155,7 +151,7 @@
         <InvoiceBadge status={invoice.status} />
       </div>
       <div class="flex gap-2 flex-wrap items-start">
-        {#if invoice.status === 'neu' || invoice.status === 'geprüft' || invoice.status === 'selbst_gezahlt'}
+        {#if invoice.status === 'neu' || invoice.status === 'geprüft'}
           <Button
             variant="outline"
             size="sm"
@@ -164,7 +160,7 @@
             Bearbeiten
           </Button>
         {/if}
-        {#if invoice.status === 'neu' || invoice.status === 'geprüft'}
+        {#if invoice.status === 'bezahlt'}
           <Button size="sm" href={resolve('/invoices/[id]/submit', { id: invoice.id })}>
             Einreichung erfassen
           </Button>
@@ -239,7 +235,7 @@
         <GCPCard
           result={gcpResult}
           onSubmit={goToSubmit}
-          onSelfPay={invoice.status !== 'selbst_gezahlt' ? markSelfPay : undefined}
+          onSelfPay={invoice.status !== 'bezahlt' ? markSelfPay : undefined}
           loading={actioning}
         />
         {#if actionError}

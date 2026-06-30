@@ -67,9 +67,16 @@ describe('POST /api/invoices', () => {
     const { res, body } = await createInvoice({
       ...baseInvoice(),
       positions: [
-        { goae_number: '0001', multiplier: 2.3, base_amount: 4.66, charged_amount: 10.72 },
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
         {
           goae_number: '0340',
+          treatment_date: '2026-06-01',
           multiplier: 3.5,
           base_amount: 20.11,
           charged_amount: 70.39,
@@ -87,7 +94,15 @@ describe('POST /api/invoices', () => {
   it('rolls back the invoice when a position is invalid (atomicity)', async () => {
     const res = await json('POST', '/api/invoices', {
       ...baseInvoice(),
-      positions: [{ goae_number: '0001', multiplier: 0, base_amount: 1, charged_amount: 1 }],
+      positions: [
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 0,
+          base_amount: 1,
+          charged_amount: 1,
+        },
+      ],
     });
     // multiplier 0 fails validation before any insert; nothing is persisted.
     expect(res.status).toBe(400);
@@ -146,7 +161,13 @@ describe('GET /api/invoices/:id', () => {
     const { body } = await createInvoice({
       ...baseInvoice(),
       positions: [
-        { goae_number: '0001', multiplier: 2.3, base_amount: 4.66, charged_amount: 10.72 },
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
       ],
     });
     const res = await app.request(`/api/invoices/${body.id}`);
@@ -167,7 +188,13 @@ describe('PUT /api/invoices/:id', () => {
     const { body } = await createInvoice({
       ...baseInvoice(),
       positions: [
-        { goae_number: '0001', multiplier: 2.3, base_amount: 4.66, charged_amount: 10.72 },
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
       ],
     });
     const res = await json('PUT', `/api/invoices/${body.id}`, { status: 'geprüft', notes: 'ok' });
@@ -183,7 +210,13 @@ describe('DELETE /api/invoices/:id', () => {
     const { body } = await createInvoice({
       ...baseInvoice(),
       positions: [
-        { goae_number: '0001', multiplier: 2.3, base_amount: 4.66, charged_amount: 10.72 },
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
       ],
     });
     const res = await json('DELETE', `/api/invoices/${body.id}`);
@@ -195,6 +228,8 @@ describe('DELETE /api/invoices/:id', () => {
 describe('POST /api/invoices/:id/submit', () => {
   it('records a submission and moves the invoice to eingereicht', async () => {
     const { body } = await createInvoice();
+    // Submit requires bezahlt status.
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
     const res = await json('POST', `/api/invoices/${body.id}/submit`, {
       submitted_via: 'email',
       expected_refund: 62.5,
@@ -208,8 +243,15 @@ describe('POST /api/invoices/:id/submit', () => {
     expect(detail.status).toBe('eingereicht');
   });
 
+  it('rejects submitting a non-bezahlt invoice with 409', async () => {
+    const { body } = await createInvoice();
+    const res = await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' });
+    expect(res.status).toBe(409);
+  });
+
   it('rejects submitting an already-submitted invoice with 409', async () => {
     const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
     await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' });
     const res = await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'post' });
     expect(res.status).toBe(409);
@@ -222,38 +264,49 @@ describe('POST /api/invoices/:id/submit', () => {
 });
 
 describe('PUT /api/invoices/:id/refund', () => {
-  async function submitted() {
-    const { body } = await createInvoice();
+  async function submittedWithPosition() {
+    const { body } = await createInvoice({
+      ...baseInvoice(),
+      positions: [
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
+      ],
+    });
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
     await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' });
-    return body.id as string;
+    return { invoiceId: body.id as string, positionId: body.positions[0].id as string };
   }
 
   it('records a refund and moves the invoice to erstattet', async () => {
-    const id = await submitted();
-    const res = await json('PUT', `/api/invoices/${id}/refund`, {
-      actual_refund: 62.5,
+    const { invoiceId, positionId } = await submittedWithPosition();
+    const res = await json('PUT', `/api/invoices/${invoiceId}/refund`, {
+      positions: [{ id: positionId, refund_amount: 62.5 }],
       refund_date: '2026-07-01',
     });
     expect(res.status).toBe(200);
-    expect((await res.json()).actual_refund).toBe(62.5);
-
-    const detail = await (await app.request(`/api/invoices/${id}`)).json();
+    const detail = await (await app.request(`/api/invoices/${invoiceId}`)).json();
     expect(detail.status).toBe('erstattet');
+    expect(detail.positions[0].refund_amount).toBe(62.5);
   });
 
-  it('marks the invoice abgelehnt when a rejection reason is given', async () => {
-    const id = await submitted();
-    await json('PUT', `/api/invoices/${id}/refund`, {
-      actual_refund: 0,
-      rejection_reason: 'Leistung nicht im Tarif',
+  it('records a zero refund (Ablehnung) and moves the invoice to erstattet', async () => {
+    const { invoiceId, positionId } = await submittedWithPosition();
+    await json('PUT', `/api/invoices/${invoiceId}/refund`, {
+      positions: [{ id: positionId, refund_amount: 0 }],
+      note: 'Leistung nicht im Tarif',
     });
-    const detail = await (await app.request(`/api/invoices/${id}`)).json();
-    expect(detail.status).toBe('abgelehnt');
+    const detail = await (await app.request(`/api/invoices/${invoiceId}`)).json();
+    expect(detail.status).toBe('erstattet');
   });
 
   it('rejects refunding an invoice that was never submitted with 409', async () => {
     const { body } = await createInvoice();
-    const res = await json('PUT', `/api/invoices/${body.id}/refund`, { actual_refund: 10 });
+    const res = await json('PUT', `/api/invoices/${body.id}/refund`, { positions: [] });
     expect(res.status).toBe(409);
   });
 });

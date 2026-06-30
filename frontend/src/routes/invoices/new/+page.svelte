@@ -59,7 +59,6 @@
         provider_name: payload.provider_name,
         provider_type: payload.provider_type ?? undefined,
         total_amount: payload.total_amount,
-        eligible_amount: payload.eligible_amount,
         notes: payload.notes,
         ocr_raw: payload.ocr_raw,
         positions: payload.positions.length > 0 ? payload.positions : undefined,

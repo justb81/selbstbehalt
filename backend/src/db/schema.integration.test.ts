@@ -14,6 +14,7 @@ import {
   contracts,
   insuredPersons,
   invoicePositions,
+  invoiceStatusEvents,
   invoices,
   persons,
   submissions,
@@ -31,7 +32,7 @@ afterEach(() => {
 });
 
 describe('migrations', () => {
-  it('create all seven tables', () => {
+  it('create all eight tables', () => {
     const rows = handle.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as { name: string }[];
@@ -42,6 +43,7 @@ describe('migrations', () => {
       'insured_persons',
       'invoices',
       'invoice_positions',
+      'invoice_status_events',
       'submissions',
       'bre_periods',
     ]) {
@@ -101,6 +103,7 @@ describe('entity chain', () => {
       .values({
         invoiceId: invoice.id,
         goaeNumber: '0340',
+        treatmentDate: '2026-06-01',
         multiplier: 2.3,
         baseAmount: 20.11,
         chargedAmount: 46.25,
@@ -167,6 +170,7 @@ describe('entity chain', () => {
     expect(db.select().from(insuredPersons).all()).toHaveLength(0);
     expect(db.select().from(invoices).all()).toHaveLength(0);
     expect(db.select().from(invoicePositions).all()).toHaveLength(0);
+    expect(db.select().from(invoiceStatusEvents).all()).toHaveLength(0);
     expect(db.select().from(submissions).all()).toHaveLength(0);
     expect(db.select().from(brePeriods).all()).toHaveLength(0);
   });
@@ -215,6 +219,6 @@ describe('seed', () => {
     seed(handle);
     seed(handle);
     expect(db.select().from(persons).all()).toHaveLength(2);
-    expect(db.select().from(invoicePositions).all()).toHaveLength(2);
+    expect(db.select().from(invoicePositions).all()).toHaveLength(4);
   });
 });

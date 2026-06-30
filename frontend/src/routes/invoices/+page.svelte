@@ -30,10 +30,9 @@
   const STATUS_LABELS: Record<InvoiceStatus, string> = {
     neu: 'Neu',
     geprüft: 'Geprüft',
+    bezahlt: 'Bezahlt',
     eingereicht: 'Eingereicht',
     erstattet: 'Erstattet',
-    abgelehnt: 'Abgelehnt',
-    selbst_gezahlt: 'Selbst gezahlt',
   };
 
   let invoices = $state<Invoice[]>([]);

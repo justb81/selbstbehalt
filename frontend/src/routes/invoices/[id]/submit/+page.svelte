@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Einreichungsformular (docs/design.md §6.1, issue #22): records the submission
-  of an invoice to the insurer and optionally the actual refund received.
+  of an invoice to the insurer. Only metadata is captured here — the actual
+  refund amounts are tracked per position via PUT /api/invoices/:id/refund
+  (Issue #139).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -53,10 +55,6 @@
   let submittedAt = $state(nowIso);
   let submittedVia = $state<SubmissionChannel>('app');
   let expectedRefund = $state<number | null>(null);
-  let actualRefund = $state<number | null>(null);
-  let refundDate = $state('');
-  let rejectionReason = $state('');
-  let isRejected = $state(false);
 
   let saving = $state(false);
   let formError = $state<string | null>(null);
@@ -70,9 +68,6 @@
         submitted_at: submittedAt ? `${submittedAt}:00Z` : null,
         submitted_via: submittedVia,
         expected_refund: expectedRefund,
-        actual_refund: actualRefund,
-        refund_date: refundDate.trim() || null,
-        rejection_reason: isRejected ? rejectionReason.trim() || null : null,
       });
       await goto(resolve('/invoices/[id]', { id: invoice.id }));
     } catch (e) {
@@ -145,56 +140,6 @@
               </div>
             </div>
           </div>
-
-          <div class="space-y-4">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Erstattung
-              </p>
-              <p class="text-sm text-muted-foreground mt-1">
-                Nach Eingang des Erstattungsbescheids hier eintragen. Kann auch später ergänzt
-                werden.
-              </p>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <Label>Tatsächliche Erstattung (€)</Label>
-                <Input
-                  type="number"
-                  value={actualRefund ?? ''}
-                  oninput={(e) => {
-                    const v = (e.target as HTMLInputElement).value;
-                    actualRefund = v ? parseFloat(v) : null;
-                  }}
-                  min="0"
-                  step="0.01"
-                  placeholder="optional"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <Label>Erstattungsdatum</Label>
-                <Input type="date" bind:value={refundDate} />
-              </div>
-            </div>
-          </div>
-
-          <label class="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" bind:checked={isRejected} class="rounded" />
-            <span>Rechnung wurde abgelehnt</span>
-          </label>
-
-          {#if isRejected}
-            <div class="space-y-1">
-              <Label>Ablehnungsgrund</Label>
-              <textarea
-                bind:value={rejectionReason}
-                rows="3"
-                placeholder="optional"
-                class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-              ></textarea>
-            </div>
-          {/if}
 
           {#if formError}
             <Alert variant="destructive">

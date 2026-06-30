@@ -199,7 +199,7 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
     goae_number: p.goaeNumber,
     goae_category: p.goaeCategory,
     quantity: p.quantity,
-    treatment_date: p.treatmentDate ?? null,
+    treatment_date: p.treatmentDate ?? state.invoiceDate,
     description: p.description,
     multiplier: p.multiplier,
     base_amount: roundCents(p.baseAmount),

@@ -17,7 +17,6 @@ import type {
   ContractType,
   GoaeCategory,
   IncludedBenefits,
-  InvoiceDecision,
   InvoiceStatus,
   ProviderType,
   SubmissionChannel,
@@ -99,10 +98,11 @@ export const invoices = sqliteTable('invoices', {
   providerName: text('provider_name').notNull(),
   providerType: text('provider_type').$type<ProviderType>(),
   totalAmount: real('total_amount').notNull(),
+  // Server-computed: Σ positions.eligible_amount (read-only from the client).
   eligibleAmount: real('eligible_amount'),
+  // Server-computed: Σ charged_amount − Σ coalesce(refund_amount, 0).
   selfPaidAmount: real('self_paid_amount').notNull().default(0),
   status: text('status').$type<InvoiceStatus>().notNull().default('neu'),
-  decision: text('decision').$type<InvoiceDecision>(),
   filePath: text('file_path'),
   ocrRaw: text('ocr_raw'),
   notes: text('notes'),
@@ -118,14 +118,34 @@ export const invoicePositions = sqliteTable('invoice_positions', {
   goaeCategory: text('goae_category').$type<GoaeCategory>(),
   /** Anzahl (quantity); defaults to 1. */
   quantity: integer('quantity').notNull().default(1),
-  /** Leistungsdatum (ISO YYYY-MM-DD); null when not stated per-line. */
-  treatmentDate: text('treatment_date'),
+  /** Leistungsdatum (ISO YYYY-MM-DD); Pflichtfeld ab Migration 0004. */
+  treatmentDate: text('treatment_date').notNull(),
   description: text('description'),
   multiplier: real('multiplier').notNull(),
   baseAmount: real('base_amount').notNull(),
   chargedAmount: real('charged_amount').notNull(),
+  /** Erstattungsfähiger Betrag je Position in EUR (nullable = noch nicht berechnet). */
+  eligibleAmount: real('eligible_amount'),
+  /** Tatsächlich erstatteter Betrag je Position (nullable = noch nicht erstattet; 0 = Ablehnung). */
+  refundAmount: real('refund_amount'),
   isValid: integer('is_valid', { mode: 'boolean' }),
   flagReason: text('flag_reason'),
+});
+
+/**
+ * Immutable audit trail of invoice status transitions. Every call to
+ * POST /api/invoices/:id/status, /submit, or /refund appends a row here.
+ */
+export const invoiceStatusEvents = sqliteTable('invoice_status_events', {
+  id: uuidPk(),
+  invoiceId: text('invoice_id')
+    .notNull()
+    .references(() => invoices.id, { onDelete: 'cascade' }),
+  status: text('status').$type<InvoiceStatus>().notNull(),
+  changedAt: text('changed_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  note: text('note'),
 });
 
 export const submissions = sqliteTable('submissions', {
@@ -136,9 +156,7 @@ export const submissions = sqliteTable('submissions', {
   submittedAt: text('submitted_at'),
   submittedVia: text('submitted_via').$type<SubmissionChannel>(),
   expectedRefund: real('expected_refund'),
-  actualRefund: real('actual_refund'),
   refundDate: text('refund_date'),
-  rejectionReason: text('rejection_reason'),
 });
 
 export const brePeriods = sqliteTable('bre_periods', {
@@ -159,6 +177,7 @@ export const schema = {
   insuredPersons,
   invoices,
   invoicePositions,
+  invoiceStatusEvents,
   submissions,
   brePeriods,
 };
