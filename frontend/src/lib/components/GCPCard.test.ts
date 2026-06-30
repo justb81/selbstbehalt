@@ -5,13 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 import GCPCard from './GCPCard.svelte';
 import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
 
-const BREAKDOWN = {
+const BREAKDOWN: GCP_Result['breakdown'] = {
+  year: 2024,
   refundAfterDeductible: 200,
   currentStreakYears: 0,
-  projectedBRELoss: 500,
-  lostBREValue_NPV: 487,
-  monthsToYearEnd: 4,
+  alreadyBroken: false,
+  lostBREValue_NPV: 97,
+  ladderTerms: [{ j: 0, gross: 100, probability: 1, monthsToPayout: 6, discounted: 97 }],
   discountRate: 0.03,
+  claimFreeProbability: 0.7,
   taxSavingFromSelfPay: 0,
 };
 
@@ -62,8 +64,6 @@ describe('GCPCard', () => {
 
   it('renders no action buttons when no callbacks provided', () => {
     render(GCPCard, { props: { result: SUBMIT_RESULT } });
-    // Collapsible trigger is always rendered; only the Einreichen/Selbst-zahlen
-    // action buttons should be absent when no callbacks are provided.
     expect(screen.queryByRole('button', { name: 'Einreichen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Selbst zahlen' })).not.toBeInTheDocument();
   });
@@ -86,8 +86,6 @@ describe('GCPCard', () => {
     render(GCPCard, {
       props: { result: SUBMIT_RESULT, onSubmit: vi.fn(), onSelfPay: vi.fn(), loading: true },
     });
-    // Only the action buttons (Einreichen / Selbst zahlen) should be disabled;
-    // the Collapsible breakdown toggle is not an action button and stays enabled.
     expect(screen.getByRole('button', { name: 'Einreichen' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Selbst zahlen' })).toBeDisabled();
   });
