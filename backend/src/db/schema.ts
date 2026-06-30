@@ -18,6 +18,7 @@ import type {
   GoaeCategory,
   IncludedBenefits,
   InvoiceStatus,
+  PositionCategory,
   ProviderType,
   SubmissionChannel,
 } from '@selbstbehalt/shared';
@@ -116,6 +117,11 @@ export const invoicePositions = sqliteTable('invoice_positions', {
     .references(() => invoices.id, { onDelete: 'cascade' }),
   goaeNumber: text('goae_number').notNull(),
   goaeCategory: text('goae_category').$type<GoaeCategory>(),
+  /** Funktionale Art (Leistung vs. §10 GOÄ Auslagenersatz); defaults to 'leistung'. */
+  positionCategory: text('position_category')
+    .$type<PositionCategory>()
+    .notNull()
+    .default('leistung'),
   /** Anzahl (quantity); defaults to 1. */
   quantity: integer('quantity').notNull().default(1),
   /** Leistungsdatum (ISO YYYY-MM-DD); Pflichtfeld ab Migration 0004. */

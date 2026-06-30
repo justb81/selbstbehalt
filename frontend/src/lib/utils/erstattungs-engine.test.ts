@@ -323,3 +323,57 @@ describe('computeErstattung — grouping & totals', () => {
     expect(result.byCategory[0]?.note).toContain('Keine Tarifregel');
   });
 });
+
+describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed at 100 %', () => {
+  it('skips tiers/limits/Beihilfe entirely for an auslagenersatz position', () => {
+    const result = computeErstattung(
+      input({
+        positions: [
+          { category: 'ambulant', chargedAmount: 2.8, positionCategory: 'auslagenersatz' },
+        ],
+        // Tariff rule would otherwise cap ambulant heavily — irrelevant here.
+        benefits: {
+          benefits: [
+            { category: 'ambulant', beihilfe_satz: 50, tiers: [{ up_to: null, pct: 20 }] },
+          ],
+        },
+      }),
+    );
+    expect(result.eligibleAmount).toBe(2.8);
+    expect(result.auslagenersatzAmount).toBe(2.8);
+    expect(result.byPosition[0]?.eligible_amount).toBe(2.8);
+    // No BenefitCategory pipeline ran for it.
+    expect(result.byCategory).toHaveLength(0);
+  });
+
+  it('is reimbursed even within the Wartezeit and with no tariff rule at all', () => {
+    const result = computeErstattung(
+      input({
+        positions: [
+          { category: 'sonstiges', chargedAmount: 1.5, positionCategory: 'auslagenersatz' },
+        ],
+        benefits: { benefits: [] },
+        invoiceDate: '2024-01-15', // inside any waiting period from coverageStart
+      }),
+    );
+    expect(result.eligibleAmount).toBe(1.5);
+    expect(result.auslagenersatzAmount).toBe(1.5);
+  });
+
+  it('mixes with regular positions: only the auslagenersatz share bypasses the pipeline', () => {
+    const result = computeErstattung(
+      input({
+        positions: [
+          { category: 'ambulant', chargedAmount: 100 },
+          { category: 'ambulant', chargedAmount: 2.8, positionCategory: 'auslagenersatz' },
+        ],
+        benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 80 }] }] },
+      }),
+    );
+    // 100 × 80 % (regular) + 2.8 × 100 % (Auslagenersatz)
+    expect(result.eligibleAmount).toBe(82.8);
+    expect(result.auslagenersatzAmount).toBe(2.8);
+    expect(result.byPosition[0]?.eligible_amount).toBe(80);
+    expect(result.byPosition[1]?.eligible_amount).toBe(2.8);
+  });
+});

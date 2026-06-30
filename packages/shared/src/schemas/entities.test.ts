@@ -178,6 +178,21 @@ describe('invoicePositionCreateSchema', () => {
   it('rejects a non-positive multiplier', () => {
     expect(invoicePositionCreateSchema.safeParse({ ...base, multiplier: 0 }).success).toBe(false);
   });
+
+  it('accepts position_category: auslagenersatz (§10 GOÄ)', () => {
+    const result = invoicePositionCreateSchema.safeParse({
+      ...base,
+      position_category: 'auslagenersatz',
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.position_category).toBe('auslagenersatz');
+  });
+
+  it('rejects an unknown position_category', () => {
+    expect(
+      invoicePositionCreateSchema.safeParse({ ...base, position_category: 'sonstiges' }).success,
+    ).toBe(false);
+  });
 });
 
 describe('submissionCreateSchema', () => {

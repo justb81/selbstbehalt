@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 import { money, uuid } from '../common.js';
-import { goaeCategorySchema } from '../enums.js';
+import { goaeCategorySchema, positionCategorySchema } from '../enums.js';
 
 /**
  * Client-supplied fields of an invoice line (§3.2 `invoice_positions`), with no
@@ -14,6 +14,13 @@ export const invoicePositionInputSchema = z
   .object({
     goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
     goae_category: goaeCategorySchema.nullish(),
+    /**
+     * Funktionale Art der Position (§10 GOÄ Auslagenersatz, z. B. Porto/Versand,
+     * vs. ärztliche Leistung). Wird aus der Beschreibung automatisch erkannt,
+     * ist aber manuell überschreibbar; omitted when not stated (backend defaults
+     * to 'leistung', same pattern as `quantity`).
+     */
+    position_category: positionCategorySchema.optional(),
     /** Anzahl (quantity); omitted when not stated on the invoice line (backend defaults to 1). */
     quantity: z.number().int().positive('Anzahl muss mindestens 1 sein').optional(),
     /**

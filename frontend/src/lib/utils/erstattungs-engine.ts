@@ -40,6 +40,7 @@ import {
   type DateInput,
   type IncludedBenefit,
   type IncludedBenefits,
+  type PositionCategory,
 } from '@selbstbehalt/shared';
 
 /** A single invoice position reduced to what the engine needs. */
@@ -59,6 +60,13 @@ export interface ErstattungPosition {
    * (§2.3, Issue #139).
    */
   treatmentDate?: DateInput;
+  /**
+   * Funktionale Art der Position. `auslagenersatz` (§10 GOÄ, z. B. Porto-/
+   * Versandkosten) skips the whole `category` pipeline below — it is always
+   * reimbursed at 100 % of `chargedAmount`, regardless of tariff tiers,
+   * Wartezeit, Beihilfe-Quote or Summengrenzen. Defaults to `leistung`.
+   */
+  positionCategory?: PositionCategory;
 }
 
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
@@ -118,9 +126,15 @@ export interface ErstattungResult {
   /**
    * Per-position eligible amounts, proportionally distributed from `byCategory`.
    * Positions blocked by a waiting period receive `eligible_amount = 0`.
+   * Auslagenersatz positions (§10 GOÄ) receive `eligible_amount = chargedAmount`.
    * Has the same length and order as {@link ErstattungInput.positions}.
    */
   byPosition: ErstattungByPosition[];
+  /**
+   * Summe der §10 GOÄ Auslagenersatz-Positionen (Porto/Versand etc.) — stets
+   * voll erstattet, außerhalb der `byCategory`-Pipeline. Included in `eligibleAmount`.
+   */
+  auslagenersatzAmount: number;
 }
 
 /**
@@ -261,10 +275,25 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
   type PositionEntry = { idx: number; chargedAmount: number; waitingBlocked: boolean };
   const benefitMap = new Map(input.benefits.benefits.map((b) => [b.category, b]));
 
+  const byPosition: ErstattungByPosition[] = input.positions.map((_, i) => ({
+    index: i,
+    eligible_amount: 0,
+  }));
+
+  // §10 GOÄ Auslagenersatz positions skip the category pipeline entirely —
+  // always reimbursed at 100 % of chargedAmount.
+  let auslagenersatzAmount = 0;
+
   // Per-position waiting-period check using individual treatment dates.
   const categoryGroups = new Map<BenefitCategory, PositionEntry[]>();
   for (let idx = 0; idx < input.positions.length; idx++) {
     const pos = input.positions[idx]!;
+    if (pos.positionCategory === 'auslagenersatz') {
+      const amount = roundCents(pos.chargedAmount);
+      byPosition[idx]!.eligible_amount = amount;
+      auslagenersatzAmount += amount;
+      continue;
+    }
     const benefit = benefitMap.get(pos.category);
     const checkDate = pos.treatmentDate ?? input.invoiceDate;
     const waiting = benefit?.waiting_period_months ?? 0;
@@ -279,10 +308,6 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
   }
 
   const byCategory: ErstattungByCategory[] = [];
-  const byPosition: ErstattungByPosition[] = input.positions.map((_, i) => ({
-    index: i,
-    eligible_amount: 0,
-  }));
 
   for (const [category, group] of categoryGroups) {
     const benefit = benefitMap.get(category);
@@ -316,6 +341,13 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     }
   }
 
-  const eligibleAmount = roundCents(byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0));
-  return { eligibleAmount, byCategory, byPosition };
+  const eligibleAmount = roundCents(
+    byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0) + auslagenersatzAmount,
+  );
+  return {
+    eligibleAmount,
+    byCategory,
+    byPosition,
+    auslagenersatzAmount: roundCents(auslagenersatzAmount),
+  };
 }

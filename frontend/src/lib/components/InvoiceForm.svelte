@@ -12,6 +12,7 @@
   import { onDestroy, untrack, type Snippet } from 'svelte';
   import {
     goaeCategoryValues,
+    positionCategoryValues,
     providerTypeValues,
     roundCents,
     type BenefitCategory,
@@ -19,6 +20,7 @@
     type InvoicePositionInput,
     type InvoiceWithPositions,
     type InsuredPerson,
+    type PositionCategory,
     type ProviderType,
   } from '@selbstbehalt/shared';
   import {
@@ -31,6 +33,7 @@
   import { loadFeeTable } from '$lib/data/fee-tables';
   import {
     buildIndex,
+    detectPositionCategory,
     lookupPosition,
     normalizeZiffer,
     parseInvoice,
@@ -71,6 +74,7 @@
   type PositionRow = {
     goae_number: string;
     goae_category: GoaeCategory | null;
+    position_category: PositionCategory;
     quantity: number;
     treatment_date: string; // ISO YYYY-MM-DD or '' (defaults to invoiceDate on submit)
     description: string;
@@ -100,6 +104,11 @@
     zahnarzt: 'Zahnarzt/Zahnärztin',
     krankenhaus: 'Krankenhaus',
     sonstiges: 'Sonstiges',
+  };
+
+  const POSITION_CATEGORY_LABELS: Record<PositionCategory, string> = {
+    leistung: 'Leistung',
+    auslagenersatz: 'Auslagenersatz (§10 GOÄ)',
   };
 
   // ---------------------------------------------------------------------------
@@ -148,6 +157,7 @@
     return {
       goae_number: p.goae_number,
       goae_category: p.goae_category ?? null,
+      position_category: p.position_category ?? 'leistung',
       quantity: p.quantity ?? 1,
       treatment_date: p.treatment_date ?? '',
       description: p.description ?? '',
@@ -171,6 +181,7 @@
       {
         goae_number: '',
         goae_category: 'GOÄ' as GoaeCategory,
+        position_category: 'leistung' as PositionCategory,
         quantity: 1,
         treatment_date: '',
         description: '',
@@ -215,6 +226,7 @@
     positions = toReviewPositions(result).map((p) => ({
       goae_number: p.goaeNumber,
       goae_category: result.schedule as GoaeCategory,
+      position_category: p.positionCategory,
       quantity: p.quantity,
       treatment_date: p.treatmentDate ?? '',
       description: p.description ?? '',
@@ -278,12 +290,19 @@
         };
         const result = lookupPosition(raw, table, index);
         benefitCategories.push(result.benefitCategory);
+        const description = pos.description || result.description || '';
         return {
           ...pos,
           // Supplement description from fee table if currently empty.
-          description: pos.description || result.description || '',
+          description,
           // Always take base_amount from the table when the Ziffer is known.
           base_amount: result.baseAmount ?? pos.base_amount,
+          // Auto-detect from the description, but never override an explicit
+          // manual choice of 'auslagenersatz'.
+          position_category:
+            pos.position_category === 'auslagenersatz'
+              ? 'auslagenersatz'
+              : detectPositionCategory(description),
           is_valid: result.isValid,
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
         };
@@ -309,6 +328,7 @@
           category: (benefitCategories[i] ?? 'sonstiges') as BenefitCategory,
           chargedAmount: pos.charged_amount,
           treatmentDate: pos.treatment_date || invoiceDate,
+          positionCategory: pos.position_category,
         }));
         const result = computeErstattung({
           positions: erstattungPositions,
@@ -354,6 +374,7 @@
       positions = parsed.positions.map((p) => ({
         goae_number: p.ziffer,
         goae_category: p.feeSchedule as GoaeCategory,
+        position_category: p.positionCategory,
         quantity: p.quantity,
         treatment_date: p.treatmentDate ?? '',
         description: p.description ?? '',
@@ -424,6 +445,7 @@
     const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
       goae_number: p.goae_number,
       goae_category: p.goae_category,
+      position_category: p.position_category,
       quantity: p.quantity,
       // Positions without a date fall back to the invoice date (§3.2 Issue #139).
       treatment_date: p.treatment_date || invoiceDate,
@@ -668,6 +690,7 @@
               >
               <TableHead class="w-20">Ziffer</TableHead>
               <TableHead class="w-16">Kat.</TableHead>
+              <TableHead class="w-36">Art</TableHead>
               <TableHead>Beschreibung</TableHead>
               <TableHead class="w-20 text-right">Faktor</TableHead>
               <TableHead class="w-14 text-right">Anz.</TableHead>
@@ -716,6 +739,13 @@
                       {/each}
                     </select>
                   </div>
+                </TableCell>
+                <TableCell class="align-top p-1.5">
+                  <select bind:value={pos.position_category} {disabled} class={nativeSelectClass}>
+                    {#each positionCategoryValues as cat (cat)}
+                      <option value={cat}>{POSITION_CATEGORY_LABELS[cat]}</option>
+                    {/each}
+                  </select>
                 </TableCell>
                 <TableCell class="align-top p-1.5">
                   <div class="flex flex-col gap-1 min-w-0">
