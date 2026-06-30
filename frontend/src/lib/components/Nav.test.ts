@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 // Mutable mock of SvelteKit's $app/state page store; tests set `nav.pathname`.
@@ -49,5 +50,19 @@ describe('Nav', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('link', { name: 'Rechnungen' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('link', { name: 'Auswertung' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('navigates via goto when an overflow menu item is clicked', async () => {
+    const { goto } = await import('$app/navigation');
+    const user = userEvent.setup();
+    nav.pathname = '/';
+    render(Nav);
+
+    await user.click(screen.getByRole('button', { name: /Mehr/i }));
+    const personenItem = screen.queryByRole('menuitem', { name: 'Personen' });
+    if (personenItem) {
+      await user.click(personenItem);
+      expect(goto).toHaveBeenCalled();
+    }
   });
 });

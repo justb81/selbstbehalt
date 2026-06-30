@@ -73,6 +73,12 @@ export interface RawPosition {
   /** The raw source line, kept for auditing the extraction. */
   raw: string;
   /**
+   * Description text extracted directly from the OCR line — the words between
+   * the Ziffer and the trailing numeric tokens (multiplier / amount). `null`
+   * when no descriptive text was found on the line.
+   */
+  ocrDescription?: string | null;
+  /**
    * Leistungsdatum (treatment date) as ISO `YYYY-MM-DD`, extracted from the
    * per-line date prefix (e.g. `07.05.24`). `null` when the line has no prefix.
    * Relevant for Sammelrechnungen: different positions may fall in different
@@ -372,9 +378,10 @@ export function parsePositionLine(line: string): RawPosition | null {
   const tokens = rest.split(/\s+/).filter(Boolean);
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
-  // so description text before the numbers is ignored).
+  // so description text before the numbers is captured).
   // Standalone currency symbols (€, EUR) are skipped — OCR often separates
   // "26,14 €" into two tokens, and the € would otherwise break collection.
+  let trailingStartIdx = tokens.length; // index of the first numeric token in the trailing run
   const trailing: NumericToken[] = [];
   for (let i = tokens.length - 1; i >= 0; i--) {
     const token = tokens[i];
@@ -383,7 +390,13 @@ export function parsePositionLine(line: string): RawPosition | null {
     const parsed = parseNumericToken(token);
     if (!parsed) break;
     trailing.unshift(parsed);
+    trailingStartIdx = i;
   }
+
+  // Descriptive words before the trailing numeric run — what the printer put
+  // between the Ziffer and the amounts (Leistungslegende on the invoice line).
+  const descTokens = tokens.slice(0, trailingStartIdx);
+  const ocrDescription = descTokens.length > 0 ? descTokens.join(' ').trim() || null : null;
 
   const explicitQty = trailing.find((t) => t.isQuantityMarker);
   const core = trailing.filter((t) => !t.isQuantityMarker);
@@ -418,6 +431,7 @@ export function parsePositionLine(line: string): RawPosition | null {
     multiplier,
     chargedAmount: amountTok.value,
     raw: line.trim(),
+    ocrDescription,
     treatmentDate,
     detectedSchedule,
   };
@@ -504,6 +518,7 @@ export function lookupPosition(
     return {
       ziffer: raw.ziffer,
       normalizedZiffer,
+      description: raw.ocrDescription ?? undefined,
       quantity: raw.quantity,
       multiplier: raw.multiplier,
       chargedAmount: raw.chargedAmount,
@@ -546,7 +561,9 @@ export function lookupPosition(
   return {
     ziffer: raw.ziffer,
     normalizedZiffer,
-    description: entry.description,
+    // Prefer the text extracted directly from the OCR line; fall back to the
+    // fee schedule's Leistungslegende when no description appeared on the line.
+    description: raw.ocrDescription || entry.description,
     quantity: raw.quantity,
     multiplier: raw.multiplier,
     chargedAmount: raw.chargedAmount,

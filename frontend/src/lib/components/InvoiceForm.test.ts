@@ -25,17 +25,21 @@ vi.mock('$lib/data/fee-tables', () => ({
 vi.mock('$lib/utils/goae-parser', () => ({
   buildIndex: vi.fn(() => new Map()),
   lookupPosition: vi.fn(() => ({ isValid: true, flags: [] })),
+  normalizeZiffer: vi.fn((z: string) => z),
+  parseInvoice: vi.fn(() => ({ positions: [] })),
 }));
 
 import InvoiceForm from './InvoiceForm.svelte';
 import type { FormPayload } from './InvoiceForm.svelte';
 import type { InvoiceWithPositions } from '@selbstbehalt/shared';
-import { lookupPosition } from '$lib/utils/goae-parser';
+import { buildIndex, lookupPosition, parseInvoice } from '$lib/utils/goae-parser';
 
 const INSURED_OPTIONS = [
   { id: 'ip-1', label: 'TestAG · Komfort', insuredPerson: {} as never },
   { id: 'ip-2', label: 'TestAG · Basis', insuredPerson: {} as never },
 ];
+
+const SAMPLE_INVOICE_OCR_TEXT = 'Praxis Dr. med. Mustermann\n1  Beratung  2,3  10.73';
 
 const SAMPLE_INVOICE: InvoiceWithPositions = {
   id: 'inv-1',
@@ -318,5 +322,63 @@ describe('InvoiceForm — edit mode', () => {
       },
     });
     expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeDisabled();
+  });
+
+  it('shows "Positionen neu einlesen" button when ocr_raw is set and status is neu', () => {
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: { ...SAMPLE_INVOICE, ocr_raw: SAMPLE_INVOICE_OCR_TEXT },
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+    expect(screen.getByRole('button', { name: 'Positionen neu einlesen' })).toBeInTheDocument();
+  });
+
+  it('does not show "Positionen neu einlesen" button when ocr_raw is null', () => {
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Positionen neu einlesen' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('calls parseInvoice when "Positionen neu einlesen" is clicked', async () => {
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: { ...SAMPLE_INVOICE, ocr_raw: SAMPLE_INVOICE_OCR_TEXT },
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Positionen neu einlesen' }));
+
+    await waitFor(() => expect(parseInvoice).toHaveBeenCalledOnce());
+  });
+
+  it('calls buildIndex when the fee info icon is clicked on a position', async () => {
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    await user.click(screen.getByTitle('Gebührenverzeichnis-Eintrag anzeigen'));
+
+    await waitFor(() => expect(buildIndex).toHaveBeenCalled());
   });
 });

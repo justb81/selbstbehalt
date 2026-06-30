@@ -2,9 +2,11 @@
 <!--
   Shared invoice form used by both the create page (/invoices/new) and the edit
   page (/invoices/[id]/edit). Mode-specific features:
-    create — OCR scanner, OCR opt-in checkbox
-    edit   — pre-filled from initialData
+    create — OCR scanner, OCR opt-out checkbox (raw OCR saved by default)
+    edit   — pre-filled from initialData; "Neu einlesen" button when ocr_raw is
+             stored and status is 'neu'
   "Positionen prüfen" is available in both modes whenever there are positions.
+  Info-Icon next to Ziffer + Kat. opens a dialog with the fee schedule entry.
 -->
 <script lang="ts">
   import { onDestroy, untrack, type Snippet } from 'svelte';
@@ -27,8 +29,14 @@
     type ScanResult,
   } from '$lib/ocr';
   import { loadFeeTable } from '$lib/data/fee-tables';
-  import { buildIndex, lookupPosition, type RawPosition } from '$lib/utils/goae-parser';
-  import type { FeeScheduleId } from '$lib/data/fee-schedule';
+  import {
+    buildIndex,
+    lookupPosition,
+    normalizeZiffer,
+    parseInvoice,
+    type RawPosition,
+  } from '$lib/utils/goae-parser';
+  import type { FeeEntry, FeeScheduleId } from '$lib/data/fee-schedule';
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
   import OCRScanner from './OCRScanner.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -51,6 +59,9 @@
     TableRow,
   } from '$lib/components/ui/table';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
+  import InfoIcon from '@lucide/svelte/icons/info';
+  import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
   import { cn } from '$lib/utils';
 
   // ---------------------------------------------------------------------------
@@ -184,7 +195,8 @@
   let scanResult = $state<ScanResult | null>(null);
   let showScanner = $state(false);
   let ocrSchedule = $state<FeeScheduleId>('GOÄ');
-  let saveOcrRaw = $state(false);
+  // Saved by default — users can opt out before saving.
+  let saveOcrRaw = $state(true);
 
   const hasScan = $derived(scanResult !== null);
   const lowConfidence = $derived(
@@ -307,6 +319,77 @@
       revalidateError = e instanceof Error ? e.message : 'Neuprüfung fehlgeschlagen.';
     } finally {
       revalidating = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Re-parse positions from stored raw OCR (edit mode, status 'neu' only)
+  // ---------------------------------------------------------------------------
+
+  const canReparseFromOcr = $derived(
+    mode === 'edit' && !!initialData?.ocr_raw && initialData?.status === 'neu',
+  );
+
+  let reparsing = $state(false);
+  let reparseError = $state<string | null>(null);
+
+  async function reparseFromRawOcr() {
+    const rawOcr = initialData?.ocr_raw;
+    if (!rawOcr) return;
+    reparsing = true;
+    reparseError = null;
+    try {
+      const [goaeTable, gozTable, gotTable] = await Promise.all([
+        loadFeeTable('GOÄ'),
+        loadFeeTable('GOZ'),
+        loadFeeTable('GOT'),
+      ]);
+      const parsed = parseInvoice(rawOcr, [goaeTable, gozTable, gotTable], {});
+      positions = parsed.positions.map((p) => ({
+        goae_number: p.ziffer,
+        goae_category: p.feeSchedule as GoaeCategory,
+        quantity: p.quantity,
+        treatment_date: p.treatmentDate ?? '',
+        description: p.description ?? '',
+        multiplier: p.multiplier,
+        base_amount: p.baseAmount ?? 0,
+        charged_amount: p.chargedAmount,
+        is_valid: p.isValid,
+        flag_reason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
+        confidence: 1,
+      }));
+      if (positions.length > 0) {
+        totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
+      }
+    } catch (e) {
+      reparseError = e instanceof Error ? e.message : 'Neu einlesen fehlgeschlagen.';
+    } finally {
+      reparsing = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fee schedule info dialog (Ziffer / Kat. lookup)
+  // ---------------------------------------------------------------------------
+
+  type InfoEntry = { ziffer: string; schedule: FeeScheduleId; entry: FeeEntry | null };
+  let infoDialogOpen = $state(false);
+  let infoEntry = $state<InfoEntry | null>(null);
+  let infoLoading = $state(false);
+
+  async function openFeeInfo(pos: PositionRow) {
+    if (!pos.goae_number.trim()) return;
+    infoLoading = true;
+    infoDialogOpen = true;
+    infoEntry = null;
+    try {
+      const schedule = categoryToSchedule(pos.goae_category);
+      const table = await loadFeeTable(schedule);
+      const index = buildIndex(table);
+      const entry = index.get(normalizeZiffer(pos.goae_number)) ?? null;
+      infoEntry = { ziffer: pos.goae_number, schedule, entry };
+    } finally {
+      infoLoading = false;
     }
   }
 
@@ -550,6 +633,17 @@
         GOÄ/GOZ-Positionen
       </p>
       <div class="flex flex-wrap items-center gap-2">
+        {#if canReparseFromOcr}
+          <Button
+            type="button"
+            variant="outline"
+            onclick={reparseFromRawOcr}
+            disabled={reparsing || disabled}
+          >
+            <RefreshCcwIcon class="mr-1.5 size-3.5" />
+            {reparsing ? 'Wird eingelesen …' : 'Positionen neu einlesen'}
+          </Button>
+        {/if}
         <Button
           type="button"
           variant="outline"
@@ -564,6 +658,11 @@
       </div>
     </div>
 
+    {#if reparseError}
+      <Alert variant="destructive">
+        <AlertDescription>{reparseError}</AlertDescription>
+      </Alert>
+    {/if}
     {#if revalidateError}
       <Alert variant="destructive">
         <AlertDescription>{revalidateError}</AlertDescription>
@@ -593,20 +692,39 @@
                   <Input type="date" bind:value={pos.treatment_date} {disabled} />
                 </TableCell>
                 <TableCell class="align-top p-1.5">
-                  <Input
-                    type="text"
-                    bind:value={pos.goae_number}
-                    placeholder="z.B. 1"
-                    required
-                    {disabled}
-                  />
+                  <div class="flex items-center gap-1">
+                    <Input
+                      type="text"
+                      bind:value={pos.goae_number}
+                      placeholder="z.B. 1"
+                      required
+                      {disabled}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      class="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                      title="Gebührenverzeichnis-Eintrag anzeigen"
+                      disabled={!pos.goae_number.trim() || infoLoading}
+                      onclick={() => openFeeInfo(pos)}
+                    >
+                      <InfoIcon class="size-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
                 <TableCell class="align-top p-1.5">
-                  <select bind:value={pos.goae_category} {disabled} class={nativeSelectClass}>
-                    {#each goaeCategoryValues as cat (cat)}
-                      <option value={cat}>{cat}</option>
-                    {/each}
-                  </select>
+                  <div class="flex items-center gap-1">
+                    <select
+                      bind:value={pos.goae_category}
+                      {disabled}
+                      class={cn(nativeSelectClass, 'flex-1')}
+                    >
+                      {#each goaeCategoryValues as cat (cat)}
+                        <option value={cat}>{cat}</option>
+                      {/each}
+                    </select>
+                  </div>
                 </TableCell>
                 <TableCell class="align-top p-1.5">
                   <div class="flex flex-col gap-1 min-w-0">
@@ -699,7 +817,7 @@
   {#if mode === 'create' && hasScan}
     <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
       <input type="checkbox" bind:checked={saveOcrRaw} class="rounded border-border" />
-      <span>OCR-Rohtext zur späteren Kontrolle speichern (optional, Opt-in)</span>
+      <span>OCR-Rohtext speichern (ermöglicht späteres Neu-Einlesen; abwählen zum Verwerfen)</span>
     </label>
   {/if}
 
@@ -720,3 +838,53 @@
     {#if cancel}{@render cancel()}{/if}
   </div>
 </form>
+
+<!-- Fee schedule entry info dialog -->
+<DialogRoot bind:open={infoDialogOpen}>
+  <DialogContent class="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>
+        {#if infoEntry}
+          {infoEntry.schedule} {infoEntry.ziffer}
+        {:else if infoLoading}
+          Wird geladen …
+        {:else}
+          Gebührenverzeichnis
+        {/if}
+      </DialogTitle>
+    </DialogHeader>
+    {#if infoLoading}
+      <p class="text-sm text-muted-foreground">Eintrag wird geladen …</p>
+    {:else if infoEntry?.entry}
+      {@const entry = infoEntry.entry}
+      <div class="flex flex-col gap-3 text-sm">
+        <p class="font-medium leading-snug">{entry.description}</p>
+        {#if entry.notes && entry.notes.length > 0}
+          <div
+            class="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          >
+            <p class="mb-1 font-semibold uppercase tracking-wide text-foreground/60">Hinweise</p>
+            {#each entry.notes as note (note)}
+              <p>{note}</p>
+            {/each}
+          </div>
+        {/if}
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+          <dt class="text-muted-foreground">Kategorie</dt>
+          <dd>{entry.category}</dd>
+          {#if entry.baseAmount != null}
+            <dt class="text-muted-foreground">Basis (1,0×)</dt>
+            <dd>{entry.baseAmount.toFixed(2)} €</dd>
+          {/if}
+          <dt class="text-muted-foreground">Max. Faktor</dt>
+          <dd>{entry.maxMultiplier ?? '—'}</dd>
+        </dl>
+      </div>
+    {:else if infoEntry}
+      <p class="text-sm text-muted-foreground">
+        Ziffer <strong>{infoEntry.ziffer}</strong> ist im {infoEntry.schedule}-Verzeichnis nicht
+        bekannt.
+      </p>
+    {/if}
+  </DialogContent>
+</DialogRoot>
