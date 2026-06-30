@@ -421,15 +421,6 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
-    const emptyDates = positions.filter((p) => !p.treatment_date.trim());
-    if (emptyDates.length > 0) {
-      internalError =
-        emptyDates.length === 1
-          ? '1 Position hat kein Leistungsdatum – bitte ausfüllen.'
-          : `${emptyDates.length} Positionen haben kein Leistungsdatum – bitte ausfüllen.`;
-      return;
-    }
-
     const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
       goae_number: p.goae_number,
       goae_category: p.goae_category,
