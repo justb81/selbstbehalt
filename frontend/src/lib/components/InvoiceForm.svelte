@@ -421,6 +421,14 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
+    const emptyDates = positions.filter((p) => !p.treatment_date.trim());
+    if (emptyDates.length > 0) {
+      internalError =
+        emptyDates.length === 1
+          ? '1 Position hat kein Leistungsdatum – bitte ausfüllen.'
+          : `${emptyDates.length} Positionen haben kein Leistungsdatum – bitte ausfüllen.`;
+      return;
+    }
 
     const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
       goae_number: p.goae_number,
@@ -664,7 +672,9 @@
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead class="w-32">Datum</TableHead>
+              <TableHead class="w-32"
+                >Datum <span class="text-destructive" aria-hidden="true">*</span></TableHead
+              >
               <TableHead class="w-20">Ziffer</TableHead>
               <TableHead class="w-16">Kat.</TableHead>
               <TableHead>Beschreibung</TableHead>

@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungsdetail (docs/design.md §6.1, issue #22): invoice with positions,
-  §5-validation flags, Günstigerprüfung (GCPCard) and submission link.
+  Rechnungsdetail (docs/design.md §6.1, issue #22, issue #142): invoice with
+  positions, §5-validation flags, Günstigerprüfung (GCPCard), and the full
+  status-workflow card (InvoiceStatusFlow).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -19,6 +20,7 @@
   import { calculateGCP } from '$lib/utils/guenstiger-pruefung';
   import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
   import GCPCard from '$lib/components/GCPCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
@@ -86,31 +88,9 @@
 
   onMount(load);
 
-  let actioning = $state(false);
-  let actionError = $state<string | null>(null);
-
-  async function markSelfPay() {
-    if (!invoice) return;
-    actioning = true;
-    actionError = null;
-    try {
-      await api.invoices.changeStatus(invoice.id, { status: 'bezahlt' });
-      invoice = await api.invoices.get(invoice.id);
-    } catch (e) {
-      actionError =
-        e instanceof ApiError || e instanceof Error ? e.message : 'Aktualisierung fehlgeschlagen.';
-    } finally {
-      actioning = false;
-    }
-  }
-
-  async function goToSubmit() {
-    if (!invoice) return;
-    await goto(resolve('/invoices/[id]/submit', { id: invoice.id }));
-  }
-
   let deletingInvoice = $state(false);
   let confirmDeleteInvoice = $state(false);
+  let deleteError = $state<string | null>(null);
 
   async function deleteInvoice() {
     if (!invoice) return;
@@ -119,7 +99,7 @@
       await api.invoices.remove(invoice.id);
       await goto(resolve('/invoices'));
     } catch (e) {
-      actionError =
+      deleteError =
         e instanceof ApiError || e instanceof Error ? e.message : 'Löschen fehlgeschlagen.';
       deletingInvoice = false;
       confirmDeleteInvoice = false;
@@ -143,7 +123,7 @@
   {:else if loadError}
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if invoice}
-    <!-- Header -->
+    <!-- Header: date, number, badge and quick-access buttons -->
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
         <span>{invoice.invoice_date}</span>
@@ -160,11 +140,6 @@
             Bearbeiten
           </Button>
         {/if}
-        {#if invoice.status === 'bezahlt'}
-          <Button size="sm" href={resolve('/invoices/[id]/submit', { id: invoice.id })}>
-            Einreichung erfassen
-          </Button>
-        {/if}
         <Button
           variant="outline"
           size="sm"
@@ -178,7 +153,7 @@
       </div>
     </div>
 
-    <!-- Summary -->
+    <!-- Summary cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
         <CardHeader class="pb-2">
@@ -226,23 +201,17 @@
       <p class="text-sm text-muted-foreground">{invoice.notes}</p>
     {/if}
 
+    <!-- Status workflow: transitions, refund capture, history -->
+    <InvoiceStatusFlow {invoice} onChanged={load} />
+
     <!-- Günstigerprüfung -->
     {#if gcpResult}
       <div class="space-y-2">
         <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Günstigerprüfung
         </h2>
-        <GCPCard
-          result={gcpResult}
-          onSubmit={goToSubmit}
-          onSelfPay={invoice.status !== 'bezahlt' ? markSelfPay : undefined}
-          loading={actioning}
-        />
-        {#if actionError}
-          <Alert variant="destructive">
-            <AlertDescription>{actionError}</AlertDescription>
-          </Alert>
-        {/if}
+        <!-- Action buttons removed: status transitions are handled by InvoiceStatusFlow above -->
+        <GCPCard result={gcpResult} />
       </div>
     {:else if invoice.eligible_amount == null}
       <div
@@ -269,10 +238,14 @@
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Datum</TableHead>
                 <TableHead>Ziffer</TableHead>
                 <TableHead>Beschreibung</TableHead>
                 <TableHead class="text-right">Faktor</TableHead>
                 <TableHead class="text-right">Betrag</TableHead>
+                {#if invoice.positions.some((p) => p.refund_amount != null)}
+                  <TableHead class="text-right">Erstattet</TableHead>
+                {/if}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -280,6 +253,7 @@
                 <TableRow
                   class={pos.is_valid === false ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
                 >
+                  <TableCell class="tabular-nums text-sm">{pos.treatment_date ?? '—'}</TableCell>
                   <TableCell class="font-semibold">{pos.goae_number}</TableCell>
                   <TableCell>
                     <div class="flex flex-col gap-0.5">
@@ -298,15 +272,30 @@
                   <TableCell class="text-right tabular-nums"
                     >{formatEur(pos.charged_amount)}</TableCell
                   >
+                  {#if invoice.positions.some((p) => p.refund_amount != null)}
+                    <TableCell class="text-right tabular-nums">
+                      {#if pos.refund_amount != null}
+                        {pos.refund_amount === 0 ? 'Abgelehnt' : formatEur(pos.refund_amount)}
+                      {:else}
+                        —
+                      {/if}
+                    </TableCell>
+                  {/if}
                 </TableRow>
               {/each}
               <TableRow class="bg-muted/30 font-semibold border-t-2">
+                <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell class="text-right text-muted-foreground">Gesamt</TableCell>
                 <TableCell class="text-right tabular-nums">
                   {formatEur(invoice.positions.reduce((s, p) => s + p.charged_amount, 0))}
                 </TableCell>
+                {#if invoice.positions.some((p) => p.refund_amount != null)}
+                  <TableCell class="text-right tabular-nums">
+                    {formatEur(invoice.positions.reduce((s, p) => s + (p.refund_amount ?? 0), 0))}
+                  </TableCell>
+                {/if}
               </TableRow>
             </TableBody>
           </Table>
@@ -323,6 +312,11 @@
         <p class="text-sm">
           Rechnung von <strong>{invoice.provider_name}</strong> wirklich löschen?
         </p>
+        {#if deleteError}
+          <Alert variant="destructive">
+            <AlertDescription>{deleteError}</AlertDescription>
+          </Alert>
+        {/if}
         <div class="flex flex-wrap gap-2">
           <Button variant="destructive" onclick={deleteInvoice} disabled={deletingInvoice}>
             {deletingInvoice ? 'Wird gelöscht …' : 'Ja, löschen'}
