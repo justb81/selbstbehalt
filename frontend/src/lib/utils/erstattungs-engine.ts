@@ -40,7 +40,6 @@ import {
   type DateInput,
   type IncludedBenefit,
   type IncludedBenefits,
-  type PositionCategory,
 } from '@selbstbehalt/shared';
 
 /** A single invoice position reduced to what the engine needs. */
@@ -61,12 +60,12 @@ export interface ErstattungPosition {
    */
   treatmentDate?: DateInput;
   /**
-   * Funktionale Art der Position. `auslagenersatz` (§10 GOÄ, z. B. Porto-/
-   * Versandkosten) skips the whole `category` pipeline below — it is always
-   * reimbursed at 100 % of `chargedAmount`, regardless of tariff tiers,
-   * Wartezeit, Beihilfe-Quote or Summengrenzen. Defaults to `leistung`.
+   * True for §10 GOÄ Auslagenersatz (e.g. Porto-/Versandkosten) — i.e.
+   * `goae_category === 'Auslagenersatz'`. Skips the whole `category` pipeline
+   * below: always reimbursed at 100 % of `chargedAmount`, regardless of
+   * tariff tiers, Wartezeit, Beihilfe-Quote or Summengrenzen.
    */
-  positionCategory?: PositionCategory;
+  isAuslagenersatz?: boolean;
 }
 
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
@@ -288,7 +287,7 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
   const categoryGroups = new Map<BenefitCategory, PositionEntry[]>();
   for (let idx = 0; idx < input.positions.length; idx++) {
     const pos = input.positions[idx]!;
-    if (pos.positionCategory === 'auslagenersatz') {
+    if (pos.isAuslagenersatz) {
       const amount = roundCents(pos.chargedAmount);
       byPosition[idx]!.eligible_amount = amount;
       auslagenersatzAmount += amount;

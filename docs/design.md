@@ -282,8 +282,7 @@ id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
-goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'UV-GOÄ'
-position_category TEXT NOT NULL DEFAULT 'leistung'  -- 'leistung' | 'auslagenersatz' (§10 GOÄ)
+goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'UV-GOÄ' | 'Auslagenersatz'
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup
 quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3
@@ -295,13 +294,15 @@ is_valid         BOOLEAN            -- Steigerungsfaktor innerhalb Regelgrenze?
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
-`position_category` unterscheidet die ärztliche/zahnärztliche **Leistung** (Regelfall) vom
-**Auslagenersatz nach §10 GOÄ** — typischerweise Porto-/Versandkosten. Der GOÄ-Parser erkennt
-Auslagenersatz-Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und
-setzt die Kategorie automatisch; sie bleibt in der UI manuell überschreibbar. Auslagenersatz-
-Positionen überspringen die §5-Steigerungsfaktor-Prüfung (kein Regelhöchstsatz) und werden in der
-Erstattungs-Engine **stets zu 100 % von `charged_amount`** erstattet — unabhängig von Tarifstufen,
-Wartezeit, Beihilfe-Quote oder Summengrenzen (§5.1).
+`goae_category` trägt neben den drei Gebührenordnungen (+ `UV-GOÄ`) zusätzlich den Wert
+**`Auslagenersatz`** für §10 GOÄ — typischerweise Porto-/Versandkosten, die zum tatsächlichen
+Betrag statt zu einem GOÄ-Satz abgerechnet werden. Der GOÄ-Parser erkennt Auslagenersatz-
+Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und setzt die
+Kategorie beim Einlesen automatisch; sie bleibt in der UI jederzeit manuell auf einen der anderen
+Werte umstellbar. Positionen mit `goae_category = 'Auslagenersatz'` durchlaufen keine
+Ziffer-/Steigerungsfaktor-Prüfung gegen ein Gebührenverzeichnis (`is_valid = true` ohne Lookup) und
+werden in der Erstattungs-Engine **stets zu 100 % von `charged_amount`** erstattet — unabhängig von
+Tarifstufen, Wartezeit, Beihilfe-Quote oder Summengrenzen (§5.1).
 
 #### `invoice_status_events`
 
@@ -432,10 +433,13 @@ arbeitet in vier Schritten:
    geprüft — **die Grenzen kommen ausschließlich aus den Daten, nicht
    hartkodiert**. `fixedFactor`-Einträge werden gegen ihren festen
    Gebührensatz geprüft. Ergebnis: `isValid` + `flags` (mit `flag_reason`).
-   Zusätzlich erkennt `detectPositionCategory` Auslagenersatz nach §10 GOÄ
-   (Porto-/Versandkosten-Schlüsselwörter in der Beschreibung) und setzt
-   `positionCategory`; für diese Positionen entfällt die §5-Prüfung, da kein
-   Steigerungsfaktor anwendbar ist (s. §5.1 zur Erstattung).
+   Auslagenersatz nach §10 GOÄ (Porto/Versand etc.) hat keine Ziffer, gegen
+   die dieser Schritt prüfen könnte: der exportierte reine Helfer
+   `isAuslagenersatzDescription` (Schlüsselwort-Erkennung in der
+   Beschreibung) wird stattdessen vom Aufrufer (Review-UI, `scan-flow.ts`)
+   genutzt, um `goae_category` auf `'Auslagenersatz'` zu setzen und die
+   Position so komplett vom Tabellen-Lookup auszunehmen — `lookupPosition`
+   selbst kennt diesen Wert nicht (s. §5.1 zur Erstattung).
 4. **Validierung über die ganze Rechnung** gegen das Abhängigkeitsmodell:
    `excludes`/`mutualExclusion` (symmetrisch normalisierte Inkompatibilitäts-
    Paare), `requires`, `componentOf`, `maxFrequency`, `maxAmount`,
@@ -490,7 +494,7 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 interface ErstattungPosition {
   category: BenefitCategory;        // benefitCategory aus dem GOÄ-Parser (+ ggf. Kontext-Override)
   chargedAmount: number;            // in Rechnung gestellter Betrag der Position
-  positionCategory?: PositionCategory;  // 'auslagenersatz' (§10 GOÄ) überspringt die Pipeline unten komplett
+  isAuslagenersatz?: boolean;       // goae_category === 'Auslagenersatz' (§10 GOÄ); überspringt die Pipeline unten komplett
 }
 
 interface ErstattungInput {
@@ -541,12 +545,13 @@ das Rechnungsdatum.
 Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
 die Günstigerprüfung (§5.2/§5.3) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
 
-**Auslagenersatz nach §10 GOÄ** (`positionCategory === 'auslagenersatz'`, typischerweise Porto-/
-Versandkosten): diese Positionen überspringen die fünfstufige Pipeline oben vollständig und werden
-**stets zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit, Schwellen-Staffel,
-Beihilfe-Quote oder Summengrenzen. Sie fließen in `auslagenersatzAmount` (separat von `byCategory`)
-und summieren sich mit in `eligibleAmount` ein. Der GOÄ-Parser (§4.3) erkennt sie automatisch aus der
-Positionsbeschreibung (`detectPositionCategory`); die Kategorie bleibt in der UI manuell setzbar.
+**Auslagenersatz nach §10 GOÄ** (`goae_category === 'Auslagenersatz'` → `isAuslagenersatz: true`,
+typischerweise Porto-/Versandkosten): diese Positionen überspringen die fünfstufige Pipeline oben
+vollständig und werden **stets zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit,
+Schwellen-Staffel, Beihilfe-Quote oder Summengrenzen. Sie fließen in `auslagenersatzAmount` (separat
+von `byCategory`) und summieren sich mit in `eligibleAmount` ein. `goae_category` wird beim Einlesen
+automatisch aus der Positionsbeschreibung erkannt (§4.3, `isAuslagenersatzDescription`) und bleibt in
+der UI über das bestehende Kat.-Dropdown manuell setzbar.
 
 ### 5.2 Entscheidungslogik
 

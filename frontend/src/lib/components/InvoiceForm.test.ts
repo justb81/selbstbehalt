@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +24,7 @@ vi.mock('$lib/data/fee-tables', () => ({
 
 vi.mock('$lib/utils/goae-parser', () => ({
   buildIndex: vi.fn(() => new Map()),
+  isAuslagenersatzDescription: vi.fn(() => false),
   lookupPosition: vi.fn(() => ({ isValid: true, flags: [] })),
   normalizeZiffer: vi.fn((z: string) => z),
   parseInvoice: vi.fn(() => ({ positions: [] })),
@@ -310,6 +311,39 @@ describe('InvoiceForm — edit mode', () => {
     await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
 
     await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+  });
+
+  it('offers "Auslagenersatz" in the Kat.-dropdown and skips lookupPosition for it', async () => {
+    vi.mocked(lookupPosition).mockClear();
+    const user = userEvent.setup();
+    const { container } = render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    // Other fields (e.g. "Versicherte Person") use a shadcn Select that may render
+    // its own hidden native <select> for form semantics — find the one offering
+    // the goae_category options specifically, not just the first <select> in the DOM.
+    // fireEvent.change (not userEvent.selectOptions) reliably reaches bind:value here.
+    const categorySelect = Array.from(container.querySelectorAll('select')).find((el) =>
+      el.querySelector('option[value="Auslagenersatz"]'),
+    ) as HTMLSelectElement;
+    expect(categorySelect).toBeInTheDocument();
+    await fireEvent.change(categorySelect, { target: { value: 'Auslagenersatz' } });
+    expect(categorySelect.value).toBe('Auslagenersatz');
+
+    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
+    // Wait for revalidation to fully complete (button label reverts) before asserting.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeInTheDocument(),
+    );
+
+    // Auslagenersatz positions have no Ziffer to validate against a fee table.
+    expect(lookupPosition).not.toHaveBeenCalled();
   });
 
   it('disables "Positionen prüfen" when there are no positions', () => {

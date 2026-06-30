@@ -12,7 +12,6 @@
   import { onDestroy, untrack, type Snippet } from 'svelte';
   import {
     goaeCategoryValues,
-    positionCategoryValues,
     providerTypeValues,
     roundCents,
     type BenefitCategory,
@@ -20,7 +19,6 @@
     type InvoicePositionInput,
     type InvoiceWithPositions,
     type InsuredPerson,
-    type PositionCategory,
     type ProviderType,
   } from '@selbstbehalt/shared';
   import {
@@ -33,7 +31,7 @@
   import { loadFeeTable } from '$lib/data/fee-tables';
   import {
     buildIndex,
-    detectPositionCategory,
+    isAuslagenersatzDescription,
     lookupPosition,
     normalizeZiffer,
     parseInvoice,
@@ -74,7 +72,6 @@
   type PositionRow = {
     goae_number: string;
     goae_category: GoaeCategory | null;
-    position_category: PositionCategory;
     quantity: number;
     treatment_date: string; // ISO YYYY-MM-DD or '' (defaults to invoiceDate on submit)
     description: string;
@@ -106,9 +103,9 @@
     sonstiges: 'Sonstiges',
   };
 
-  const POSITION_CATEGORY_LABELS: Record<PositionCategory, string> = {
-    leistung: 'Leistung',
-    auslagenersatz: 'Auslagenersatz (§10 GOÄ)',
+  /** Display label override for `goae_category` options; falls back to the raw value. */
+  const GOAE_CATEGORY_LABELS: Partial<Record<GoaeCategory, string>> = {
+    Auslagenersatz: 'Auslagenersatz (§10 GOÄ)',
   };
 
   // ---------------------------------------------------------------------------
@@ -157,7 +154,6 @@
     return {
       goae_number: p.goae_number,
       goae_category: p.goae_category ?? null,
-      position_category: p.position_category ?? 'leistung',
       quantity: p.quantity ?? 1,
       treatment_date: p.treatment_date ?? '',
       description: p.description ?? '',
@@ -181,7 +177,6 @@
       {
         goae_number: '',
         goae_category: 'GOÄ' as GoaeCategory,
-        position_category: 'leistung' as PositionCategory,
         quantity: 1,
         treatment_date: '',
         description: '',
@@ -225,8 +220,9 @@
     providerType = defaultProviderType(result.schedule);
     positions = toReviewPositions(result).map((p) => ({
       goae_number: p.goaeNumber,
-      goae_category: result.schedule as GoaeCategory,
-      position_category: p.positionCategory,
+      goae_category: isAuslagenersatzDescription(p.description)
+        ? 'Auslagenersatz'
+        : (result.schedule as GoaeCategory),
       quantity: p.quantity,
       treatment_date: p.treatmentDate ?? '',
       description: p.description ?? '',
@@ -265,7 +261,11 @@
     revalidating = true;
     revalidateError = null;
     try {
-      const schedules = new Set(positions.map((p) => categoryToSchedule(p.goae_category)));
+      const schedules = new Set(
+        positions
+          .filter((p) => p.goae_category !== 'Auslagenersatz')
+          .map((p) => categoryToSchedule(p.goae_category)),
+      );
       const tableEntries = await Promise.all(
         [...schedules].map(async (s) => [s, await loadFeeTable(s)] as const),
       );
@@ -276,6 +276,21 @@
       const benefitCategories: (BenefitCategory | null)[] = [];
 
       positions = positions.map((pos) => {
+        // §10 GOÄ Auslagenersatz (Porto/Versand etc.) has no Ziffer/Steigerungsfaktor
+        // to validate against a fee table — auto-detected (upgrade-only, a manual
+        // 'Auslagenersatz' choice is never reverted) or already set by the user.
+        if (
+          pos.goae_category === 'Auslagenersatz' ||
+          isAuslagenersatzDescription(pos.description)
+        ) {
+          benefitCategories.push(null);
+          return {
+            ...pos,
+            goae_category: 'Auslagenersatz' as GoaeCategory,
+            is_valid: true,
+            flag_reason: null,
+          };
+        }
         const schedule = categoryToSchedule(pos.goae_category);
         const table = tables.get(schedule)!;
         const index = indexes.get(schedule)!;
@@ -290,19 +305,12 @@
         };
         const result = lookupPosition(raw, table, index);
         benefitCategories.push(result.benefitCategory);
-        const description = pos.description || result.description || '';
         return {
           ...pos,
           // Supplement description from fee table if currently empty.
-          description,
+          description: pos.description || result.description || '',
           // Always take base_amount from the table when the Ziffer is known.
           base_amount: result.baseAmount ?? pos.base_amount,
-          // Auto-detect from the description, but never override an explicit
-          // manual choice of 'auslagenersatz'.
-          position_category:
-            pos.position_category === 'auslagenersatz'
-              ? 'auslagenersatz'
-              : detectPositionCategory(description),
           is_valid: result.isValid,
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
         };
@@ -328,7 +336,7 @@
           category: (benefitCategories[i] ?? 'sonstiges') as BenefitCategory,
           chargedAmount: pos.charged_amount,
           treatmentDate: pos.treatment_date || invoiceDate,
-          positionCategory: pos.position_category,
+          isAuslagenersatz: pos.goae_category === 'Auslagenersatz',
         }));
         const result = computeErstattung({
           positions: erstattungPositions,
@@ -373,8 +381,9 @@
       const parsed = parseInvoice(rawOcr, [goaeTable, gozTable, gotTable], {});
       positions = parsed.positions.map((p) => ({
         goae_number: p.ziffer,
-        goae_category: p.feeSchedule as GoaeCategory,
-        position_category: p.positionCategory,
+        goae_category: isAuslagenersatzDescription(p.description)
+          ? 'Auslagenersatz'
+          : (p.feeSchedule as GoaeCategory),
         quantity: p.quantity,
         treatment_date: p.treatmentDate ?? '',
         description: p.description ?? '',
@@ -400,7 +409,8 @@
   // Fee schedule info dialog (Ziffer / Kat. lookup)
   // ---------------------------------------------------------------------------
 
-  type InfoEntry = { ziffer: string; schedule: FeeScheduleId; entry: FeeEntry | null };
+  /** `schedule: null` marks Auslagenersatz — no fee-table entry applies. */
+  type InfoEntry = { ziffer: string; schedule: FeeScheduleId | null; entry: FeeEntry | null };
   let infoDialogOpen = $state(false);
   let infoEntry = $state<InfoEntry | null>(null);
   let infoLoading = $state(false);
@@ -411,6 +421,10 @@
     infoDialogOpen = true;
     infoEntry = null;
     try {
+      if (pos.goae_category === 'Auslagenersatz') {
+        infoEntry = { ziffer: pos.goae_number, schedule: null, entry: null };
+        return;
+      }
       const schedule = categoryToSchedule(pos.goae_category);
       const table = await loadFeeTable(schedule);
       const index = buildIndex(table);
@@ -445,7 +459,6 @@
     const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
       goae_number: p.goae_number,
       goae_category: p.goae_category,
-      position_category: p.position_category,
       quantity: p.quantity,
       // Positions without a date fall back to the invoice date (§3.2 Issue #139).
       treatment_date: p.treatment_date || invoiceDate,
@@ -689,8 +702,7 @@
                 >Datum <span class="text-destructive" aria-hidden="true">*</span></TableHead
               >
               <TableHead class="w-20">Ziffer</TableHead>
-              <TableHead class="w-16">Kat.</TableHead>
-              <TableHead class="w-36">Art</TableHead>
+              <TableHead class="w-36">Kat.</TableHead>
               <TableHead>Beschreibung</TableHead>
               <TableHead class="w-20 text-right">Faktor</TableHead>
               <TableHead class="w-14 text-right">Anz.</TableHead>
@@ -735,17 +747,10 @@
                       class={cn(nativeSelectClass, 'flex-1')}
                     >
                       {#each goaeCategoryValues as cat (cat)}
-                        <option value={cat}>{cat}</option>
+                        <option value={cat}>{GOAE_CATEGORY_LABELS[cat] ?? cat}</option>
                       {/each}
                     </select>
                   </div>
-                </TableCell>
-                <TableCell class="align-top p-1.5">
-                  <select bind:value={pos.position_category} {disabled} class={nativeSelectClass}>
-                    {#each positionCategoryValues as cat (cat)}
-                      <option value={cat}>{POSITION_CATEGORY_LABELS[cat]}</option>
-                    {/each}
-                  </select>
                 </TableCell>
                 <TableCell class="align-top p-1.5">
                   <div class="flex flex-col gap-1 min-w-0">
@@ -866,7 +871,7 @@
     <DialogHeader>
       <DialogTitle>
         {#if infoEntry}
-          {infoEntry.schedule} {infoEntry.ziffer}
+          {infoEntry.schedule ?? 'Auslagenersatz'} {infoEntry.ziffer}
         {:else if infoLoading}
           Wird geladen …
         {:else}
@@ -876,6 +881,11 @@
     </DialogHeader>
     {#if infoLoading}
       <p class="text-sm text-muted-foreground">Eintrag wird geladen …</p>
+    {:else if infoEntry && infoEntry.schedule === null}
+      <p class="text-sm text-muted-foreground">
+        Auslagenersatz nach §10 GOÄ – kein Eintrag im Gebührenverzeichnis; wird zum tatsächlichen
+        Betrag erstattet.
+      </p>
     {:else if infoEntry?.entry}
       {@const entry = infoEntry.entry}
       <div class="flex flex-col gap-3 text-sm">

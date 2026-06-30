@@ -328,9 +328,7 @@ describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed 
   it('skips tiers/limits/Beihilfe entirely for an auslagenersatz position', () => {
     const result = computeErstattung(
       input({
-        positions: [
-          { category: 'ambulant', chargedAmount: 2.8, positionCategory: 'auslagenersatz' },
-        ],
+        positions: [{ category: 'ambulant', chargedAmount: 2.8, isAuslagenersatz: true }],
         // Tariff rule would otherwise cap ambulant heavily — irrelevant here.
         benefits: {
           benefits: [
@@ -349,9 +347,7 @@ describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed 
   it('is reimbursed even within the Wartezeit and with no tariff rule at all', () => {
     const result = computeErstattung(
       input({
-        positions: [
-          { category: 'sonstiges', chargedAmount: 1.5, positionCategory: 'auslagenersatz' },
-        ],
+        positions: [{ category: 'sonstiges', chargedAmount: 1.5, isAuslagenersatz: true }],
         benefits: { benefits: [] },
         invoiceDate: '2024-01-15', // inside any waiting period from coverageStart
       }),
@@ -365,7 +361,7 @@ describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed 
       input({
         positions: [
           { category: 'ambulant', chargedAmount: 100 },
-          { category: 'ambulant', chargedAmount: 2.8, positionCategory: 'auslagenersatz' },
+          { category: 'ambulant', chargedAmount: 2.8, isAuslagenersatz: true },
         ],
         benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 80 }] }] },
       }),
