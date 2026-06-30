@@ -16,6 +16,7 @@ describe('enums', () => {
   it('expose the values from §3.2', () => {
     expect(invoiceStatusValues).toContain('bezahlt');
     expect(goaeCategoryValues).toContain('GOÄ');
+    expect(goaeCategoryValues).toContain('Auslagenersatz');
   });
 });
 
@@ -179,18 +180,18 @@ describe('invoicePositionCreateSchema', () => {
     expect(invoicePositionCreateSchema.safeParse({ ...base, multiplier: 0 }).success).toBe(false);
   });
 
-  it('accepts position_category: auslagenersatz (§10 GOÄ)', () => {
+  it('accepts goae_category: Auslagenersatz (§10 GOÄ)', () => {
     const result = invoicePositionCreateSchema.safeParse({
       ...base,
-      position_category: 'auslagenersatz',
+      goae_category: 'Auslagenersatz',
     });
     expect(result.success).toBe(true);
-    expect(result.success && result.data.position_category).toBe('auslagenersatz');
+    expect(result.success && result.data.goae_category).toBe('Auslagenersatz');
   });
 
-  it('rejects an unknown position_category', () => {
+  it('rejects an unknown goae_category', () => {
     expect(
-      invoicePositionCreateSchema.safeParse({ ...base, position_category: 'sonstiges' }).success,
+      invoicePositionCreateSchema.safeParse({ ...base, goae_category: 'sonstiges' }).success,
     ).toBe(false);
   });
 });

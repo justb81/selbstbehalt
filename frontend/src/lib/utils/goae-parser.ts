@@ -43,7 +43,7 @@
  * Provide a single total amount per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
-import { roundCents, type BenefitCategory, type PositionCategory } from '@selbstbehalt/shared';
+import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
 
 import type {
   Constraint,
@@ -124,12 +124,6 @@ export interface ParsedPosition {
   baseAmount: number | null;
   /** §5 multiplier category from the entry; null when unknown. */
   category: FeeCategory | null;
-  /**
-   * Funktionale Art der Position — `auslagenersatz` (§10 GOÄ, z. B. Porto-/
-   * Versandkosten) or `leistung` (Regelfall). Detected from the description
-   * via {@link detectPositionCategory}; the review UI lets the user override it.
-   */
-  positionCategory: PositionCategory;
   /**
    * Tariff benefit area from the entry — the schedule-derivable default the
    * Erstattungs-Engine groups by (§3.2 `included_benefits`). `null` when the
@@ -269,12 +263,12 @@ const AUSLAGENERSATZ_RE =
 
 /**
  * Detects whether a position's description indicates §10 GOÄ Auslagenersatz
- * (e.g. Porto-/Versandkosten). Used to default {@link ParsedPosition.positionCategory};
- * always overridable by the user, since not every invoice spells these out
- * the same way.
+ * (e.g. Porto-/Versandkosten), used to default a position's `goae_category`
+ * to `'Auslagenersatz'` on import; always overridable by the user, since not
+ * every invoice spells these out the same way.
  */
-export function detectPositionCategory(description: string | null | undefined): PositionCategory {
-  return description && AUSLAGENERSATZ_RE.test(description) ? 'auslagenersatz' : 'leistung';
+export function isAuslagenersatzDescription(description: string | null | undefined): boolean {
+  return !!description && AUSLAGENERSATZ_RE.test(description);
 }
 
 /** German label for a {@link ConstraintScope}, for violation messages. */
@@ -548,7 +542,6 @@ export function lookupPosition(
       chargedAmount: raw.chargedAmount,
       baseAmount: null,
       category: null,
-      positionCategory: detectPositionCategory(raw.ocrDescription),
       benefitCategory: null,
       maxMultiplier: null,
       known: false,
@@ -560,48 +553,40 @@ export function lookupPosition(
     };
   }
 
-  // Prefer the text extracted directly from the OCR line; fall back to the
-  // fee schedule's Leistungslegende when no description appeared on the line.
-  const description = raw.ocrDescription || entry.description;
-  const positionCategory = detectPositionCategory(description);
-
-  // §10 GOÄ Auslagenersatz (Porto/Versand etc.) is reimbursed at actual cost,
-  // not subject to a Steigerungsfaktor — skip the §5 multiplier checks below.
-  if (positionCategory !== 'auslagenersatz') {
-    const fixed = entry.constraints?.find(
-      (c): c is Extract<Constraint, { type: 'fixedFactor' }> => c.type === 'fixedFactor',
-    );
-    if (fixed) {
-      if (Math.abs(raw.multiplier - fixed.factor) > EPS) {
-        flags.push({
-          code: 'fixed_factor_mismatch',
-          reason:
-            `Position ${entry.ziffer} ist nur mit festem Gebührensatz (${fixed.factor}) ` +
-            `berechnungsfähig, abgerechnet wurde Faktor ${raw.multiplier}.`,
-        });
-      }
-    } else {
-      const limit =
-        entry.maxMultiplier ?? table.multiplierLimits[entry.category]?.regelhoechstsatz ?? null;
-      if (limit != null && raw.multiplier > limit + EPS) {
-        flags.push({
-          code: 'multiplier_exceeds_limit',
-          reason: `Steigerungsfaktor ${raw.multiplier} überschreitet den Regelhöchstsatz ${limit} (${lawRef(table.feeSchedule)}).`,
-        });
-      }
+  const fixed = entry.constraints?.find(
+    (c): c is Extract<Constraint, { type: 'fixedFactor' }> => c.type === 'fixedFactor',
+  );
+  if (fixed) {
+    if (Math.abs(raw.multiplier - fixed.factor) > EPS) {
+      flags.push({
+        code: 'fixed_factor_mismatch',
+        reason:
+          `Position ${entry.ziffer} ist nur mit festem Gebührensatz (${fixed.factor}) ` +
+          `berechnungsfähig, abgerechnet wurde Faktor ${raw.multiplier}.`,
+      });
+    }
+  } else {
+    const limit =
+      entry.maxMultiplier ?? table.multiplierLimits[entry.category]?.regelhoechstsatz ?? null;
+    if (limit != null && raw.multiplier > limit + EPS) {
+      flags.push({
+        code: 'multiplier_exceeds_limit',
+        reason: `Steigerungsfaktor ${raw.multiplier} überschreitet den Regelhöchstsatz ${limit} (${lawRef(table.feeSchedule)}).`,
+      });
     }
   }
 
   return {
     ziffer: raw.ziffer,
     normalizedZiffer,
-    description,
+    // Prefer the text extracted directly from the OCR line; fall back to the
+    // fee schedule's Leistungslegende when no description appeared on the line.
+    description: raw.ocrDescription || entry.description,
     quantity: raw.quantity,
     multiplier: raw.multiplier,
     chargedAmount: raw.chargedAmount,
     baseAmount: entry.baseAmount,
     category: entry.category,
-    positionCategory,
     benefitCategory: entry.benefitCategory,
     maxMultiplier: entry.maxMultiplier,
     known: true,

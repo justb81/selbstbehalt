@@ -14,9 +14,9 @@ import realGoae from '../data/goae.json';
 import realGot from '../data/got.json';
 import {
   buildIndex,
-  detectPositionCategory,
   extractInvoiceFields,
   extractPositions,
+  isAuslagenersatzDescription,
   lookupPosition,
   normalizeZiffer,
   parseGermanNumber,
@@ -483,65 +483,19 @@ describe('lookupPosition — fixedFactor entries', () => {
   });
 });
 
-describe('detectPositionCategory — §10 GOÄ Auslagenersatz', () => {
+describe('isAuslagenersatzDescription — §10 GOÄ Auslagenersatz', () => {
   it('detects Porto/Versandkosten keywords', () => {
-    expect(detectPositionCategory('Portopauschale')).toBe('auslagenersatz');
-    expect(detectPositionCategory('Versandkosten')).toBe('auslagenersatz');
-    expect(detectPositionCategory('Versandmaterial')).toBe('auslagenersatz');
-    expect(detectPositionCategory('Verpackung und Versand')).toBe('auslagenersatz');
-    expect(detectPositionCategory('Postgebühren')).toBe('auslagenersatz');
+    expect(isAuslagenersatzDescription('Portopauschale')).toBe(true);
+    expect(isAuslagenersatzDescription('Versandkosten')).toBe(true);
+    expect(isAuslagenersatzDescription('Versandmaterial')).toBe(true);
+    expect(isAuslagenersatzDescription('Verpackung und Versand')).toBe(true);
+    expect(isAuslagenersatzDescription('Postgebühren')).toBe(true);
   });
 
-  it('defaults to leistung for ordinary descriptions', () => {
-    expect(detectPositionCategory('Beratung, auch mittels Fernsprecher')).toBe('leistung');
-    expect(detectPositionCategory(null)).toBe('leistung');
-    expect(detectPositionCategory(undefined)).toBe('leistung');
-  });
-});
-
-describe('lookupPosition — Auslagenersatz (§10 GOÄ) skips the §5 multiplier check', () => {
-  const table = makeTable([entry('95', { description: 'Schreibgebühr' })]);
-
-  it('flags an excessive multiplier on an ordinary position', () => {
-    const p = look(
-      { ziffer: '95', quantity: 1, multiplier: 5, chargedAmount: 0, raw: '', ocrDescription: null },
-      table,
-    );
-    expect(p.positionCategory).toBe('leistung');
-    expect(p.isValid).toBe(false);
-  });
-
-  it('skips the §5 limit check once the description identifies Auslagenersatz', () => {
-    const p = look(
-      {
-        ziffer: '95',
-        quantity: 1,
-        multiplier: 5,
-        chargedAmount: 0,
-        raw: '',
-        ocrDescription: 'Versandkosten',
-      },
-      table,
-    );
-    expect(p.positionCategory).toBe('auslagenersatz');
-    expect(p.isValid).toBe(true);
-    expect(p.flags).toHaveLength(0);
-  });
-
-  it('also detects Auslagenersatz for an unknown Ziffer', () => {
-    const p = look(
-      {
-        ziffer: '9999',
-        quantity: 1,
-        multiplier: 1,
-        chargedAmount: 2.8,
-        raw: '',
-        ocrDescription: 'Portopauschale',
-      },
-      table,
-    );
-    expect(p.known).toBe(false);
-    expect(p.positionCategory).toBe('auslagenersatz');
+  it('returns false for ordinary descriptions', () => {
+    expect(isAuslagenersatzDescription('Beratung, auch mittels Fernsprecher')).toBe(false);
+    expect(isAuslagenersatzDescription(null)).toBe(false);
+    expect(isAuslagenersatzDescription(undefined)).toBe(false);
   });
 });
 

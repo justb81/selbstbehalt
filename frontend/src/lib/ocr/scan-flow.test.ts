@@ -98,6 +98,17 @@ describe('toReviewPositions / toInvoicePayload', () => {
     expect(positions[1]?.flagReason).toContain('Steigerungsfaktor');
   });
 
+  it('detects Auslagenersatz (§10 GOÄ) from the description and overrides goaeCategory', () => {
+    const auslagenScan = buildScanResult(
+      textToOcrResults('250  Blutentnahme  2,3  5,36\n9999 Portopauschale Versandkosten 1,0  2,80'),
+      'GOÄ',
+      GOAE,
+    );
+    const positions = toReviewPositions(auslagenScan);
+    expect(positions[0]?.goaeCategory).toBe('GOÄ');
+    expect(positions[1]?.goaeCategory).toBe('Auslagenersatz');
+  });
+
   function baseState(): ReviewState {
     return {
       insuredPersonId: VALID_UUID,
@@ -128,7 +139,6 @@ describe('toReviewPositions / toInvoicePayload', () => {
       {
         goaeNumber: '1',
         goaeCategory: 'GOÄ',
-        positionCategory: 'leistung',
         quantity: 1,
         treatmentDate: null,
         description: 'Beratung',

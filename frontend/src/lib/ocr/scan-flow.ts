@@ -18,12 +18,17 @@
 import {
   invoiceCreatePayloadSchema,
   roundCents,
+  type GoaeCategory,
   type InvoiceCreatePayload,
-  type PositionCategory,
   type ProviderType,
 } from '@selbstbehalt/shared';
 
-import { parseInvoice, parsePositionLine, type ValidationContext } from '$lib/utils/goae-parser';
+import {
+  isAuslagenersatzDescription,
+  parseInvoice,
+  parsePositionLine,
+  type ValidationContext,
+} from '$lib/utils/goae-parser';
 import type { ParsedInvoice } from '$lib/utils/goae-parser';
 import type { FeeScheduleId, FeeScheduleTable } from '$lib/data/fee-schedule';
 
@@ -123,14 +128,12 @@ export function defaultProviderType(schedule: FeeScheduleId): ProviderType {
 export interface ReviewPosition {
   /** Billing number (Ziffer). */
   goaeNumber: string;
-  /** Fee schedule this position is billed under (GOÄ / GOZ / GOT). */
-  goaeCategory: FeeScheduleId;
   /**
-   * Funktionale Art der Position — `auslagenersatz` (§10 GOÄ, z. B. Porto-/
-   * Versandkosten, stets voll erstattet) or `leistung`. Detected from the
-   * description; overridable by the user in the review UI.
+   * Fee schedule this position is billed under (GOÄ / GOZ / GOT), or
+   * `Auslagenersatz` (§10 GOÄ, e.g. Porto-/Versandkosten) when the description
+   * matched {@link isAuslagenersatzDescription} — overridable by the user.
    */
-  positionCategory: PositionCategory;
+  goaeCategory: GoaeCategory;
   /** Anzahl (quantity). */
   quantity: number;
   /**
@@ -181,8 +184,7 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
     if (p.treatmentDate !== null) lastDate = p.treatmentDate;
     return {
       goaeNumber: p.ziffer,
-      goaeCategory: p.feeSchedule,
-      positionCategory: p.positionCategory,
+      goaeCategory: isAuslagenersatzDescription(p.description) ? 'Auslagenersatz' : p.feeSchedule,
       quantity: p.quantity,
       treatmentDate: p.treatmentDate ?? lastDate,
       description: p.description ?? null,
@@ -206,7 +208,6 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
   const positions = state.positions.map((p) => ({
     goae_number: p.goaeNumber,
     goae_category: p.goaeCategory,
-    position_category: p.positionCategory,
     quantity: p.quantity,
     treatment_date: p.treatmentDate ?? state.invoiceDate,
     description: p.description,
