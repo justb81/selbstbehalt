@@ -25,6 +25,9 @@ import {
   type InsuredPersonUpdate,
   type Invoice,
   type InvoiceCreatePayload,
+  type InvoiceRefundPayload,
+  type InvoiceStatusChange,
+  type InvoiceStatusEvent,
   type InvoiceUpdatePayload,
   type InvoiceWithPositions,
   type Person,
@@ -32,7 +35,6 @@ import {
   type PersonUpdate,
   type Submission,
   type SubmissionInput,
-  type SubmissionUpdate,
   type YearStats,
 } from '@selbstbehalt/shared';
 import { z } from 'zod';
@@ -117,17 +119,23 @@ export function createResources(request: ApiRequester) {
         schema: invoiceWithPositionsSchema,
       }),
     remove: (invoiceId: string) => request(`/api/invoices/${id(invoiceId)}`, { method: 'DELETE' }),
+    changeStatus: (invoiceId: string, data: InvoiceStatusChange) =>
+      request(`/api/invoices/${id(invoiceId)}/status`, {
+        method: 'POST',
+        body: data,
+        schema: invoiceSchema,
+      }),
     submit: (invoiceId: string, data: SubmissionInput) =>
       request(`/api/invoices/${id(invoiceId)}/submit`, {
         method: 'POST',
         body: data,
         schema: submissionSchema,
       }),
-    refund: (invoiceId: string, data: SubmissionUpdate) =>
+    refund: (invoiceId: string, data: InvoiceRefundPayload) =>
       request(`/api/invoices/${id(invoiceId)}/refund`, {
         method: 'PUT',
         body: data,
-        schema: submissionSchema,
+        schema: invoiceWithPositionsSchema,
       }),
   };
 
@@ -148,6 +156,9 @@ export type {
   ImportResult,
   InsuredPerson,
   Invoice,
+  InvoiceRefundPayload,
+  InvoiceStatusChange,
+  InvoiceStatusEvent,
   InvoiceWithPositions,
   Person,
   Submission,

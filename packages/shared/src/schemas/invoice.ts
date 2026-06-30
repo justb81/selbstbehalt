@@ -2,9 +2,15 @@
 import { z } from 'zod';
 
 import { auditFields, isoDate, money, uuid } from '../common.js';
-import { invoiceDecisionSchema, invoiceStatusSchema, providerTypeSchema } from '../enums.js';
+import { invoiceStatusSchema, providerTypeSchema } from '../enums.js';
 import { invoicePositionInputSchema, invoicePositionSchema } from './invoice-position.js';
 
+/**
+ * Client-settable fields on invoice create/update.
+ * `eligible_amount` and `self_paid_amount` are derived server-side from positions
+ * (Σ positions.eligible_amount and Σ charged_amount − Σ coalesce(refund_amount,0))
+ * and must not be sent by the client.
+ */
 export const invoiceCreateSchema = z
   .object({
     insured_person_id: uuid,
@@ -13,12 +19,8 @@ export const invoiceCreateSchema = z
     provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),
     provider_type: providerTypeSchema.nullish(),
     total_amount: money,
-    eligible_amount: money.nullish(),
-    // NOT NULL DEFAULT 0 — omittable on create.
-    self_paid_amount: money.optional(),
     // NOT NULL DEFAULT 'neu' — omittable on create.
     status: invoiceStatusSchema.optional(),
-    decision: invoiceDecisionSchema.nullish(),
     file_path: z.string().nullish(),
     ocr_raw: z.string().nullish(),
     notes: z.string().nullish(),
@@ -34,10 +36,17 @@ export const invoiceCreatePayloadSchema = invoiceCreateSchema.extend({
   positions: z.array(invoicePositionInputSchema).optional(),
 });
 
+/**
+ * Read-back shape of a persisted invoice. `eligible_amount` and `self_paid_amount`
+ * are server-computed aggregates from positions (read-only from the client's perspective).
+ */
 export const invoiceSchema = invoiceCreateSchema.extend({
   ...auditFields,
-  // Always present when read back (DB defaults applied).
+  // Server-computed: Σ positions.eligible_amount (nullable until the engine has run).
+  eligible_amount: money.nullish(),
+  // Server-computed: Σ charged_amount − Σ coalesce(refund_amount, 0).
   self_paid_amount: money,
+  // Always present when read back (DB defaults applied).
   status: invoiceStatusSchema,
 });
 
@@ -53,9 +62,35 @@ export const invoiceUpdatePayloadSchema = invoiceUpdateSchema.extend({
   positions: z.array(invoicePositionInputSchema).optional(),
 });
 
+/**
+ * `POST /api/invoices/:id/status` body: explicit status transition with optional note.
+ * Allowed transitions: neu↔geprüft, geprüft→bezahlt, bezahlt→eingereicht, eingereicht→erstattet.
+ */
+export const invoiceStatusChangeSchema = z
+  .object({
+    status: invoiceStatusSchema,
+    note: z.string().nullish(),
+  })
+  .strict();
+
+/**
+ * `PUT /api/invoices/:id/refund` body: per-position refund amounts.
+ * Sets invoice status → erstattet and writes refund_amount per position.
+ * refund_amount = 0 represents a rejection (Ablehnung) for that position.
+ */
+export const invoiceRefundPayloadSchema = z
+  .object({
+    positions: z.array(z.object({ id: uuid, refund_amount: money.nullable() }).strict()),
+    note: z.string().nullish(),
+    refund_date: isoDate.nullish(),
+  })
+  .strict();
+
 export type InvoiceCreate = z.infer<typeof invoiceCreateSchema>;
 export type InvoiceCreatePayload = z.infer<typeof invoiceCreatePayloadSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type InvoiceWithPositions = z.infer<typeof invoiceWithPositionsSchema>;
 export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;
 export type InvoiceUpdatePayload = z.infer<typeof invoiceUpdatePayloadSchema>;
+export type InvoiceStatusChange = z.infer<typeof invoiceStatusChangeSchema>;
+export type InvoiceRefundPayload = z.infer<typeof invoiceRefundPayloadSchema>;

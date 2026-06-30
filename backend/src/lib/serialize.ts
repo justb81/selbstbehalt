@@ -16,6 +16,7 @@ import type {
   InvoiceCreate,
   InvoicePosition,
   InvoicePositionInput,
+  InvoiceStatusEvent,
   InvoiceUpdate,
   Person,
   PersonCreate,
@@ -29,6 +30,7 @@ import type {
   contracts,
   insuredPersons,
   invoicePositions,
+  invoiceStatusEvents,
   invoices,
   persons,
   submissions,
@@ -44,6 +46,8 @@ type InvoiceRow = typeof invoices.$inferSelect;
 type InvoiceInsert = typeof invoices.$inferInsert;
 type PositionRow = typeof invoicePositions.$inferSelect;
 type PositionInsert = typeof invoicePositions.$inferInsert;
+type StatusEventRow = typeof invoiceStatusEvents.$inferSelect;
+type StatusEventInsert = typeof invoiceStatusEvents.$inferInsert;
 type SubmissionRow = typeof submissions.$inferSelect;
 type SubmissionInsert = typeof submissions.$inferInsert;
 
@@ -139,7 +143,6 @@ export function toInsuredPersonInsert(input: InsuredPersonCreate): InsuredPerson
     kvnr: input.kvnr,
     tariffName: input.tariff_name,
     monthlyPremium: input.monthly_premium,
-    // Omitted (undefined) on create → DB DEFAULT 0 applies.
     selfRetention: input.self_retention,
     breStructure: input.bre_structure,
     includedBenefits: input.included_benefits,
@@ -180,7 +183,6 @@ export function serializeInvoice(row: InvoiceRow): Invoice {
     eligible_amount: row.eligibleAmount,
     self_paid_amount: row.selfPaidAmount,
     status: row.status,
-    decision: row.decision,
     file_path: row.filePath,
     ocr_raw: row.ocrRaw,
     notes: row.notes,
@@ -195,11 +197,7 @@ export function toInvoiceInsert(input: InvoiceCreate): InvoiceInsert {
     providerName: input.provider_name,
     providerType: input.provider_type,
     totalAmount: input.total_amount,
-    eligibleAmount: input.eligible_amount,
-    // Omitted (undefined) on create → DB DEFAULTs apply.
-    selfPaidAmount: input.self_paid_amount,
     status: input.status,
-    decision: input.decision,
     filePath: input.file_path,
     ocrRaw: input.ocr_raw,
     notes: input.notes,
@@ -214,10 +212,7 @@ export function toInvoiceUpdate(input: InvoiceUpdate): Partial<InvoiceInsert> {
   if (input.provider_name !== undefined) u.providerName = input.provider_name;
   if (input.provider_type !== undefined) u.providerType = input.provider_type;
   if (input.total_amount !== undefined) u.totalAmount = input.total_amount;
-  if (input.eligible_amount !== undefined) u.eligibleAmount = input.eligible_amount;
-  if (input.self_paid_amount !== undefined) u.selfPaidAmount = input.self_paid_amount;
   if (input.status !== undefined) u.status = input.status;
-  if (input.decision !== undefined) u.decision = input.decision;
   if (input.file_path !== undefined) u.filePath = input.file_path;
   if (input.ocr_raw !== undefined) u.ocrRaw = input.ocr_raw;
   if (input.notes !== undefined) u.notes = input.notes;
@@ -233,11 +228,13 @@ export function serializePosition(row: PositionRow): InvoicePosition {
     goae_number: row.goaeNumber,
     goae_category: row.goaeCategory,
     quantity: row.quantity,
-    treatment_date: row.treatmentDate ?? null,
+    treatment_date: row.treatmentDate,
     description: row.description,
     multiplier: row.multiplier,
     base_amount: row.baseAmount,
     charged_amount: row.chargedAmount,
+    eligible_amount: row.eligibleAmount,
+    refund_amount: row.refundAmount,
     is_valid: row.isValid,
     flag_reason: row.flagReason,
   };
@@ -259,9 +256,31 @@ export function toPositionInsert(invoiceId: string, input: PositionInputCompat):
     multiplier: input.multiplier,
     baseAmount: input.base_amount,
     chargedAmount: input.charged_amount,
+    eligibleAmount: input.eligible_amount,
+    refundAmount: input.refund_amount,
     isValid: input.is_valid,
     flagReason: input.flag_reason,
   };
+}
+
+// ── Invoice status events ──────────────────────────────────────────────────
+
+export function serializeStatusEvent(row: StatusEventRow): InvoiceStatusEvent {
+  return {
+    id: row.id,
+    invoice_id: row.invoiceId,
+    status: row.status,
+    changed_at: row.changedAt,
+    note: row.note,
+  };
+}
+
+export function toStatusEventInsert(
+  invoiceId: string,
+  status: InvoiceStatusEvent['status'],
+  note?: string | null,
+): StatusEventInsert {
+  return { invoiceId, status, note: note ?? null };
 }
 
 // ── Submissions ────────────────────────────────────────────────────────────
@@ -273,9 +292,7 @@ export function serializeSubmission(row: SubmissionRow): Submission {
     submitted_at: row.submittedAt,
     submitted_via: row.submittedVia,
     expected_refund: row.expectedRefund,
-    actual_refund: row.actualRefund,
     refund_date: row.refundDate,
-    rejection_reason: row.rejectionReason,
   };
 }
 
@@ -285,9 +302,7 @@ export function toSubmissionInsert(invoiceId: string, input: SubmissionInput): S
     submittedAt: input.submitted_at,
     submittedVia: input.submitted_via,
     expectedRefund: input.expected_refund,
-    actualRefund: input.actual_refund,
     refundDate: input.refund_date,
-    rejectionReason: input.rejection_reason,
   };
 }
 
@@ -296,8 +311,6 @@ export function toSubmissionUpdate(input: SubmissionUpdate): Partial<SubmissionI
   if (input.submitted_at !== undefined) u.submittedAt = input.submitted_at;
   if (input.submitted_via !== undefined) u.submittedVia = input.submitted_via;
   if (input.expected_refund !== undefined) u.expectedRefund = input.expected_refund;
-  if (input.actual_refund !== undefined) u.actualRefund = input.actual_refund;
   if (input.refund_date !== undefined) u.refundDate = input.refund_date;
-  if (input.rejection_reason !== undefined) u.rejectionReason = input.rejection_reason;
   return u;
 }

@@ -8,10 +8,9 @@ describe('InvoiceBadge', () => {
   it.each([
     ['neu', 'Neu'],
     ['geprüft', 'Geprüft'],
+    ['bezahlt', 'Bezahlt'],
     ['eingereicht', 'Eingereicht'],
     ['erstattet', 'Erstattet'],
-    ['abgelehnt', 'Abgelehnt'],
-    ['selbst_gezahlt', 'Selbst gezahlt'],
   ] as const)('renders the German label for status "%s"', (status, label) => {
     render(InvoiceBadge, { props: { status } });
     expect(screen.getByText(label)).toBeInTheDocument();

@@ -14,7 +14,7 @@ const UUID = '3f9a8c2e-1d4b-4c6a-9e2f-7b1c0d5e6a7f';
 
 describe('enums', () => {
   it('expose the values from §3.2', () => {
-    expect(invoiceStatusValues).toContain('selbst_gezahlt');
+    expect(invoiceStatusValues).toContain('bezahlt');
     expect(goaeCategoryValues).toContain('GOÄ');
   });
 });
@@ -165,6 +165,7 @@ describe('invoicePositionCreateSchema', () => {
   const base = {
     invoice_id: UUID,
     goae_number: '0340',
+    treatment_date: '2026-06-01',
     multiplier: 2.3,
     base_amount: 20.11,
     charged_amount: 46.25,

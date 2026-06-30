@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Development seed data. Wipes the tables and inserts one representative chain
-// (Person → Vertrag → versicherte Person → Rechnung → Positionen → Einreichung →
-// BRE-Periode) so the API has something to serve locally. Run via
-// `pnpm --filter backend db:seed`.
+// Development seed data. Wipes the tables and inserts representative invoice
+// chains (Person → Vertrag → versicherte Person → Rechnung → Positionen →
+// Statusereignisse → Einreichung → BRE-Periode) so the API has something to
+// serve locally. Run via `pnpm --filter backend db:seed`.
+//
+// Invoice 1 (geprüft): one compliant + one flagged GOÄ position, not yet submitted.
+// Invoice 2 (erstattet): GOZ positions from two Leistungsjahre (2024 + 2025) — the
+// canonical multi-year scenario from Issue #139 §2.3. Fully reimbursed.
 //
 // NEVER run this against a production database — it deletes existing rows.
 
@@ -17,6 +21,7 @@ import {
   contracts,
   insuredPersons,
   invoicePositions,
+  invoiceStatusEvents,
   invoices,
   persons,
   submissions,
@@ -26,8 +31,10 @@ import {
 export function seed(handle: DbHandle): void {
   const { db } = handle;
 
-  // Clear in FK-safe order (children first).
+  // Clear in FK-safe order (children first). Status events cascade from invoices
+  // but deleting them explicitly keeps the intention readable.
   db.delete(submissions).run();
+  db.delete(invoiceStatusEvents).run();
   db.delete(invoicePositions).run();
   db.delete(invoices).run();
   db.delete(brePeriods).run();
@@ -111,7 +118,10 @@ export function seed(handle: DbHandle): void {
     })
     .run();
 
-  const invoice = db
+  // ── Invoice 1: geprüft, nicht eingereicht ──────────────────────────────────
+  // GOÄ-Rechnung mit einer regelkonformen und einer überschreitenden Position.
+  // eligible_amount = 10.72 (nur Position 1), self_paid_amount = 81.11 (Σ charged)
+  const invoice1 = db
     .insert(invoices)
     .values({
       insuredPersonId: insured.id,
@@ -119,10 +129,10 @@ export function seed(handle: DbHandle): void {
       invoiceNumber: 'R-2026-0042',
       providerName: 'Dr. med. Müller',
       providerType: 'arzt',
-      totalAmount: 85.0,
-      eligibleAmount: 62.5,
+      totalAmount: 81.11,
+      eligibleAmount: 10.72,
+      selfPaidAmount: 81.11,
       status: 'geprüft',
-      decision: 'selbst_zahlen',
     })
     .returning()
     .get();
@@ -130,35 +140,110 @@ export function seed(handle: DbHandle): void {
   db.insert(invoicePositions)
     .values([
       {
-        invoiceId: invoice.id,
+        invoiceId: invoice1.id,
         goaeNumber: '0001',
         goaeCategory: 'GOÄ',
         description: 'Beratung, auch mittels Fernsprecher',
         multiplier: 2.3,
         baseAmount: 4.66,
         chargedAmount: 10.72,
+        treatmentDate: '2026-06-01',
+        eligibleAmount: 10.72,
         isValid: true,
       },
       {
-        invoiceId: invoice.id,
+        invoiceId: invoice1.id,
         goaeNumber: '0340',
         goaeCategory: 'GOÄ',
         description: 'Erörterung (mind. 20 Min.)',
         multiplier: 3.5,
         baseAmount: 20.11,
         chargedAmount: 70.39,
+        treatmentDate: '2026-06-01',
+        eligibleAmount: null, // nicht erstattungsfähig (Steigerungsfaktor überschritten)
         isValid: false,
         flagReason: 'Steigerungsfaktor 3.5 überschreitet Regelgrenze 2.3 (§5 GOÄ)',
       },
     ])
     .run();
 
+  db.insert(invoiceStatusEvents)
+    .values([
+      { invoiceId: invoice1.id, status: 'neu' },
+      { invoiceId: invoice1.id, status: 'geprüft', note: 'GOÄ-Prüfung abgeschlossen' },
+    ])
+    .run();
+
+  // ── Invoice 2: erstattet — Positionen aus zwei Leistungsjahren (§2.3) ──────
+  // GOZ-Rechnung mit Leistungen aus 2024 und 2025. Zeigt, dass das Leistungsdatum
+  // je Position die BRE-Jahreszuordnung bestimmt (Issue #139).
+  // eligible_amount = 40.92 + 496.0 = 536.92
+  // self_paid_amount = (40.92−40.92) + (579.08−396.8) = 182.28
+  const invoice2 = db
+    .insert(invoices)
+    .values({
+      insuredPersonId: insured.id,
+      invoiceDate: '2025-11-15',
+      invoiceNumber: 'R-2025-0089',
+      providerName: 'Zahnarztpraxis Dr. Weber',
+      providerType: 'zahnarzt',
+      totalAmount: 620.0,
+      eligibleAmount: 536.92,
+      selfPaidAmount: 182.28,
+      status: 'erstattet',
+    })
+    .returning()
+    .get();
+
+  db.insert(invoicePositions)
+    .values([
+      {
+        invoiceId: invoice2.id,
+        goaeNumber: '0040',
+        goaeCategory: 'GOZ',
+        description: 'Befundaufnahme und Beratung',
+        multiplier: 2.3,
+        baseAmount: 17.79,
+        chargedAmount: 40.92,
+        treatmentDate: '2024-12-10', // ← Leistungsjahr 2024
+        eligibleAmount: 40.92,
+        refundAmount: 40.92,
+        isValid: true,
+      },
+      {
+        invoiceId: invoice2.id,
+        goaeNumber: '2060',
+        goaeCategory: 'GOZ',
+        description: 'Versorgung eines Zahnes mit einer Vollkrone',
+        multiplier: 3.5,
+        baseAmount: 159.67,
+        chargedAmount: 579.08,
+        treatmentDate: '2025-10-22', // ← Leistungsjahr 2025
+        eligibleAmount: 496.0,
+        refundAmount: 396.8, // 80 % der erstattungsfähigen Menge (Zahnersatz-Tarif)
+        isValid: true,
+      },
+    ])
+    .run();
+
   db.insert(submissions)
     .values({
-      invoiceId: invoice.id,
-      submittedVia: 'email',
-      expectedRefund: 62.5,
+      invoiceId: invoice2.id,
+      submittedVia: 'app',
+      expectedRefund: 536.92,
+      submittedAt: '2025-11-20T10:00:00.000Z',
+      refundDate: '2025-12-05',
     })
+    .run();
+
+  db.insert(invoiceStatusEvents)
+    .values([
+      { invoiceId: invoice2.id, status: 'neu' },
+      { invoiceId: invoice2.id, status: 'geprüft' },
+      { invoiceId: invoice2.id, status: 'bezahlt', note: 'Eigenanteil überwiesen' },
+      { invoiceId: invoice2.id, status: 'eingereicht', note: 'Per App eingereicht' },
+      { invoiceId: invoice2.id, status: 'erstattet', note: 'Erstattung eingegangen am 05.12.2025' },
+    ])
     .run();
 
   db.insert(brePeriods)

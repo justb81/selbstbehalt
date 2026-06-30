@@ -14,6 +14,7 @@ import {
   brePeriods,
   contracts,
   insuredPersons,
+  invoicePositions,
   invoices,
   persons,
   submissions,
@@ -104,13 +105,33 @@ beforeEach(() => {
     })
     .run();
 
-  // Refunds received: €80 in 2025, €250 in 2026 (by refund_date).
-  db.insert(submissions)
-    .values({ invoiceId: inv2025a.id, actualRefund: 80, refundDate: '2025-04-01' })
+  // Positions with per-position refund amounts (source of truth).
+  db.insert(invoicePositions)
+    .values({
+      invoiceId: inv2025a.id,
+      goaeNumber: '0001',
+      treatmentDate: '2025-03-01',
+      multiplier: 1,
+      baseAmount: 100,
+      chargedAmount: 100,
+      refundAmount: 80,
+    })
     .run();
-  db.insert(submissions)
-    .values({ invoiceId: inv2026c.id, actualRefund: 250, refundDate: '2026-03-15' })
+  db.insert(invoicePositions)
+    .values({
+      invoiceId: inv2026c.id,
+      goaeNumber: '0001',
+      treatmentDate: '2026-02-01',
+      multiplier: 1,
+      baseAmount: 300,
+      chargedAmount: 300,
+      refundAmount: 250,
+    })
     .run();
+
+  // Submissions carry the refund_date; per-position refund_amount is the source of truth.
+  db.insert(submissions).values({ invoiceId: inv2025a.id, refundDate: '2025-04-01' }).run();
+  db.insert(submissions).values({ invoiceId: inv2026c.id, refundDate: '2026-03-15' }).run();
 
   // BRE ladder progression across three years.
   db.insert(brePeriods)

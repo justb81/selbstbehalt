@@ -52,6 +52,13 @@ export interface ErstattungPosition {
   category: BenefitCategory;
   /** Amount billed for this position in EUR (`ParsedPosition.chargedAmount`). */
   chargedAmount: number;
+  /**
+   * Leistungsdatum (ISO YYYY-MM-DD) for this position. When set, it is used
+   * for the waiting-period check in place of `ErstattungInput.invoiceDate`,
+   * enabling correct per-position treatment across different Leistungsjahre
+   * (§2.3, Issue #139).
+   */
+  treatmentDate?: DateInput;
 }
 
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
@@ -95,11 +102,25 @@ export interface ErstattungByCategory {
   note?: string;
 }
 
+/** Per-position reimbursable amount, derived by proportional distribution within each category. */
+export interface ErstattungByPosition {
+  /** Index of the position in the input {@link ErstattungInput.positions} array. */
+  index: number;
+  /** Reimbursable amount for this position in EUR. */
+  eligible_amount: number;
+}
+
 /** Output of {@link computeErstattung}. Mirrors `ErstattungResult` in design §5.1. */
 export interface ErstattungResult {
   /** `R` — the total reimbursable amount in EUR. */
   eligibleAmount: number;
   byCategory: ErstattungByCategory[];
+  /**
+   * Per-position eligible amounts, proportionally distributed from `byCategory`.
+   * Positions blocked by a waiting period receive `eligible_amount = 0`.
+   * Has the same length and order as {@link ErstattungInput.positions}.
+   */
+  byPosition: ErstattungByPosition[];
 }
 
 /**
@@ -142,7 +163,10 @@ function annualCap(staffel: AnnualStaffelEntry[], policyYear: number): number | 
   return applicable ? applicable.cumulative_cap : null;
 }
 
-/** Apply the full §5.1 pipeline to one category group. */
+/**
+ * Apply the full §5.1 pipeline to one category group. The waiting-period check
+ * is handled per-position by {@link computeErstattung} before this is called.
+ */
 function computeCategory(
   category: BenefitCategory,
   chargedAmount: number,
@@ -163,16 +187,7 @@ function computeCategory(
     return base(0, null, `Keine Tarifregel für „${category}" — nicht erstattungsfähig.`);
   }
 
-  // 1. Wartezeit.
-  const waiting = benefit.waiting_period_months ?? 0;
-  if (waiting > 0) {
-    const waitingEnds = addMonths(toCalendarDate(input.coverageStart), waiting);
-    if (isBefore(toCalendarDate(input.invoiceDate), waitingEnds)) {
-      return base(0, 'waiting_period', `Innerhalb der Wartezeit von ${waiting} Monaten.`);
-    }
-  }
-
-  // 2. Schwellen-Staffel (no tiers ⇒ 100 % base).
+  // 1. Schwellen-Staffel (no tiers ⇒ 100 % base).
   let eligible = benefit.tiers ? applyTiers(chargedAmount, benefit.tiers) : chargedAmount;
   let cappedBy: CappedBy = benefit.tiers && eligible < chargedAmount ? 'tier' : null;
   const notes: string[] = [];
@@ -233,22 +248,74 @@ function computeCategory(
 /**
  * Compute the reimbursable amount `R` from a tariff's `included_benefits` and the
  * checked invoice positions (design §5.1). Positions are grouped by
- * {@link BenefitCategory}; each group runs the five-step pipeline. The returned
- * `eligibleAmount` is the input to the Günstigerprüfung (`erstattungsBetrag`).
+ * {@link BenefitCategory}; each group runs the five-step pipeline.
+ *
+ * Per-position waiting-period check: each position's `treatmentDate` (or the
+ * fallback `invoiceDate`) is tested against the coverage start. Positions within
+ * a waiting period are excluded from their category group before the tier/limit
+ * calculation, then receive `eligible_amount = 0` in the `byPosition` result.
+ *
+ * The returned `eligibleAmount` is the input to the Günstigerprüfung.
  */
 export function computeErstattung(input: ErstattungInput): ErstattungResult {
-  // Sum charged amounts per category, preserving first-seen order.
-  const grouped = new Map<BenefitCategory, number>();
-  for (const position of input.positions) {
-    grouped.set(position.category, (grouped.get(position.category) ?? 0) + position.chargedAmount);
+  type PositionEntry = { idx: number; chargedAmount: number; waitingBlocked: boolean };
+  const benefitMap = new Map(input.benefits.benefits.map((b) => [b.category, b]));
+
+  // Per-position waiting-period check using individual treatment dates.
+  const categoryGroups = new Map<BenefitCategory, PositionEntry[]>();
+  for (let idx = 0; idx < input.positions.length; idx++) {
+    const pos = input.positions[idx]!;
+    const benefit = benefitMap.get(pos.category);
+    const checkDate = pos.treatmentDate ?? input.invoiceDate;
+    const waiting = benefit?.waiting_period_months ?? 0;
+    let waitingBlocked = false;
+    if (waiting > 0) {
+      const waitingEnds = addMonths(toCalendarDate(input.coverageStart), waiting);
+      waitingBlocked = isBefore(toCalendarDate(checkDate), waitingEnds);
+    }
+    const group = categoryGroups.get(pos.category) ?? [];
+    group.push({ idx, chargedAmount: pos.chargedAmount, waitingBlocked });
+    categoryGroups.set(pos.category, group);
   }
 
   const byCategory: ErstattungByCategory[] = [];
-  for (const [category, charged] of grouped) {
-    const benefit = input.benefits.benefits.find((b) => b.category === category);
-    byCategory.push(computeCategory(category, charged, benefit, input));
+  const byPosition: ErstattungByPosition[] = input.positions.map((_, i) => ({
+    index: i,
+    eligible_amount: 0,
+  }));
+
+  for (const [category, group] of categoryGroups) {
+    const benefit = benefitMap.get(category);
+    const eligibleGroup = group.filter((e) => !e.waitingBlocked);
+    const totalCharged = roundCents(group.reduce((s, e) => s + e.chargedAmount, 0));
+    const eligibleCharged = roundCents(eligibleGroup.reduce((s, e) => s + e.chargedAmount, 0));
+
+    if (eligibleGroup.length === 0) {
+      // Entire category blocked by waiting period.
+      byCategory.push({
+        category,
+        chargedAmount: totalCharged,
+        eligibleAmount: 0,
+        appliedPct: 0,
+        cappedBy: 'waiting_period',
+        note: `Innerhalb der Wartezeit von ${benefit?.waiting_period_months ?? 0} Monaten.`,
+      });
+    } else {
+      // Run the pipeline on non-blocked positions (waiting period already handled).
+      const catResult = computeCategory(category, eligibleCharged, benefit, input);
+      byCategory.push({ ...catResult, chargedAmount: totalCharged });
+
+      // Distribute eligible amount proportionally to non-blocked positions.
+      if (eligibleCharged > 0 && catResult.eligibleAmount > 0) {
+        for (const entry of eligibleGroup) {
+          byPosition[entry.idx]!.eligible_amount = roundCents(
+            (catResult.eligibleAmount * entry.chargedAmount) / eligibleCharged,
+          );
+        }
+      }
+    }
   }
 
   const eligibleAmount = roundCents(byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0));
-  return { eligibleAmount, byCategory };
+  return { eligibleAmount, byCategory, byPosition };
 }

@@ -72,11 +72,12 @@
     goae_number: string;
     goae_category: GoaeCategory | null;
     quantity: number;
-    treatment_date: string; // ISO YYYY-MM-DD or '' for null
+    treatment_date: string; // ISO YYYY-MM-DD or '' (defaults to invoiceDate on submit)
     description: string;
     multiplier: number;
     base_amount: number;
     charged_amount: number;
+    eligible_amount: number | null; // computed by engine, read-only
     is_valid: boolean | null;
     flag_reason: string | null;
     confidence: number;
@@ -89,7 +90,6 @@
     provider_name: string;
     provider_type: ProviderType | null;
     total_amount: number;
-    eligible_amount: number | null;
     notes: string | null;
     ocr_raw: string | null;
     positions: InvoicePositionInput[];
@@ -142,7 +142,6 @@
   let providerName = $state(untrack(() => initialData?.provider_name ?? ''));
   let providerType = $state<ProviderType>(untrack(() => initialData?.provider_type ?? 'arzt'));
   let totalAmount = $state<number>(untrack(() => initialData?.total_amount ?? 0));
-  let eligibleAmount = $state<number | null>(untrack(() => initialData?.eligible_amount ?? null));
   let notes = $state(untrack(() => initialData?.notes ?? ''));
 
   function rowFromPosition(p: InvoiceWithPositions['positions'][number]): PositionRow {
@@ -155,6 +154,7 @@
       multiplier: p.multiplier,
       base_amount: p.base_amount,
       charged_amount: p.charged_amount,
+      eligible_amount: p.eligible_amount ?? null,
       is_valid: p.is_valid ?? null,
       flag_reason: p.flag_reason ?? null,
       confidence: 1,
@@ -177,6 +177,7 @@
         multiplier: 2.3,
         base_amount: 0,
         charged_amount: 0,
+        eligible_amount: null,
         is_valid: null,
         flag_reason: null,
         confidence: 1,
@@ -220,6 +221,7 @@
       multiplier: p.multiplier,
       base_amount: p.baseAmount,
       charged_amount: p.chargedAmount,
+      eligible_amount: null,
       is_valid: p.isValid,
       flag_reason: p.flagReason,
       confidence: p.confidence,
@@ -298,14 +300,15 @@
         return lastDate ? { ...pos, treatment_date: lastDate } : pos;
       });
 
-      // Recalculate eligible_amount when the insured person's tariff data is
-      // available. Positions with an unknown Ziffer (benefitCategory == null)
+      // Recalculate eligible_amount per position when the insured person's tariff
+      // data is available. Positions with an unknown Ziffer (benefitCategory == null)
       // fall back to 'sonstiges'; the tariff will return 0 for uncovered areas.
       const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
       if (insuredPerson?.included_benefits && insuredPerson.start_date) {
         const erstattungPositions: ErstattungPosition[] = positions.map((pos, i) => ({
           category: (benefitCategories[i] ?? 'sonstiges') as BenefitCategory,
           chargedAmount: pos.charged_amount,
+          treatmentDate: pos.treatment_date || invoiceDate,
         }));
         const result = computeErstattung({
           positions: erstattungPositions,
@@ -313,7 +316,10 @@
           invoiceDate,
           coverageStart: insuredPerson.start_date,
         });
-        eligibleAmount = result.eligibleAmount;
+        positions = positions.map((pos, i) => ({
+          ...pos,
+          eligible_amount: result.byPosition[i]?.eligible_amount ?? null,
+        }));
       }
     } catch (e) {
       revalidateError = e instanceof Error ? e.message : 'Neuprüfung fehlgeschlagen.';
@@ -354,6 +360,7 @@
         multiplier: p.multiplier,
         base_amount: p.baseAmount ?? 0,
         charged_amount: p.chargedAmount,
+        eligible_amount: null,
         is_valid: p.isValid,
         flag_reason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
         confidence: 1,
@@ -419,11 +426,13 @@
       goae_number: p.goae_number,
       goae_category: p.goae_category,
       quantity: p.quantity,
-      treatment_date: p.treatment_date || null,
+      // Positions without a date fall back to the invoice date (§3.2 Issue #139).
+      treatment_date: p.treatment_date || invoiceDate,
       description: p.description.trim() || null,
       multiplier: p.multiplier,
       base_amount: p.base_amount,
       charged_amount: p.charged_amount,
+      eligible_amount: p.eligible_amount,
       is_valid: p.is_valid,
       flag_reason: p.flag_reason,
     }));
@@ -435,7 +444,6 @@
       provider_name: providerName.trim(),
       provider_type: providerType,
       total_amount: totalAmount,
-      eligible_amount: eligibleAmount,
       notes: notes.trim() || null,
       ocr_raw: mode === 'create' && hasScan && saveOcrRaw ? (scanResult?.ocrText ?? null) : null,
       positions: positionInputs,
@@ -597,24 +605,6 @@
         min="0"
         step="0.01"
         required
-        {disabled}
-      />
-    </div>
-
-    <!-- Erstattungsfähiger Betrag -->
-    <div class="space-y-1.5">
-      <Label for="field-eligible">Erstattungsfähiger Betrag (€)</Label>
-      <Input
-        id="field-eligible"
-        type="number"
-        value={eligibleAmount ?? ''}
-        oninput={(e) => {
-          const v = (e.target as HTMLInputElement).value;
-          eligibleAmount = v ? parseFloat(v) : null;
-        }}
-        min="0"
-        step="0.01"
-        placeholder="optional"
         {disabled}
       />
     </div>

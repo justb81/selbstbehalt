@@ -20,7 +20,13 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
 import type { Database } from '../db/client.js';
-import { brePeriods, insuredPersons, invoices, submissions } from '../db/schema.js';
+import {
+  brePeriods,
+  insuredPersons,
+  invoicePositions,
+  invoices,
+  submissions,
+} from '../db/schema.js';
 
 /** Parse and bounds-check the `:year` path param, throwing 400 on bad input. */
 function parseYear(raw: string): number {
@@ -51,10 +57,14 @@ export function createStatsRoute(db: Database) {
         .where(and(gte(invoices.invoiceDate, yearStart), lte(invoices.invoiceDate, yearEnd)))
         .get();
 
-      // Refunds actually received in the year, by the submission's refund_date.
+      // Refunds actually received in the year: sum invoice_positions.refund_amount
+      // for positions whose invoice has a submission with refund_date in this year.
       const refundAgg = db
-        .select({ refunds: sql<number>`coalesce(sum(${submissions.actualRefund}), 0)` })
-        .from(submissions)
+        .select({
+          refunds: sql<number>`coalesce(sum(${invoicePositions.refundAmount}), 0)`,
+        })
+        .from(invoicePositions)
+        .innerJoin(submissions, eq(submissions.invoiceId, invoicePositions.invoiceId))
         .where(and(gte(submissions.refundDate, yearStart), lte(submissions.refundDate, yearEnd)))
         .get();
 
