@@ -164,16 +164,14 @@ function annualCap(staffel: AnnualStaffelEntry[], policyYear: number): number | 
 }
 
 /**
- * Apply the full §5.1 pipeline to one category group.
- * Pass `skipWaitingPeriod = true` when the waiting-period check has already been
- * performed per-position before calling this function.
+ * Apply the full §5.1 pipeline to one category group. The waiting-period check
+ * is handled per-position by {@link computeErstattung} before this is called.
  */
 function computeCategory(
   category: BenefitCategory,
   chargedAmount: number,
   benefit: IncludedBenefit | undefined,
   input: ErstattungInput,
-  skipWaitingPeriod = false,
 ): ErstattungByCategory {
   const base = (eligible: number, cappedBy: CappedBy, note?: string): ErstattungByCategory => ({
     category,
@@ -189,18 +187,7 @@ function computeCategory(
     return base(0, null, `Keine Tarifregel für „${category}" — nicht erstattungsfähig.`);
   }
 
-  // 1. Wartezeit (skipped when handled per-position by the caller).
-  if (!skipWaitingPeriod) {
-    const waiting = benefit.waiting_period_months ?? 0;
-    if (waiting > 0) {
-      const waitingEnds = addMonths(toCalendarDate(input.coverageStart), waiting);
-      if (isBefore(toCalendarDate(input.invoiceDate), waitingEnds)) {
-        return base(0, 'waiting_period', `Innerhalb der Wartezeit von ${waiting} Monaten.`);
-      }
-    }
-  }
-
-  // 2. Schwellen-Staffel (no tiers ⇒ 100 % base).
+  // 1. Schwellen-Staffel (no tiers ⇒ 100 % base).
   let eligible = benefit.tiers ? applyTiers(chargedAmount, benefit.tiers) : chargedAmount;
   let cappedBy: CappedBy = benefit.tiers && eligible < chargedAmount ? 'tier' : null;
   const notes: string[] = [];
@@ -315,7 +302,7 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
       });
     } else {
       // Run the pipeline on non-blocked positions (waiting period already handled).
-      const catResult = computeCategory(category, eligibleCharged, benefit, input, true);
+      const catResult = computeCategory(category, eligibleCharged, benefit, input);
       byCategory.push({ ...catResult, chargedAmount: totalCharged });
 
       // Distribute eligible amount proportionally to non-blocked positions.
