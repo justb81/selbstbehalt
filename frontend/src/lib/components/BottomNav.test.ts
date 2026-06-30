@@ -2,7 +2,6 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 
-// Mutable mock of SvelteKit's $app/state page store; tests set `nav.pathname`.
 const nav = vi.hoisted(() => ({ pathname: '/' }));
 vi.mock('$app/state', () => ({
   page: {
@@ -11,43 +10,35 @@ vi.mock('$app/state', () => ({
     },
   },
 }));
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/navigation', () => ({ afterNavigate: vi.fn(), goto: vi.fn() }));
 
-import Nav from './Nav.svelte';
+import BottomNav from './BottomNav.svelte';
 
-describe('Nav', () => {
-  it('renders primary nav links and the overflow trigger', () => {
+describe('BottomNav', () => {
+  it('renders primary tab links and the scan FAB', () => {
     nav.pathname = '/';
-    render(Nav);
+    render(BottomNav);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Rechnungen' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Auswertung' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Erfassen/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Rechnung erfassen/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Mehr/i })).toBeInTheDocument();
   });
 
-  it('marks the home link active only on the exact root path', () => {
+  it('marks the home tab active only on the root path', () => {
     nav.pathname = '/';
-    render(Nav);
+    render(BottomNav);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Rechnungen' })).not.toHaveAttribute('aria-current');
   });
 
-  it('marks a primary section active for its sub-routes', () => {
-    nav.pathname = '/invoices/new';
-    render(Nav);
+  it('marks Rechnungen active for invoice sub-routes', () => {
+    nav.pathname = '/invoices/scan';
+    render(BottomNav);
     expect(screen.getByRole('link', { name: 'Rechnungen' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
-  });
-
-  it('does not mark a primary link active when an overflow section is active', () => {
-    nav.pathname = '/contracts/new';
-    render(Nav);
-    expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('link', { name: 'Rechnungen' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('link', { name: 'Auswertung' })).not.toHaveAttribute('aria-current');
   });
 });
