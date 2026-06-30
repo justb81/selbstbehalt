@@ -632,7 +632,11 @@
                   </button>
                 </div>
               </div>
-              <BRETracker insuredPerson={ip} />
+              <BRETracker
+                insuredPerson={ip}
+                compact={true}
+                href={resolve('/insured/[id]', { id: ip.id })}
+              />
             </CardContent>
           </Card>
         {/each}

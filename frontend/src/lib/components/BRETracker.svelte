@@ -2,6 +2,7 @@
 <!--
   BRETracker (docs/design.md §6.2, issue #21): shows the BRE ladder progress for
   one insured person — current streak, projected refund and the next milestone.
+  In compact mode an optional href turns the card into a navigation link.
 -->
 <script lang="ts">
   import {
@@ -17,9 +18,11 @@
   let {
     insuredPerson,
     compact = false,
+    href = undefined,
   }: {
     insuredPerson: InsuredPerson;
     compact?: boolean;
+    href?: string;
   } = $props();
 
   const bre = $derived(insuredPerson.bre_structure);
@@ -34,14 +37,17 @@
   });
 
   const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
+
+  const cardClass = $derived(
+    cn(
+      'flex flex-col border border-border rounded-xl bg-card text-card-foreground',
+      compact ? 'gap-1 px-3 py-2' : 'gap-2 p-3',
+      href && compact ? 'hover:border-primary transition-colors no-underline text-foreground' : '',
+    ),
+  );
 </script>
 
-<div
-  class={cn(
-    'flex flex-col border border-border rounded-xl bg-card text-card-foreground',
-    compact ? 'gap-1 px-3 py-2' : 'gap-2 p-3',
-  )}
->
+{#snippet inner()}
   <div class="flex justify-between items-center gap-2 flex-wrap">
     <span class="font-semibold text-sm text-foreground">{label}</span>
     {#if !compact}
@@ -97,4 +103,15 @@
   {:else}
     <p class="m-0 text-sm text-muted-foreground italic">Keine BRE-Staffel konfiguriert.</p>
   {/if}
-</div>
+{/snippet}
+
+{#if href && compact}
+  <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- href is pre-resolved by caller -->
+  <a {href} class={cardClass}>
+    {@render inner()}
+  </a>
+{:else}
+  <div class={cardClass}>
+    {@render inner()}
+  </div>
+{/if}

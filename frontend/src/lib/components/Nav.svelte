@@ -19,6 +19,7 @@
   const overflowItems = [
     { href: '/persons', label: 'Personen' },
     { href: '/contracts', label: 'Verträge' },
+    { href: '/insured', label: 'Versicherte' },
     { href: '/settings', label: 'Einstellungen' },
   ] as const;
 
