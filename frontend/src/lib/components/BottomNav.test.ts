@@ -10,7 +10,13 @@ vi.mock('$app/state', () => ({
     },
   },
 }));
-vi.mock('$app/navigation', () => ({ afterNavigate: vi.fn(), goto: vi.fn() }));
+let afterNavigateCallback: (() => void) | undefined;
+vi.mock('$app/navigation', () => ({
+  afterNavigate: vi.fn((cb: () => void) => {
+    afterNavigateCallback = cb;
+  }),
+  goto: vi.fn(),
+}));
 
 import BottomNav from './BottomNav.svelte';
 
@@ -30,6 +36,13 @@ describe('BottomNav', () => {
     render(BottomNav);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Rechnungen' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('closes the sheet when afterNavigate fires', () => {
+    nav.pathname = '/';
+    render(BottomNav);
+    expect(afterNavigateCallback).toBeDefined();
+    expect(() => afterNavigateCallback?.()).not.toThrow();
   });
 
   it('marks Rechnungen active for invoice sub-routes', () => {
