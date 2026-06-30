@@ -7,7 +7,7 @@ test('dashboard renders and the primary navigation works', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'selbstbehalt' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Verträge' }).click();
-  await expect(page).toHaveURL(/\/contracts$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Verträge' })).toBeVisible();
+  await page.getByRole('link', { name: 'Rechnungen' }).first().click();
+  await expect(page).toHaveURL(/\/invoices$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Rechnungen' })).toBeVisible();
 });

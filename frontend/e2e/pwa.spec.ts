@@ -87,7 +87,7 @@ test('loads the app shell offline', async ({ page, context }) => {
   await page.reload({ waitUntil: 'load' });
 
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Verträge' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Rechnungen' })).toBeVisible();
 
   await context.setOffline(false);
 });
