@@ -12,8 +12,8 @@
  *
  * **Privacy by design:** only recognised text and structured metadata travel
  * through these helpers — never the image. The {@link InvoiceCreatePayload} this
- * builds carries no image; `ocr_raw` is included only when the user opts in
- * (docs/design.md §8.1/§8.2).
+ * builds carries no image; `ocr_raw` is saved by default on every scanned
+ * invoice and can be opted out via the UI (docs/design.md §8.1/§8.2).
  */
 import {
   invoiceCreatePayloadSchema,
@@ -157,7 +157,7 @@ export interface ReviewState {
   providerType: ProviderType;
   schedule: FeeScheduleId;
   positions: ReviewPosition[];
-  /** Raw OCR text to persist for later auditing — only when the user opts in. */
+  /** Raw OCR text to persist for later re-parsing and auditing (saved by default). */
   ocrRaw?: string | null;
 }
 
