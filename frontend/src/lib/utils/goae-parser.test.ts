@@ -435,6 +435,80 @@ describe('parsePositionLine / extractPositions', () => {
     });
   });
 
+  it('never merges a long boilerplate run even when a real position eventually follows', () => {
+    // A page footer plus the next page's repeated letterhead/column headers
+    // sits between page 1's last item and page 2's first item — far longer
+    // than any genuine wrapped Leistungslegende, so must stay unmerged even
+    // though a standalone line (the next Ziffer) does eventually arrive.
+    const text = [
+      '420 Ultraschalluntersuchung von bis zu drei 2,30 10,72 €',
+      'weiteren Organen, je Organe',
+      'Bitte wenden!',
+      'eP',
+      'Privatärztliche Verrechnungsstelle IK-Nummer: 2208 100 11 apoBank Düsseldorf',
+      'Baden-Württemberg eG Ste IBAN: DE45 3006 0601 0001 6832 68',
+      'Anhang: 1',
+      'PVS BW',
+      '999 Simulierte Position auf Seite 2 2,30 5,00 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['420', '999']);
+    expect(positions[0]?.ocrDescription).toBe('Ultraschalluntersuchung von bis zu drei');
+  });
+
+  it('applies a standalone Leistungsdatum line forward to the following positions', () => {
+    // Regression test for the real PVS invoice: "06.03.2026" prints on its
+    // own line before the block of positions it covers (Sammelrechnung
+    // convention), rather than as a per-line prefix.
+    const text = [
+      'Datum Zeit',
+      'GOÄ-Ziffer Leistungsbeschreibung Faktor',
+      'Betrag €',
+      'Anz.',
+      '06.03.2026',
+      'Beratung, auch mittels Fernsprecher 2,30 10,72 €',
+      '800 Eingeh. neurologische Untersuchung 2,30 26,14 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['', '800']);
+    expect(positions[0]?.treatmentDate).toBe('2026-03-06');
+    expect(positions[1]?.treatmentDate).toBe('2026-03-06');
+  });
+
+  it('a later standalone date line supersedes an earlier one', () => {
+    const text = [
+      '06.03.2026',
+      '800 Eingeh. neurologische Untersuchung 2,30 26,14 €',
+      '07.03.2026',
+      '831 Vegetative Funktionsdiagnostik 2,30 10,72 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions[0]?.treatmentDate).toBe('2026-03-06');
+    expect(positions[1]?.treatmentDate).toBe('2026-03-07');
+  });
+
+  it('a standalone date line resets pending continuations even when short', () => {
+    const text = [
+      '5030 Ob.-, Unt.arm, Ellenb., Ober-/Untersch, 1,80 37,77 €',
+      'Kniegel, Hand/Fuß, Schulter, Schlüsselb',
+      '06.03.2026',
+      '5298 Zuschlag bei digitaler Radiographie 1,00 5,25 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['5030', '5298']);
+    expect(positions[0]?.ocrDescription).toBe('Ob.-, Unt.arm, Ellenb., Ober-/Untersch,');
+    expect(positions[1]?.treatmentDate).toBe('2026-03-06');
+  });
+
+  it('an inline date prefix on a position line is not overridden by an earlier standalone date', () => {
+    const text = [
+      '06.03.2026',
+      '07.05.26 800 Eingeh. neurologische Untersuchung 2,30 26,14 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions[0]?.treatmentDate).toBe('2026-05-07');
+  });
+
   it('parses a realistic GOÄ/GOZ dental invoice with mixed prefixes and column order', () => {
     const text = [
       '25.01.24 OK 6050 Starke Einengung der Stützzonen. 3,5000 1 59,05',

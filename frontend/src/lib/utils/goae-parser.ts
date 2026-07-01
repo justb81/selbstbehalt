@@ -352,6 +352,14 @@ export function extractInvoiceFields(text: string): {
 const DATE_PREFIX_RE = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+/;
 
 /**
+ * A line that consists solely of a date — some invoices (Sammelrechnungen)
+ * print the Leistungsdatum once, on its own line, before the block of
+ * positions it applies to, rather than as a per-line prefix. Groups: day ·
+ * month · year.
+ */
+const BARE_DATE_RE = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*$/;
+
+/**
  * A Ziffer, preceded by an optional region tag (OK/UK for upper/lower jaw) and
  * an optional schedule-prefix letter. Group 1 captures the prefix letter
  * (Ä→GOÄ, Z→GOZ, A as OCR variant of Ä). Group 2 captures the billing number.
@@ -513,7 +521,11 @@ const BARE_NUMBER_RE = /^\s*\d[\d.,]*(?:\s+\d[\d.,]*)*\s*(?:[€$]|EUR)?\s*$/i;
 function joinContinuationLines(lines: string[]): string[] {
   const result: string[] = [];
   for (const line of lines) {
-    if (BARE_NUMBER_RE.test(line) && result.length > 0) {
+    // A bare date (e.g. a Sammelrechnung's Leistungsdatum on its own line)
+    // is also just digits and dots, so it would otherwise match
+    // BARE_NUMBER_RE and get fused onto the preceding line as if it were a
+    // wrapped amount — excluded so it survives as its own line.
+    if (BARE_NUMBER_RE.test(line) && !BARE_DATE_RE.test(line) && result.length > 0) {
       result[result.length - 1] += ' ' + line.trim();
     } else {
       result.push(line);
@@ -533,6 +545,14 @@ function standsAlone(line: string): boolean {
 }
 
 /**
+ * Upper bound on how many consecutive lines a single merge may absorb.
+ * Every genuine wrapped Leistungslegende observed in practice is 1–2 lines;
+ * a page footer followed by the next page's letterhead/column headers is
+ * far longer, so a run past this length is boilerplate, not a continuation.
+ */
+const MAX_PENDING_CONTINUATION_LINES = 3;
+
+/**
  * Merges wrapped Leistungslegende lines into the position above them.
  * Printers wrap a long description across several rows, printing the Ziffer
  * and amounts only on the first row: the following row(s) carry no Ziffer
@@ -540,9 +560,13 @@ function standsAlone(line: string): boolean {
  * otherwise vanish. A run of such lines is spliced into the *previous*
  * standalone line's tokens, right before its own trailing numeric run (so
  * the amount stays last), but only once a *later* standalone line proves the
- * run sat between two real position lines — a run trailing the last position
- * on a page (footer text, "Bitte wenden!", IBAN…) is left unmerged, same as
- * today, rather than risking boilerplate glued onto that position.
+ * run sat between two real position lines, and only up to
+ * {@link MAX_PENDING_CONTINUATION_LINES} — a run trailing the last position
+ * on a page (footer text, "Bitte wenden!", IBAN…, the next page's repeated
+ * letterhead) is left unmerged, same as today, rather than risking
+ * boilerplate glued onto that position. A standalone date line
+ * ({@link BARE_DATE_RE}) is always its own boundary — a Sammelrechnung's
+ * per-block date header must never be bridged into an unrelated merge.
  */
 function joinDescriptionContinuations(lines: string[]): string[] {
   const result: string[] = [];
@@ -550,16 +574,21 @@ function joinDescriptionContinuations(lines: string[]): string[] {
 
   for (const raw of lines) {
     const line = raw.trim();
-    if (standsAlone(line) || result.length === 0) {
-      if (pending.length > 0) {
+    const isDateBoundary = BARE_DATE_RE.test(line);
+    if (isDateBoundary || standsAlone(line) || result.length === 0) {
+      if (
+        !isDateBoundary &&
+        pending.length > 0 &&
+        pending.length <= MAX_PENDING_CONTINUATION_LINES
+      ) {
         const prevIdx = result.length - 1;
         const prevTokens = result[prevIdx]!.split(/\s+/).filter(Boolean);
         const idx = trailingNumericRunStart(prevTokens);
         result[prevIdx] = [...prevTokens.slice(0, idx), ...pending, ...prevTokens.slice(idx)].join(
           ' ',
         );
-        pending = [];
       }
+      pending = [];
       result.push(line);
     } else {
       pending.push(line);
@@ -570,13 +599,25 @@ function joinDescriptionContinuations(lines: string[]): string[] {
   return result;
 }
 
-/** Extracts every position line from invoice text. */
+/**
+ * Extracts every position line from invoice text. A standalone date line
+ * (see {@link BARE_DATE_RE} — a Sammelrechnung's Leistungsdatum printed once
+ * before the block of positions it covers) is itself never a position, but
+ * is applied forward as `treatmentDate` to every following position that
+ * doesn't carry its own inline date, until a later date line supersedes it.
+ */
 export function extractPositions(text: string): RawPosition[] {
   const positions: RawPosition[] = [];
   const lines = joinDescriptionContinuations(joinContinuationLines(text.split(/\r?\n/)));
+  let currentDate: string | null = null;
   for (const line of lines) {
+    const bareDate = BARE_DATE_RE.exec(line.trim());
+    if (bareDate) {
+      currentDate = toIso(bareDate[1]!, bareDate[2]!, bareDate[3]!);
+      continue;
+    }
     const p = parsePositionLine(line);
-    if (p) positions.push(p);
+    if (p) positions.push(p.treatmentDate === null ? { ...p, treatmentDate: currentDate } : p);
   }
   return positions;
 }
