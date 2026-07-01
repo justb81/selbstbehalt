@@ -18,6 +18,16 @@
   import { Label } from '$lib/components/ui/label';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import {
+    AlertDialogRoot,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+    AlertDialogCancel,
+  } from '$lib/components/ui/alert-dialog';
 
   const personId = $derived(page.params.id as string);
 
@@ -173,29 +183,37 @@
           <div class="flex flex-wrap gap-2 items-center">
             <Button variant="outline" onclick={startEdit}>Bearbeiten</Button>
             <Button variant="outline" href={resolve('/contracts')}>Verträge anzeigen</Button>
-            {#if confirmDelete}
-              <span class="text-sm text-destructive">Wirklich löschen?</span>
-              <Button variant="destructive" disabled={deleting} onclick={() => void deletePerson()}>
-                {deleting ? 'Wird gelöscht …' : 'Ja, löschen'}
-              </Button>
-              <Button
-                variant="outline"
-                onclick={() => {
-                  confirmDelete = false;
-                }}>Abbrechen</Button
-              >
-            {:else}
-              <Button
-                variant="outline"
-                class="border-destructive text-destructive hover:bg-destructive/10"
-                onclick={() => {
-                  confirmDelete = true;
-                }}
-              >
-                Löschen
-              </Button>
-            {/if}
+            <Button
+              variant="outline"
+              class="border-destructive text-destructive hover:bg-destructive/10"
+              onclick={() => {
+                confirmDelete = true;
+              }}
+            >
+              Löschen
+            </Button>
           </div>
+
+          <AlertDialogRoot bind:open={confirmDelete}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Person löschen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Person <strong>{person.name}</strong> wirklich löschen?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onclick={() => void deletePerson()}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Wird gelöscht …' : 'Ja, löschen'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialogRoot>
         </CardContent>
       </Card>
     {/if}

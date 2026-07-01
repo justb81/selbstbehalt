@@ -28,6 +28,16 @@
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import {
+    AlertDialogRoot,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+    AlertDialogCancel,
+  } from '$lib/components/ui/alert-dialog';
   import { Separator } from '$lib/components/ui/separator';
   import { HoverCard, HoverCardContent, HoverCardTrigger } from '$lib/components/ui/hover-card';
   import {
@@ -129,7 +139,6 @@
       deleteError =
         e instanceof ApiError || e instanceof Error ? e.message : 'Löschen fehlgeschlagen.';
       deletingInvoice = false;
-      confirmDeleteInvoice = false;
     }
   }
 </script>
@@ -179,6 +188,38 @@
         </Button>
       </div>
     </div>
+
+    <!-- Delete confirmation -->
+    <AlertDialogRoot
+      bind:open={confirmDeleteInvoice}
+      onOpenChange={(open) => {
+        if (!open) deleteError = null;
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Rechnung löschen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Rechnung von <strong>{invoice.provider_name}</strong> wirklich löschen?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {#if deleteError}
+          <Alert variant="destructive">
+            <AlertDescription>{deleteError}</AlertDescription>
+          </Alert>
+        {/if}
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onclick={deleteInvoice}
+            disabled={deletingInvoice}
+          >
+            {deletingInvoice ? 'Wird gelöscht …' : 'Ja, löschen'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialogRoot>
 
     <!-- Summary cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -374,34 +415,6 @@
               </TableRow>
             </TableBody>
           </Table>
-        </div>
-      </div>
-    {/if}
-
-    <!-- Delete confirmation -->
-    {#if confirmDeleteInvoice}
-      <div
-        class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
-        role="alertdialog"
-      >
-        <p class="text-sm">
-          Rechnung von <strong>{invoice.provider_name}</strong> wirklich löschen?
-        </p>
-        {#if deleteError}
-          <Alert variant="destructive">
-            <AlertDescription>{deleteError}</AlertDescription>
-          </Alert>
-        {/if}
-        <div class="flex flex-wrap gap-2">
-          <Button variant="destructive" onclick={deleteInvoice} disabled={deletingInvoice}>
-            {deletingInvoice ? 'Wird gelöscht …' : 'Ja, löschen'}
-          </Button>
-          <Button
-            variant="outline"
-            onclick={() => {
-              confirmDeleteInvoice = false;
-            }}>Abbrechen</Button
-          >
         </div>
       </div>
     {/if}

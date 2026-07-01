@@ -35,6 +35,16 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import {
+    AlertDialogRoot,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+    AlertDialogCancel,
+  } from '$lib/components/ui/alert-dialog';
 
   const TYPE_LABELS: Record<ContractType, string> = {
     vollversicherung: 'Vollversicherung',
@@ -485,17 +495,17 @@
     }
   }
 
+  let insuredPendingRemoval = $state<InsuredPerson | null>(null);
+
   async function removeInsured(insuredId: string) {
-    if (
-      !confirm('Versicherte Person wirklich entfernen? Alle zugehörigen Rechnungen gehen verloren.')
-    )
-      return;
     try {
       await api.insured.remove(insuredId);
       insuredPersons = insuredPersons.filter((ip) => ip.id !== insuredId);
     } catch (e) {
       loadError =
         e instanceof ApiError || e instanceof Error ? e.message : 'Löschen fehlgeschlagen.';
+    } finally {
+      insuredPendingRemoval = null;
     }
   }
 
@@ -561,28 +571,52 @@
       <p class="text-sm text-muted-foreground">{contract.notes}</p>
     {/if}
 
-    {#if confirmDelete}
-      <div
-        class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
-        role="alertdialog"
-      >
-        <p class="text-sm leading-relaxed">
-          Vertrag <strong>{contract.insurer_name}</strong> wirklich löschen? Alle versicherten Personen
-          und deren Rechnungen werden unwiderruflich entfernt.
-        </p>
-        <div class="flex flex-wrap gap-2">
-          <Button variant="destructive" onclick={deleteContract} disabled={deletingContract}>
-            {deletingContract ? 'Wird gelöscht …' : 'Ja, löschen'}
-          </Button>
-          <Button
-            variant="outline"
-            onclick={() => {
-              confirmDelete = false;
-            }}>Abbrechen</Button
+    <AlertDialogRoot bind:open={confirmDelete}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Vertrag löschen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Vertrag <strong>{contract.insurer_name}</strong> wirklich löschen? Alle versicherten Personen
+            und deren Rechnungen werden unwiderruflich entfernt.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onclick={deleteContract}
+            disabled={deletingContract}
           >
-        </div>
-      </div>
-    {/if}
+            {deletingContract ? 'Wird gelöscht …' : 'Ja, löschen'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialogRoot>
+
+    <AlertDialogRoot
+      open={insuredPendingRemoval !== null}
+      onOpenChange={(open) => {
+        if (!open) insuredPendingRemoval = null;
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Versicherte Person entfernen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Versicherte Person wirklich entfernen? Alle zugehörigen Rechnungen gehen verloren.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onclick={() => insuredPendingRemoval && void removeInsured(insuredPendingRemoval.id)}
+          >
+            Ja, entfernen
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialogRoot>
 
     <!-- Insured persons -->
     <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -631,7 +665,9 @@
                     type="button"
                     class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none"
                     title="Entfernen"
-                    onclick={() => void removeInsured(ip.id)}
+                    onclick={() => {
+                      insuredPendingRemoval = ip;
+                    }}
                   >
                     ✕
                   </button>

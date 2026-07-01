@@ -11,7 +11,7 @@
 </script>
 
 <div
-  data-slot="dialog-header"
+  data-slot="alert-dialog-header"
   class={cn('flex flex-col gap-1.5 text-center sm:text-left', className)}
   {...restProps}
 >
