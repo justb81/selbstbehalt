@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0
+name: release-please
+
+# Maintains a standing "release PR" that accumulates the changelog and version
+# bump for all Conventional Commits landed on `main` since the last release.
+# Merging that PR is the only trigger for a release: release-please then tags
+# the merge commit `vX.Y.Z` and publishes a GitHub Release with the notes.
+# The tag push is what release.yml (image build + GHCR push + release assets)
+# listens for — this workflow never builds or pushes anything itself.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A PR (or commit) authored with the default GITHUB_TOKEN does not
+      # trigger other workflows (a GitHub Actions anti-recursion rule), so
+      # CI would never run on the release PR. Falls back to GITHUB_TOKEN if
+      # the optional RELEASE_PLEASE_TOKEN repo secret (a PAT/GitHub App
+      # token) isn't configured — the release PR still opens either way,
+      # just without CI status checks. See docs/release.md.
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
