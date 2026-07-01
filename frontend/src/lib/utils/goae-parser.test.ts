@@ -23,6 +23,7 @@ import {
   parseInvoice,
   parsePositionLine,
   validateInvoice,
+  validatePositions,
   type ParsedPosition,
   type RawPosition,
 } from './goae-parser';
@@ -769,6 +770,59 @@ describe('validateInvoice — ageLimit', () => {
 
   it('skips the check when the age is unknown', () => {
     expect(validateInvoice([pos('30', table)], table)).toHaveLength(0);
+  });
+});
+
+describe('validatePositions', () => {
+  const ex: Constraint = {
+    type: 'excludes',
+    ziffern: ['30'],
+    sourceText: 'Nr. 1 neben Nr. 30 nicht berechnungsfähig.',
+  };
+  const table = makeTable([entry('1', { constraints: [ex] }), entry('30')]);
+
+  it('rolls a whole-invoice violation into every position it involves', () => {
+    const positions = [pos('1', table), pos('30', table)];
+    const { positions: merged, violations } = validatePositions(
+      positions,
+      new Map([['GOÄ', table]]),
+      new Map([['GOÄ', buildIndex(table)]]),
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(merged[0]?.isValid).toBe(false);
+    expect(merged[0]?.flags.at(-1)).toMatchObject({ code: 'constraint_violation' });
+    expect(merged[1]?.isValid).toBe(false);
+  });
+
+  it('leaves per-position flags untouched when there is no violation', () => {
+    const positions = [pos('1', table)];
+    const { positions: merged, violations } = validatePositions(
+      positions,
+      new Map([['GOÄ', table]]),
+      new Map([['GOÄ', buildIndex(table)]]),
+    );
+
+    expect(violations).toHaveLength(0);
+    expect(merged[0]).toBe(positions[0]); // unchanged reference, not just unchanged value
+  });
+
+  it('does not cross-check positions from a different schedule', () => {
+    const gozTable = makeTable([entry('30')], [], 'GOZ');
+    const positions = [pos('1', table), pos('30', gozTable)];
+    const { violations } = validatePositions(
+      positions,
+      new Map([
+        ['GOÄ', table],
+        ['GOZ', gozTable],
+      ]),
+      new Map([
+        ['GOÄ', buildIndex(table)],
+        ['GOZ', buildIndex(gozTable)],
+      ]),
+    );
+
+    expect(violations).toHaveLength(0);
   });
 });
 

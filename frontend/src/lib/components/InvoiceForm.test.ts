@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$app/paths', () => ({
   resolve: (pattern: string, params?: Record<string, string>) => {
@@ -28,14 +28,25 @@ vi.mock('$lib/utils/goae-parser', () => ({
   lookupPosition: vi.fn(() => ({ isValid: true, flags: [], feeSchedule: 'GOÄ' })),
   normalizeZiffer: vi.fn((z: string) => z),
   parseInvoice: vi.fn(() => ({ positions: [], violations: [] })),
-  validateInvoice: vi.fn(() => []),
+  // Default: pass positions through unchanged, as if no whole-invoice
+  // violation applied — matches the real function's no-violation fast path.
+  validatePositions: vi.fn((positions: unknown[]) => ({ positions, violations: [] })),
 }));
 
 import InvoiceForm from './InvoiceForm.svelte';
 import type { FormPayload } from './InvoiceForm.svelte';
 import type { InvoiceWithPositions } from '@selbstbehalt/shared';
-import { buildIndex, lookupPosition, parseInvoice, validateInvoice } from '$lib/utils/goae-parser';
+import {
+  buildIndex,
+  lookupPosition,
+  parseInvoice,
+  validatePositions,
+} from '$lib/utils/goae-parser';
 import { loadFeeTable } from '$lib/data/fee-tables';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const INSURED_OPTIONS = [
   { id: 'ip-1', label: 'TestAG · Komfort', insuredPerson: {} as never },
@@ -45,6 +56,34 @@ const INSURED_OPTIONS = [
 // Rendered as "⚠ {message}" (a separate text node before the interpolation),
 // so an exact-string query wouldn't match — search by substring instead.
 const EXCLUDES_605_612_MESSAGE = /Die Ziffern 605 und 612 sind nicht nebeneinander/;
+const EXCLUDES_605_612_REASON =
+  'Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.';
+
+/** Mocks validatePositions to flag both given rows as mutually excluding, as
+ *  GOÄ 605/612 do — the shape auto-revalidation now persists via is_valid/flag_reason. */
+function mockExcludesViolation() {
+  vi.mocked(validatePositions).mockReturnValueOnce({
+    positions: [
+      {
+        isValid: false,
+        flags: [{ code: 'constraint_violation', reason: EXCLUDES_605_612_REASON }],
+        feeSchedule: 'GOÄ',
+      },
+      {
+        isValid: false,
+        flags: [{ code: 'constraint_violation', reason: EXCLUDES_605_612_REASON }],
+        feeSchedule: 'GOÄ',
+      },
+    ],
+    violations: [],
+  } as never);
+}
+
+/** Real timers only — waits past the 400ms auto-revalidation debounce so a
+ *  negative assertion (e.g. "lookupPosition was NOT called") is meaningful. */
+async function waitPastDebounce() {
+  await new Promise((r) => setTimeout(r, 500));
+}
 
 const SAMPLE_INVOICE_OCR_TEXT = 'Praxis Dr. med. Mustermann\n1  Beratung  2,3  10.73';
 
@@ -80,19 +119,21 @@ const SAMPLE_INVOICE: InvoiceWithPositions = {
   ],
 };
 
+/** Two positions (GOÄ 605 + 612) that mutually exclude each other. */
+const EXCLUDES_INVOICE: InvoiceWithPositions = {
+  ...SAMPLE_INVOICE,
+  positions: [
+    { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-1', goae_number: '605' },
+    { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-2', goae_number: '612' },
+  ],
+};
+
 describe('InvoiceForm — create mode', () => {
   it('renders the OCR scan button', () => {
     render(InvoiceForm, {
       props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave: vi.fn() },
     });
     expect(screen.getByText('Rechnung scannen / hochladen')).toBeInTheDocument();
-  });
-
-  it('renders the "Positionen prüfen" button, disabled when there are no positions', () => {
-    render(InvoiceForm, {
-      props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave: vi.fn() },
-    });
-    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeDisabled();
   });
 
   it('shows the "Rechnung speichern" submit label', () => {
@@ -218,7 +259,7 @@ describe('InvoiceForm — create mode', () => {
 });
 
 describe('InvoiceForm — edit mode', () => {
-  it('shows "Positionen prüfen" button', () => {
+  it('automatically revalidates positions after mount, without needing a button', async () => {
     render(InvoiceForm, {
       props: {
         mode: 'edit',
@@ -227,7 +268,8 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
-    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeInTheDocument();
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('button', { name: 'Positionen prüfen' })).not.toBeInTheDocument();
   });
 
   it('does not render the OCR scan button', () => {
@@ -303,7 +345,7 @@ describe('InvoiceForm — edit mode', () => {
     expect(payload.positions[0]!.quantity).toBe(2);
   });
 
-  it('calls lookupPosition when "Positionen prüfen" is clicked', async () => {
+  it('re-validates again when the Ziffer of a position changes', async () => {
     const user = userEvent.setup();
     render(InvoiceForm, {
       props: {
@@ -313,39 +355,65 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(lookupPosition).mockClear();
 
-    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
+    const zifferInput = screen.getByRole('textbox', { name: 'Ziffer' });
+    await user.clear(zifferInput);
+    await user.type(zifferInput, '5');
 
     await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
   });
 
-  it('shows a whole-invoice constraint violation after "Positionen prüfen" (e.g. GOÄ 605+612)', async () => {
-    vi.mocked(validateInvoice).mockReturnValueOnce([
-      {
-        type: 'excludes',
-        message: 'Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.',
-        sourceText: 'Neben der Leistung nach Nummer 612 … nicht berechnungsfähig.',
-        ziffern: ['605', '612'],
-        positionIndices: [0, 1],
-      },
-    ]);
+  it('re-validates again when Anzahl changes (feeds the maxAmount/Höchstwert check)', async () => {
     const user = userEvent.setup();
     render(InvoiceForm, {
       props: {
         mode: 'edit',
-        initialData: {
-          ...SAMPLE_INVOICE,
-          positions: [
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-1', goae_number: '605' },
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-2', goae_number: '612' },
-          ],
-        },
+        initialData: SAMPLE_INVOICE,
         insuredOptions: INSURED_OPTIONS,
         onSave: vi.fn(),
       },
     });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(lookupPosition).mockClear();
 
-    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
+    const anzahlInput = screen.getByRole('spinbutton', { name: 'Anz.' });
+    await user.clear(anzahlInput);
+    await user.type(anzahlInput, '3');
+
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+  });
+
+  it('does not re-validate when an unrelated field like Beschreibung changes', async () => {
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(lookupPosition).mockClear();
+
+    await user.type(screen.getByRole('textbox', { name: 'Beschreibung' }), ' zusätzlich');
+
+    await waitPastDebounce();
+    expect(lookupPosition).not.toHaveBeenCalled();
+  });
+
+  it('shows a whole-invoice constraint violation inline (e.g. GOÄ 605+612)', async () => {
+    mockExcludesViolation();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: EXCLUDES_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
 
     // The violation is shown inline on every position it involves — here both
     // rows, since 605 and 612 are mutually excluding each other.
@@ -353,32 +421,15 @@ describe('InvoiceForm — edit mode', () => {
   });
 
   it('highlights a position card that has a whole-invoice constraint violation', async () => {
-    vi.mocked(validateInvoice).mockReturnValueOnce([
-      {
-        type: 'excludes',
-        message: 'Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.',
-        sourceText: 'Neben der Leistung nach Nummer 612 … nicht berechnungsfähig.',
-        ziffern: ['605', '612'],
-        positionIndices: [0, 1],
-      },
-    ]);
-    const user = userEvent.setup();
+    mockExcludesViolation();
     render(InvoiceForm, {
       props: {
         mode: 'edit',
-        initialData: {
-          ...SAMPLE_INVOICE,
-          positions: [
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-1', goae_number: '605' },
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-2', goae_number: '612' },
-          ],
-        },
+        initialData: EXCLUDES_INVOICE,
         insuredOptions: INSURED_OPTIONS,
         onSave: vi.fn(),
       },
     });
-
-    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
 
     await waitFor(() => {
       const removeButtons = screen.getAllByRole('button', { name: /entfernen/i });
@@ -388,42 +439,53 @@ describe('InvoiceForm — edit mode', () => {
     });
   });
 
-  it('clears a shown violation when a position is removed (indices would be stale)', async () => {
-    vi.mocked(validateInvoice).mockReturnValueOnce([
-      {
-        type: 'excludes',
-        message: 'Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.',
-        sourceText: 'Neben der Leistung nach Nummer 612 … nicht berechnungsfähig.',
-        ziffern: ['605', '612'],
-        positionIndices: [0, 1],
+  it('persists a whole-invoice violation via is_valid/flag_reason on save', async () => {
+    mockExcludesViolation();
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: EXCLUDES_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave,
       },
-    ]);
+    });
+    await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.is_valid).toBe(false);
+    expect(payload.positions[0]!.flag_reason).toContain(EXCLUDES_605_612_REASON);
+    expect(payload.positions[1]!.is_valid).toBe(false);
+    expect(payload.positions[1]!.flag_reason).toContain(EXCLUDES_605_612_REASON);
+  });
+
+  it('clears a shown violation once removing a position triggers a fresh revalidation', async () => {
+    mockExcludesViolation();
     const user = userEvent.setup();
     render(InvoiceForm, {
       props: {
         mode: 'edit',
-        initialData: {
-          ...SAMPLE_INVOICE,
-          positions: [
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-1', goae_number: '605' },
-            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-2', goae_number: '612' },
-          ],
-        },
+        initialData: EXCLUDES_INVOICE,
         insuredOptions: INSURED_OPTIONS,
         onSave: vi.fn(),
       },
     });
-
-    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
     await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
 
     await user.click(screen.getByRole('button', { name: 'Position 1 entfernen' }));
 
-    expect(screen.queryByText(EXCLUDES_605_612_MESSAGE)).not.toBeInTheDocument();
+    // Removing a position changes the position set, so the debounced
+    // auto-revalidation effect fires again — validatePositions (back to its
+    // no-violation default mock) clears the now-stale flag.
+    await waitFor(() =>
+      expect(screen.queryByText(EXCLUDES_605_612_MESSAGE)).not.toBeInTheDocument(),
+    );
   });
 
   it('offers "Auslagenersatz" in the Kat.-dropdown and skips lookupPosition for it', async () => {
-    vi.mocked(lookupPosition).mockClear();
     const user = userEvent.setup();
     render(InvoiceForm, {
       props: {
@@ -433,6 +495,9 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
+    // Let the initial mount's own auto-revalidation (still GOÄ) settle first.
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(lookupPosition).mockClear();
 
     // The Kategorie field is a shadcn (bits-ui) Select: a trigger button that opens a
     // floating-ui listbox. jsdom always reports zero-size geometry, so floating-ui never
@@ -453,26 +518,10 @@ describe('InvoiceForm — edit mode', () => {
     // scroll-lock (pointer-events: none) to lift before interacting with anything else.
     await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
 
-    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
-    // Wait for revalidation to fully complete (button label reverts) before asserting.
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeInTheDocument(),
-    );
-
-    // Auslagenersatz positions have no Ziffer to validate against a fee table.
+    // Wait past the debounce window: the auto-revalidation the category change
+    // triggers must skip lookupPosition entirely for an Auslagenersatz row.
+    await waitPastDebounce();
     expect(lookupPosition).not.toHaveBeenCalled();
-  });
-
-  it('disables "Positionen prüfen" when there are no positions', () => {
-    render(InvoiceForm, {
-      props: {
-        mode: 'edit',
-        initialData: { ...SAMPLE_INVOICE, positions: [] },
-        insuredOptions: INSURED_OPTIONS,
-        onSave: vi.fn(),
-      },
-    });
-    expect(screen.getByRole('button', { name: 'Positionen prüfen' })).toBeDisabled();
   });
 
   it('shows "Positionen neu einlesen" button when ocr_raw is set and status is neu', () => {
@@ -527,6 +576,10 @@ describe('InvoiceForm — edit mode', () => {
         onSave: vi.fn(),
       },
     });
+    // Let the initial mount's own auto-revalidation (which also calls
+    // buildIndex) settle first, so the assertion below is caused by the click.
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(buildIndex).mockClear();
 
     await user.click(screen.getByTitle('Gebührenverzeichnis-Eintrag anzeigen'));
 
