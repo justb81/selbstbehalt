@@ -27,6 +27,7 @@ import {
   type PrecacheEntry,
   type StrategyDeps,
 } from './lib/pwa/strategies.js';
+import { SHARE_CACHE_NAME, SHARE_TARGET_PATH, storeSharedFile } from './lib/pwa/share-target.js';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -90,6 +91,15 @@ sw.addEventListener('activate', (event) => {
 sw.addEventListener('fetch', (event) => {
   const { request } = event;
 
+  // Web Share Target (issue #158): the OS share sheet POSTs the shared PDF
+  // here. This is a navigation too, so it must be handled before the
+  // `navigate` branch below, which would otherwise ignore the POST body and
+  // just serve the cached shell.
+  if (request.method === 'POST' && new URL(request.url).pathname === SHARE_TARGET_PATH) {
+    event.respondWith(handleShareTarget(request));
+    return;
+  }
+
   // Navigations: serve the cached app shell so the installed PWA boots instantly
   // offline; the client router + Network-First API take over from there.
   if (request.mode === 'navigate') {
@@ -125,6 +135,20 @@ sw.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(request, deps));
   }
 });
+
+/**
+ * Stores the shared PDF and redirects to the pickup route. Never throws back
+ * to the browser — a broken share must still land the user on a usable page.
+ */
+async function handleShareTarget(request: Request): Promise<Response> {
+  try {
+    const cache = await caches.open(SHARE_CACHE_NAME);
+    const id = await storeSharedFile(request, cache);
+    return Response.redirect(`/invoices/new?share=${id}`, 303);
+  } catch {
+    return Response.redirect('/invoices/new', 303);
+  }
+}
 
 async function handleNavigation(request: Request): Promise<Response> {
   const cache = await caches.open(SHELL_CACHE);

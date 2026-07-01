@@ -6,11 +6,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import type { InsuredPerson } from '@selbstbehalt/shared';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
+  import { consumeSharedFile, SHARE_CACHE_NAME } from '$lib/pwa/share-target';
   import { Button } from '$lib/components/ui/button';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
@@ -44,6 +46,23 @@
   }
 
   onMount(loadPersons);
+
+  // Web Share Target (issue #158): the service worker redirects a shared PDF
+  // here as `?share=<id>`; pick it up from the same Cache Storage bucket it
+  // was stored in, then strip the query param so a reload doesn't retry an
+  // already-consumed id.
+  let sharedFile = $state<File | null>(null);
+
+  onMount(async () => {
+    const shareId = page.url.searchParams.get('share');
+    if (!shareId) return;
+    try {
+      const cache = await caches.open(SHARE_CACHE_NAME);
+      sharedFile = await consumeSharedFile(shareId, cache);
+    } finally {
+      await goto(resolve('/invoices/new'), { replaceState: true });
+    }
+  });
 
   let saving = $state(false);
   let formError = $state<string | null>(null);
@@ -91,7 +110,14 @@
       <Button class="mt-4" href={resolve('/contracts/new')}>Vertrag anlegen</Button>
     </div>
   {:else}
-    <InvoiceForm mode="create" {insuredOptions} {saving} {formError} onSave={handleSave}>
+    <InvoiceForm
+      mode="create"
+      {insuredOptions}
+      {saving}
+      {formError}
+      {sharedFile}
+      onSave={handleSave}
+    >
       {#snippet cancel()}
         <Button variant="outline" href={resolve('/invoices')}>Abbrechen</Button>
       {/snippet}

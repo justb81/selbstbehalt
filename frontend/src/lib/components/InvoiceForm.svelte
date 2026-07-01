@@ -117,6 +117,7 @@
     disabled = false,
     saving = false,
     formError = null,
+    sharedFile = null,
     onSave,
   }: {
     mode: 'create' | 'edit';
@@ -127,6 +128,8 @@
     disabled?: boolean;
     saving?: boolean;
     formError?: string | null;
+    /** A file handed in from the PWA share target (issue #158); opens the scanner and scans it automatically. */
+    sharedFile?: File | null;
     onSave: (payload: FormPayload) => void;
   } = $props();
 
@@ -201,6 +204,17 @@
   let ocrSchedule = $state<FeeScheduleId>('GOÄ');
   // Saved by default — users can opt out before saving.
   let saveOcrRaw = $state(true);
+  // Own copy of `sharedFile` (issue #158): cleared once consumed so a later
+  // manual "Neu scannen / hochladen" opens a fresh scanner instead of
+  // re-auto-scanning the same shared PDF.
+  let autoFile = $state<File | null>(null);
+
+  $effect(() => {
+    if (sharedFile) {
+      autoFile = sharedFile;
+      showScanner = true;
+    }
+  });
 
   const hasScan = $derived(scanResult !== null);
   const lowConfidence = $derived(
@@ -211,6 +225,7 @@
   function onScanned(result: ScanResult): void {
     scanResult = result;
     showScanner = false;
+    autoFile = null;
     if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
     if (result.parsed.invoiceNumber) invoiceNumber = result.parsed.invoiceNumber;
     if (result.parsed.providerName) providerName = result.parsed.providerName;
@@ -608,7 +623,7 @@
         {/if}
       </div>
       {#if showScanner}
-        <OCRScanner bind:schedule={ocrSchedule} {onScanned} />
+        <OCRScanner bind:schedule={ocrSchedule} {onScanned} {autoFile} />
       {/if}
     </div>
 
