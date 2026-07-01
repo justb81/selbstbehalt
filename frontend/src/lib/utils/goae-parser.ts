@@ -98,7 +98,7 @@ export interface RawPosition {
 
 /** Why a single position was flagged during lookup / §5 validation. */
 export type PositionFlagCode =
-  'unknown_ziffer' | 'multiplier_exceeds_limit' | 'fixed_factor_mismatch';
+  'unknown_ziffer' | 'multiplier_exceeds_limit' | 'fixed_factor_mismatch' | 'constraint_violation';
 
 /** A per-position flag with a human-readable German reason. */
 export interface PositionFlag {
@@ -830,6 +830,62 @@ export function validateInvoice(
   return violations;
 }
 
+/**
+ * Rolls whole-invoice violations into each affected position's own
+ * `isValid`/`flags` — the single per-position channel that gets persisted
+ * (`is_valid`/`flag_reason`) and rendered, so a cross-position problem (e.g.
+ * an `excludes` pair) doesn't need a separate storage or display path.
+ */
+function applyConstraintViolations(
+  positions: ParsedPosition[],
+  violations: ConstraintViolation[],
+): ParsedPosition[] {
+  if (violations.length === 0) return positions;
+  const flagsByIndex: PositionFlag[][] = [];
+  for (const v of violations) {
+    for (const i of v.positionIndices) {
+      (flagsByIndex[i] ??= []).push({ code: 'constraint_violation', reason: v.message });
+    }
+  }
+  return positions.map((p, i) => {
+    const extra = flagsByIndex[i];
+    if (!extra) return p;
+    return { ...p, isValid: false, flags: [...p.flags, ...extra] };
+  });
+}
+
+/**
+ * Runs whole-invoice constraint validation across (possibly mixed-schedule)
+ * positions, grouping by {@link ParsedPosition.feeSchedule} since e.g. GOÄ
+ * rules never apply to GOZ positions, and merges the result back into the
+ * returned positions via {@link applyConstraintViolations}.
+ */
+export function validatePositions(
+  positions: ParsedPosition[],
+  tables: Map<FeeScheduleId, FeeScheduleTable>,
+  indexes: Map<FeeScheduleId, Map<string, FeeEntry>>,
+  context: ValidationContext = {},
+): { positions: ParsedPosition[]; violations: ConstraintViolation[] } {
+  const violations: ConstraintViolation[] = [];
+  for (const [scheduleId, table] of tables) {
+    const index = indexes.get(scheduleId);
+    if (!index) continue;
+    const schedIdxs: number[] = [];
+    const schedPos: ParsedPosition[] = [];
+    positions.forEach((p, i) => {
+      if (p.feeSchedule === scheduleId) {
+        schedIdxs.push(i);
+        schedPos.push(p);
+      }
+    }); // Array#forEach skips holes, so rows without a ParsedPosition are excluded.
+    if (schedPos.length === 0) continue;
+    for (const v of validateInvoice(schedPos, table, context, index)) {
+      violations.push({ ...v, positionIndices: v.positionIndices.map((i) => schedIdxs[i] ?? i) });
+    }
+  }
+  return { positions: applyConstraintViolations(positions, violations), violations };
+}
+
 // ---------------------------------------------------------------------------
 // Top-level entry point
 // ---------------------------------------------------------------------------
@@ -865,31 +921,22 @@ export function parseInvoice(
   const fields = extractInvoiceFields(text);
   const rawPositions = extractPositions(text);
 
-  const positions = rawPositions.map((raw) => {
+  const rawPositionsLookedUp = rawPositions.map((raw) => {
     const scheduleId = raw.detectedSchedule ?? primaryTable.feeSchedule;
     const { table, index } = tableBySchedule.get(scheduleId) ?? primaryEntry;
     return lookupPosition(raw, table, index);
   });
 
-  // Run constraint validation per schedule (GOÄ rules don't span GOZ positions).
-  const violations: ConstraintViolation[] = [];
-  for (const [scheduleId, { table, index }] of tableBySchedule) {
-    const schedIdxs: number[] = [];
-    const schedPos: ParsedPosition[] = [];
-    positions.forEach((p, i) => {
-      if (p.feeSchedule === scheduleId) {
-        schedIdxs.push(i);
-        schedPos.push(p);
-      }
-    });
-    if (schedPos.length === 0) continue;
-    for (const v of validateInvoice(schedPos, table, context, index)) {
-      violations.push({
-        ...v,
-        positionIndices: v.positionIndices.map((i) => schedIdxs[i] ?? i),
-      });
-    }
-  }
+  // Run constraint validation per schedule (GOÄ rules don't span GOZ positions)
+  // and merge violations into each affected position's isValid/flags.
+  const scheduleTables = new Map([...tableBySchedule].map(([id, v]) => [id, v.table]));
+  const scheduleIndexes = new Map([...tableBySchedule].map(([id, v]) => [id, v.index]));
+  const { positions, violations } = validatePositions(
+    rawPositionsLookedUp,
+    scheduleTables,
+    scheduleIndexes,
+    context,
+  );
 
   const totalAmount = roundCents(positions.reduce((sum, p) => sum + p.chargedAmount, 0));
 

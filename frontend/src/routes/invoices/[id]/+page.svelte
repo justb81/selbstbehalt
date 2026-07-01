@@ -289,7 +289,7 @@
                       {/if}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell class="max-w-xs whitespace-normal break-words">
                     <div class="flex flex-col gap-0.5">
                       <span>{pos.description ?? '—'}</span>
                       {#if pos.is_valid === false && pos.flag_reason}

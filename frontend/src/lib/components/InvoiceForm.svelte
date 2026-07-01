@@ -5,7 +5,8 @@
     create — OCR scanner, OCR opt-out checkbox (raw OCR saved by default)
     edit   — pre-filled from initialData; "Neu einlesen" button when ocr_raw is
              stored and status is 'neu'
-  "Positionen prüfen" is available in both modes whenever there are positions.
+  Positions are re-validated automatically (debounced) whenever Kategorie,
+  Ziffer, Faktor or Anzahl changes — see the `revalidationKey` effect below.
   Info-Icon next to Ziffer + Kat. opens a dialog with the fee schedule entry.
 -->
 <script lang="ts">
@@ -36,8 +37,7 @@
     lookupPosition,
     normalizeZiffer,
     parseInvoice,
-    validateInvoice,
-    type ConstraintViolation,
+    validatePositions,
     type ParsedPosition,
     type RawPosition,
   } from '$lib/utils/goae-parser';
@@ -190,8 +190,6 @@
 
   function removePosition(i: number) {
     positions = positions.filter((_, idx) => idx !== i);
-    // Row indices shifted — any prior violation's positionIndices are now stale.
-    invoiceViolations = [];
   }
 
   // ---------------------------------------------------------------------------
@@ -233,7 +231,6 @@
       flag_reason: p.flagReason,
       confidence: p.confidence,
     }));
-    invoiceViolations = result.parsed.violations;
     if (positions.length > 0) {
       totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
     }
@@ -249,24 +246,6 @@
 
   let revalidating = $state(false);
   let revalidateError = $state<string | null>(null);
-  /** Cross-position constraint violations (excludes/requires/…) from the last
-   *  scan, "Neu einlesen" or "Positionen prüfen" run. Empty until one of those
-   *  runs — is_valid/flag_reason follow the same "recompute on demand" model. */
-  let invoiceViolations = $state<ConstraintViolation[]>([]);
-
-  /** invoiceViolations grouped by the row index(es) each one involves, so the
-   *  affected position cards can be highlighted and cite the rule inline
-   *  (not just in the summary list above the position list). Indexed by row
-   *  (not a Map) — rows with no violation are simply left as a hole. */
-  const violationsByPosition = $derived.by(() => {
-    const byRow: ConstraintViolation[][] = [];
-    for (const violation of invoiceViolations) {
-      for (const idx of violation.positionIndices) {
-        (byRow[idx] ??= []).push(violation);
-      }
-    }
-    return byRow;
-  });
 
   function categoryToSchedule(cat: GoaeCategory | null): FeeScheduleId {
     if (cat === 'GOZ') return 'GOZ';
@@ -276,8 +255,9 @@
 
   // ---------------------------------------------------------------------------
   // Live recalculation (Faktor/Anzahl/Basis → Betrag → Rechnungsbetrag; Ziffer/
-  // Kategorie → Basis) — the "Positionen prüfen" button remains responsible for
-  // full re-validation (is_valid/flag_reason) against the fee tables.
+  // Kategorie → Basis) — the debounced auto-revalidation effect further below
+  // remains responsible for full re-validation (is_valid/flag_reason) against
+  // the fee tables.
   // ---------------------------------------------------------------------------
 
   function recalcTotal() {
@@ -324,11 +304,11 @@
       // Collect benefitCategory per position for eligible_amount computation
       // below, and the looked-up ParsedPosition (indexed by row) for the
       // whole-invoice constraint check that follows — Auslagenersatz rows have
-      // no Ziffer to check and are left as a hole (skipped by forEach below).
+      // no Ziffer to check and are left as a hole (skipped by validatePositions).
       const benefitCategories: (BenefitCategory | null)[] = [];
       const parsedByIndex: ParsedPosition[] = [];
 
-      positions = positions.map((pos, i) => {
+      positions.forEach((pos, i) => {
         // §10 GOÄ Auslagenersatz (Porto/Versand etc.) has no Ziffer/Steigerungsfaktor
         // to validate against a fee table — auto-detected (upgrade-only, a manual
         // 'Auslagenersatz' choice is never reverted) or already set by the user.
@@ -336,13 +316,8 @@
           pos.goae_category === 'Auslagenersatz' ||
           isAuslagenersatzDescription(pos.description)
         ) {
-          benefitCategories.push(null);
-          return {
-            ...pos,
-            goae_category: 'Auslagenersatz' as GoaeCategory,
-            is_valid: true,
-            flag_reason: null,
-          };
+          benefitCategories[i] = null;
+          return;
         }
         const schedule = categoryToSchedule(pos.goae_category);
         const table = tables.get(schedule)!;
@@ -357,8 +332,30 @@
           detectedSchedule: null,
         };
         const result = lookupPosition(raw, table, index);
-        benefitCategories.push(result.benefitCategory);
+        benefitCategories[i] = result.benefitCategory;
         parsedByIndex[i] = result;
+      });
+
+      // Whole-invoice constraint check (excludes/requires/componentOf/…), rolled
+      // into each affected ParsedPosition's isValid/flags by validatePositions —
+      // the same channel the §5 per-position checks below use, so a violation
+      // persists via is_valid/flag_reason without a separate storage path.
+      const { positions: validated } = validatePositions(parsedByIndex, tables, indexes);
+
+      positions = positions.map((pos, i) => {
+        if (
+          pos.goae_category === 'Auslagenersatz' ||
+          isAuslagenersatzDescription(pos.description)
+        ) {
+          return {
+            ...pos,
+            goae_category: 'Auslagenersatz' as GoaeCategory,
+            is_valid: true,
+            flag_reason: null,
+          };
+        }
+        const result = validated[i];
+        if (!result) return pos;
         return {
           ...pos,
           // Supplement description from fee table if currently empty.
@@ -369,29 +366,6 @@
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
         };
       });
-
-      // Whole-invoice constraint check (excludes/requires/componentOf/…), run
-      // per schedule since e.g. GOÄ rules don't apply across GOZ positions —
-      // mirrors parseInvoice()'s per-schedule grouping for OCR-scanned invoices.
-      const violations: ConstraintViolation[] = [];
-      for (const [schedule, table] of tables) {
-        const schedIdxs: number[] = [];
-        const schedPos: ParsedPosition[] = [];
-        parsedByIndex.forEach((p, rowIndex) => {
-          if (p.feeSchedule === schedule) {
-            schedIdxs.push(rowIndex);
-            schedPos.push(p);
-          }
-        }); // Array#forEach skips holes, so Auslagenersatz rows are naturally excluded.
-        if (schedPos.length === 0) continue;
-        for (const v of validateInvoice(schedPos, table, {}, indexes.get(schedule))) {
-          violations.push({
-            ...v,
-            positionIndices: v.positionIndices.map((i) => schedIdxs[i] ?? i),
-          });
-        }
-      }
-      invoiceViolations = violations;
 
       // Propagate treatment_date forward: positions without their own date
       // inherit from the nearest preceding position that has one.
@@ -433,6 +407,43 @@
     }
   }
 
+  /**
+   * Fields that feed `revalidatePositions()`'s lookups: Kategorie (which fee
+   * table/schedule applies), Ziffer (the lookup key), Faktor (checked against
+   * the §5 limit) and Anzahl (the maxFrequency/maxAmount sums scale with it),
+   * plus the insured person and Rechnungsdatum (eligible_amount depends on
+   * both). `null` when there are no positions. None of these fields are ever
+   * written by `revalidatePositions()` itself — it only writes
+   * description/base_amount/is_valid/flag_reason/eligible_amount (and
+   * treatment_date when empty) — so re-running it can't change this key and
+   * retrigger itself. Deliberately a memoized string (not e.g. `positions`
+   * itself or `positions.length` read directly in the effect below): each
+   * `revalidatePositions()` run reassigns `positions` to new array references
+   * several times even when every tracked field is unchanged, and `$effect`
+   * only skips re-running when the value it reads is unchanged — a derived
+   * string compares by value, a `$state` array reference never does.
+   */
+  const revalidationKey = $derived(
+    positions.length === 0
+      ? null
+      : positions
+          .map((p) => `${p.goae_category ?? ''}|${p.goae_number}|${p.multiplier}|${p.quantity}`)
+          .join(';') + `#${insuredPersonId}#${invoiceDate}`,
+  );
+
+  let revalidateTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Validation is a pure, in-memory lookup against already-loaded fee tables —
+  // fast enough to run on every relevant change instead of behind a button;
+  // debounced only to collapse a burst of keystrokes (e.g. typing a Faktor)
+  // into a single run.
+  $effect(() => {
+    if (revalidationKey === null) return;
+    clearTimeout(revalidateTimer);
+    revalidateTimer = setTimeout(() => void revalidatePositions(), 400);
+  });
+  onDestroy(() => clearTimeout(revalidateTimer));
+
   // ---------------------------------------------------------------------------
   // Re-parse positions from stored raw OCR (edit mode, status 'neu' only)
   // ---------------------------------------------------------------------------
@@ -472,7 +483,6 @@
         flag_reason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
         confidence: 1,
       }));
-      invoiceViolations = parsed.violations;
       if (positions.length > 0) {
         totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
       }
@@ -737,14 +747,9 @@
             {reparsing ? 'Wird eingelesen …' : 'Positionen neu einlesen'}
           </Button>
         {/if}
-        <Button
-          type="button"
-          variant="outline"
-          onclick={revalidatePositions}
-          disabled={revalidating || disabled || positions.length === 0}
-        >
-          {revalidating ? 'Wird geprüft …' : 'Positionen prüfen'}
-        </Button>
+        {#if revalidating}
+          <span class="text-xs text-muted-foreground">Wird geprüft …</span>
+        {/if}
         <Button type="button" variant="ghost" size="sm" onclick={addPosition} {disabled}>
           + Position hinzufügen
         </Button>
@@ -765,12 +770,7 @@
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card
-            class={cn(
-              (pos.is_valid === false || !!violationsByPosition[i]) &&
-                'bg-amber-50 dark:bg-amber-950/20',
-            )}
-          >
+          <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
             <CardHeader
               class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
@@ -860,11 +860,11 @@
               </div>
               <div class="space-y-1.5">
                 <Label for="pos-{i}-beschreibung">Beschreibung</Label>
-                <Input
+                <Textarea
                   id="pos-{i}-beschreibung"
-                  type="text"
                   bind:value={pos.description}
                   placeholder="optional"
+                  rows={2}
                   {disabled}
                 />
               </div>
@@ -940,11 +940,6 @@
                   ⚠ {pos.flag_reason}
                 </p>
               {/if}
-              {#each violationsByPosition[i] ?? [] as violation (violation.message)}
-                <p class="text-xs text-amber-600 dark:text-amber-500">
-                  ⚠ {violation.message}
-                </p>
-              {/each}
               {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
                 <p class="text-xs italic text-muted-foreground">
                   Unsichere Erkennung – bitte prüfen.

@@ -232,7 +232,9 @@
                 {#each refundRows as row (row.id)}
                   <TableRow>
                     <TableCell class="font-mono text-sm">{row.goae_number}</TableCell>
-                    <TableCell class="text-sm">{row.description ?? '—'}</TableCell>
+                    <TableCell class="max-w-xs text-sm whitespace-normal break-words"
+                      >{row.description ?? '—'}</TableCell
+                    >
                     <TableCell class="text-right tabular-nums text-sm align-top">
                       {formatEur(row.charged_amount)}
                       {#if row.eligible_amount != null}
