@@ -71,6 +71,14 @@ const NEBEN_RE = new RegExp(
   String.raw`neben (?:den )?(?:Leistungen nach )?(?:der |den )?Nummern?\s+(${NUMLIST})`,
   'i',
 );
+// Directional exclusion, subject-first form: "Neben der/den Leistung(en) nach
+// (der|den) Nummer(n) S ist/sind die Leistung(en) nach (der|den) Nummer(n) O
+// … nicht berechnungsfähig." (S excludes O; this is the dominant phrasing in
+// the GOÄ source, far more common than the "… ist neben …" form above).
+const NEBEN_LEADING_RE = new RegExp(
+  String.raw`^\s*Neben (?:der |den )?Leistung(?:en)? nach (?:der |den )?Nummern?\s+(${NUMLIST})\s+(?:ist|sind)\s+(?:die |der )?Leistung(?:en)? nach (?:der |den )?Nummern?\s+(${NUMLIST})[^.]*?nicht berechnungsfähig`,
+  'i',
+);
 // "ist Bestandteil der Leistung(en) nach (den) Nummern O".
 const BESTANDTEIL_RE = new RegExp(
   String.raw`Bestandteil (?:der Leistungen? )?(?:nach (?:der |den )?Nummern? )(${NUMLIST})`,
@@ -124,9 +132,22 @@ export function parseRule(rawSentence) {
   }
 
   // Directional exclusion: "… ist neben den Nummern O … nicht berechnungsfähig."
+  // A sentence that *opens* with "Neben …" is always the subject-first form
+  // below instead (the fronted "neben" there introduces the subject, not an
+  // object list) — skip here so the same "neben" isn't double-counted as both.
+  const leadsWithNeben = /^\s*Neben\b/i.test(sentence);
   const neben = sentence.match(NEBEN_RE);
-  if (neben && !/nebeneinander/i.test(sentence)) {
+  if (neben && !leadsWithNeben && !/nebeneinander/i.test(sentence)) {
     const objects = parseNumbers(neben[1]);
+    if (objects.length) perSubject.push({ type: 'excludes', ziffern: objects, sourceText });
+  }
+
+  // Directional exclusion, subject-first form: "Neben der Leistung nach
+  // Nummer S sind die Leistungen nach den Nummern O … nicht berechnungsfähig."
+  const nebenLeading = sentence.match(NEBEN_LEADING_RE);
+  if (nebenLeading) {
+    subjects.push(...parseNumbers(nebenLeading[1]));
+    const objects = parseNumbers(nebenLeading[2]);
     if (objects.length) perSubject.push({ type: 'excludes', ziffern: objects, sourceText });
   }
 

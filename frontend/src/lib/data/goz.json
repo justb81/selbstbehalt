@@ -730,7 +730,24 @@
       "section": {
         "code": "C",
         "title": "Konservierende Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2050",
+            "2060",
+            "2070",
+            "2080",
+            "2090",
+            "2100",
+            "2110",
+            "2120",
+            "2130"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2200 bis 2220 sind die Leistungen nach den Nummern 2050 bis 2130 nicht berechnungsfähig."
+        }
+      ]
     },
     "2210": {
       "ziffer": "2210",
@@ -743,7 +760,24 @@
       "section": {
         "code": "C",
         "title": "Konservierende Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2050",
+            "2060",
+            "2070",
+            "2080",
+            "2090",
+            "2100",
+            "2110",
+            "2120",
+            "2130"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2200 bis 2220 sind die Leistungen nach den Nummern 2050 bis 2130 nicht berechnungsfähig."
+        }
+      ]
     },
     "2220": {
       "ziffer": "2220",
@@ -761,9 +795,15 @@
         {
           "type": "excludes",
           "ziffern": [
-            "2200",
-            "2210",
-            "2220"
+            "2050",
+            "2060",
+            "2070",
+            "2080",
+            "2090",
+            "2100",
+            "2110",
+            "2120",
+            "2130"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 2200 bis 2220 sind die Leistungen nach den Nummern 2050 bis 2130 nicht berechnungsfähig."
         }
@@ -1406,9 +1446,18 @@
         "code": "D",
         "title": "Chirurgische Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "3060",
+            "3310"
+          ],
+          "sourceText": "Neben der Leistung nach der Nummer 3300 sind die Leistungen nach den Nummern 3060 oder 3310 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach der Nummer 3300 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
-        "Neben der Leistung nach der Nummer 3300 sind die Leistungen nach den Nummern 3060 oder 3310 nicht berechnungsfähig."
+        "Die Leistung nach der Nummer 3300 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig."
       ]
     },
     "3310": {
@@ -1423,9 +1472,18 @@
         "code": "D",
         "title": "Chirurgische Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "3060",
+            "3300"
+          ],
+          "sourceText": "Neben der Leistung nach der Nummer 3310 sind die Leistungen nach den Nummern 3060 oder 3300 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
         "Die Leistung nach der Nummer 3310 ist höchstens zweimal je Kieferhälfte oder Frontzahnbereich berechnungsfähig.",
-        "Neben der Leistung nach der Nummer 3310 sind die Leistungen nach den Nummern 3060 oder 3300 nicht berechnungsfähig.",
         "Leistungstext"
       ]
     },
@@ -1622,7 +1680,21 @@
       "section": {
         "code": "E",
         "title": "Leistungen bei Erkrankungen der Mundschleimhaut und des Parodontiums"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "4050",
+            "4055",
+            "4060",
+            "4070",
+            "4075",
+            "4080"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 4090 und 4100 sind Leistungen nach den Nummern 4050 bis 4080 in der gleichen Sitzung nicht berechnungsfähig."
+        }
+      ]
     },
     "4100": {
       "ziffer": "4100",
@@ -1640,8 +1712,12 @@
         {
           "type": "excludes",
           "ziffern": [
-            "4090",
-            "4100"
+            "4050",
+            "4055",
+            "4060",
+            "4070",
+            "4075",
+            "4080"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 4090 und 4100 sind Leistungen nach den Nummern 4050 bis 4080 in der gleichen Sitzung nicht berechnungsfähig."
         }
@@ -2240,7 +2316,23 @@
       "section": {
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ]
     },
     "6040": {
       "ziffer": "6040",
@@ -2253,7 +2345,23 @@
       "section": {
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ]
     },
     "6050": {
       "ziffer": "6050",
@@ -2267,6 +2375,22 @@
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
         "Bei Maßnahmen von mittlerem Umfang nach der Nummer 6040 müssen mindestens drei, bei Maßnahmen von hohem Umfang mindestens vier der Kriterien nach den Buchstaben a bis e erfüllt sein:",
         "a) Zahl der bewegten Zahngruppen: zwei und mehr Zahngruppen,",
@@ -2287,7 +2411,23 @@
       "section": {
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ]
     },
     "6070": {
       "ziffer": "6070",
@@ -2300,7 +2440,23 @@
       "section": {
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
+        }
+      ]
     },
     "6080": {
       "ziffer": "6080",
@@ -2318,12 +2474,14 @@
         {
           "type": "excludes",
           "ziffern": [
-            "6030",
-            "6040",
-            "6050",
-            "6060",
-            "6070",
-            "6080"
+            "6190",
+            "6200",
+            "6210",
+            "6220",
+            "6230",
+            "6240",
+            "6250",
+            "6260"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 6030 bis 6080 sind Leistungen nach den Nummern 6190 bis 6260 nicht berechnungsfähig."
         }
@@ -2482,8 +2640,14 @@
         "code": "G",
         "title": "Kieferorthopädische Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach der Nummer 6190 ist die Leistung nach der Nummer 0010 in derselben Sitzung nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "10"
+          ],
+          "sourceText": "Neben der Leistung nach der Nummer 6190 ist die Leistung nach der Nummer 0010 in derselben Sitzung nicht berechnungsfähig."
+        }
       ]
     },
     "6200": {
@@ -2809,16 +2973,8 @@
         "code": "I",
         "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
       },
-      "constraints": [
-        {
-          "type": "excludes",
-          "ziffern": [
-            "8020",
-            "8030",
-            "8035"
-          ],
-          "sourceText": "Neben den Leistungen nach den Nummern 8020 bis 8035 sind die Material- und Laborkosten für die Artikulation des Ober- und Unterkiefermodells im (halb) individuellen Artikulator gesondert berechnungsfähig."
-        }
+      "notes": [
+        "Neben den Leistungen nach den Nummern 8020 bis 8035 sind die Material- und Laborkosten für die Artikulation des Ober- und Unterkiefermodells im (halb) individuellen Artikulator gesondert berechnungsfähig."
       ]
     },
     "8050": {
@@ -2859,16 +3015,8 @@
         "code": "I",
         "title": "Funktionsanalytische und funktionstherapeutische Leistungen"
       },
-      "constraints": [
-        {
-          "type": "excludes",
-          "ziffern": [
-            "8050",
-            "8060",
-            "8065"
-          ],
-          "sourceText": "Neben den Leistungen nach den Nummern 8050 bis 8065 sind Material- und Laborkosten für die Einstellung des (halb) individuellen Artikulators nach den gemessenen Werten gesondert berechnungsfähig."
-        }
+      "notes": [
+        "Neben den Leistungen nach den Nummern 8050 bis 8065 sind Material- und Laborkosten für die Einstellung des (halb) individuellen Artikulators nach den gemessenen Werten gesondert berechnungsfähig."
       ]
     },
     "8080": {
@@ -3133,8 +3281,14 @@
         "code": "J",
         "title": "Implantologische Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach der Nummer 9130 ist die Leistung nach der Nummer 9100 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "9100"
+          ],
+          "sourceText": "Neben der Leistung nach der Nummer 9130 ist die Leistung nach der Nummer 9100 nicht berechnungsfähig."
+        }
       ]
     },
     "9140": {

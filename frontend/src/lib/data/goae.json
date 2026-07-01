@@ -349,9 +349,17 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "4"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 15 ist die Leistung nach Nummer 4 im Behandlungsfall nicht berechnungsfähig."
+        }
+      ],
       "notes": [
         "Die Leistung nach Nummer 15 darf nur einmal im Kalenderjahr berechnet werden.",
-        "Neben der Leistung nach Nummer 15 ist die Leistung nach Nummer 4 im Behandlungsfall nicht berechnungsfähig.",
         "Zuschlag für außerhalb der Sprechstunde erbrachte Leistungen",
         "Der Zuschlag nach Buchstabe A ist neben den Zuschlägen nach den Buchstaben B, C und/oder D nicht berechnungsfähig.",
         "Der Zuschlag nach Buchstabe A ist für Krankenhausärzte nicht berechnungsfähig.",
@@ -379,8 +387,18 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 20 sind die Leistungen nach den Nummern 847, 862, 864, 871 und/oder 887 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "847",
+            "862",
+            "864",
+            "871",
+            "887"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 20 sind die Leistungen nach den Nummern 847, 862, 864, 871 und/oder 887 nicht berechnungsfähig."
+        }
       ]
     },
     "21": {
@@ -395,10 +413,22 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "4",
+            "22",
+            "34"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 21 sind die Leistungen nach den Nummern 1, 3, 4, 22 und 34 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
         "Die Leistung nach Nummer 21 darf nur berechnet werden, wenn die Beratung in der Sitzung mindestens eine halbe Stunde dauert.",
-        "Die Leistung nach Nummer 21 ist innerhalb eines halben Jahres nach Beginn des Beratungsfalls nicht mehr als viermal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 21 sind die Leistungen nach den Nummern 1, 3, 4, 22 und 34 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 21 ist innerhalb eines halben Jahres nach Beginn des Beratungsfalls nicht mehr als viermal berechnungsfähig."
       ]
     },
     "22": {
@@ -435,10 +465,17 @@
             "887"
           ],
           "sourceText": "Die Leistungen nach den Nummern 1, 3, 22, 30 und/oder 34 sind neben den Leistungen nach den Nummern 804 bis 812, 817, 835, 849, 861 bis 864, 870, 871, 886 sowie 887 nicht berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "21",
+            "34"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 22 sind die Leistungen nach Nummer 1, 3, 21 oder 34 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 22 sind die Leistungen nach Nummer 1, 3, 21 oder 34 nicht berechnungsfähig."
       ]
     },
     "23": {
@@ -453,8 +490,18 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 23 sind die Leistungen nach den Nummern 1, 3, 5, 7 und/oder 3550 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "3550"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 23 sind die Leistungen nach den Nummern 1, 3, 5, 7 und/oder 3550 nicht berechnungsfähig."
+        }
       ]
     },
     "24": {
@@ -469,8 +516,17 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 24 sind die Leistungen nach den Nummern 1, 3, 5 und/oder 7 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "5",
+            "7"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 24 sind die Leistungen nach den Nummern 1, 3, 5 und/oder 7 nicht berechnungsfähig."
+        }
       ]
     },
     "25": {
@@ -485,8 +541,20 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 25 sind die Leistungen nach den Nummern 1, 3, 4, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 25 sind die Leistungen nach den Nummern 1, 3, 4, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+        }
       ]
     },
     "26": {
@@ -501,9 +569,23 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 26 sind die Leistungen nach den Nummern 1, 3, 4, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach Nummer 26 ist ab dem vollendeten 2. Lebensjahr je Kalenderjahr höchstens einmal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 26 sind die Leistungen nach den Nummern 1, 3, 4, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 26 ist ab dem vollendeten 2. Lebensjahr je Kalenderjahr höchstens einmal berechnungsfähig."
       ]
     },
     "27": {
@@ -518,9 +600,22 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "5",
+            "6",
+            "7",
+            "8"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 27 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7, 8 297, 3500, 3511, 3650 und/oder 3652 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Mit der Gebühr sind die Kosten für Untersuchungsmaterialien abgegolten.",
-        "Neben der Leistung nach Nummer 27 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7, 8 297, 3500, 3511, 3650 und/oder 3652 nicht berechnungsfähig."
+        "Mit der Gebühr sind die Kosten für Untersuchungsmaterialien abgegolten."
       ]
     },
     "28": {
@@ -535,9 +630,27 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "5",
+            "6",
+            "7",
+            "8",
+            "11",
+            "3500",
+            "3511",
+            "3650",
+            "3652"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 28 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7, 8, 11, 3500, 3511, 3650 und/oder 3652 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Mit der Gebühr sind die Kosten für Untersuchungsmaterialien abgegolten.",
-        "Neben der Leistung nach Nummer 28 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7, 8, 11, 3500, 3511, 3650 und/oder 3652 nicht berechnungsfähig."
+        "Mit der Gebühr sind die Kosten für Untersuchungsmaterialien abgegolten."
       ]
     },
     "29": {
@@ -552,8 +665,19 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 29 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "5",
+            "6",
+            "7",
+            "8"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 29 sind die Leistungen nach den Nummern 1, 3, 5, 6, 7 und/oder 8 nicht berechnungsfähig."
+        }
       ]
     },
     "30": {
@@ -595,11 +719,19 @@
           "type": "ageLimit",
           "maxAgeYears": 14,
           "sourceText": "Dauert die Erhebung einer homöopathischen Erstanamnese bei einem Kind bis zum vollendeten 14. Lebensjahr weniger als eine Stunde, mindestens aber eine halbe Stunde, kann die Leistung nach Nummer 30 bei entsprechender Begründung mit der Hälfte der Gebühr berechnet werden."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "34"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 30 sind die Leistungen nach den Nummern 1, 3 und/oder 34 nicht berechnungsfähig."
         }
       ],
       "notes": [
-        "Die Leistung nach Nummer 30 ist innerhalb von einem Jahr nur einmal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 30 sind die Leistungen nach den Nummern 1, 3 und/oder 34 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 30 ist innerhalb von einem Jahr nur einmal berechnungsfähig."
       ]
     },
     "31": {
@@ -614,9 +746,21 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "4",
+            "30",
+            "34"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 31 sind die Leistungen nach den Nummern 1, 3, 4, 30 und/oder 34 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach Nummer 31 ist innerhalb von sechs Monaten höchstens dreimal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 31 sind die Leistungen nach den Nummern 1, 3, 4, 30 und/oder 34 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 31 ist innerhalb von sechs Monaten höchstens dreimal berechnungsfähig."
       ]
     },
     "32": {
@@ -644,9 +788,25 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "15",
+            "20",
+            "847",
+            "862",
+            "864",
+            "871",
+            "887"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 33 sind die Leistungen nach den Nummern 1, 3, 15, 20, 847, 862, 864, 871 und/oder 887 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach Nummer 33 ist innerhalb von einem Jahr höchstens dreimal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 33 sind die Leistungen nach den Nummern 1, 3, 15, 20, 847, 862, 864, 871 und/oder 887 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 33 ist innerhalb von einem Jahr höchstens dreimal berechnungsfähig."
       ]
     },
     "34": {
@@ -683,11 +843,21 @@
             "887"
           ],
           "sourceText": "Die Leistungen nach den Nummern 1, 3, 22, 30 und/oder 34 sind neben den Leistungen nach den Nummern 804 bis 812, 817, 835, 849, 861 bis 864, 870, 871, 886 sowie 887 nicht berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "3",
+            "4",
+            "15",
+            "30"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 34 sind die Leistungen nach den Nummern 1, 3, 4, 15 und/oder 30 nicht berechnungsfähig."
         }
       ],
       "notes": [
         "Die Leistung nach Nummer 34 ist innerhalb von 6 Monaten höchstens zweimal berechnungsfähig.",
-        "Neben der Leistung nach Nummer 34 sind die Leistungen nach den Nummern 1, 3, 4, 15 und/oder 30 nicht berechnungsfähig.",
         "Visiten, Konsiliartätigkeit, Besuche, Assistenz"
       ]
     },
@@ -768,9 +938,20 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "5",
+            "48",
+            "52"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 50 sind die Leistungen nach den Nummern 1, 5, 48 und/oder 52 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach Nummer 50 darf anstelle oder neben einer Leistung nach Nummer 45 oder 46 nicht berechnet werden.",
-        "Neben der Leistung nach Nummer 50 sind die Leistungen nach den Nummern 1, 5, 48 und/oder 52 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 50 darf anstelle oder neben einer Leistung nach Nummer 45 oder 46 nicht berechnet werden."
       ]
     },
     "51": {
@@ -785,9 +966,20 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1",
+            "5",
+            "48",
+            "52"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 51 sind die Leistungen nach den Nummern 1, 5, 48 und/oder 52 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Leistung nach Nummer 51 darf anstelle oder neben einer Leistung nach Nummer 45 oder 46 nicht berechnet werden.",
-        "Neben der Leistung nach Nummer 51 sind die Leistungen nach den Nummern 1, 5, 48 und/oder 52 nicht berechnungsfähig."
+        "Die Leistung nach Nummer 51 darf anstelle oder neben einer Leistung nach Nummer 45 oder 46 nicht berechnet werden."
       ]
     },
     "52": {
@@ -826,8 +1018,16 @@
         "code": "B",
         "title": "Grundleistungen und allgemeine Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 55 sind die Leistungen nach den Nummern 56, 60 und/oder 833 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "56",
+            "60",
+            "833"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 55 sind die Leistungen nach den Nummern 56, 60 und/oder 833 nicht berechnungsfähig."
+        }
       ]
     },
     "56": {
@@ -1962,8 +2162,18 @@
         "code": "C",
         "title": "Nichtgebietsbezogene Sonderleistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 274 sind die Leistungen nach den Nummern 271 bis 273, 275 und/oder 276 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "271",
+            "272",
+            "273",
+            "275",
+            "276"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 274 sind die Leistungen nach den Nummern 271 bis 273, 275 und/oder 276 nicht berechnungsfähig."
+        }
       ]
     },
     "275": {
@@ -3454,7 +3664,18 @@
       "section": {
         "code": "C",
         "title": "Nichtgebietsbezogene Sonderleistungen"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "462",
+            "463",
+            "501"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 427 und 428 sind die Leistungen nach den Nummern 462, 463 und/oder 501 nicht berechnungsfähig."
+        }
+      ]
     },
     "428": {
       "ziffer": "428",
@@ -3472,8 +3693,9 @@
         {
           "type": "excludes",
           "ziffern": [
-            "427",
-            "428"
+            "462",
+            "463",
+            "501"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 427 und 428 sind die Leistungen nach den Nummern 462, 463 und/oder 501 nicht berechnungsfähig."
         }
@@ -4280,8 +4502,17 @@
         "code": "E",
         "title": "Physikalisch-medizinische Leistungen"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "500",
+            "505"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 501 sind die Leistungen nach den Nummern 500 und 505 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 501 sind die Leistungen nach den Nummern 500 und 505 nicht berechnungsfähig.",
         "Krankengymnastik und Übungsbehandlungen"
       ]
     },
@@ -4362,8 +4593,14 @@
         "code": "E",
         "title": "Physikalisch-medizinische Leistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 510 ist die Leistung nach Nummer 521 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "521"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 510 ist die Leistung nach Nummer 521 nicht berechnungsfähig."
+        }
       ]
     },
     "514": {
@@ -4896,8 +5133,14 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 603 ist die Leistung nach Nummer 608 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "608"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 603 ist die Leistung nach Nummer 608 nicht berechnungsfähig."
+        }
       ]
     },
     "604": {
@@ -4996,8 +5239,15 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 610 sind die Leistungen nach den Nummern 605 und 608 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "605",
+            "608"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 610 sind die Leistungen nach den Nummern 605 und 608 nicht berechnungsfähig."
+        }
       ]
     },
     "611": {
@@ -5025,8 +5275,17 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 612 sind die Leistungen nach den Nummern 605, 608, 609 und 610 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "605",
+            "608",
+            "609",
+            "610"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 612 sind die Leistungen nach den Nummern 605, 608, 609 und 610 nicht berechnungsfähig."
+        }
       ]
     },
     "614": {
@@ -5067,8 +5326,14 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 616 ist die Leistung nach Nummer 615 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "615"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 616 ist die Leistung nach Nummer 615 nicht berechnungsfähig."
+        }
       ]
     },
     "617": {
@@ -5154,8 +5419,14 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 624 ist die Leistung nach Nummer 623 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "623"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 624 ist die Leistung nach Nummer 623 nicht berechnungsfähig."
+        }
       ]
     },
     "626": {
@@ -5176,10 +5447,23 @@
           "count": 1,
           "scope": "session",
           "sourceText": "Die Leistung nach Nummer 626 ist je Sitzung nur einmal berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "355",
+            "356",
+            "360",
+            "361",
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 626 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 626 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
       ]
     },
     "627": {
@@ -5200,10 +5484,23 @@
           "count": 1,
           "scope": "session",
           "sourceText": "Die Leistung nach Nummer 627 ist je Sitzung nur einmal berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "355",
+            "356",
+            "360",
+            "361",
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 627 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 627 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
       ]
     },
     "628": {
@@ -5224,10 +5521,19 @@
           "count": 1,
           "scope": "session",
           "sourceText": "Die Leistung nach Nummer 628 ist je Sitzung nur einmal berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 628 sind die Leistungen nach den Nummern 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 628 sind die Leistungen nach den Nummern 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
       ]
     },
     "629": {
@@ -5248,10 +5554,21 @@
           "count": 1,
           "scope": "session",
           "sourceText": "Die Leistung nach Nummer 629 ist je Sitzung nur einmal berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "355",
+            "356",
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 629 sind die Leistungen nach den Nummern 355, 356, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 629 sind die Leistungen nach den Nummern 355, 356, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
       ]
     },
     "630": {
@@ -5266,9 +5583,26 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "355",
+            "356",
+            "360",
+            "361",
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 630 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Kosten für den Einschwemmkatheter sind mit der Gebühr abgegolten.",
-        "Neben der Leistung nach Nummer 630 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
+        "Die Kosten für den Einschwemmkatheter sind mit der Gebühr abgegolten."
       ]
     },
     "631": {
@@ -5296,9 +5630,26 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "355",
+            "356",
+            "360",
+            "361",
+            "602",
+            "648",
+            "650",
+            "651",
+            "3710",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 632 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Kosten für den Einschwemmkatheter sind mit der Gebühr abgegolten.",
-        "Neben der Leistung nach Nummer 632 sind die Leistungen nach den Nummern 355, 356, 360, 361, 602, 648, 650, 651, 3710 und 5295 nicht berechnungsfähig."
+        "Die Kosten für den Einschwemmkatheter sind mit der Gebühr abgegolten."
       ]
     },
     "634": {
@@ -6161,8 +6512,15 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 715 sind die Leistungen nach den Nummern 8 und 26 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "8",
+            "26"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 715 sind die Leistungen nach den Nummern 8 und 26 nicht berechnungsfähig."
+        }
       ]
     },
     "716": {
@@ -6229,8 +6587,47 @@
         "code": "F",
         "title": "Innere Medizin, Kinderheilkunde, Dermatologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 725 sind die Leistungen nach den Nummern 505 bis 527, 535 bis 555, 719, 806, 846, 847, 849, 1559 und 1560 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "505",
+            "506",
+            "507",
+            "508",
+            "509",
+            "510",
+            "514",
+            "515",
+            "516",
+            "518",
+            "520",
+            "521",
+            "523",
+            "525",
+            "526",
+            "527",
+            "535",
+            "536",
+            "538",
+            "539",
+            "548",
+            "549",
+            "551",
+            "552",
+            "553",
+            "554",
+            "555",
+            "719",
+            "806",
+            "846",
+            "847",
+            "849",
+            "1559",
+            "1560"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 725 sind die Leistungen nach den Nummern 505 bis 527, 535 bis 555, 719, 806, 846, 847, 849, 1559 und 1560 nicht berechnungsfähig."
+        }
       ]
     },
     "726": {
@@ -6247,13 +6644,20 @@
       },
       "constraints": [
         {
+          "type": "excludes",
+          "ziffern": [
+            "719",
+            "849",
+            "1559",
+            "1560"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 726 sind die Leistungen nach den Nummern 719, 849, 1559 und 1560 nicht berechnungsfähig."
+        },
+        {
           "type": "minDuration",
           "minutes": 45,
           "sourceText": "Die Leistung nach Nummer 726 ist neben der Leistung nach Nummer 725 an demselben Tage nur berechnungsfähig, wenn beide Behandlungen zeitlich getrennt voneinander mit einer Dauer von jeweils mindestens 45 Minuten erbracht werden."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 726 sind die Leistungen nach den Nummern 719, 849, 1559 und 1560 nicht berechnungsfähig."
       ]
     },
     "740": {
@@ -6715,8 +7119,19 @@
         "code": "G",
         "title": "Neurologie, Psychiatrie und Psychotherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 800 sind die Leistungen nach den Nummern 8, 26, 825, 826, 830 und 1400 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "8",
+            "26",
+            "825",
+            "826",
+            "830",
+            "1400"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 800 sind die Leistungen nach den Nummern 8, 26, 825, 826, 830 und 1400 nicht berechnungsfähig."
+        }
       ]
     },
     "801": {
@@ -6731,8 +7146,23 @@
         "code": "G",
         "title": "Neurologie, Psychiatrie und Psychotherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 801 sind die Leistungen nach den Nummern 4, 8, 715 bis 718, 825, 826, 830 und 1400 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "4",
+            "8",
+            "715",
+            "716",
+            "717",
+            "718",
+            "825",
+            "826",
+            "830",
+            "1400"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 801 sind die Leistungen nach den Nummern 4, 8, 715 bis 718, 825, 826, 830 und 1400 nicht berechnungsfähig."
+        }
       ]
     },
     "804": {
@@ -6859,8 +7289,14 @@
         "code": "G",
         "title": "Neurologie, Psychiatrie und Psychotherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 826 ist die Leistung nach Nummer 1412 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1412"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 826 ist die Leistung nach Nummer 1412 nicht berechnungsfähig."
+        }
       ]
     },
     "827": {
@@ -7133,8 +7569,17 @@
         "code": "G",
         "title": "Neurologie, Psychiatrie und Psychotherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 856 sind die Leistungen nach den Nummern 715 bis 718 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "715",
+            "716",
+            "717",
+            "718"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 856 sind die Leistungen nach den Nummern 715 bis 718 nicht berechnungsfähig."
+        }
       ]
     },
     "857": {
@@ -7149,8 +7594,15 @@
         "code": "G",
         "title": "Neurologie, Psychiatrie und Psychotherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 857 sind die Leistungen nach den Nummern 716 und 717 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "716",
+            "717"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 857 sind die Leistungen nach den Nummern 716 und 717 nicht berechnungsfähig."
+        }
       ]
     },
     "860": {
@@ -7171,10 +7623,15 @@
           "count": 1,
           "scope": "case",
           "sourceText": "Die Nummer 860 ist im Behandlungsfall nur einmal berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "807",
+            "835"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 860 sind die Leistungen nach den Nummern 807 und 835 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 860 sind die Leistungen nach den Nummern 807 und 835 nicht berechnungsfähig."
       ]
     },
     "861": {
@@ -7341,7 +7798,16 @@
       "section": {
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1001"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1002 und 1003 ist die Leistung nach Nummer 1001 nicht berechnungsfähig."
+        }
+      ]
     },
     "1003": {
       "ziffer": "1003",
@@ -7359,8 +7825,7 @@
         {
           "type": "excludes",
           "ziffern": [
-            "1002",
-            "1003"
+            "1001"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 1002 und 1003 ist die Leistung nach Nummer 1001 nicht berechnungsfähig."
         }
@@ -7547,19 +8012,8 @@
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
       },
-      "constraints": [
-        {
-          "type": "excludes",
-          "ziffern": [
-            "1025",
-            "1026",
-            "1027",
-            "1028",
-            "1029",
-            "1030"
-          ],
-          "sourceText": "Neben den Leistungen nach den Nummern 1025 bis 1030 kann jeweils eine Leistung nach der Nummer 1021 oder 1022 zusätzlich berechnet werden."
-        }
+      "notes": [
+        "Neben den Leistungen nach den Nummern 1025 bis 1030 kann jeweils eine Leistung nach der Nummer 1021 oder 1022 zusätzlich berechnet werden."
       ]
     },
     "1031": {
@@ -7678,8 +8132,14 @@
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1044 ist die Leistung nach Nummer 1096 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1096"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1044 ist die Leistung nach Nummer 1096 nicht berechnungsfähig."
+        }
       ]
     },
     "1045": {
@@ -7694,8 +8154,14 @@
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1045 ist die Leistung nach Nummer 1044 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1044"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1045 ist die Leistung nach Nummer 1044 nicht berechnungsfähig."
+        }
       ]
     },
     "1048": {
@@ -7788,15 +8254,8 @@
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
       },
-      "constraints": [
-        {
-          "type": "excludes",
-          "ziffern": [
-            "1055",
-            "1056"
-          ],
-          "sourceText": "Neben den Leistungen nach den Nummern 1055 und 1056 ist die intravaginale oder intrazervikale Applikation von Prostaglandin-Gel nicht gesondert berechnungsfähig."
-        }
+      "notes": [
+        "Neben den Leistungen nach den Nummern 1055 und 1056 ist die intravaginale oder intrazervikale Applikation von Prostaglandin-Gel nicht gesondert berechnungsfähig."
       ]
     },
     "1060": {
@@ -8253,8 +8712,14 @@
         "code": "H",
         "title": "Geburtshilfe und Gynäkologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1121 ist die Leistung nach Nummer 1126 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1126"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1121 ist die Leistung nach Nummer 1126 nicht berechnungsfähig."
+        }
       ]
     },
     "1122": {
@@ -8791,7 +9256,17 @@
       "section": {
         "code": "I",
         "title": "Augenheilkunde"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5",
+            "6"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1210 bis 1213 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
+        }
+      ]
     },
     "1211": {
       "ziffer": "1211",
@@ -8804,7 +9279,17 @@
       "section": {
         "code": "I",
         "title": "Augenheilkunde"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5",
+            "6"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1210 bis 1213 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
+        }
+      ]
     },
     "1212": {
       "ziffer": "1212",
@@ -8817,7 +9302,17 @@
       "section": {
         "code": "I",
         "title": "Augenheilkunde"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5",
+            "6"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1210 bis 1213 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
+        }
+      ]
     },
     "1213": {
       "ziffer": "1213",
@@ -8835,10 +9330,8 @@
         {
           "type": "excludes",
           "ziffern": [
-            "1210",
-            "1211",
-            "1212",
-            "1213"
+            "5",
+            "6"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 1210 bis 1213 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
         }
@@ -8885,8 +9378,15 @@
         "code": "I",
         "title": "Augenheilkunde"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1217 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5",
+            "6"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1217 sind die Leistungen nach den Nummern 5 und/oder 6 nicht berechnungsfähig."
+        }
       ]
     },
     "1218": {
@@ -8979,8 +9479,14 @@
         "code": "I",
         "title": "Augenheilkunde"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1233 ist die Leistung nach Nummer 1234 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1234"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1233 ist die Leistung nach Nummer 1234 nicht berechnungsfähig."
+        }
       ]
     },
     "1234": {
@@ -10466,7 +10972,17 @@
       "section": {
         "code": "J",
         "title": "Hals-, Nasen-, Ohrenheilkunde"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1400",
+            "1401"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1403 und 1404 sind die Leistungen nach den Nummern 1400 und 1401 nicht berechnungsfähig."
+        }
+      ]
     },
     "1404": {
       "ziffer": "1404",
@@ -10484,8 +11000,8 @@
         {
           "type": "excludes",
           "ziffern": [
-            "1403",
-            "1404"
+            "1400",
+            "1401"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 1403 und 1404 sind die Leistungen nach den Nummern 1400 und 1401 nicht berechnungsfähig."
         }
@@ -10516,8 +11032,17 @@
         "code": "J",
         "title": "Hals-, Nasen-, Ohrenheilkunde"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1406 sind die Leistungen nach den Nummern 1400, 1401, 1403 und 1404 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1400",
+            "1401",
+            "1403",
+            "1404"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1406 sind die Leistungen nach den Nummern 1400, 1401, 1403 und 1404 nicht berechnungsfähig."
+        }
       ]
     },
     "1407": {
@@ -10660,8 +11185,14 @@
         "code": "J",
         "title": "Hals-, Nasen-, Ohrenheilkunde"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1418 ist die Leistung nach Nummer 1466 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1466"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1418 ist die Leistung nach Nummer 1466 nicht berechnungsfähig."
+        }
       ]
     },
     "1425": {
@@ -11813,8 +12344,15 @@
         "code": "J",
         "title": "Hals-, Nasen-, Ohrenheilkunde"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1555 sind die Leistungen nach den Nummern 715 und 717 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "715",
+            "717"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1555 sind die Leistungen nach den Nummern 715 und 717 nicht berechnungsfähig."
+        }
       ]
     },
     "1556": {
@@ -12758,8 +13296,14 @@
         "code": "K",
         "title": "Urologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1732 ist die Leistung nach Nummer 1733 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1733"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1732 ist die Leistung nach Nummer 1733 nicht berechnungsfähig."
+        }
       ]
     },
     "1733": {
@@ -13450,6 +13994,23 @@
         "code": "K",
         "title": "Urologie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1700",
+            "1701",
+            "1710",
+            "1728",
+            "1729",
+            "1730",
+            "1731",
+            "1732",
+            "1733"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1793, 1794 und 1798 sind die Leistungen nach den Nummern 1700, 1701, 1710, 1728, 1729, 1730, 1731, 1732 und 1733 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
         "Die Injektion von pharmakodynamisch wirksamen Substanzen ist gesondert berechnungsfähig."
       ]
@@ -13466,9 +14027,32 @@
         "code": "K",
         "title": "Urologie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1793"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1794 ist die Leistung nach Nummer 1793 nicht berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1700",
+            "1701",
+            "1710",
+            "1728",
+            "1729",
+            "1730",
+            "1731",
+            "1732",
+            "1733"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 1793, 1794 und 1798 sind die Leistungen nach den Nummern 1700, 1701, 1710, 1728, 1729, 1730, 1731, 1732 und 1733 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Die Injektion von pharmakodynamisch wirksamen Substanzen ist gesondert berechnungsfähig.",
-        "Neben der Leistung nach Nummer 1794 ist die Leistung nach Nummer 1793 nicht berechnungsfähig."
+        "Die Injektion von pharmakodynamisch wirksamen Substanzen ist gesondert berechnungsfähig."
       ]
     },
     "1795": {
@@ -13526,9 +14110,15 @@
         {
           "type": "excludes",
           "ziffern": [
-            "1793",
-            "1794",
-            "1798"
+            "1700",
+            "1701",
+            "1710",
+            "1728",
+            "1729",
+            "1730",
+            "1731",
+            "1732",
+            "1733"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 1793, 1794 und 1798 sind die Leistungen nach den Nummern 1700, 1701, 1710, 1728, 1729, 1730, 1731, 1732 und 1733 nicht berechnungsfähig."
         }
@@ -13598,8 +14188,14 @@
         "code": "K",
         "title": "Urologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 1803 ist die Leistung nach Nummer 1802 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1802"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 1803 ist die Leistung nach Nummer 1802 nicht berechnungsfähig."
+        }
       ]
     },
     "1804": {
@@ -14166,8 +14762,14 @@
         "code": "K",
         "title": "Urologie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummern 1853 ist die Leistung nach Nummer 1852 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "1852"
+          ],
+          "sourceText": "Neben der Leistung nach Nummern 1853 ist die Leistung nach Nummer 1852 nicht berechnungsfähig."
+        }
       ]
     },
     "1858": {
@@ -14225,7 +14827,16 @@
       "section": {
         "code": "L",
         "title": "Chirurgie, Orthopädie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2033"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
+        }
+      ]
     },
     "2001": {
       "ziffer": "2001",
@@ -14238,7 +14849,16 @@
       "section": {
         "code": "L",
         "title": "Chirurgie, Orthopädie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2033"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
+        }
+      ]
     },
     "2002": {
       "ziffer": "2002",
@@ -14251,7 +14871,16 @@
       "section": {
         "code": "L",
         "title": "Chirurgie, Orthopädie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2033"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
+        }
+      ]
     },
     "2003": {
       "ziffer": "2003",
@@ -14264,7 +14893,16 @@
       "section": {
         "code": "L",
         "title": "Chirurgie, Orthopädie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2033"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
+        }
+      ]
     },
     "2004": {
       "ziffer": "2004",
@@ -14277,7 +14915,16 @@
       "section": {
         "code": "L",
         "title": "Chirurgie, Orthopädie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "2033"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
+        }
+      ]
     },
     "2005": {
       "ziffer": "2005",
@@ -14295,12 +14942,7 @@
         {
           "type": "excludes",
           "ziffern": [
-            "2000",
-            "2001",
-            "2002",
-            "2003",
-            "2004",
-            "2005"
+            "2033"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 2000 bis 2005 ist die Leistung nach Nummer 2033 nicht berechnungsfähig, wenn die Extraktion des Nagels Bestandteil der Wundversorgung ist."
         }
@@ -23842,8 +24484,16 @@
         "code": "M",
         "title": "Laboratoriumsuntersuchungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 3668 sind die Leistungen nach den Nummern 3663, 3664 und/oder 3667 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "3663",
+            "3664",
+            "3667"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 3668 sind die Leistungen nach den Nummern 3663, 3664 und/oder 3667 nicht berechnungsfähig."
+        }
       ]
     },
     "3669": {
@@ -29020,8 +29670,14 @@
         "code": "N",
         "title": "Histologie, Zytologie und Zytogenetik"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 4850 ist die Leistung nach Nummer 297 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "297"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 4850 ist die Leistung nach Nummer 297 nicht berechnungsfähig."
+        }
       ]
     },
     "4851": {
@@ -29036,8 +29692,14 @@
         "code": "N",
         "title": "Histologie, Zytologie und Zytogenetik"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 4851 ist die Leistung nach Nummer 4850 bei Untersuchungen aus demselben Material nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "4850"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 4851 ist die Leistung nach Nummer 4850 bei Untersuchungen aus demselben Material nicht berechnungsfähig."
+        }
       ]
     },
     "4852": {
@@ -30186,7 +30848,19 @@
       "section": {
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5309",
+            "5310",
+            "5311",
+            "5312"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 5306 bis 5308 sind die Leistungen nach den Nummern 5309 bis 5312 für die Untersuchung der Beine nicht berechnungsfähig."
+        }
+      ]
     },
     "5307": {
       "ziffer": "5307",
@@ -30199,7 +30873,19 @@
       "section": {
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
-      }
+      },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5309",
+            "5310",
+            "5311",
+            "5312"
+          ],
+          "sourceText": "Neben den Leistungen nach den Nummern 5306 bis 5308 sind die Leistungen nach den Nummern 5309 bis 5312 für die Untersuchung der Beine nicht berechnungsfähig."
+        }
+      ]
     },
     "5308": {
       "ziffer": "5308",
@@ -30217,9 +30903,10 @@
         {
           "type": "excludes",
           "ziffern": [
-            "5306",
-            "5307",
-            "5308"
+            "5309",
+            "5310",
+            "5311",
+            "5312"
           ],
           "sourceText": "Neben den Leistungen nach den Nummern 5306 bis 5308 sind die Leistungen nach den Nummern 5309 bis 5312 für die Untersuchung der Beine nicht berechnungsfähig."
         },
@@ -30393,6 +31080,13 @@
         {
           "type": "excludes",
           "ziffern": [
+            "5315"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5316 ist die Leistung nach Nummer 5315 nicht berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
             "5300",
             "5301",
             "5302",
@@ -30403,9 +31097,6 @@
           ],
           "sourceText": "Die Leistungen nach den Nummern 5315 bis 5318 sind neben den Leistungen nach den Nummern 5300 bis 5302 sowie 5324 bis 5327 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 5316 ist die Leistung nach Nummer 5315 nicht berechnungsfähig."
       ]
     },
     "5317": {
@@ -30771,8 +31462,23 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5345 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 5345 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig.",
         "Wurde innerhalb eines Zeitraums von vierzehn Tagen vor Erbringung der Leistung nach Nummer 5345 bereits eine Leistung nach den Nummern 5300 bis 5313 berechnet, darf neben der Leistung nach Nummer 5345 für dieselbe Sitzung eine Leistung nach den Nummern 5300 bis 5313 nicht erneut berechnet werden.",
         "Im Falle der Nebeneinanderberechnung der Leistung nach Nummer 5345 neben einer Leistung nach den Nummern 5300 bis 5313 ist in der Rechnung zu bestätigen, daß in den vorhergehenden vierzehn Tagen eine Leistung nach den Nummern 5300 bis 5313 nicht berechnet wurde."
       ]
@@ -30797,10 +31503,21 @@
             "5345"
           ],
           "sourceText": "Zuschlag zu der Leistung nach Nummer 5345 bei Dilatation und Rekanalisation von mehr als zwei Arterien, insgesamt"
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5346 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 5346 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
       ]
     },
     "5348": {
@@ -30815,8 +31532,23 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5348 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 5348 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig.",
         "Wurde innerhalb eines Zeitraums von vierzehn Tagen vor Erbringung der Leistung nach Nummer 5348 bereits eine Leistung nach den Nummern 5315 bis 5327 berechnet, darf neben der Leistung nach Nummer 5348 für dieselbe Sitzung eine Leistung nach den Nummern 5315 bis 5327 nicht erneut berechnet werden. Im Falle der Nebeneinanderberechnung der Leistung nach Nummer 5348 neben einer Leistung nach den Nummern 5315 bis 5327 ist in der Rechnung zu bestätigen, daß in den vorhergehenden vierzehn Tagen eine Leistung nach den Nummern 5315 bis 5327 nicht berechnet wurde."
       ]
     },
@@ -30840,10 +31572,21 @@
             "5348"
           ],
           "sourceText": "Zuschlag zu der Leistung nach Nummer 5348 bei Dilatation und Rekanalisation von mehr als einer Koronararterie, insgesamt"
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5349 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 5349 sind die Leistungen nach den Nummern 350 bis 361 sowie 5295 nicht berechnungsfähig."
       ]
     },
     "5351": {
@@ -30894,8 +31637,21 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5353 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "344",
+            "345",
+            "346",
+            "347",
+            "5295",
+            "5329",
+            "5330",
+            "5331"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5353 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+        }
       ]
     },
     "5354": {
@@ -30918,10 +31674,21 @@
             "5353"
           ],
           "sourceText": "Zuschlag zu der Leistung nach Nummer 5353 bei Dilatation und Rekanalisation von mehr als zwei Venen, insgesamt"
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "344",
+            "345",
+            "346",
+            "347",
+            "5295",
+            "5329",
+            "5330",
+            "5331"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5354 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
         }
-      ],
-      "notes": [
-        "Neben der Leistung nach Nummer 5354 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
       ]
     },
     "5355": {
@@ -30936,8 +31703,47 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5355 sind die Leistungen nach den Nummern 344 bis 361, 5295 sowie 5300 bis 5327 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "344",
+            "345",
+            "346",
+            "347",
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295",
+            "5300",
+            "5301",
+            "5302",
+            "5303",
+            "5304",
+            "5305",
+            "5306",
+            "5307",
+            "5308",
+            "5309",
+            "5310",
+            "5311",
+            "5312",
+            "5313",
+            "5315",
+            "5316",
+            "5317",
+            "5318",
+            "5324",
+            "5325",
+            "5326",
+            "5327"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5355 sind die Leistungen nach den Nummern 344 bis 361, 5295 sowie 5300 bis 5327 nicht berechnungsfähig."
+        }
       ]
     },
     "5356": {
@@ -30952,9 +31758,39 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5356 sind die Leistungen nach den Nummern 350 bis 361, 5295, 5315 bis 5327, 5345, 5353 sowie 5355 nicht berechnungsfähig.",
-        "Neben der Leistung nach Nummer 5356 ist die Leistung nach Nummer 5355 für Eingriffe an Koronararterien nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295",
+            "5315",
+            "5316",
+            "5317",
+            "5318",
+            "5324",
+            "5325",
+            "5326",
+            "5327",
+            "5345",
+            "5353",
+            "5355"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5356 sind die Leistungen nach den Nummern 350 bis 361, 5295, 5315 bis 5327, 5345, 5353 sowie 5355 nicht berechnungsfähig."
+        },
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5355"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5356 ist die Leistung nach Nummer 5355 für Eingriffe an Koronararterien nicht berechnungsfähig."
+        }
       ]
     },
     "5357": {
@@ -30969,8 +31805,34 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5357 sind die Leistungen nach den Nummern 350 bis 361, 5295 sowie 5300 bis 5312 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "355",
+            "356",
+            "357",
+            "360",
+            "361",
+            "5295",
+            "5300",
+            "5301",
+            "5302",
+            "5303",
+            "5304",
+            "5305",
+            "5306",
+            "5307",
+            "5308",
+            "5309",
+            "5310",
+            "5311",
+            "5312"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5357 sind die Leistungen nach den Nummern 350 bis 361, 5295 sowie 5300 bis 5312 nicht berechnungsfähig."
+        }
       ]
     },
     "5358": {
@@ -30985,8 +31847,22 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5358 sind die Leistungen nach den Nummern 350, 351, 5295 sowie 5300 bis 5305 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "350",
+            "351",
+            "5295",
+            "5300",
+            "5301",
+            "5302",
+            "5303",
+            "5304",
+            "5305"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5358 sind die Leistungen nach den Nummern 350, 351, 5295 sowie 5300 bis 5305 nicht berechnungsfähig."
+        }
       ]
     },
     "5359": {
@@ -31001,8 +31877,21 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5359 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "344",
+            "345",
+            "346",
+            "347",
+            "5295",
+            "5329",
+            "5330",
+            "5331"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5359 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+        }
       ]
     },
     "5360": {
@@ -31017,8 +31906,21 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5360 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "344",
+            "345",
+            "346",
+            "347",
+            "5295",
+            "5329",
+            "5330",
+            "5331"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5360 sind die Leistungen nach den Nummern 344 bis 347, 5295 sowie 5329 bis 5331 nicht berechnungsfähig."
+        }
       ]
     },
     "5361": {
@@ -31033,8 +31935,18 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "370",
+            "5170",
+            "5295"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5361 sind die Leistungen nach den Nummern 370, 5170 sowie 5295 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 5361 sind die Leistungen nach den Nummern 370, 5170 sowie 5295 nicht berechnungsfähig.",
         "7. Computertomographie"
       ]
     },
@@ -31394,8 +32306,17 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5422",
+            "5423"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5424 sind die Leistungen nach den Nummern 5422 und/oder 5423 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 5424 sind die Leistungen nach den Nummern 5422 und/oder 5423 nicht berechnungsfähig.",
         "e. Knochen- und Knochenmarkszintigraphie"
       ]
     },
@@ -31574,8 +32495,16 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5440"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5444 ist die Leistung nach Nummer 5440 nicht berechnungsfähig."
+        }
+      ],
       "notes": [
-        "Neben der Leistung nach Nummer 5444 ist die Leistung nach Nummer 5440 nicht berechnungsfähig.",
         "h. Endokrine Organe"
       ]
     },
@@ -32130,8 +33059,14 @@
         "code": "O",
         "title": "Strahlendiagnostik, Nuklearmedizin, Magnetresonanztomographie und Strahlentherapie"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 5730 ist die Leistung nach Nummer 5729 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "5729"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 5730 ist die Leistung nach Nummer 5729 nicht berechnungsfähig."
+        }
       ]
     },
     "5731": {
@@ -32808,8 +33743,14 @@
         "code": "C",
         "title": "Nichtgebietsbezogene Sonderleistungen"
       },
-      "notes": [
-        "Neben der Leistung nach Nummer 269a ist die Leistung nach Nummer 269 nicht berechnungsfähig."
+      "constraints": [
+        {
+          "type": "excludes",
+          "ziffern": [
+            "269"
+          ],
+          "sourceText": "Neben der Leistung nach Nummer 269a ist die Leistung nach Nummer 269 nicht berechnungsfähig."
+        }
       ]
     },
     "286a": {
