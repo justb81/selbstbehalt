@@ -83,7 +83,7 @@ interface PaddleOcrSubService {
 export interface PaddleOcrServiceLike {
   initialize(): Promise<void>;
   /** Accepts a canvas-like source (the binding calls `.getContext()` on it). */
-  recognize(image: unknown): Promise<PaddleRecognizeResult>;
+  recognize(image: unknown, options?: { noCache?: boolean }): Promise<PaddleRecognizeResult>;
   destroy(): Promise<void> | void;
   platform?: PaddleOcrPlatformLike;
   /** Created during `initialize()`; each holds its own platform provider. */
@@ -304,7 +304,12 @@ export function createPaddleOcrEngine(
     async recognize(image, onProgress) {
       if (!service) throw new Error('PaddleOCR engine used before init().');
       onProgress?.({ phase: 'recognize', ratio: null, message: 'Text wird erkannt …' });
-      const raw = await service.recognize(toImageSource(image));
+      // The binding's `recognize()` keys an internal, process-lifetime result
+      // cache off only the image buffer's first 1024 bytes + total length —
+      // two same-sized page scans that happen to share that prefix (e.g. a
+      // blank top margin) collide and silently return a stale result. We
+      // always intend a fresh recognition per frame, so disable it outright.
+      const raw = await service.recognize(toImageSource(image), { noCache: true });
       const results = mapPaddleResult(raw);
       onProgress?.({ phase: 'recognize', ratio: 1 });
       return results;

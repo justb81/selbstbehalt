@@ -98,7 +98,11 @@ export interface RawPosition {
 
 /** Why a single position was flagged during lookup / §5 validation. */
 export type PositionFlagCode =
-  'unknown_ziffer' | 'multiplier_exceeds_limit' | 'fixed_factor_mismatch' | 'constraint_violation';
+  | 'unknown_ziffer'
+  | 'ziffer_not_detected'
+  | 'multiplier_exceeds_limit'
+  | 'fixed_factor_mismatch'
+  | 'constraint_violation';
 
 /** A per-position flag with a human-readable German reason. */
 export interface PositionFlag {
@@ -375,6 +379,43 @@ function parseNumericToken(token: string): NumericToken | null {
   return { value, isQuantityMarker, integer: !/[.,]/.test(s) };
 }
 
+/**
+ * Index into `tokens` where the trailing run of numeric tokens begins,
+ * scanning from the right (stops at the first non-numeric token);
+ * `tokens.length` when there is none. Standalone currency symbols (€, EUR)
+ * are skipped — OCR often separates "26,14 €" into two tokens, and the €
+ * would otherwise break the run.
+ */
+function trailingNumericRunStart(tokens: string[]): number {
+  let idx = tokens.length;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i];
+    if (token === undefined) break;
+    if (/^[€$]$|^EUR$/i.test(token)) continue;
+    if (!parseNumericToken(token)) break;
+    idx = i;
+  }
+  return idx;
+}
+
+/**
+ * Whether `tokens`' trailing numeric run resolves a real Faktor + Betrag
+ * pair — both carrying an explicit decimal separator, the way German
+ * invoices always print them. Rules out numeric boilerplate that happens to
+ * end in several bare integers (IBAN/account/page-number fragments like
+ * "IBAN: DE45 3006 0601 0001 6832 68" or "IK-Nummer: 2208 100 11").
+ */
+function hasDecimalAmountPair(tokens: string[]): boolean {
+  const core = tokens
+    .slice(trailingNumericRunStart(tokens))
+    .filter((token) => !/^[€$]$|^EUR$/i.test(token))
+    .map((token) => parseNumericToken(token)!)
+    .filter((token) => !token.isQuantityMarker);
+  const amountTok = core[core.length - 1];
+  const factorTok = core[core.length - 2];
+  return !!amountTok && !!factorTok && !amountTok.integer && !factorTok.integer;
+}
+
 /** Parses one line into a {@link RawPosition}, or null if it is not one. */
 export function parsePositionLine(line: string): RawPosition | null {
   // Extract and strip a leading treatment date (e.g. "07.05.24 ").
@@ -386,30 +427,24 @@ export function parsePositionLine(line: string): RawPosition | null {
   const zm = ZIFFER_RE.exec(stripped);
   const prefixLetter = zm?.[1]?.trim(); // 'Ä', 'A', 'Z' or undefined
   const ziffer = zm?.[2];
-  if (!zm || ziffer === undefined) return null;
 
   let detectedSchedule: FeeScheduleId | null = null;
   if (prefixLetter === 'Ä' || prefixLetter === 'A') detectedSchedule = 'GOÄ';
   else if (prefixLetter === 'Z') detectedSchedule = 'GOZ';
 
-  const rest = stripped.slice(zm[0].length);
-  const tokens = rest.split(/\s+/).filter(Boolean);
+  // No Ziffer match (e.g. OCR lost the leading number to a column-layout
+  // issue): fall through and try the line unanchored, using every token —
+  // the guard below only accepts it if it still resolves a real Faktor +
+  // Betrag pair, so `ziffer: ''` never fires on stray text.
+  const tokens = (zm ? stripped.slice(zm[0].length) : stripped).split(/\s+/).filter(Boolean);
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
   // so description text before the numbers is captured).
-  // Standalone currency symbols (€, EUR) are skipped — OCR often separates
-  // "26,14 €" into two tokens, and the € would otherwise break collection.
-  let trailingStartIdx = tokens.length; // index of the first numeric token in the trailing run
-  const trailing: NumericToken[] = [];
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const token = tokens[i];
-    if (token === undefined) break;
-    if (/^[€$]$|^EUR$/i.test(token)) continue;
-    const parsed = parseNumericToken(token);
-    if (!parsed) break;
-    trailing.unshift(parsed);
-    trailingStartIdx = i;
-  }
+  const trailingStartIdx = trailingNumericRunStart(tokens);
+  const trailing: NumericToken[] = tokens
+    .slice(trailingStartIdx)
+    .filter((token) => !/^[€$]$|^EUR$/i.test(token))
+    .map((token) => parseNumericToken(token)!);
 
   // Descriptive words before the trailing numeric run — what the printer put
   // between the Ziffer and the amounts (Leistungslegende on the invoice line).
@@ -422,6 +457,11 @@ export function parsePositionLine(line: string): RawPosition | null {
   const amountTok = core[core.length - 1];
   const factorTok = core[core.length - 2];
   if (!amountTok || !factorTok) return null;
+  // Without a Ziffer, only accept the line when both amount and factor carry
+  // an explicit decimal separator — German invoices always print Faktor and
+  // Betrag that way, which is what rules out boilerplate that happens to end
+  // in two bare integers ("IK-Nummer: 2208 100 11", account/page numbers).
+  if (!zm && (amountTok.integer || factorTok.integer)) return null;
 
   let quantity = 1;
   let multiplier: number;
@@ -444,7 +484,7 @@ export function parsePositionLine(line: string): RawPosition | null {
   }
 
   return {
-    ziffer,
+    ziffer: ziffer ?? '',
     quantity,
     multiplier,
     chargedAmount: amountTok.value,
@@ -482,10 +522,59 @@ function joinContinuationLines(lines: string[]): string[] {
   return result;
 }
 
+/**
+ * Whether `line` can stand on its own as a position line: it starts with a
+ * Ziffer, or its own trailing run already resolves a Faktor + Betrag pair
+ * (see {@link hasDecimalAmountPair}).
+ */
+function standsAlone(line: string): boolean {
+  if (ZIFFER_RE.test(line)) return true;
+  return hasDecimalAmountPair(line.split(/\s+/).filter(Boolean));
+}
+
+/**
+ * Merges wrapped Leistungslegende lines into the position above them.
+ * Printers wrap a long description across several rows, printing the Ziffer
+ * and amounts only on the first row: the following row(s) carry no Ziffer
+ * and no amount of their own, so they don't parse as anything and would
+ * otherwise vanish. A run of such lines is spliced into the *previous*
+ * standalone line's tokens, right before its own trailing numeric run (so
+ * the amount stays last), but only once a *later* standalone line proves the
+ * run sat between two real position lines — a run trailing the last position
+ * on a page (footer text, "Bitte wenden!", IBAN…) is left unmerged, same as
+ * today, rather than risking boilerplate glued onto that position.
+ */
+function joinDescriptionContinuations(lines: string[]): string[] {
+  const result: string[] = [];
+  let pending: string[] = [];
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (standsAlone(line) || result.length === 0) {
+      if (pending.length > 0) {
+        const prevIdx = result.length - 1;
+        const prevTokens = result[prevIdx]!.split(/\s+/).filter(Boolean);
+        const idx = trailingNumericRunStart(prevTokens);
+        result[prevIdx] = [...prevTokens.slice(0, idx), ...pending, ...prevTokens.slice(idx)].join(
+          ' ',
+        );
+        pending = [];
+      }
+      result.push(line);
+    } else {
+      pending.push(line);
+    }
+  }
+  // Anything still pending here trails the last standalone line with nothing
+  // valid after it — deliberately left unmerged (see doc comment above).
+  return result;
+}
+
 /** Extracts every position line from invoice text. */
 export function extractPositions(text: string): RawPosition[] {
   const positions: RawPosition[] = [];
-  for (const line of joinContinuationLines(text.split(/\r?\n/))) {
+  const lines = joinDescriptionContinuations(joinContinuationLines(text.split(/\r?\n/)));
+  for (const line of lines) {
     const p = parsePositionLine(line);
     if (p) positions.push(p);
   }
@@ -525,8 +614,38 @@ export function lookupPosition(
   index: Map<string, FeeEntry>,
 ): ParsedPosition {
   const normalizedZiffer = normalizeZiffer(raw.ziffer);
-  const entry = index.get(normalizedZiffer);
   const flags: PositionFlag[] = [];
+
+  if (raw.ziffer === '') {
+    // parsePositionLine's Ziffer-less fallback: the line resolved a real
+    // Faktor + Betrag pair but OCR never carried a leading GOÄ number, so
+    // there's nothing to look up — flag for manual completion instead of
+    // guessing.
+    flags.push({
+      code: 'ziffer_not_detected',
+      reason: 'Keine GOÄ-Ziffer erkannt (OCR) – bitte Position manuell prüfen und Ziffer ergänzen.',
+    });
+    return {
+      ziffer: raw.ziffer,
+      normalizedZiffer,
+      description: raw.ocrDescription ?? undefined,
+      quantity: raw.quantity,
+      multiplier: raw.multiplier,
+      chargedAmount: raw.chargedAmount,
+      baseAmount: null,
+      category: null,
+      benefitCategory: null,
+      maxMultiplier: null,
+      known: false,
+      isValid: false,
+      flags,
+      raw: raw.raw,
+      treatmentDate: raw.treatmentDate ?? null,
+      feeSchedule: table.feeSchedule,
+    };
+  }
+
+  const entry = index.get(normalizedZiffer);
 
   if (!entry) {
     flags.push({

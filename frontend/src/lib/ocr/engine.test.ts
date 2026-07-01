@@ -160,7 +160,7 @@ describe('createPaddleOcrEngine', () => {
     // The binding calls `.getContext()` on its input, so we hand it a canvas,
     // not the raw ImageData.
     expect(toImageSource).toHaveBeenCalledWith(image);
-    expect(service.recognize).toHaveBeenCalledWith('CANVAS');
+    expect(service.recognize).toHaveBeenCalledWith('CANVAS', { noCache: true });
     expect(results).toEqual([
       {
         text: 'Hallo',
@@ -175,6 +175,24 @@ describe('createPaddleOcrEngine', () => {
         confidence: 0.9,
       },
     ]);
+  });
+
+  it('always disables the binding-internal result cache, so two consecutive same-size pages never collide', async () => {
+    // `ppu-paddle-ocr` caches recognize() results keyed by a weak hash (only
+    // the image buffer's first 1024 bytes + total length); two different
+    // pages of a multi-page PDF share both when they have the same
+    // dimensions and a similar top margin, which would otherwise return the
+    // first page's stale result for the second. Every call must opt out.
+    const service = fakeService();
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+      loadModule: async () => fakeModule(service).module,
+      toImageSource: () => 'CANVAS',
+    });
+    await engine.init();
+    await engine.recognize(image);
+    await engine.recognize(image);
+    expect(service.recognize).toHaveBeenNthCalledWith(1, 'CANVAS', { noCache: true });
+    expect(service.recognize).toHaveBeenNthCalledWith(2, 'CANVAS', { noCache: true });
   });
 
   it('default conversion draws onto an OffscreenCanvas and patches the worker canvas factory', async () => {
