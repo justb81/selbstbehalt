@@ -12,6 +12,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
+    formatDate,
     submissionChannelValues,
     type InvoiceWithPositions,
     type SubmissionChannel,
@@ -94,7 +95,9 @@
     <ErrorState title="Fehler" message={loadError} onRetry={loadInvoice} />
   {:else if invoice}
     <p class="text-sm text-muted-foreground">
-      Rechnung <strong class="text-foreground">{invoice.provider_name}</strong> vom {invoice.invoice_date}
+      Rechnung <strong class="text-foreground">{invoice.provider_name}</strong> vom {formatDate(
+        invoice.invoice_date,
+      )}
     </p>
 
     <form

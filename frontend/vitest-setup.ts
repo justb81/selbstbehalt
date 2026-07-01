@@ -21,6 +21,26 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
   });
 }
 
+// JSDOM does not implement the Pointer Capture API or Element.scrollIntoView; bits-ui
+// primitives (e.g. Select, our hand-authored HoverCard) call these from pointer/keyboard
+// handlers, so without stubs a user-event click on a trigger throws mid-handler and the
+// popover never opens in component tests.
+if (typeof window !== 'undefined') {
+  const proto = window.HTMLElement.prototype;
+  if (!proto.hasPointerCapture) {
+    proto.hasPointerCapture = () => false;
+  }
+  if (!proto.setPointerCapture) {
+    proto.setPointerCapture = () => {};
+  }
+  if (!proto.releasePointerCapture) {
+    proto.releasePointerCapture = () => {};
+  }
+  if (!proto.scrollIntoView) {
+    proto.scrollIntoView = () => {};
+  }
+}
+
 // Node.js v26 defines globalThis.localStorage as a configurable getter that returns
 // undefined when --localstorage-file is not provided. In vitest's jsdom environment,
 // globalThis IS the jsdom window, so jsdom cannot override this getter via assignment.

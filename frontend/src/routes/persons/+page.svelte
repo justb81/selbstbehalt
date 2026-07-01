@@ -8,6 +8,7 @@
   import { resolve } from '$app/paths';
   import { api } from '$lib/api';
   import type { Person } from '$lib/api/resources';
+  import { formatDate } from '@selbstbehalt/shared';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -64,7 +65,7 @@
         >
           <span class="font-semibold">{person.name}</span>
           {#if person.birth_date}
-            <span class="text-sm text-muted-foreground">geb. {person.birth_date}</span>
+            <span class="text-sm text-muted-foreground">geb. {formatDate(person.birth_date)}</span>
           {/if}
         </a>
       {/each}

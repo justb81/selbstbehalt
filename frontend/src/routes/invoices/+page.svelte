@@ -8,6 +8,7 @@
   import { resolve } from '$app/paths';
   import { api } from '$lib/api';
   import {
+    formatDate,
     formatEur,
     invoiceStatusValues,
     type Invoice,
@@ -134,7 +135,9 @@
           <TableBody>
             {#each filtered as invoice (invoice.id)}
               <TableRow class="hover:bg-muted/50">
-                <TableCell class="text-muted-foreground text-sm">{invoice.invoice_date}</TableCell>
+                <TableCell class="text-muted-foreground text-sm"
+                  >{formatDate(invoice.invoice_date)}</TableCell
+                >
                 <TableCell>
                   <div class="flex flex-col gap-0.5">
                     <span>{invoice.provider_name}</span>

@@ -14,6 +14,7 @@
     benefitCategoryValues,
     benefitLimitScopeValues,
     includedBenefitsSchema,
+    formatDate,
     formatEur,
     type BRELevel,
     type BREStructure,
@@ -549,7 +550,11 @@
           >{personName(contract.policyholder_id)}</strong
         ></span
       >
-      <span>seit {contract.start_date}{contract.end_date ? ` bis ${contract.end_date}` : ''}</span>
+      <span
+        >seit {formatDate(contract.start_date)}{contract.end_date
+          ? ` bis ${formatDate(contract.end_date)}`
+          : ''}</span
+      >
     </div>
 
     {#if contract.notes}

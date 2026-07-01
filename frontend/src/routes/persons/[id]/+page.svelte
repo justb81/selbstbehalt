@@ -10,6 +10,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import type { Person } from '$lib/api/resources';
+  import { formatDate } from '@selbstbehalt/shared';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -164,7 +165,7 @@
             {#if person.birth_date}
               <div>
                 <p class="text-xs text-muted-foreground mb-1">Geburtsdatum</p>
-                <p class="font-semibold">{person.birth_date}</p>
+                <p class="font-semibold">{formatDate(person.birth_date)}</p>
               </div>
             {/if}
           </div>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -316,7 +316,7 @@ describe('InvoiceForm — edit mode', () => {
   it('offers "Auslagenersatz" in the Kat.-dropdown and skips lookupPosition for it', async () => {
     vi.mocked(lookupPosition).mockClear();
     const user = userEvent.setup();
-    const { container } = render(InvoiceForm, {
+    render(InvoiceForm, {
       props: {
         mode: 'edit',
         initialData: SAMPLE_INVOICE,
@@ -325,16 +325,24 @@ describe('InvoiceForm — edit mode', () => {
       },
     });
 
-    // Other fields (e.g. "Versicherte Person") use a shadcn Select that may render
-    // its own hidden native <select> for form semantics — find the one offering
-    // the goae_category options specifically, not just the first <select> in the DOM.
-    // fireEvent.change (not userEvent.selectOptions) reliably reaches bind:value here.
-    const categorySelect = Array.from(container.querySelectorAll('select')).find((el) =>
-      el.querySelector('option[value="Auslagenersatz"]'),
-    ) as HTMLSelectElement;
-    expect(categorySelect).toBeInTheDocument();
-    await fireEvent.change(categorySelect, { target: { value: 'Auslagenersatz' } });
-    expect(categorySelect.value).toBe('Auslagenersatz');
+    // The Kategorie field is a shadcn (bits-ui) Select: a trigger button that opens a
+    // floating-ui listbox. jsdom always reports zero-size geometry, so floating-ui never
+    // flips the listbox to visible and role-based queries (which respect that hidden
+    // ancestor) can't find the option — select it by its stable data-value attribute
+    // instead. "Versicherte Person" and "Art" are also shadcn Selects, so the Kategorie
+    // trigger is targeted by its id (pos-0-kategorie for the single position here).
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    expect(categoryTrigger).toBeInTheDocument();
+    await user.click(categoryTrigger);
+    const auslagenersatzOption = document.querySelector(
+      '[data-value="Auslagenersatz"]',
+    ) as HTMLElement;
+    expect(auslagenersatzOption).toBeInTheDocument();
+    await user.click(auslagenersatzOption);
+    await waitFor(() => expect(categoryTrigger).toHaveTextContent('Auslagenersatz (§10 GOÄ)'));
+    // Selecting the item closes the listbox asynchronously; wait for the body's
+    // scroll-lock (pointer-events: none) to lift before interacting with anything else.
+    await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
 
     await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
     // Wait for revalidation to fully complete (button label reverts) before asserting.

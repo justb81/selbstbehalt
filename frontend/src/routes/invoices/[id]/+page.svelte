@@ -12,12 +12,14 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
   import {
+    formatDate,
     formatEur,
     roundCents,
     type InsuredPerson,
     type InvoiceWithPositions,
   } from '@selbstbehalt/shared';
   import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
+  import { refundStatus } from '$lib/utils/position-refund';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
   import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
@@ -26,6 +28,8 @@
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Separator } from '$lib/components/ui/separator';
+  import { HoverCard, HoverCardContent, HoverCardTrigger } from '$lib/components/ui/hover-card';
   import {
     Table,
     TableBody,
@@ -149,7 +153,7 @@
     <!-- Header: date, number, badge and quick-access buttons -->
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
-        <span>{invoice.invoice_date}</span>
+        <span>{formatDate(invoice.invoice_date)}</span>
         {#if invoice.invoice_number}<span>Nr. {invoice.invoice_number}</span>{/if}
         <InvoiceBadge status={invoice.status} />
       </div>
@@ -266,18 +270,25 @@
                 <TableHead>Beschreibung</TableHead>
                 <TableHead class="text-right">Faktor</TableHead>
                 <TableHead class="text-right">Betrag</TableHead>
-                {#if invoice.positions.some((p) => p.refund_amount != null)}
-                  <TableHead class="text-right">Erstattet</TableHead>
-                {/if}
               </TableRow>
             </TableHeader>
             <TableBody>
               {#each invoice.positions as pos (pos.id)}
+                {@const st = refundStatus(pos.charged_amount, pos.refund_amount)}
                 <TableRow
                   class={pos.is_valid === false ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
                 >
-                  <TableCell class="tabular-nums text-sm">{pos.treatment_date ?? '—'}</TableCell>
-                  <TableCell class="font-semibold">{pos.goae_number}</TableCell>
+                  <TableCell class="tabular-nums text-sm"
+                    >{formatDate(pos.treatment_date)}</TableCell
+                  >
+                  <TableCell>
+                    <div class="flex flex-col gap-0.5">
+                      <span class="font-semibold">{pos.goae_number}</span>
+                      {#if pos.goae_category}
+                        <small class="text-muted-foreground text-xs">{pos.goae_category}</small>
+                      {/if}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div class="flex flex-col gap-0.5">
                       <span>{pos.description ?? '—'}</span>
@@ -286,39 +297,80 @@
                           >⚠ {pos.flag_reason}</small
                         >
                       {/if}
-                      {#if pos.goae_category}
-                        <small class="text-muted-foreground text-xs">{pos.goae_category}</small>
-                      {/if}
                     </div>
                   </TableCell>
                   <TableCell class="text-right">{pos.multiplier.toFixed(2)}</TableCell>
-                  <TableCell class="text-right tabular-nums"
-                    >{formatEur(pos.charged_amount)}</TableCell
-                  >
-                  {#if invoice.positions.some((p) => p.refund_amount != null)}
-                    <TableCell class="text-right tabular-nums">
-                      {#if pos.refund_amount != null}
-                        {pos.refund_amount === 0 ? 'Abgelehnt' : formatEur(pos.refund_amount)}
-                      {:else}
-                        —
+                  <TableCell class="text-right tabular-nums">
+                    <div class="flex flex-col items-end gap-0.5">
+                      <HoverCard>
+                        <HoverCardTrigger>
+                          {#snippet child({ props })}
+                            <button
+                              type="button"
+                              {...props}
+                              class="tabular-nums underline-offset-2 hover:underline focus-visible:underline outline-none {st.className}"
+                            >
+                              {formatEur(pos.charged_amount)}
+                            </button>
+                          {/snippet}
+                        </HoverCardTrigger>
+                        <HoverCardContent>
+                          <dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                            <dt class="text-muted-foreground">Basis (1,0×)</dt>
+                            <dd class="text-right tabular-nums">{formatEur(pos.base_amount)}</dd>
+                            <dt class="text-muted-foreground">Faktor</dt>
+                            <dd class="text-right tabular-nums">× {pos.multiplier.toFixed(2)}</dd>
+                            <dt class="text-muted-foreground">Anzahl</dt>
+                            <dd class="text-right tabular-nums">× {pos.quantity}</dd>
+                          </dl>
+                          <Separator class="my-2" />
+                          <dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                            <dt class="font-medium">Betrag</dt>
+                            <dd class="text-right font-medium tabular-nums">
+                              {formatEur(pos.charged_amount)}
+                            </dd>
+                            {#if pos.refund_amount != null}
+                              <dt class="text-muted-foreground">Erstattet</dt>
+                              <dd class="text-right tabular-nums {st.className}">
+                                {formatEur(pos.refund_amount)}
+                              </dd>
+                            {/if}
+                          </dl>
+                        </HoverCardContent>
+                      </HoverCard>
+                      {#if st.tone === 'partial' && st.difference != null}
+                        <span class="text-xs text-warning">{formatEur(st.difference)}</span>
+                      {:else if st.tone === 'rejected'}
+                        <span class="text-xs text-destructive">abgelehnt</span>
                       {/if}
-                    </TableCell>
-                  {/if}
+                    </div>
+                  </TableCell>
                 </TableRow>
               {/each}
+              {@const totalCharged = invoice.positions.reduce((s, p) => s + p.charged_amount, 0)}
+              {@const hasRefunds = invoice.positions.some((p) => p.refund_amount != null)}
+              {@const totalRefund = invoice.positions.reduce(
+                (s, p) => s + (p.refund_amount ?? 0),
+                0,
+              )}
+              {@const totalSt = hasRefunds ? refundStatus(totalCharged, totalRefund) : null}
               <TableRow class="bg-muted/30 font-semibold border-t-2">
                 <TableCell></TableCell>
                 <TableCell></TableCell>
-                <TableCell></TableCell>
                 <TableCell class="text-right text-muted-foreground">Gesamt</TableCell>
+                <TableCell></TableCell>
                 <TableCell class="text-right tabular-nums">
-                  {formatEur(invoice.positions.reduce((s, p) => s + p.charged_amount, 0))}
+                  <div class="flex flex-col items-end gap-0.5">
+                    <span class={totalSt?.className ?? ''}>{formatEur(totalCharged)}</span>
+                    {#if totalSt?.tone === 'partial' && totalSt.difference != null}
+                      <span class="text-xs font-normal text-warning"
+                        >{formatEur(totalSt.difference)}</span
+                      >
+                    {:else if totalSt?.tone === 'rejected'}
+                      <span class="text-xs font-normal text-destructive">abgelehnt</span>
+                    {/if}
+                  </div>
                 </TableCell>
-                {#if invoice.positions.some((p) => p.refund_amount != null)}
-                  <TableCell class="text-right tabular-nums">
-                    {formatEur(invoice.positions.reduce((s, p) => s + (p.refund_amount ?? 0), 0))}
-                  </TableCell>
-                {/if}
               </TableRow>
             </TableBody>
           </Table>

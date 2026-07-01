@@ -11,6 +11,7 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
   import {
+    formatDate,
     formatEur,
     type Contract,
     type InsuredPerson,
@@ -179,8 +180,8 @@
       {/if}
       {#if insuredPerson.start_date}
         <span class="text-muted-foreground">
-          seit {insuredPerson.start_date}{insuredPerson.end_date
-            ? ` bis ${insuredPerson.end_date}`
+          seit {formatDate(insuredPerson.start_date)}{insuredPerson.end_date
+            ? ` bis ${formatDate(insuredPerson.end_date)}`
             : ''}
         </span>
       {/if}
@@ -276,7 +277,9 @@
                       >
                         {inv.provider_name}
                       </span>
-                      <span class="text-xs text-muted-foreground">{inv.invoice_date ?? '—'}</span>
+                      <span class="text-xs text-muted-foreground"
+                        >{formatDate(inv.invoice_date)}</span
+                      >
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                       <InvoiceBadge status={inv.status} />
