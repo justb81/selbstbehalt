@@ -142,6 +142,15 @@ cp .env.example .env          # then edit .env for your host (see below)
 docker compose up -d --build  # build images and start both services
 ```
 
+Prefer not to build locally? Every [release](https://github.com/justb81/selbstbehalt/releases)
+publishes multi-arch (amd64/arm64) images to GHCR — use
+[`docker-compose.release.yml`](docker-compose.release.yml) instead:
+
+```bash
+cp .env.example .env
+SELBSTBEHALT_VERSION=1.2.3 docker compose -f docker-compose.release.yml up -d
+```
+
 - The services **do not publish host ports**. They are meant to sit behind a
   reverse proxy (e.g. Coolify/Traefik), which routes to them over the Docker
   network; the internal ports are documented via `expose` (frontend `3000`,
@@ -171,6 +180,14 @@ The backend exposes an unauthenticated `/api/health` endpoint that drives the
 container healthcheck; the frontend only starts once the backend reports
 healthy (`depends_on: service_healthy`). Reverse-proxy/HTTPS hardening and a
 full self-hosting guide are tracked separately.
+
+## Releases
+
+Versioned with [SemVer](https://semver.org/), fully automated from
+[Conventional Commits](https://www.conventionalcommits.org/) via
+[release-please](https://github.com/googleapis/release-please) — no manual
+changelog editing or tagging. See [`docs/release.md`](docs/release.md) for how
+a `vX.Y.Z` tag turns into GHCR images, a signed SBOM, and a GitHub Release.
 
 ## Contributing
 

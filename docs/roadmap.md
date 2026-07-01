@@ -91,7 +91,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #29 | Polish (A11y, i18n, Responsive, optional Push) | #19, #27, #12 | ⬜ |
 | #31 | Hardening (CSP, Header, Reverse-Proxy/HTTPS, SQLCipher) | #30, #9 | ⬜ |
 | #32 | Privacy-/DSGVO-Review (Datenfluss-Audit) | #26, #31, #27 | ⬜ |
-| #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | ⬜ |
+| #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | 🚧 |
 | #34 | Docs (Self-Hosting-README, OpenAPI) | #11–#14, #30 | ⬜ |
 | #133 | Navigationsstruktur optimieren (Bottom-Nav, Bündelung, Breadcrumbs, shadcn-Migration) | #19, #26, #29 | ⬜ |
 | #134 | Versicherte Person als Knoten: IA-Neuordnung + Günstigerprüfung-Verdikt je Leistungsjahr (Redesign 5/5, ehem. #143) | #133, #23, #28, #140, #141, #142 | ⬜ |

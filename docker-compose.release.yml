@@ -1,0 +1,61 @@
+# docker-compose.release.yml — selbstbehalt (PKV Manager), pre-built images.
+#
+# Unlike docker-compose.yml (which builds both services locally), this file
+# pulls the multi-arch (amd64/arm64) images published to GHCR by a `vX.Y.Z`
+# release — no local build, no toolchain required. It is attached as a
+# release asset to every GitHub Release; see docs/release.md.
+#
+#     cp .env.example .env                 # then edit .env for your host
+#     SELBSTBEHALT_VERSION=1.2.3 \
+#       docker compose -f docker-compose.release.yml up -d
+#
+# Leave SELBSTBEHALT_VERSION unset to track `latest`. Pin it to a specific
+# release tag (without the `v` prefix, e.g. `1.2.3`) for reproducible
+# upgrades. See docker-compose.yml for the option/volume documentation — the
+# services below are otherwise identical, just `image:` instead of `build:`.
+
+services:
+  backend:
+    image: ghcr.io/justb81/selbstbehalt-backend:${SELBSTBEHALT_VERSION:-latest}
+    environment:
+      DATABASE_PATH: /app/db/pkv.sqlite
+      PORT: '8080'
+      API_KEY: ${PKV_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - ./data/db:/app/db
+      - ./data/files:/app/files
+    expose:
+      - '8080'
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  frontend:
+    # PUBLIC_API_URL is baked in at image build time (same-origin by
+    # default); a published image cannot take it as a runtime build arg. Use
+    # the in-app settings, or build docker-compose.yml locally, if you need a
+    # separate backend origin.
+    image: ghcr.io/justb81/selbstbehalt-frontend:${SELBSTBEHALT_VERSION:-latest}
+    expose:
+      - '3000'
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--spider', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3

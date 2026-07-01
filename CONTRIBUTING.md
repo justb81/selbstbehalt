@@ -50,7 +50,9 @@ packages — [`frontend/`](frontend/) (SvelteKit PWA) and [`backend/`](backend/)
   `feat/contracts-api`, `fix/parser-factor-limit`, `docs/contributing`.
 - **Conventional Commits** for commit messages and PR titles:
   `type(scope): summary`, e.g. `feat(backend): add contracts CRUD`.
-  Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `data`.
+  Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`.
+  This is enforced by commitlint (`commit-msg` hook) and drives the automated
+  changelog/version bump — see [`docs/release.md`](docs/release.md).
 - Keep commits focused and the history readable; rebase rather than merge `main`
   into your branch when it drifts.
 
