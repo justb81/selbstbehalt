@@ -36,6 +36,9 @@
     lookupPosition,
     normalizeZiffer,
     parseInvoice,
+    validateInvoice,
+    type ConstraintViolation,
+    type ParsedPosition,
     type RawPosition,
   } from '$lib/utils/goae-parser';
   import type { FeeEntry, FeeScheduleId } from '$lib/data/fee-schedule';
@@ -187,6 +190,8 @@
 
   function removePosition(i: number) {
     positions = positions.filter((_, idx) => idx !== i);
+    // Row indices shifted — any prior violation's positionIndices are now stale.
+    invoiceViolations = [];
   }
 
   // ---------------------------------------------------------------------------
@@ -228,6 +233,7 @@
       flag_reason: p.flagReason,
       confidence: p.confidence,
     }));
+    invoiceViolations = result.parsed.violations;
     if (positions.length > 0) {
       totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
     }
@@ -243,6 +249,24 @@
 
   let revalidating = $state(false);
   let revalidateError = $state<string | null>(null);
+  /** Cross-position constraint violations (excludes/requires/…) from the last
+   *  scan, "Neu einlesen" or "Positionen prüfen" run. Empty until one of those
+   *  runs — is_valid/flag_reason follow the same "recompute on demand" model. */
+  let invoiceViolations = $state<ConstraintViolation[]>([]);
+
+  /** invoiceViolations grouped by the row index(es) each one involves, so the
+   *  affected position cards can be highlighted and cite the rule inline
+   *  (not just in the summary list above the position list). Indexed by row
+   *  (not a Map) — rows with no violation are simply left as a hole. */
+  const violationsByPosition = $derived.by(() => {
+    const byRow: ConstraintViolation[][] = [];
+    for (const violation of invoiceViolations) {
+      for (const idx of violation.positionIndices) {
+        (byRow[idx] ??= []).push(violation);
+      }
+    }
+    return byRow;
+  });
 
   function categoryToSchedule(cat: GoaeCategory | null): FeeScheduleId {
     if (cat === 'GOZ') return 'GOZ';
@@ -297,10 +321,14 @@
       const tables = new Map(tableEntries);
       const indexes = new Map([...tables.entries()].map(([s, t]) => [s, buildIndex(t)]));
 
-      // Collect benefitCategory per position for eligible_amount computation below.
+      // Collect benefitCategory per position for eligible_amount computation
+      // below, and the looked-up ParsedPosition (indexed by row) for the
+      // whole-invoice constraint check that follows — Auslagenersatz rows have
+      // no Ziffer to check and are left as a hole (skipped by forEach below).
       const benefitCategories: (BenefitCategory | null)[] = [];
+      const parsedByIndex: ParsedPosition[] = [];
 
-      positions = positions.map((pos) => {
+      positions = positions.map((pos, i) => {
         // §10 GOÄ Auslagenersatz (Porto/Versand etc.) has no Ziffer/Steigerungsfaktor
         // to validate against a fee table — auto-detected (upgrade-only, a manual
         // 'Auslagenersatz' choice is never reverted) or already set by the user.
@@ -330,6 +358,7 @@
         };
         const result = lookupPosition(raw, table, index);
         benefitCategories.push(result.benefitCategory);
+        parsedByIndex[i] = result;
         return {
           ...pos,
           // Supplement description from fee table if currently empty.
@@ -340,6 +369,29 @@
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
         };
       });
+
+      // Whole-invoice constraint check (excludes/requires/componentOf/…), run
+      // per schedule since e.g. GOÄ rules don't apply across GOZ positions —
+      // mirrors parseInvoice()'s per-schedule grouping for OCR-scanned invoices.
+      const violations: ConstraintViolation[] = [];
+      for (const [schedule, table] of tables) {
+        const schedIdxs: number[] = [];
+        const schedPos: ParsedPosition[] = [];
+        parsedByIndex.forEach((p, rowIndex) => {
+          if (p.feeSchedule === schedule) {
+            schedIdxs.push(rowIndex);
+            schedPos.push(p);
+          }
+        }); // Array#forEach skips holes, so Auslagenersatz rows are naturally excluded.
+        if (schedPos.length === 0) continue;
+        for (const v of validateInvoice(schedPos, table, {}, indexes.get(schedule))) {
+          violations.push({
+            ...v,
+            positionIndices: v.positionIndices.map((i) => schedIdxs[i] ?? i),
+          });
+        }
+      }
+      invoiceViolations = violations;
 
       // Propagate treatment_date forward: positions without their own date
       // inherit from the nearest preceding position that has one.
@@ -420,6 +472,7 @@
         flag_reason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
         confidence: 1,
       }));
+      invoiceViolations = parsed.violations;
       if (positions.length > 0) {
         totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
       }
@@ -563,13 +616,6 @@
           {flaggedCount === 1 ? 'Position ist' : 'Positionen sind'} auffällig und markiert.
         </AlertDescription>
       </Alert>
-    {/if}
-    {#if hasScan && (scanResult?.parsed.violations.length ?? 0) > 0}
-      <ul class="list-disc pl-5 text-sm text-amber-600 dark:text-amber-500">
-        {#each scanResult?.parsed.violations ?? [] as violation (violation.message)}
-          <li>{violation.message}</li>
-        {/each}
-      </ul>
     {/if}
   {/if}
 
@@ -719,7 +765,12 @@
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
+          <Card
+            class={cn(
+              (pos.is_valid === false || !!violationsByPosition[i]) &&
+                'bg-amber-50 dark:bg-amber-950/20',
+            )}
+          >
             <CardHeader
               class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
@@ -889,6 +940,11 @@
                   ⚠ {pos.flag_reason}
                 </p>
               {/if}
+              {#each violationsByPosition[i] ?? [] as violation (violation.message)}
+                <p class="text-xs text-amber-600 dark:text-amber-500">
+                  ⚠ {violation.message}
+                </p>
+              {/each}
               {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
                 <p class="text-xs italic text-muted-foreground">
                   Unsichere Erkennung – bitte prüfen.
