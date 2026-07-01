@@ -13,6 +13,7 @@
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import { consumeSharedFile, SHARE_CACHE_NAME } from '$lib/pwa/share-target';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
 
@@ -105,10 +106,11 @@
       <AlertDescription>{loadError}</AlertDescription>
     </Alert>
   {:else if insuredOptions.length === 0}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-      <p class="text-muted-foreground">Noch keine versicherten Personen vorhanden.</p>
-      <Button class="mt-4" href={resolve('/contracts/new')}>Vertrag anlegen</Button>
-    </div>
+    <EmptyState message="Noch keine versicherten Personen vorhanden.">
+      {#snippet action()}
+        <Button href={resolve('/contracts/new')}>Vertrag anlegen</Button>
+      {/snippet}
+    </EmptyState>
   {:else}
     <InvoiceForm
       mode="create"

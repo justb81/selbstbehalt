@@ -126,7 +126,7 @@
           class={cn(
             'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium no-underline transition-colors',
             active
-              ? 'bg-primary/10 text-primary font-semibold'
+              ? 'bg-primary/5 text-primary font-semibold'
               : 'text-muted-foreground hover:bg-muted',
           )}
         >

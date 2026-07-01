@@ -11,6 +11,7 @@
   import BRETracker from '$lib/components/BRETracker.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
@@ -191,10 +192,11 @@
         </div>
       </div>
     {:else if contractCount === 0}
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        <p class="text-muted-foreground">Noch keine Verträge angelegt.</p>
-        <Button class="mt-4" href={resolve('/contracts/new')}>Ersten Vertrag anlegen</Button>
-      </div>
+      <EmptyState message="Noch keine Verträge angelegt.">
+        {#snippet action()}
+          <Button href={resolve('/contracts/new')}>Ersten Vertrag anlegen</Button>
+        {/snippet}
+      </EmptyState>
     {/if}
 
     {#if hasError}

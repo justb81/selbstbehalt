@@ -14,6 +14,13 @@
 
 <!-- pb-16 sm:pb-0: reserve space for the fixed mobile bottom nav -->
 <div class="flex flex-col min-h-dvh pb-16 sm:pb-0">
+  <a
+    href="#main-content"
+    class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:no-underline"
+  >
+    Zum Inhalt springen
+  </a>
+
   <PwaStatus />
   <Toaster richColors />
 
@@ -24,7 +31,11 @@
     <Nav />
   </header>
 
-  <main class="pt-14 flex-1 w-full max-w-screen-xl mx-auto px-4 py-5 bg-background">
+  <main
+    id="main-content"
+    tabindex="-1"
+    class="pt-14 flex-1 w-full max-w-screen-xl mx-auto px-4 py-5 bg-background focus:outline-none"
+  >
     <Breadcrumbs />
     {@render children()}
   </main>

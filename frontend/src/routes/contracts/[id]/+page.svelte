@@ -29,6 +29,7 @@
   import BRETracker from '$lib/components/BRETracker.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -625,9 +626,10 @@
     </div>
 
     {#if insuredPersons.length === 0}
-      <p class="text-sm text-muted-foreground">
-        Noch keine versicherten Personen. Bitte mindestens eine hinzufügen.
-      </p>
+      <EmptyState
+        compact
+        message="Noch keine versicherten Personen. Bitte mindestens eine hinzufügen."
+      />
     {:else}
       <div class="space-y-3">
         {#each insuredPersons as ip (ip.id)}
@@ -657,6 +659,7 @@
                     type="button"
                     class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer border-none"
                     title="Bearbeiten"
+                    aria-label="Bearbeiten"
                     onclick={() => openEditInsuredForm(ip)}
                   >
                     ✎
@@ -665,6 +668,7 @@
                     type="button"
                     class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none"
                     title="Entfernen"
+                    aria-label="Entfernen"
                     onclick={() => {
                       insuredPendingRemoval = ip;
                     }}
@@ -797,6 +801,7 @@
                             min="0"
                             step="0.5"
                             title="Anzahl Monatsbeiträge"
+                            aria-label="Anzahl Monatsbeiträge"
                             required
                             class="{inputClass} w-16 flex-shrink-0"
                           />
@@ -808,6 +813,7 @@
                             max="100"
                             step="1"
                             title="Anteil am Monatsbeitrag (%)"
+                            aria-label="Anteil am Monatsbeitrag (%)"
                             required
                             class="{inputClass} w-16 flex-shrink-0"
                           />
@@ -821,6 +827,7 @@
                             min="0"
                             step="0.01"
                             title="Fixer Rückerstattungsbetrag (€)"
+                            aria-label="Fixer Rückerstattungsbetrag (€)"
                             required
                             class="{inputClass} w-24 flex-shrink-0"
                           />
@@ -830,6 +837,7 @@
                       <button
                         type="button"
                         class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none disabled:opacity-40"
+                        aria-label="Stufe entfernen"
                         onclick={() => removeBreLevel(i)}
                         disabled={ipBreLevels.length <= 1}
                       >
@@ -900,6 +908,7 @@
                         type="button"
                         class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none mb-0.5"
                         title="Leistungsbereich entfernen"
+                        aria-label="Leistungsbereich entfernen"
                         onclick={() => removeBenefit(i)}
                       >
                         ✕
@@ -945,6 +954,7 @@
                               <button
                                 type="button"
                                 class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none disabled:opacity-40"
+                                aria-label="Stufe entfernen"
                                 onclick={() => removeTier(i, j)}
                                 disabled={j === benefit.tiers.length - 1}
                               >
@@ -1016,6 +1026,7 @@
                             <button
                               type="button"
                               class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none mb-0.5"
+                              aria-label="Grenze entfernen"
                               onclick={() => removeLimit(i, j)}
                             >
                               ✕
@@ -1067,6 +1078,7 @@
                               <button
                                 type="button"
                                 class="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer border-none"
+                                aria-label="Jahr entfernen"
                                 onclick={() => removeStaffelEntry(i, j)}
                               >
                                 ✕

@@ -11,6 +11,7 @@
   import { formatDate } from '@selbstbehalt/shared';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
 
   let persons = $state<Person[]>([]);
@@ -52,10 +53,11 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else if persons.length === 0}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-      <p class="text-muted-foreground">Noch keine Personen angelegt.</p>
-      <Button class="mt-4" href={resolve('/persons/new')}>Erste Person anlegen</Button>
-    </div>
+    <EmptyState message="Noch keine Personen angelegt.">
+      {#snippet action()}
+        <Button href={resolve('/persons/new')}>Erste Person anlegen</Button>
+      {/snippet}
+    </EmptyState>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each persons as person (person.id)}
