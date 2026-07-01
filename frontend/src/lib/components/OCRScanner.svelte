@@ -13,7 +13,7 @@
   is unit-testable without a real camera, worker or DOM.
 -->
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
 
   import {
     captureVideoFrame as defaultCaptureVideoFrame,
@@ -51,12 +51,18 @@
     schedule = $bindable<FeeScheduleId>('GOÄ'),
     onScanned,
     deps = {},
+    autoFile = null,
   }: {
     /** Fee schedule the captured invoice is parsed against. */
     schedule?: FeeScheduleId;
     /** Called with the parsed result once a frame has been recognised. */
     onScanned: (result: ScanResult) => void;
     deps?: Partial<ScannerDeps>;
+    /**
+     * A file supplied by the caller (e.g. a PWA share target, issue #158)
+     * that is scanned immediately on mount, without user interaction.
+     */
+    autoFile?: File | null;
   } = $props();
 
   // `deps` is injected once (tests) and never changes; capturing the initial
@@ -118,12 +124,7 @@
     }
   }
 
-  async function onFileChange(event: Event): Promise<void> {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    // Reset so re-selecting the same file fires `change` again.
-    input.value = '';
-    if (!file) return;
+  async function handleFile(file: File): Promise<void> {
     try {
       const images = await fileToImages(file);
       await processImages(images);
@@ -131,6 +132,21 @@
       error = messageFor(err);
     }
   }
+
+  async function onFileChange(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    // Reset so re-selecting the same file fires `change` again.
+    input.value = '';
+    if (!file) return;
+    await handleFile(file);
+  }
+
+  // Web Share Target (issue #158): scan a caller-supplied file straight away,
+  // as if the user had just picked it from the file dialog.
+  onMount(() => {
+    if (autoFile) void handleFile(autoFile);
+  });
 
   async function startCamera(): Promise<void> {
     error = null;

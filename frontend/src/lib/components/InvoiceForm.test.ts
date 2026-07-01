@@ -136,6 +136,17 @@ describe('InvoiceForm — create mode', () => {
     expect(screen.getByText('Rechnung scannen / hochladen')).toBeInTheDocument();
   });
 
+  it('opens the scanner automatically for a shared file (issue #158)', async () => {
+    const sharedFile = new File(['x'], 'geteilte-rechnung.pdf', { type: 'application/pdf' });
+    render(InvoiceForm, {
+      props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave: vi.fn(), sharedFile },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText('Rechnung scannen / hochladen')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument();
+  });
+
   it('shows the "Rechnung speichern" submit label', () => {
     render(InvoiceForm, {
       props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave: vi.fn() },

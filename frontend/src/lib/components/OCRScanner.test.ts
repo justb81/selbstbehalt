@@ -99,4 +99,14 @@ describe('OCRScanner', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('OCR kaputt');
     expect(onScanned).not.toHaveBeenCalled();
   });
+
+  it('scans an `autoFile` immediately on mount, without user interaction', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = stubDeps();
+    const autoFile = new File(['x'], 'geteilte-rechnung.pdf', { type: 'application/pdf' });
+    render(OCRScanner, { props: { onScanned, deps, autoFile } });
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(deps.fileToImages).toHaveBeenCalledWith(autoFile);
+  });
 });

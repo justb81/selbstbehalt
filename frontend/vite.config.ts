@@ -57,6 +57,18 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
+        // Web Share Target (issue #158): "/share-target" is never rendered by
+        // SvelteKit — it exists only so the service worker (src/service-worker.ts)
+        // can intercept the POST, extract the shared PDF, and redirect to
+        // /invoices/new?share=<id> for pickup (see lib/pwa/share-target.ts).
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [{ name: 'pdf', accept: ['application/pdf'] }],
+          },
+        },
       },
       injectManifest: {
         // App shell + bundled data (the GOÄ/GOZ/GOT tables are imported into the
