@@ -282,7 +282,7 @@ id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
-goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'UV-GOÄ' | 'Auslagenersatz'
+goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz'
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup
 quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3
@@ -294,7 +294,7 @@ is_valid         BOOLEAN            -- Steigerungsfaktor innerhalb Regelgrenze?
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
-`goae_category` trägt neben den drei Gebührenordnungen (+ `UV-GOÄ`) zusätzlich den Wert
+`goae_category` trägt neben den drei Gebührenordnungen zusätzlich den Wert
 **`Auslagenersatz`** für §10 GOÄ — typischerweise Porto-/Versandkosten, die zum tatsächlichen
 Betrag statt zu einem GOÄ-Satz abgerechnet werden. Der GOÄ-Parser erkennt Auslagenersatz-
 Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und setzt die

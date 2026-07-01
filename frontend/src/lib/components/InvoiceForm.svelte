@@ -247,7 +247,38 @@
   function categoryToSchedule(cat: GoaeCategory | null): FeeScheduleId {
     if (cat === 'GOZ') return 'GOZ';
     if (cat === 'GOT') return 'GOT';
-    return 'GOÄ'; // GOÄ and UV-GOÄ both validate against the GOÄ table
+    return 'GOÄ';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Live recalculation (Faktor/Anzahl/Basis → Betrag → Rechnungsbetrag; Ziffer/
+  // Kategorie → Basis) — the "Positionen prüfen" button remains responsible for
+  // full re-validation (is_valid/flag_reason) against the fee tables.
+  // ---------------------------------------------------------------------------
+
+  function recalcTotal() {
+    totalAmount = roundCents(positions.reduce((s, p) => s + (p.charged_amount || 0), 0));
+  }
+
+  function recalcChargedAmount(i: number) {
+    const pos = positions[i];
+    if (!pos) return;
+    pos.charged_amount = roundCents(
+      (pos.base_amount || 0) * (pos.multiplier || 0) * (pos.quantity || 0),
+    );
+    recalcTotal();
+  }
+
+  async function recalcBaseAmount(i: number) {
+    const pos = positions[i];
+    if (!pos || pos.goae_category === 'Auslagenersatz' || !pos.goae_number.trim()) return;
+    const schedule = categoryToSchedule(pos.goae_category);
+    const table = await loadFeeTable(schedule);
+    const index = buildIndex(table);
+    const entry = index.get(normalizeZiffer(pos.goae_number));
+    if (entry?.baseAmount == null) return;
+    pos.base_amount = entry.baseAmount;
+    recalcChargedAmount(i);
   }
 
   async function revalidatePositions() {
@@ -403,22 +434,19 @@
   // Fee schedule info dialog (Ziffer / Kat. lookup)
   // ---------------------------------------------------------------------------
 
-  /** `schedule: null` marks Auslagenersatz — no fee-table entry applies. */
-  type InfoEntry = { ziffer: string; schedule: FeeScheduleId | null; entry: FeeEntry | null };
+  type InfoEntry = { ziffer: string; schedule: FeeScheduleId; entry: FeeEntry | null };
   let infoDialogOpen = $state(false);
   let infoEntry = $state<InfoEntry | null>(null);
   let infoLoading = $state(false);
 
+  // Only reachable for pos.goae_category !== 'Auslagenersatz' — the info button
+  // is hidden alongside the Ziffer field for Auslagenersatz positions.
   async function openFeeInfo(pos: PositionRow) {
     if (!pos.goae_number.trim()) return;
     infoLoading = true;
     infoDialogOpen = true;
     infoEntry = null;
     try {
-      if (pos.goae_category === 'Auslagenersatz') {
-        infoEntry = { ziffer: pos.goae_number, schedule: null, entry: null };
-        return;
-      }
       const schedule = categoryToSchedule(pos.goae_category);
       const table = await loadFeeTable(schedule);
       const index = buildIndex(table);
@@ -450,20 +478,26 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
-    const positionInputs: InvoicePositionInput[] = positions.map((p) => ({
-      goae_number: p.goae_number,
-      goae_category: p.goae_category,
-      quantity: p.quantity,
-      // Positions without a date fall back to the invoice date (§3.2 Issue #139).
-      treatment_date: p.treatment_date || invoiceDate,
-      description: p.description.trim() || null,
-      multiplier: p.multiplier,
-      base_amount: p.base_amount,
-      charged_amount: p.charged_amount,
-      eligible_amount: p.eligible_amount,
-      is_valid: p.is_valid,
-      flag_reason: p.flag_reason,
-    }));
+    const positionInputs: InvoicePositionInput[] = positions.map((p) => {
+      // Auslagenersatz has no Ziffer/Steigerungsfaktor/Basis (§10 GOÄ) — the fields
+      // stay hidden but keep their last values while editing, so a category change
+      // can be undone; only clear them once the position is actually saved.
+      const isAuslagenersatz = p.goae_category === 'Auslagenersatz';
+      return {
+        goae_number: isAuslagenersatz ? '' : p.goae_number,
+        goae_category: p.goae_category,
+        quantity: p.quantity,
+        // Positions without a date fall back to the invoice date (§3.2 Issue #139).
+        treatment_date: p.treatment_date || invoiceDate,
+        description: p.description.trim() || null,
+        multiplier: isAuslagenersatz ? 1 : p.multiplier,
+        base_amount: isAuslagenersatz ? 0 : p.base_amount,
+        charged_amount: p.charged_amount,
+        eligible_amount: p.eligible_amount,
+        is_valid: p.is_valid,
+        flag_reason: p.flag_reason,
+      };
+    });
 
     onSave({
       insured_person_id: insuredPersonId,
@@ -687,33 +721,12 @@
         {#each positions as pos, i (i)}
           <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
             <CardHeader
-              class="flex-row items-center justify-between gap-2 border-b border-border pb-3"
+              class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-sm font-semibold">Position {i + 1}</span>
-                <Select
-                  type="single"
-                  value={pos.goae_category ?? ''}
-                  onValueChange={(v: string) => {
-                    pos.goae_category = (v || null) as GoaeCategory | null;
-                  }}
-                  {disabled}
-                  items={goaeCategoryValues.map((cat) => ({
-                    value: cat,
-                    label: GOAE_CATEGORY_LABELS[cat] ?? cat,
-                  }))}
-                >
-                  <SelectTrigger class="h-8 w-auto min-w-32 text-xs" id="pos-{i}-kategorie">
-                    <SelectValue placeholder="Kategorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {#each goaeCategoryValues as cat (cat)}
-                      <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
-                    {/each}
-                  </SelectContent>
-                </Select>
                 <span class="text-sm text-muted-foreground tabular-nums"
-                  >· {formatEur(pos.charged_amount)}</span
+                  >· {formatEur(pos.charged_amount || 0)}</span
                 >
               </div>
               <Button
@@ -729,7 +742,7 @@
               </Button>
             </CardHeader>
             <CardContent class="flex flex-col gap-3">
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div class="space-y-1.5">
                   <Label for="pos-{i}-datum">
                     Datum <span class="text-destructive" aria-hidden="true">*</span>
@@ -742,60 +755,97 @@
                   />
                 </div>
                 <div class="space-y-1.5">
-                  <Label for="pos-{i}-ziffer">Ziffer</Label>
-                  <div class="flex items-center gap-1">
+                  <Label for="pos-{i}-kategorie">Kategorie</Label>
+                  <Select
+                    type="single"
+                    value={pos.goae_category ?? ''}
+                    onValueChange={(v: string) => {
+                      pos.goae_category = (v || null) as GoaeCategory | null;
+                      void recalcBaseAmount(i);
+                    }}
+                    {disabled}
+                    items={goaeCategoryValues.map((cat) => ({
+                      value: cat,
+                      label: GOAE_CATEGORY_LABELS[cat] ?? cat,
+                    }))}
+                  >
+                    <SelectTrigger class="w-full" id="pos-{i}-kategorie">
+                      <SelectValue placeholder="Kategorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {#each goaeCategoryValues as cat (cat)}
+                        <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
+                      {/each}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {#if pos.goae_category !== 'Auslagenersatz'}
+                  <div class="space-y-1.5">
+                    <Label for="pos-{i}-ziffer">Ziffer</Label>
+                    <div class="flex items-center gap-1">
+                      <Input
+                        id="pos-{i}-ziffer"
+                        type="text"
+                        bind:value={pos.goae_number}
+                        onchange={() => void recalcBaseAmount(i)}
+                        placeholder="z.B. 1"
+                        required
+                        {disabled}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+                        title="Gebührenverzeichnis-Eintrag anzeigen"
+                        disabled={!pos.goae_number.trim() || infoLoading}
+                        onclick={() => openFeeInfo(pos)}
+                      >
+                        <InfoIcon class="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+              <div class="space-y-1.5">
+                <Label for="pos-{i}-beschreibung">Beschreibung</Label>
+                <Input
+                  id="pos-{i}-beschreibung"
+                  type="text"
+                  bind:value={pos.description}
+                  placeholder="optional"
+                  {disabled}
+                />
+              </div>
+              <div
+                class={cn(
+                  'grid grid-cols-2 gap-3',
+                  pos.goae_category !== 'Auslagenersatz' && 'sm:grid-cols-4',
+                )}
+              >
+                {#if pos.goae_category !== 'Auslagenersatz'}
+                  <div class="space-y-1.5">
+                    <Label for="pos-{i}-faktor">Faktor</Label>
                     <Input
-                      id="pos-{i}-ziffer"
-                      type="text"
-                      bind:value={pos.goae_number}
-                      placeholder="z.B. 1"
+                      id="pos-{i}-faktor"
+                      type="number"
+                      bind:value={pos.multiplier}
+                      oninput={() => recalcChargedAmount(i)}
+                      min="0.01"
+                      step="0.01"
                       required
                       {disabled}
+                      class="text-right"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
-                      title="Gebührenverzeichnis-Eintrag anzeigen"
-                      disabled={!pos.goae_number.trim() || infoLoading}
-                      onclick={() => openFeeInfo(pos)}
-                    >
-                      <InfoIcon class="size-3.5" />
-                    </Button>
                   </div>
-                </div>
-                <div class="space-y-1.5 sm:col-span-2 lg:col-span-2">
-                  <Label for="pos-{i}-beschreibung">Beschreibung</Label>
-                  <Input
-                    id="pos-{i}-beschreibung"
-                    type="text"
-                    bind:value={pos.description}
-                    placeholder="optional"
-                    {disabled}
-                  />
-                </div>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-faktor">Faktor</Label>
-                  <Input
-                    id="pos-{i}-faktor"
-                    type="number"
-                    bind:value={pos.multiplier}
-                    min="0.01"
-                    step="0.01"
-                    required
-                    {disabled}
-                    class="text-right"
-                  />
-                </div>
+                {/if}
                 <div class="space-y-1.5">
                   <Label for="pos-{i}-anzahl">Anz.</Label>
                   <Input
                     id="pos-{i}-anzahl"
                     type="number"
                     bind:value={pos.quantity}
+                    oninput={() => recalcChargedAmount(i)}
                     min="1"
                     step="1"
                     required
@@ -803,25 +853,29 @@
                     class="text-right"
                   />
                 </div>
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-basis">Basis (€)</Label>
-                  <Input
-                    id="pos-{i}-basis"
-                    type="number"
-                    bind:value={pos.base_amount}
-                    min="0"
-                    step="0.01"
-                    required
-                    {disabled}
-                    class="text-right"
-                  />
-                </div>
+                {#if pos.goae_category !== 'Auslagenersatz'}
+                  <div class="space-y-1.5">
+                    <Label for="pos-{i}-basis">Basis (€)</Label>
+                    <Input
+                      id="pos-{i}-basis"
+                      type="number"
+                      bind:value={pos.base_amount}
+                      oninput={() => recalcChargedAmount(i)}
+                      min="0"
+                      step="0.01"
+                      required
+                      {disabled}
+                      class="text-right"
+                    />
+                  </div>
+                {/if}
                 <div class="space-y-1.5">
                   <Label for="pos-{i}-betrag">Betrag (€)</Label>
                   <Input
                     id="pos-{i}-betrag"
                     type="number"
                     bind:value={pos.charged_amount}
+                    oninput={recalcTotal}
                     min="0"
                     step="0.01"
                     required
@@ -881,7 +935,7 @@
     <DialogHeader>
       <DialogTitle>
         {#if infoEntry}
-          {infoEntry.schedule ?? 'Auslagenersatz'} {infoEntry.ziffer}
+          {infoEntry.schedule} {infoEntry.ziffer}
         {:else if infoLoading}
           Wird geladen …
         {:else}
@@ -891,11 +945,6 @@
     </DialogHeader>
     {#if infoLoading}
       <p class="text-sm text-muted-foreground">Eintrag wird geladen …</p>
-    {:else if infoEntry && infoEntry.schedule === null}
-      <p class="text-sm text-muted-foreground">
-        Auslagenersatz nach §10 GOÄ – kein Eintrag im Gebührenverzeichnis; wird zum tatsächlichen
-        Betrag erstattet.
-      </p>
     {:else if infoEntry?.entry}
       {@const entry = infoEntry.entry}
       <div class="flex flex-col gap-3 text-sm">
