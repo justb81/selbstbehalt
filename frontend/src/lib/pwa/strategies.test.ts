@@ -92,6 +92,19 @@ describe('cacheFirst', () => {
     expect(await cache.match(req)).toBeUndefined();
   });
 
+  it('does not cache a 206 Partial Content response and still returns it', async () => {
+    // Mobile browsers (notably WebKit) sometimes issue a Range request for
+    // large same-origin scripts (e.g. the pdf.js worker chunk); Cache.put()
+    // throws a TypeError for a 206 response, which must not be attempted
+    // (issue #159).
+    const cache = fakeCache();
+    const fetchImpl = vi.fn(async () => new Response('partial', { status: 206 }));
+    const req = new Request(`${SELF}/_app/immutable/assets/pdf.worker.min.abc123.mjs`);
+    const res = await cacheFirst(req, deps(cache, fetchImpl));
+    expect(await res.text()).toBe('partial');
+    expect(await cache.match(req)).toBeUndefined();
+  });
+
   it('caches opaque responses only when cacheOpaque is set (OCR model host)', async () => {
     const cache = fakeCache();
     // A real opaque response (status 0, type 'opaque') can't be constructed in
@@ -144,6 +157,17 @@ describe('networkFirst', () => {
         }),
       ),
     ).rejects.toThrow('offline');
+  });
+
+  it('does not cache a 206 Partial Content response and still returns it', async () => {
+    const cache = fakeCache();
+    const req = new Request(`${SELF}/api/x`);
+    const res = await networkFirst(
+      req,
+      deps(cache, async () => new Response('partial', { status: 206 })),
+    );
+    expect(await res.text()).toBe('partial');
+    expect(await cache.match(req)).toBeUndefined();
   });
 });
 
