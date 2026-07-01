@@ -107,10 +107,25 @@ export async function cacheFirst(
   if (cached) return cached;
 
   const response = await deps.fetch(request);
-  if (response.ok || (options.cacheOpaque && response.type === 'opaque')) {
+  if (isCacheable(response, options)) {
     await cache.put(request, response.clone());
   }
   return response;
+}
+
+/**
+ * Whether a response may be handed to `Cache.put()`. Mobile browsers (notably
+ * WebKit) sometimes issue a `Range` request for large same-origin scripts —
+ * e.g. the pdf.js worker chunk — getting back a 206 Partial Content response.
+ * `response.ok` is true for 206 too, but the Cache API spec throws a TypeError
+ * on `put()` for a partial response; left unguarded, that throw rejects the
+ * strategy's promise and the browser reports the original fetch/dynamic
+ * import as failed (issue #159). Skip caching a 206 and let it be re-fetched
+ * (and hopefully cached in full) next time.
+ */
+function isCacheable(response: Response, options: CacheFirstOptions): boolean {
+  if (response.status === 206) return false;
+  return response.ok || (options.cacheOpaque === true && response.type === 'opaque');
 }
 
 /**
@@ -121,7 +136,7 @@ export async function networkFirst(request: Request, deps: StrategyDeps): Promis
   const cache = await deps.openCache(deps.cacheName);
   try {
     const response = await deps.fetch(request);
-    if (response.ok) await cache.put(request, response.clone());
+    if (response.ok && response.status !== 206) await cache.put(request, response.clone());
     return response;
   } catch (error) {
     const cached = await cache.match(request);
