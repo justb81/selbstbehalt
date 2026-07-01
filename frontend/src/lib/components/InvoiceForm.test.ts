@@ -34,6 +34,7 @@ import InvoiceForm from './InvoiceForm.svelte';
 import type { FormPayload } from './InvoiceForm.svelte';
 import type { InvoiceWithPositions } from '@selbstbehalt/shared';
 import { buildIndex, lookupPosition, parseInvoice } from '$lib/utils/goae-parser';
+import { loadFeeTable } from '$lib/data/fee-tables';
 
 const INSURED_OPTIONS = [
   { id: 'ip-1', label: 'TestAG · Komfort', insuredPerson: {} as never },
@@ -422,5 +423,102 @@ describe('InvoiceForm — edit mode', () => {
     await user.click(screen.getByTitle('Gebührenverzeichnis-Eintrag anzeigen'));
 
     await waitFor(() => expect(buildIndex).toHaveBeenCalled());
+  });
+
+  it('recalculates Betrag when Faktor changes, and Rechnungsbetrag with it', async () => {
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    const faktorInput = screen.getByRole('spinbutton', { name: 'Faktor' });
+    await user.clear(faktorInput);
+    await user.type(faktorInput, '3');
+
+    // base_amount (4.66) × multiplier (3) × quantity (2) = 27.96
+    const betragInput = screen.getByRole('spinbutton', { name: 'Betrag (€)' });
+    await waitFor(() => expect(betragInput).toHaveValue(27.96));
+    const totalInput = screen.getByRole('spinbutton', { name: /Rechnungsbetrag/i });
+    await waitFor(() => expect(totalInput).toHaveValue(27.96));
+  });
+
+  it('recalculates Rechnungsbetrag when a position Betrag is edited directly', async () => {
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    const betragInput = screen.getByRole('spinbutton', { name: 'Betrag (€)' });
+    await user.clear(betragInput);
+    await user.type(betragInput, '15');
+
+    const totalInput = screen.getByRole('spinbutton', { name: /Rechnungsbetrag/i });
+    await waitFor(() => expect(totalInput).toHaveValue(15));
+  });
+
+  it('looks up the fee table when Ziffer changes, to recalculate Basis', async () => {
+    const user = userEvent.setup();
+    vi.mocked(loadFeeTable).mockClear();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    const zifferInput = screen.getByRole('textbox', { name: 'Ziffer' });
+    await user.clear(zifferInput);
+    await user.type(zifferInput, '5');
+    await user.tab();
+
+    await waitFor(() => expect(loadFeeTable).toHaveBeenCalledWith('GOÄ'));
+  });
+
+  it('hides Ziffer/Faktor/Basis for Auslagenersatz but keeps them until save', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: { mode: 'edit', initialData: SAMPLE_INVOICE, insuredOptions: INSURED_OPTIONS, onSave },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Ziffer' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Faktor' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Basis (€)' })).toBeInTheDocument();
+
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    await user.click(categoryTrigger);
+    const auslagenersatzOption = document.querySelector(
+      '[data-value="Auslagenersatz"]',
+    ) as HTMLElement;
+    await user.click(auslagenersatzOption);
+    await waitFor(() => expect(categoryTrigger).toHaveTextContent('Auslagenersatz (§10 GOÄ)'));
+    await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
+
+    // Hidden immediately — but the underlying Ziffer/Faktor/Basis values aren't
+    // lost yet, so switching back to GOÄ/GOZ/GOT would restore them unchanged.
+    expect(screen.queryByRole('textbox', { name: 'Ziffer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Faktor' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Basis (€)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Anz.' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    expect(onSave).toHaveBeenCalledOnce();
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.goae_number).toBe('');
+    expect(payload.positions[0]!.multiplier).toBe(1);
+    expect(payload.positions[0]!.base_amount).toBe(0);
   });
 });

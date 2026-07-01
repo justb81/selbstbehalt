@@ -189,6 +189,15 @@ describe('invoicePositionCreateSchema', () => {
     expect(result.success && result.data.goae_category).toBe('Auslagenersatz');
   });
 
+  it('accepts an empty goae_number for Auslagenersatz — it has no Ziffer to bill under', () => {
+    const result = invoicePositionCreateSchema.safeParse({
+      ...base,
+      goae_number: '',
+      goae_category: 'Auslagenersatz',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects an unknown goae_category', () => {
     expect(
       invoicePositionCreateSchema.safeParse({ ...base, goae_category: 'sonstiges' }).success,

@@ -39,7 +39,7 @@ export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
  * (typically Porto-/Versandkosten) — always reimbursed at 100 % of `charged_amount`,
  * with no Ziffer/Steigerungsfaktor validation against a fee table.
  */
-export const goaeCategoryValues = ['GOÄ', 'GOZ', 'GOT', 'UV-GOÄ', 'Auslagenersatz'] as const;
+export const goaeCategoryValues = ['GOÄ', 'GOZ', 'GOT', 'Auslagenersatz'] as const;
 export const goaeCategorySchema = z.enum(goaeCategoryValues);
 export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
 

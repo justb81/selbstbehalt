@@ -12,10 +12,11 @@ import { goaeCategorySchema } from '../enums.js';
  */
 export const invoicePositionInputSchema = z
   .object({
-    goae_number: z.string().min(1, 'GOÄ-Ziffer darf nicht leer sein'),
+    /** Empty for `goae_category: 'Auslagenersatz'`, which has no Ziffer to bill under. */
+    goae_number: z.string(),
     /**
-     * GOÄ | GOZ | GOT | UV-GOÄ, or `Auslagenersatz` for §10 GOÄ expense
-     * reimbursement (Porto/Versand etc.) — see {@link goaeCategoryValues}.
+     * GOÄ | GOZ | GOT, or `Auslagenersatz` for §10 GOÄ expense reimbursement
+     * (Porto/Versand etc.) — see {@link goaeCategoryValues}.
      */
     goae_category: goaeCategorySchema.nullish(),
     /** Anzahl (quantity); omitted when not stated on the invoice line (backend defaults to 1). */
