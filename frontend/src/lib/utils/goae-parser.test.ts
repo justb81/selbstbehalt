@@ -332,9 +332,11 @@ describe('parsePositionLine / extractPositions', () => {
     expect(positions[0]).toMatchObject({ ziffer: '5298', multiplier: 1.0, chargedAmount: 1.46 });
   });
 
-  it('parses a PVS-style invoice with € tokens, continuation lines, and missing Ziffern', () => {
-    // Regression test for real PVS Baden-Württemberg invoice format.
-    // Lines without a leading Ziffer (OCR column-layout failure) are silently ignored.
+  it('parses a PVS-style invoice with € tokens, continuation lines, and a Ziffer-less line', () => {
+    // Regression test for real PVS Baden-Württemberg invoice format. A line
+    // without a leading Ziffer (OCR column-layout failure) that still
+    // resolves its own Faktor + Betrag is kept — ziffer: '' — rather than
+    // silently dropped (lookupPosition flags it for manual completion).
     const text = [
       '06.03.2026',
       'Beratung, auch mittels Fernsprecher 2,30 10,72 €',
@@ -349,11 +351,88 @@ describe('parsePositionLine / extractPositions', () => {
       '420 Ultraschalluntersuchung von bis zu drei 2,30 10,72 €',
     ].join('\n');
     const positions = extractPositions(text);
-    expect(positions.map((p) => p.ziffer)).toEqual(['800', '831', '75', '5298', '410', '420']);
-    expect(positions[0]).toMatchObject({ multiplier: 2.3, chargedAmount: 26.14 });
-    expect(positions[2]).toMatchObject({ ziffer: '75', multiplier: 2.3, chargedAmount: 17.43 });
-    expect(positions[3]).toMatchObject({ ziffer: '5298', multiplier: 1.0, chargedAmount: 1.46 });
-    expect(positions[4]).toMatchObject({ ziffer: '410', multiplier: 3.0, chargedAmount: 34.97 });
+    expect(positions.map((p) => p.ziffer)).toEqual(['', '800', '831', '75', '5298', '410', '420']);
+    expect(positions[0]).toMatchObject({ multiplier: 2.3, chargedAmount: 10.72 });
+    expect(positions[1]).toMatchObject({ multiplier: 2.3, chargedAmount: 26.14 });
+    expect(positions[3]).toMatchObject({ ziffer: '75', multiplier: 2.3, chargedAmount: 17.43 });
+    expect(positions[4]).toMatchObject({ ziffer: '5298', multiplier: 1.0, chargedAmount: 1.46 });
+    expect(positions[5]).toMatchObject({ ziffer: '410', multiplier: 3.0, chargedAmount: 34.97 });
+  });
+
+  it('rejects bare-integer boilerplate that happens to end in two numbers', () => {
+    // IK-Nummer/Rechnungsnummer/IBAN fragments end in several plain integers
+    // (no decimal comma) — must not be mistaken for a Ziffer-less position.
+    expect(parsePositionLine('IK-Nummer: 2208 100 11')).toBeNull();
+    expect(parsePositionLine('Rechnungsnummer: 32341-001348')).toBeNull();
+    expect(parsePositionLine('IBAN: DE45 3006 0601 0001 6832 68')).toBeNull();
+  });
+
+  it('merges a two-line wrapped description onto the position above it', () => {
+    // "5030 …1,80 37,77 €" wraps its Leistungslegende across two more lines
+    // before "5298" starts the next position.
+    const text = [
+      '5030 Ob.-, Unt.arm, Ellenb., Ober-/Untersch, 1,80 37,77 €',
+      'Kniegel, Hand/Fuß, Schulter, Schlüsselb',
+      'Beckenteil, Kreuzb.,Hüftgel. 2 Ebenen',
+      '5298 Zuschlag bei digitaler Radiographie 1,00 5,25 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['5030', '5298']);
+    expect(positions[0]).toMatchObject({
+      multiplier: 1.8,
+      chargedAmount: 37.77,
+      ocrDescription:
+        'Ob.-, Unt.arm, Ellenb., Ober-/Untersch, Kniegel, Hand/Fuß, Schulter, Schlüsselb Beckenteil, Kreuzb.,Hüftgel. 2 Ebenen',
+    });
+  });
+
+  it('merges a one-line wrapped description onto the position above it', () => {
+    const text = [
+      '5031 Kniegel, Hand/Fuß, Schulter, Schlüsselb Ob.-, Unt.arm, Ellenb., Ober-/Untersch, 1,80 10,49 €',
+      'Beckenteil, Kreuzb.,Hüftgel. ergänz.Eb',
+      '5298 Zuschlag bei digitaler Radiographie',
+      '1,00 1,46 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['5031', '5298']);
+    expect(positions[0]?.ocrDescription).toBe(
+      'Kniegel, Hand/Fuß, Schulter, Schlüsselb Ob.-, Unt.arm, Ellenb., Ober-/Untersch, Beckenteil, Kreuzb.,Hüftgel. ergänz.Eb',
+    );
+  });
+
+  it('merges description continuations that follow a bare-number-joined amount', () => {
+    // "410 …Organes" has no amount of its own — the bare-number join fills
+    // it in first, then the two following text-only lines merge onto it.
+    const text = [
+      '410 Ultraschalluntersuchung eines Organes',
+      '3,00 34,97 €',
+      'Sono Knie links und gegenseite zum',
+      'Vergleich',
+      '420 Ultraschalluntersuchung von bis zu drei 2,30 10,72 €',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.ziffer)).toEqual(['410', '420']);
+    expect(positions[0]).toMatchObject({
+      multiplier: 3.0,
+      chargedAmount: 34.97,
+      ocrDescription:
+        'Ultraschalluntersuchung eines Organes Sono Knie links und gegenseite zum Vergleich',
+    });
+  });
+
+  it('never merges trailing boilerplate after the last position on a page', () => {
+    const text = [
+      '420 Ultraschalluntersuchung von bis zu drei 2,30 10,72 €',
+      'weiteren Organen, je Organe',
+      'Bitte wenden!',
+      'IBAN: DE45 3006 0601 0001 6832 68',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(1);
+    expect(positions[0]).toMatchObject({
+      ziffer: '420',
+      ocrDescription: 'Ultraschalluntersuchung von bis zu drei',
+    });
   });
 
   it('parses a realistic GOÄ/GOZ dental invoice with mixed prefixes and column order', () => {
@@ -458,6 +537,18 @@ describe('lookupPosition — unknown Ziffern', () => {
       table,
     );
     expect(p.known).toBe(true);
+  });
+
+  it('flags a Ziffer-less fallback position instead of looking it up', () => {
+    const p = look(
+      { ziffer: '', quantity: 1, multiplier: 2.3, chargedAmount: 10.72, raw: '' },
+      table,
+    );
+    expect(p.known).toBe(false);
+    expect(p.isValid).toBe(false);
+    expect(p.baseAmount).toBeNull();
+    expect(p.flags[0]?.code).toBe('ziffer_not_detected');
+    expect(p.chargedAmount).toBe(10.72);
   });
 });
 
