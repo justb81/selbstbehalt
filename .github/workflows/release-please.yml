@@ -30,7 +30,41 @@ jobs:
       # token) isn't configured — the release PR still opens either way,
       # just without CI status checks. See docs/release.md.
       - uses: googleapis/release-please-action@v4
+        id: release-please
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # release-please generates/updates CHANGELOG.md and bumps package.json
+      # versions without running Prettier, so the release PR fails the
+      # `format:check` CI gate. Format the generated files and push a fixup
+      # commit onto the release PR branch so it stays green.
+      - uses: actions/checkout@v7
+        if: steps.release-please.outputs.pr
+        with:
+          ref: ${{ fromJSON(steps.release-please.outputs.pr).headBranchName }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        if: steps.release-please.outputs.pr
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        if: steps.release-please.outputs.pr
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Format release PR
+        if: steps.release-please.outputs.pr
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm format
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -am "style: format release-please output"
+            git push
+          fi
