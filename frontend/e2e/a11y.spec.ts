@@ -142,6 +142,22 @@ test.describe('axe: core flows', () => {
     await expectNoViolations(page);
   });
 
+  test('stats — empty and populated', async ({ page }) => {
+    await mockBackend(page, { populated: false });
+    await page.goto('/stats');
+    await expect(page.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
+    await expect(
+      page.getByText('Noch keine Rechnungen oder versicherten Personen für eine Auswertung'),
+    ).toBeVisible();
+    await expectNoViolations(page);
+
+    await mockBackend(page, { populated: true });
+    await page.goto('/stats');
+    await expect(page.getByText('Kosten vs. Erstattungen', { exact: true })).toBeVisible();
+    await expect(page.getByText('BRE-Verlauf', { exact: true })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test('settings', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeVisible();

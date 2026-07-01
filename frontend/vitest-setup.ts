@@ -41,6 +41,17 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// JSDOM does not implement ResizeObserver; LayerChart's <Chart> container measures
+// itself with one to size the SVG, so chart component tests (issue #28) would throw
+// on mount without this stub.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Node.js v26 defines globalThis.localStorage as a configurable getter that returns
 // undefined when --localstorage-file is not provided. In vitest's jsdom environment,
 // globalThis IS the jsdom window, so jsdom cannot override this getter via assignment.
