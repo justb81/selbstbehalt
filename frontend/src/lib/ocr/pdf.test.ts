@@ -14,20 +14,50 @@ function fakePdfJs(numPages = 2) {
   const page = { getViewport, render };
   const getPage = vi.fn().mockResolvedValue(page);
   const doc = { numPages, getPage };
-  const getDocument = vi.fn().mockReturnValue({ promise: Promise.resolve(doc) });
-  const pdfjs: PdfJsLike = { getDocument, GlobalWorkerOptions: { workerSrc: '' } };
-  return { pdfjs, getDocument, getPage, getViewport, render, doc };
+  const destroy = vi.fn().mockResolvedValue(undefined);
+  const getDocument = vi.fn().mockReturnValue({ promise: Promise.resolve(doc), destroy });
+  const pdfWorkerDestroy = vi.fn();
+  const PDFWorker = vi.fn(
+    class {
+      destroy = pdfWorkerDestroy;
+    },
+  );
+  const pdfjs: PdfJsLike = {
+    getDocument,
+    PDFWorker: PDFWorker as unknown as PdfJsLike['PDFWorker'],
+  };
+  return {
+    pdfjs,
+    getDocument,
+    getPage,
+    getViewport,
+    render,
+    doc,
+    destroy,
+    PDFWorker,
+    pdfWorkerDestroy,
+  };
 }
 
 function fakeCanvasDeps(pdfjs: PdfJsLike): {
   deps: RenderPdfDeps;
   getImageData: ReturnType<typeof vi.fn>;
   createCanvas: ReturnType<typeof vi.fn>;
+  createPdfWorker: ReturnType<typeof vi.fn>;
+  terminate: ReturnType<typeof vi.fn>;
 } {
   const getImageData = vi.fn().mockReturnValue(sentinel);
   const context = { getImageData };
   const createCanvas = vi.fn().mockReturnValue({ getContext: () => context });
-  return { deps: { loadPdfJs: async () => pdfjs, createCanvas }, getImageData, createCanvas };
+  const terminate = vi.fn();
+  const createPdfWorker = vi.fn(() => ({ terminate }) as unknown as Worker);
+  return {
+    deps: { loadPdfJs: async () => pdfjs, createCanvas, createPdfWorker },
+    getImageData,
+    createCanvas,
+    createPdfWorker,
+    terminate,
+  };
 }
 
 function pdfFile(): Blob {
@@ -40,7 +70,10 @@ describe('renderPdfPage', () => {
     const { deps, createCanvas, getImageData } = fakeCanvasDeps(pdfjs);
     const result = await renderPdfPage(pdfFile(), 1, {}, deps);
     expect(result).toBe(sentinel);
-    expect(getDocument).toHaveBeenCalledWith({ data: expect.any(Uint8Array) });
+    expect(getDocument).toHaveBeenCalledWith({
+      data: expect.any(Uint8Array),
+      worker: expect.objectContaining({ destroy: expect.any(Function) }),
+    });
     expect(getPage).toHaveBeenCalledWith(1);
     expect(getViewport).toHaveBeenCalledWith({ scale: 2 });
     expect(createCanvas).toHaveBeenCalledWith(200, 100);
@@ -55,23 +88,29 @@ describe('renderPdfPage', () => {
     expect(createCanvas).toHaveBeenCalledWith(300, 150);
   });
 
-  it('sets a local worker source when provided', async () => {
-    const { pdfjs } = fakePdfJs();
-    const { deps } = fakeCanvasDeps(pdfjs);
-    await renderPdfPage(pdfFile(), 1, { workerSrc: '/pdf.worker.js' }, deps);
-    expect(pdfjs.GlobalWorkerOptions?.workerSrc).toBe('/pdf.worker.js');
+  it('creates a dedicated worker per call and tears it down afterwards', async () => {
+    const { pdfjs, destroy, PDFWorker, pdfWorkerDestroy } = fakePdfJs();
+    const { deps, createPdfWorker, terminate } = fakeCanvasDeps(pdfjs);
+    await renderPdfPage(pdfFile(), 1, {}, deps);
+    expect(createPdfWorker).toHaveBeenCalledTimes(1);
+    expect(PDFWorker).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1); // loadingTask.destroy()
+    expect(pdfWorkerDestroy).toHaveBeenCalledTimes(1);
+    expect(terminate).toHaveBeenCalledTimes(1);
   });
 
-  it('throws for an out-of-range page', async () => {
+  it('throws for an out-of-range page and still tears the worker down', async () => {
     const { pdfjs } = fakePdfJs(1);
-    const { deps } = fakeCanvasDeps(pdfjs);
+    const { deps, terminate } = fakeCanvasDeps(pdfjs);
     await expect(renderPdfPage(pdfFile(), 5, {}, deps)).rejects.toBeInstanceOf(RangeError);
+    expect(terminate).toHaveBeenCalledTimes(1);
   });
 
   it('throws when no 2D context is available', async () => {
     const { pdfjs } = fakePdfJs();
     const deps: RenderPdfDeps = {
       loadPdfJs: async () => pdfjs,
+      createPdfWorker: () => ({ terminate: vi.fn() }) as unknown as Worker,
       createCanvas: () => ({ getContext: () => null }) as unknown as OffscreenCanvas,
     };
     await expect(renderPdfPage(pdfFile(), 1, {}, deps)).rejects.toThrow(/2D-Canvas-Kontext/);
@@ -86,7 +125,11 @@ describe('renderAllPdfPages', () => {
     const getImageData = vi.fn().mockImplementation(() => sentinels[callCount++]);
     const context = { getImageData };
     const createCanvas = vi.fn().mockReturnValue({ getContext: () => context });
-    const deps: RenderPdfDeps = { loadPdfJs: async () => pdfjs, createCanvas };
+    const deps: RenderPdfDeps = {
+      loadPdfJs: async () => pdfjs,
+      createPdfWorker: () => ({ terminate: vi.fn() }) as unknown as Worker,
+      createCanvas,
+    };
 
     const results = await renderAllPdfPages(pdfFile(), {}, deps);
     expect(results).toHaveLength(3);
