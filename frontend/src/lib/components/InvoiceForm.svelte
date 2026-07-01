@@ -860,11 +860,11 @@
               </div>
               <div class="space-y-1.5">
                 <Label for="pos-{i}-beschreibung">Beschreibung</Label>
-                <Input
+                <Textarea
                   id="pos-{i}-beschreibung"
-                  type="text"
                   bind:value={pos.description}
                   placeholder="optional"
+                  rows={2}
                   {disabled}
                 />
               </div>
