@@ -11,6 +11,7 @@
 <script lang="ts">
   import { onDestroy, untrack, type Snippet } from 'svelte';
   import {
+    formatEur,
     goaeCategoryValues,
     providerTypeValues,
     roundCents,
@@ -44,6 +45,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
+  import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
   import {
     Select,
     SelectContent,
@@ -51,14 +53,6 @@
     SelectTrigger,
     SelectValue,
   } from '$lib/components/ui/select';
-  import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-  } from '$lib/components/ui/table';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
   import InfoIcon from '@lucide/svelte/icons/info';
@@ -483,11 +477,6 @@
       positions: positionInputs,
     });
   }
-
-  // Shared class for native <select> elements inside the positions table
-  // (styled to match shadcn Input dimensions).
-  const nativeSelectClass =
-    'border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50';
 </script>
 
 <form
@@ -694,32 +683,69 @@
     {/if}
 
     {#if positions.length > 0}
-      <div class="overflow-x-auto rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="w-32"
-                >Datum <span class="text-destructive" aria-hidden="true">*</span></TableHead
+      <div class="flex flex-col gap-3">
+        {#each positions as pos, i (i)}
+          <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
+            <CardHeader
+              class="flex-row items-center justify-between gap-2 border-b border-border pb-3"
+            >
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-semibold">Position {i + 1}</span>
+                <Select
+                  type="single"
+                  value={pos.goae_category ?? ''}
+                  onValueChange={(v: string) => {
+                    pos.goae_category = (v || null) as GoaeCategory | null;
+                  }}
+                  {disabled}
+                  items={goaeCategoryValues.map((cat) => ({
+                    value: cat,
+                    label: GOAE_CATEGORY_LABELS[cat] ?? cat,
+                  }))}
+                >
+                  <SelectTrigger class="h-8 w-auto min-w-32 text-xs" id="pos-{i}-kategorie">
+                    <SelectValue placeholder="Kategorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {#each goaeCategoryValues as cat (cat)}
+                      <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
+                    {/each}
+                  </SelectContent>
+                </Select>
+                <span class="text-sm text-muted-foreground tabular-nums"
+                  >· {formatEur(pos.charged_amount)}</span
+                >
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onclick={() => removePosition(i)}
+                aria-label="Position {i + 1} entfernen"
+                {disabled}
+                class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
-              <TableHead class="w-20">Ziffer</TableHead>
-              <TableHead class="w-36">Kat.</TableHead>
-              <TableHead>Beschreibung</TableHead>
-              <TableHead class="w-20 text-right">Faktor</TableHead>
-              <TableHead class="w-14 text-right">Anz.</TableHead>
-              <TableHead class="w-26 text-right">Basis (€)</TableHead>
-              <TableHead class="w-26 text-right">Betrag (€)</TableHead>
-              <TableHead class="w-8"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {#each positions as pos, i (i)}
-              <TableRow class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
-                <TableCell class="align-top p-1.5">
-                  <Input type="date" bind:value={pos.treatment_date} {disabled} />
-                </TableCell>
-                <TableCell class="align-top p-1.5">
+                ✕
+              </Button>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-datum">
+                    Datum <span class="text-destructive" aria-hidden="true">*</span>
+                  </Label>
+                  <Input
+                    id="pos-{i}-datum"
+                    type="date"
+                    bind:value={pos.treatment_date}
+                    {disabled}
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-ziffer">Ziffer</Label>
                   <div class="flex items-center gap-1">
                     <Input
+                      id="pos-{i}-ziffer"
                       type="text"
                       bind:value={pos.goae_number}
                       placeholder="z.B. 1"
@@ -730,7 +756,7 @@
                       type="button"
                       variant="ghost"
                       size="icon"
-                      class="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                      class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
                       title="Gebührenverzeichnis-Eintrag anzeigen"
                       disabled={!pos.goae_number.trim() || infoLoading}
                       onclick={() => openFeeInfo(pos)}
@@ -738,42 +764,23 @@
                       <InfoIcon class="size-3.5" />
                     </Button>
                   </div>
-                </TableCell>
-                <TableCell class="align-top p-1.5">
-                  <div class="flex items-center gap-1">
-                    <select
-                      bind:value={pos.goae_category}
-                      {disabled}
-                      class={cn(nativeSelectClass, 'flex-1')}
-                    >
-                      {#each goaeCategoryValues as cat (cat)}
-                        <option value={cat}>{GOAE_CATEGORY_LABELS[cat] ?? cat}</option>
-                      {/each}
-                    </select>
-                  </div>
-                </TableCell>
-                <TableCell class="align-top p-1.5">
-                  <div class="flex flex-col gap-1 min-w-0">
-                    <Input
-                      type="text"
-                      bind:value={pos.description}
-                      placeholder="optional"
-                      {disabled}
-                    />
-                    {#if pos.is_valid === false && pos.flag_reason}
-                      <p class="text-xs text-amber-600 dark:text-amber-500">
-                        ⚠ {pos.flag_reason}
-                      </p>
-                    {/if}
-                    {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
-                      <p class="text-xs italic text-muted-foreground">
-                        Unsichere Erkennung – bitte prüfen.
-                      </p>
-                    {/if}
-                  </div>
-                </TableCell>
-                <TableCell class="align-top p-1.5">
+                </div>
+                <div class="space-y-1.5 sm:col-span-2 lg:col-span-2">
+                  <Label for="pos-{i}-beschreibung">Beschreibung</Label>
                   <Input
+                    id="pos-{i}-beschreibung"
+                    type="text"
+                    bind:value={pos.description}
+                    placeholder="optional"
+                    {disabled}
+                  />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-faktor">Faktor</Label>
+                  <Input
+                    id="pos-{i}-faktor"
                     type="number"
                     bind:value={pos.multiplier}
                     min="0.01"
@@ -782,9 +789,11 @@
                     {disabled}
                     class="text-right"
                   />
-                </TableCell>
-                <TableCell class="align-top p-1.5">
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-anzahl">Anz.</Label>
                   <Input
+                    id="pos-{i}-anzahl"
                     type="number"
                     bind:value={pos.quantity}
                     min="1"
@@ -793,9 +802,11 @@
                     {disabled}
                     class="text-right"
                   />
-                </TableCell>
-                <TableCell class="align-top p-1.5">
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-basis">Basis (€)</Label>
                   <Input
+                    id="pos-{i}-basis"
                     type="number"
                     bind:value={pos.base_amount}
                     min="0"
@@ -804,9 +815,11 @@
                     {disabled}
                     class="text-right"
                   />
-                </TableCell>
-                <TableCell class="align-top p-1.5">
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="pos-{i}-betrag">Betrag (€)</Label>
                   <Input
+                    id="pos-{i}-betrag"
                     type="number"
                     bind:value={pos.charged_amount}
                     min="0"
@@ -815,24 +828,21 @@
                     {disabled}
                     class="text-right"
                   />
-                </TableCell>
-                <TableCell class="align-top p-1.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onclick={() => removePosition(i)}
-                    aria-label="Position {i + 1} entfernen"
-                    {disabled}
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  >
-                    ✕
-                  </Button>
-                </TableCell>
-              </TableRow>
-            {/each}
-          </TableBody>
-        </Table>
+                </div>
+              </div>
+              {#if pos.is_valid === false && pos.flag_reason}
+                <p class="text-xs text-amber-600 dark:text-amber-500">
+                  ⚠ {pos.flag_reason}
+                </p>
+              {/if}
+              {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
+                <p class="text-xs italic text-muted-foreground">
+                  Unsichere Erkennung – bitte prüfen.
+                </p>
+              {/if}
+            </CardContent>
+          </Card>
+        {/each}
       </div>
     {:else}
       <p class="text-sm text-muted-foreground">Noch keine Positionen. Positionen sind optional.</p>

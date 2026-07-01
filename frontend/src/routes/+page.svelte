@@ -7,7 +7,7 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { api } from '$lib/api';
-  import { formatEur, type InsuredPerson, type Invoice } from '@selbstbehalt/shared';
+  import { formatDate, formatEur, type InsuredPerson, type Invoice } from '@selbstbehalt/shared';
   import BRETracker from '$lib/components/BRETracker.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
@@ -149,7 +149,7 @@
               href={resolve('/invoices/[id]', { id: invoice.id })}
               class="grid grid-cols-[7rem_1fr_8rem_auto] gap-2 items-center px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 text-sm no-underline text-foreground"
             >
-              <span class="text-muted-foreground">{invoice.invoice_date}</span>
+              <span class="text-muted-foreground">{formatDate(invoice.invoice_date)}</span>
               <span>{invoice.provider_name}</span>
               <span class="text-right font-medium tabular-nums"
                 >{formatEur(invoice.total_amount)}</span

@@ -8,7 +8,12 @@
   import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
-  import { contractTypeValues, type ContractType, type Person } from '@selbstbehalt/shared';
+  import {
+    contractTypeValues,
+    formatDate,
+    type ContractType,
+    type Person,
+  } from '@selbstbehalt/shared';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -229,7 +234,9 @@
                     <option value="" disabled>Bitte wählen …</option>
                     {#each persons as person (person.id)}
                       <option value={person.id}>
-                        {person.name}{person.birth_date ? ` (geb. ${person.birth_date})` : ''}
+                        {person.name}{person.birth_date
+                          ? ` (geb. ${formatDate(person.birth_date)})`
+                          : ''}
                       </option>
                     {/each}
                   </select>
