@@ -25,6 +25,7 @@
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
@@ -256,7 +257,7 @@
       </div>
 
       {#if invoices.length === 0}
-        <p class="text-sm text-muted-foreground">Noch keine Rechnungen vorhanden.</p>
+        <EmptyState compact message="Noch keine Rechnungen vorhanden." />
       {:else}
         {#each invoicesByYear as [year, yearInvoices] (year)}
           <div class="space-y-2">

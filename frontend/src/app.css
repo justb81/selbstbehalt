@@ -95,3 +95,17 @@
     color: var(--foreground);
   }
 }
+
+/*
+ * svelte-sonner's `richColors` light-theme text tokens (--success-text etc., set
+ * on [data-sonner-toaster][data-sonner-theme='light']) fall short of WCAG AA
+ * (4.5:1) against their paired backgrounds — as low as 3.1:1 for warning
+ * (issue #29, Lighthouse a11y audit). :root here matches that selector's
+ * specificity plus one, so it wins the cascade regardless of stylesheet order.
+ */
+:root [data-sonner-toaster][data-sonner-theme='light'] {
+  --success-text: hsl(140, 100%, 22%);
+  --info-text: hsl(210, 92%, 38%);
+  --warning-text: hsl(31, 92%, 32%);
+  --error-text: hsl(360, 100%, 38%);
+}

@@ -17,6 +17,7 @@
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import {
@@ -112,14 +113,15 @@
     </div>
 
     {#if filtered.length === 0}
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        {#if invoices.length === 0}
-          <p class="text-muted-foreground">Noch keine Rechnungen vorhanden.</p>
-          <Button class="mt-4" href={resolve('/invoices/new')}>Erste Rechnung erfassen</Button>
-        {:else}
-          <p class="text-muted-foreground">Keine Rechnungen entsprechen dem Filter.</p>
-        {/if}
-      </div>
+      {#if invoices.length === 0}
+        <EmptyState message="Noch keine Rechnungen vorhanden.">
+          {#snippet action()}
+            <Button href={resolve('/invoices/new')}>Erste Rechnung erfassen</Button>
+          {/snippet}
+        </EmptyState>
+      {:else}
+        <EmptyState message="Keine Rechnungen entsprechen dem Filter." />
+      {/if}
     {:else}
       <div class="rounded-md border border-border shadow-sm overflow-x-auto">
         <Table>

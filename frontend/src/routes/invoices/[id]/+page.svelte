@@ -316,9 +316,7 @@
             <TableBody>
               {#each invoice.positions as pos (pos.id)}
                 {@const st = refundStatus(pos.charged_amount, pos.refund_amount)}
-                <TableRow
-                  class={pos.is_valid === false ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}
-                >
+                <TableRow class={pos.is_valid === false ? 'bg-warning/5' : ''}>
                   <TableCell class="tabular-nums text-sm"
                     >{formatDate(pos.treatment_date)}</TableCell
                   >
@@ -334,9 +332,7 @@
                     <div class="flex flex-col gap-0.5">
                       <span>{pos.description ?? '—'}</span>
                       {#if pos.is_valid === false && pos.flag_reason}
-                        <small class="text-yellow-600 dark:text-yellow-400 text-xs"
-                          >⚠ {pos.flag_reason}</small
-                        >
+                        <small class="text-warning text-xs">⚠ {pos.flag_reason}</small>
                       {/if}
                     </div>
                   </TableCell>

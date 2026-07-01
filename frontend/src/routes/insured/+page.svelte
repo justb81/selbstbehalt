@@ -12,6 +12,7 @@
   import BRETracker from '$lib/components/BRETracker.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
 
   interface ContractGroup {
@@ -59,15 +60,16 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else if groups.length === 0}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-      <p class="text-muted-foreground">Noch keine versicherten Personen vorhanden.</p>
-      <p class="text-sm text-muted-foreground mt-1">
-        Versicherte Personen werden im <a
-          href={resolve('/contracts')}
-          class="underline hover:text-primary">Vertrag</a
-        > angelegt.
-      </p>
-    </div>
+    <EmptyState message="Noch keine versicherten Personen vorhanden.">
+      {#snippet action()}
+        <p class="text-sm text-muted-foreground">
+          Versicherte Personen werden im <a
+            href={resolve('/contracts')}
+            class="underline hover:text-primary">Vertrag</a
+          > angelegt.
+        </p>
+      {/snippet}
+    </EmptyState>
   {:else}
     <div class="space-y-8">
       {#each groups as group (group.contract.id)}

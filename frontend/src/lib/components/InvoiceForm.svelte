@@ -785,7 +785,7 @@
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
+          <Card class={cn(pos.is_valid === false && 'bg-warning/5')}>
             <CardHeader
               class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
@@ -951,7 +951,7 @@
                 </div>
               </div>
               {#if pos.is_valid === false && pos.flag_reason}
-                <p class="text-xs text-amber-600 dark:text-amber-500">
+                <p class="text-xs text-warning">
                   ⚠ {pos.flag_reason}
                 </p>
               {/if}
@@ -1030,7 +1030,7 @@
           <dd>{entry.category}</dd>
           {#if entry.baseAmount != null}
             <dt class="text-muted-foreground">Basis (1,0×)</dt>
-            <dd>{entry.baseAmount.toFixed(2)} €</dd>
+            <dd>{formatEur(entry.baseAmount)}</dd>
           {/if}
           <dt class="text-muted-foreground">Max. Faktor</dt>
           <dd>{entry.maxMultiplier ?? '—'}</dd>

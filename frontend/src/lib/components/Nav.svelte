@@ -43,7 +43,7 @@
       class={cn(
         'inline-block px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors',
         active
-          ? 'bg-primary/10 text-primary font-semibold'
+          ? 'bg-primary/5 text-primary font-semibold'
           : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
       )}
     >
@@ -57,7 +57,7 @@
       class={cn(
         'inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer',
         overflowActive
-          ? 'bg-primary/10 text-primary font-semibold'
+          ? 'bg-primary/5 text-primary font-semibold'
           : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
       )}
     >
