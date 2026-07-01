@@ -103,6 +103,14 @@ export const INVOICE_LIST_ITEM = {
 
 export const INVOICE = { ...INVOICE_LIST_ITEM, positions: POSITIONS };
 
+export const BRE_HISTORY = {
+  insured_person_id: INSURED_ID,
+  years: [
+    { year: 2025, streak_years: 1, bre_amount: 0, projected_bre: 900 },
+    { year: 2026, streak_years: 2, bre_amount: 900, projected_bre: 1800 },
+  ],
+};
+
 /** Wires up read-only mocks for the backend the covered routes call. */
 export async function mockBackend(
   page: Page,
@@ -139,5 +147,37 @@ export async function mockBackend(
   });
   await page.route('**/api/invoices/*', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: INVOICE }) : route.fallback(),
+  );
+  await page.route('**/api/stats/year/*', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const year = Number(new URL(route.request().url()).pathname.split('/').pop());
+    return route.fulfill({
+      json: populated
+        ? {
+            year,
+            invoice_count: 1,
+            total_amount: 58,
+            eligible_amount: 54.89,
+            self_paid_amount: 0,
+            refund_amount: 0,
+            bre_amount: 0,
+          }
+        : {
+            year,
+            invoice_count: 0,
+            total_amount: 0,
+            eligible_amount: 0,
+            self_paid_amount: 0,
+            refund_amount: 0,
+            bre_amount: 0,
+          },
+    });
+  });
+  await page.route('**/api/stats/bre/*', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: populated ? BRE_HISTORY : { insured_person_id: INSURED_ID, years: [] },
+        })
+      : route.fallback(),
   );
 }

@@ -87,7 +87,8 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | Issue | Titel | Abhängig von | Status |
 |---|---|---|---|
 | #27 | PWA (Manifest, Service Worker, Caching, Offline-Queue) | #19, #24 | ⬜ |
-| #28 | Jahresauswertung + CSV/PDF-Export | #13, #23 | ⬜ |
+| #28 | Jahresauswertung (`/stats`, Diagramme) | #13, #23 | ✅ |
+| #184 | CSV/PDF-Export der Jahresauswertung (aus #28 ausgegliedert) | #13, #28 | ⬜ |
 | #29 | Polish (A11y, i18n, Responsive, optional Push) | #19, #27, #12 | ⬜ |
 | #31 | Hardening (CSP, Header, Reverse-Proxy/HTTPS, SQLCipher) | #30, #9 | ⬜ |
 | #32 | Privacy-/DSGVO-Review (Datenfluss-Audit) | #26, #31, #27 | ⬜ |
@@ -141,7 +142,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 #9,#19 ── #30 ── #31 ── #32              (Deploy → Hardening → Review)
 #5,#30 ── #33                             (Release)
 #19,#24 ── #27 ── #29                      (PWA → Polish)
-#13,#23 ── #28                             (Stats-Seite)
+#13,#23 ── #28 ── #184                    (Stats-Seite → Export)
 #19,#26 ── #133 ── #134 ◀── #23,#28       (Nav-Mechanik → IA-Neuordnung)
 ```
 
