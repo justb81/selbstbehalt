@@ -115,6 +115,10 @@ function validate(path) {
     if (table.pointValueCents == null) {
       if (e.points !== null) err(`${where}: GOT entry must have points=null`);
       if (!(e.baseAmount > 0)) warn(`${where}: baseAmount is 0`);
+    } else if (e.points === null) {
+      // Point-less GOÄ/GOZ entry: a percentage Zuschlag or a GOZ Teilleistung
+      // whose fee is derived from a base position, so it carries no fixed amount.
+      if (e.baseAmount !== 0) err(`${where}: point-less entry must have baseAmount 0`);
     } else {
       if (!(e.points >= 0)) err(`${where}: points must be >= 0`);
       const expected = round2((e.points * table.pointValueCents) / 100);

@@ -49,6 +49,13 @@ Wichtig:
 
 - Die GOÄ-Spalte **„Gebühr in DM" ist Altbestand und wird ignoriert** –
   `baseAmount` wird immer aus `Punktzahl × Punktwert` berechnet.
+- Manche Nummern drucken **keinen eigenen Betrag** in der Punktzahl-Spalte, sind
+  aber echte Abrechnungsnummern: die Analyt-Nummern der Labor-**Kataloge**
+  (Abschnitt M) werden zum Punktwert der vorangestellten Methoden-Kopfzeile
+  abgerechnet und erhalten deren `points`; **prozentuale Zuschläge** (z. B.
+  GOÄ 5298 „25 v.H. …", GOÄ 441, GOZ 0120) und **GOZ-Teilleistungen**
+  (Hälfte/drei Viertel der jeweiligen Gebühr) haben keinen festen Betrag und
+  erhalten `points: null`, `baseAmount: 0` (siehe §4).
 - Der **Punktwert ist versioniert/konfigurierbar** (`pointValueCents`), nicht
   in die Beträge „eingebrannt", damit eine Punktwertänderung ohne Neu-Parsen
   der Leistungstexte nachvollzogen werden kann.
@@ -103,6 +110,10 @@ Wichtig:
 - **`ziffer`** ist der Schlüssel des `entries`-Objekts und exakt wie gedruckt
   (`"1"`, `"75"`, `"1829a"`, GOZ `"0010"`). Der Parser **normalisiert beim
   Nachschlagen** (führende Nullen strippen), damit `"0001"` und `"1"` matchen.
+- **`points`/`baseAmount`** sind `null` bzw. `0` für **abgeleitet bepreiste**
+  GOÄ/GOZ-Einträge ohne festen Betrag: prozentuale Zuschläge und
+  GOZ-Teilleistungen (der konkrete Betrag ergibt sich aus der Basisleistung).
+  Labor-Katalog-Nummern hingegen tragen den geerbten Katalog-`points`-Wert (§2).
 - **`category`** wird aus dem Abschnitt der Quelle abgeleitet (GOÄ Teil M →
   `lab`, technische Abschnitte → `technical`, …) und mappt über
   `multiplierLimits` auf die §5-Steigerungsgrenzen.
@@ -231,7 +242,8 @@ Der Validator (`scripts/validate-fee-schedules.mjs`, dependency-frei) prüft:
    referenzierte Ziffer existiert in `entries` (oder ist als bewusst externer
    Verweis dokumentiert).
 4. **Preis-Plausibilität:** GOÄ/GOZ `baseAmount ≈ points × pointValueCents/100`
-   (Rundungstoleranz); GOT `points === null`; `baseAmount > 0`.
+   (Rundungstoleranz) oder – bei abgeleitet bepreisten Zuschlägen/Teilleistungen –
+   `points === null` mit `baseAmount === 0`; GOT `points === null`; `baseAmount ≥ 0`.
 5. **§5-Konsistenz:** `maxMultiplier` passt zur `category` bzw. ist ein
    begründeter Override; `category` existiert in `multiplierLimits`.
 6. **Symmetrie:** `excludes` darf einseitig sein — das ist **kein** Fehler (das
@@ -256,13 +268,19 @@ CI (`.github/workflows/ci.yml`) baut die Tabellen neu, erzwingt per
 `git diff --exit-code`, dass die eingecheckten Tabellen reproduzierbar zur
 Quelle passen (keine veralteten/handeditierten Tabellen), und validiert sie.
 
-**Aktueller Stand der generierten Tabellen** (Richtwerte): GOÄ ~2.285 Ziffern,
-GOZ ~209, GOT ~1.006. Die Constraint-Extraktion ist hochpräzise, aber nicht
+**Aktueller Stand der generierten Tabellen** (Richtwerte): GOÄ ~2.766 Ziffern,
+GOZ ~215, GOT ~1.006. Die Constraint-Extraktion ist hochpräzise, aber nicht
 vollständig: Sätze, die kein bekanntes Muster treffen, werden als `notes`
-(Freitext mit Wortlaut) erhalten — es geht nichts verloren. Reine
-Buchstaben-Zuschläge der GOÄ (A–K, Abschnitte A/B.II) sind **nicht** als
-Einträge enthalten (mehrdeutige, kollidierende Schlüssel); ihre numerischen
-Bezüge bleiben über die Zuschlags-Beschreibungen erhalten.
+(Freitext mit Wortlaut) erhalten — es geht nichts verloren.
+
+Nummern **ohne eigenen Betrag** in der Quelle sind trotzdem echte
+Abrechnungsnummern und als Einträge enthalten: die Analyt-Nummern der Labor-
+**Kataloge** (Abschnitt M) zum Punktwert ihrer Methoden-Kopfzeile, prozentuale
+**Zuschläge** (z. B. 5298, 441, GOZ 0120) und **GOZ-Teilleistungen** (2230, 2240,
+5050, 5060, 5240) mit `points: null`/`baseAmount: 0`. **Nicht** als Einträge
+enthalten sind allein die reinen Buchstaben-Zuschläge der GOÄ (A–K, Abschnitte
+A/B.II; mehrdeutige, kollidierende Schlüssel); ihre numerischen Bezüge bleiben
+über die Zuschlags-Beschreibungen erhalten.
 
 **Bekannte Quell-Eigenheit (korrigiert):** Im amtlichen XML ist „Lithium"
 fälschlich als GOÄ-Nr. **4114** ausgezeichnet — 4114 ist aber der

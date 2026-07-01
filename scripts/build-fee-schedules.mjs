@@ -421,6 +421,12 @@ function buildPointSchedule(schedule, root) {
   function processTable(table) {
     const thead = findFirst(table, 'thead');
     if (thead && /Seite|Übersicht/i.test(text(thead))) return; // TOC table
+    // Abschnitt-M "Katalog" runs: a method-header row states the Punktzahl that
+    // the numbered analytes listed under it share (those analyte rows print an
+    // empty fee column). Track the run's rate and the last header's points so the
+    // analytes are emitted as real, priced entries instead of dropped as notes.
+    let catalogRate = null;
+    let lastHeaderPoints = null;
     for (const row of directRows(table)) {
       const cs = cells(row);
       if (!cs.length || cs.every((c) => c === '')) continue;
@@ -433,28 +439,46 @@ function buildPointSchedule(schedule, root) {
       else if (cs[0] === '' && NUM.test(cs[1] || '')) zi = 1;
       const pointsCell = zi >= 0 ? cs.slice(zi + 1).find((c) => /^\d+$/.test(c)) : undefined;
 
-      if (zi >= 0 && pointsCell !== undefined) {
+      // A numbered row is a billing number whether or not it prints a fee. Rows
+      // with their own Punktzahl are priced from it and end any Katalog run.
+      // Fee-less numbered rows are either Katalog analytes (priced at the shared
+      // header rate) or derived-fee positions — percentage Zuschläge and GOZ
+      // Teilleistungen — which carry no fixed amount (points: null, baseAmount 0).
+      // All of these were previously dropped and mis-parsed as note rows.
+      if (zi >= 0) {
+        let points;
+        if (pointsCell !== undefined) {
+          points = +pointsCell;
+          catalogRate = null;
+        } else {
+          points = catalogRate; // null outside a Katalog → derived-fee entry
+        }
         const descEl = entryEls[zi + 1];
         let description = descEl ? clean(text(descEl)) : '';
         const sec = section.code ? { code: section.code, title: section.title } : undefined;
         if (schedule.feeSchedule === 'GOZ' && descEl) {
           const dn = descriptionAndNotes(descEl);
           description = dn.description || description;
-          const entry = b.addEntry({
-            ziffer: cs[zi],
-            description,
-            points: +pointsCell,
-            section: sec,
-          });
+          const entry = b.addEntry({ ziffer: cs[zi], description, points, section: sec });
           for (const note of dn.notes) b.applyRule(note, { fallbackZiffer: entry.ziffer });
         } else {
-          b.addEntry({ ziffer: cs[zi], description, points: +pointsCell, section: sec });
+          b.addEntry({ ziffer: cs[zi], description, points, section: sec });
         }
         continue;
       }
 
-      // Otherwise: a note / Bestimmung / Höchstwert row. Use the longest cell.
+      // Otherwise: a note / Bestimmung / Höchstwert / Katalog row. Use the longest cell.
       const noteText = cs.reduce((a, c) => (c.length > a.length ? c : a), '');
+      // A "Katalog" marker opens a run of analytes billed at the point value of
+      // the method-header row right above it; carry that rate to those analytes.
+      if (clean(noteText) === 'Katalog') {
+        catalogRate = lastHeaderPoints;
+        continue;
+      }
+      // Remember this row's own Punktzahl (if any) so the next "Katalog" can use
+      // it; a header without one leaves the following analytes unpriced (null).
+      const headerPoints = cs.find((c) => /^\d+$/.test(c));
+      lastHeaderPoints = headerPoints !== undefined ? +headerPoints : null;
       if (noteText.length < 6) continue;
       if (/Höchstwert/i.test(noteText)) {
         const capPoints = cs.find((c) => /^\d+$/.test(c));

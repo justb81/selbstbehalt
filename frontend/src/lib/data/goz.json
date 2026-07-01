@@ -194,15 +194,32 @@
           "type": "fixedFactor",
           "factor": 1,
           "sourceText": "Der Zuschlag nach der Nummer 0110 ist je Behandlungstag nur einmal und nur mit dem einfachen Gebührensatz berechnungsfähig."
-        },
+        }
+      ]
+    },
+    "120": {
+      "ziffer": "120",
+      "description": "Zuschlag für die Anwendung eines Lasers bei den Leistungen nach den Nummern 2410, 3070, 3080, 3210, 3240, 4080, 4090, 4100, 4130, 4133 und 9160",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "isSurcharge": true,
+      "section": {
+        "code": "A",
+        "title": "Allgemeine zahnärztliche Leistungen"
+      },
+      "constraints": [
         {
           "type": "maxFrequency",
           "count": 1,
           "scope": "day",
-          "sourceText": "Zuschlag für die Anwendung eines Lasers bei den Leistungen nach den Nummern 2410, 3070, 3080, 3210, 3240, 4080, 4090, 4100, 4130, 4133 und 9160Der Zuschlag nach der Nummer 0120 beträgt 100 v. H. des einfachen Gebührensatzes der betreffenden Leistung, jedoch nicht mehr als 68 Euro.Der Zuschlag nach der Nummer 0120 ist je Behandlungstag nur einmal berechnungsfähig."
+          "sourceText": "Der Zuschlag nach der Nummer 0120 ist je Behandlungstag nur einmal berechnungsfähig."
         }
       ],
       "notes": [
+        "Der Zuschlag nach der Nummer 0120 beträgt 100 v. H. des einfachen Gebührensatzes der betreffenden Leistung, jedoch nicht mehr als 68 Euro.",
         "Leistungstext"
       ]
     },
@@ -813,9 +830,39 @@
         "Durch die Leistungen nach den Nummern 2150 bis 2170 und 2200 bis 2220 sind folgende zahnärztliche Leistungen abgegolten: Präparieren des Zahnes oder Implantats, Relationsbestimmung, Abformungen, Einproben, provisorisches Eingliedern, festes Einfügen der Einlagefüllung oder der Krone oder der Teilkrone oder des Veneers, Nachkontrolle und Korrekturen.",
         "Die Leistung nach der Nummer 2200 umfasst auch die Verschraubung und Abdeckung mit Füllungsmaterial.",
         "Zu den Kronen nach den Nummern 2200 bis 2220 gehören Kronen (Voll- und Teilkronen) jeder zahntechnischen Ausführung.",
-        "Teilleistungen nach den Nummern 2200 bis 2220:",
-        "Enden die Leistungen mit der Präparation eines Zahnes oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
-        "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.Die Leistungen nach den Nummern 2230 oder 2240 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+        "Teilleistungen nach den Nummern 2200 bis 2220:"
+      ]
+    },
+    "2230": {
+      "ziffer": "2230",
+      "description": "Enden die Leistungen mit der Präparation eines Zahnes oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
+      "notes": [
+        "Die Leistungen nach den Nummern 2230 oder 2240 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+      ]
+    },
+    "2240": {
+      "ziffer": "2240",
+      "description": "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnbehandlung",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "C",
+        "title": "Konservierende Leistungen"
+      },
+      "notes": [
+        "Die Leistungen nach den Nummern 2230 oder 2240 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
       ]
     },
     "2250": {
@@ -1897,9 +1944,39 @@
         "Die Leistungen nach den Nummern 5000 und 5030 umfassen auch die Verschraubung und Abdeckung mit Füllungsmaterial.",
         "Zu den Leistungen nach den Nummern 5000 bis 5040 gehören Brücken- oder Prothesenanker mit Verbindungselementen jeder Ausführung.",
         "Zu den Kronen nach den Nummern 5000 bis 5040 gehören Kronen (Voll-, Teil- und Teleskopkronen, sowie Wurzelstiftkappen) jeder zahntechnischen Ausführung.",
-        "Teilleistungen nach den Nummern 5000 bis 5040:",
-        "Enden die Leistungen mit der Präparation der Brückenpfeiler oder Prothesenanker mit Verbindungselementen oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
-        "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.Die Leistungen nach den Nummern 5050 oder 5060 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen, oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+        "Teilleistungen nach den Nummern 5000 bis 5040:"
+      ]
+    },
+    "5050": {
+      "ziffer": "5050",
+      "description": "Enden die Leistungen mit der Präparation der Brückenpfeiler oder Prothesenanker mit Verbindungselementen oder der Abdrucknahme beim Implantat, so ist die Hälfte der jeweiligen Gebühr berechnungsfähig.",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
+      "notes": [
+        "Die Leistungen nach den Nummern 5050 oder 5060 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen, oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
+      ]
+    },
+    "5060": {
+      "ziffer": "5060",
+      "description": "Sind darüber hinaus weitere Maßnahmen erfolgt, so sind drei Viertel der jeweiligen Gebühr berechnungsfähig.",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
+      "notes": [
+        "Die Leistungen nach den Nummern 5050 oder 5060 sind nur berechnungsfähig, wenn es dem Zahnarzt objektiv auf Dauer unmöglich war, die Behandlung fortzusetzen, oder eine Fortsetzung aus medizinischen Gründen nicht indiziert war."
       ]
     },
     "5070": {
@@ -2121,8 +2198,23 @@
       "notes": [
         "Eine Deckprothese setzt eine Basisgestaltung wie bei einer totalen Prothese voraus.",
         "Durch die Leistungen nach den Nummern 5200 bis 5230 sind folgende Leistungen abgegolten:",
-        "Anatomische Abformungen (auch des Gegenkiefers), Bestimmung der Kieferrelation, Einproben, Einpassen bzw. Einfügen, Nachkontrolle und Korrekturen.",
-        "Teilleistungen nach den Nummern 5200 und 5230:Für Maßnahmen bis einschließlich Bestimmung der Kieferrelation ist die Hälfte der jeweiligen Gebühr berechnungsfähig; bei weitergehenden Maßnahmen sind drei Viertel der jeweiligen Gebühr berechnungsfähig."
+        "Anatomische Abformungen (auch des Gegenkiefers), Bestimmung der Kieferrelation, Einproben, Einpassen bzw. Einfügen, Nachkontrolle und Korrekturen."
+      ]
+    },
+    "5240": {
+      "ziffer": "5240",
+      "description": "Teilleistungen nach den Nummern 5200 und 5230:",
+      "points": null,
+      "baseAmount": 0,
+      "category": "default",
+      "benefitCategory": "zahnersatz",
+      "maxMultiplier": 2.3,
+      "section": {
+        "code": "F",
+        "title": "Prothetische Leistungen"
+      },
+      "notes": [
+        "Für Maßnahmen bis einschließlich Bestimmung der Kieferrelation ist die Hälfte der jeweiligen Gebühr berechnungsfähig; bei weitergehenden Maßnahmen sind drei Viertel der jeweiligen Gebühr berechnungsfähig."
       ]
     },
     "5250": {

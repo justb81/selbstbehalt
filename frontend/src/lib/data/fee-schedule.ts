@@ -101,10 +101,15 @@ export interface FeeEntry {
   ziffer: string;
   /** Service description (Leistungslegende), inline notes stripped into `notes`. */
   description: string;
-  /** Point value (Punktzahl); null for GOT (direct euro amounts). */
+  /** Point value (Punktzahl). null for GOT (direct euro amounts) and for
+   *  point-less GOÄ/GOZ entries whose fee is derived rather than fixed —
+   *  percentage Zuschläge (e.g. GOÄ 5298, "25 v.H. des einfachen Gebührensatzes
+   *  der betreffenden Leistung") and GOZ Teilleistungen (a fraction of a base
+   *  position). Those entries carry `baseAmount: 0`. */
   points: number | null;
   /** 1.0× amount in EUR: points × pointValueCents/100 (GOÄ/GOZ) or the printed
-   *  euro amount (GOT). The legacy "Gebühr in DM" column is ignored. */
+   *  euro amount (GOT). The legacy "Gebühr in DM" column is ignored. 0 for
+   *  point-less derived-fee entries (see `points`). */
   baseAmount: number;
   /** §5 multiplier category → Steigerungsfaktor limits. */
   category: FeeCategory;
