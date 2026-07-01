@@ -254,6 +254,20 @@
    *  runs — is_valid/flag_reason follow the same "recompute on demand" model. */
   let invoiceViolations = $state<ConstraintViolation[]>([]);
 
+  /** invoiceViolations grouped by the row index(es) each one involves, so the
+   *  affected position cards can be highlighted and cite the rule inline
+   *  (not just in the summary list above the position list). Indexed by row
+   *  (not a Map) — rows with no violation are simply left as a hole. */
+  const violationsByPosition = $derived.by(() => {
+    const byRow: ConstraintViolation[][] = [];
+    for (const violation of invoiceViolations) {
+      for (const idx of violation.positionIndices) {
+        (byRow[idx] ??= []).push(violation);
+      }
+    }
+    return byRow;
+  });
+
   function categoryToSchedule(cat: GoaeCategory | null): FeeScheduleId {
     if (cat === 'GOZ') return 'GOZ';
     if (cat === 'GOT') return 'GOT';
@@ -747,18 +761,16 @@
         <AlertDescription>{revalidateError}</AlertDescription>
       </Alert>
     {/if}
-    {#if invoiceViolations.length > 0}
-      <ul class="list-disc pl-5 text-sm text-amber-600 dark:text-amber-500">
-        {#each invoiceViolations as violation (violation.message)}
-          <li>{violation.message}</li>
-        {/each}
-      </ul>
-    {/if}
 
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card class={cn(pos.is_valid === false && 'bg-amber-50 dark:bg-amber-950/20')}>
+          <Card
+            class={cn(
+              (pos.is_valid === false || !!violationsByPosition[i]) &&
+                'bg-amber-50 dark:bg-amber-950/20',
+            )}
+          >
             <CardHeader
               class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
@@ -928,6 +940,11 @@
                   ⚠ {pos.flag_reason}
                 </p>
               {/if}
+              {#each violationsByPosition[i] ?? [] as violation (violation.message)}
+                <p class="text-xs text-amber-600 dark:text-amber-500">
+                  ⚠ {violation.message}
+                </p>
+              {/each}
               {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
                 <p class="text-xs italic text-muted-foreground">
                   Unsichere Erkennung – bitte prüfen.

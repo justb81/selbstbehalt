@@ -42,6 +42,10 @@ const INSURED_OPTIONS = [
   { id: 'ip-2', label: 'TestAG · Basis', insuredPerson: {} as never },
 ];
 
+// Rendered as "⚠ {message}" (a separate text node before the interpolation),
+// so an exact-string query wouldn't match — search by substring instead.
+const EXCLUDES_605_612_MESSAGE = /Die Ziffern 605 und 612 sind nicht nebeneinander/;
+
 const SAMPLE_INVOICE_OCR_TEXT = 'Praxis Dr. med. Mustermann\n1  Beratung  2,3  10.73';
 
 const SAMPLE_INVOICE: InvoiceWithPositions = {
@@ -343,11 +347,45 @@ describe('InvoiceForm — edit mode', () => {
 
     await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.'),
-      ).toBeInTheDocument(),
-    );
+    // The violation is shown inline on every position it involves — here both
+    // rows, since 605 and 612 are mutually excluding each other.
+    await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
+  });
+
+  it('highlights a position card that has a whole-invoice constraint violation', async () => {
+    vi.mocked(validateInvoice).mockReturnValueOnce([
+      {
+        type: 'excludes',
+        message: 'Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.',
+        sourceText: 'Neben der Leistung nach Nummer 612 … nicht berechnungsfähig.',
+        ziffern: ['605', '612'],
+        positionIndices: [0, 1],
+      },
+    ]);
+    const user = userEvent.setup();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: {
+          ...SAMPLE_INVOICE,
+          positions: [
+            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-1', goae_number: '605' },
+            { ...SAMPLE_INVOICE.positions[0]!, id: 'pos-2', goae_number: '612' },
+          ],
+        },
+        insuredOptions: INSURED_OPTIONS,
+        onSave: vi.fn(),
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
+
+    await waitFor(() => {
+      const removeButtons = screen.getAllByRole('button', { name: /entfernen/i });
+      for (const btn of removeButtons) {
+        expect(btn.closest('[data-slot="card"]')).toHaveClass('bg-amber-50');
+      }
+    });
   });
 
   it('clears a shown violation when a position is removed (indices would be stale)', async () => {
@@ -377,17 +415,11 @@ describe('InvoiceForm — edit mode', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Positionen prüfen' }));
-    await waitFor(() =>
-      expect(
-        screen.getByText('Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.'),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
 
     await user.click(screen.getByRole('button', { name: 'Position 1 entfernen' }));
 
-    expect(
-      screen.queryByText('Die Ziffern 605 und 612 sind nicht nebeneinander berechnungsfähig.'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(EXCLUDES_605_612_MESSAGE)).not.toBeInTheDocument();
   });
 
   it('offers "Auslagenersatz" in the Kat.-dropdown and skips lookupPosition for it', async () => {
