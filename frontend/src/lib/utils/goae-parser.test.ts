@@ -1055,6 +1055,39 @@ describe('integration with the generated GOÄ table', () => {
     expect(v.some((x) => x.type === 'excludes' && x.ruleId === 'excl-1829-1829a')).toBe(true);
   });
 
+  it('detects previously-dropped fee-less billing numbers (GOÄ 5298 + the lab Katalog)', () => {
+    // Percentage surcharge: point-less, priced 0, but detectable and carrying its
+    // "requires a base position" rule — the concrete "5298 not detected" regression.
+    const e5298 = goaeTable.entries['5298'];
+    expect(e5298).toBeDefined();
+    expect(e5298?.points).toBeNull();
+    expect(e5298?.baseAmount).toBe(0);
+    expect(e5298?.isSurcharge).toBe(true);
+    expect(e5298?.constraints?.some((c) => c.type === 'requires')).toBe(true);
+    const s = look(
+      { ziffer: '5298', quantity: 1, multiplier: 1, chargedAmount: 0, raw: '' },
+      goaeTable,
+    );
+    expect(s.known).toBe(true);
+    expect(s.flags.some((f) => f.code === 'unknown_ziffer')).toBe(false);
+
+    // Lab "Katalog" analyte: a real billing number priced from its method-header
+    // rate (60 points → 3.50 EUR), category derived as lab (§5 Teil M).
+    const lab = look(
+      { ziffer: '3504', quantity: 1, multiplier: 1.15, chargedAmount: 0, raw: '' },
+      goaeTable,
+    );
+    expect(lab.known).toBe(true);
+    expect(lab.category).toBe('lab');
+    expect(lab.baseAmount).toBeGreaterThan(0);
+
+    // The laser surcharge 441 is likewise now detectable.
+    expect(
+      look({ ziffer: '441', quantity: 1, multiplier: 1, chargedAmount: 0, raw: '' }, goaeTable)
+        .known,
+    ).toBe(true);
+  });
+
   it('parses a realistic GOÄ invoice without crashing on noise', () => {
     const text = [
       'Gemeinschaftspraxis Dr. med. Mustermann & Kollegen',
