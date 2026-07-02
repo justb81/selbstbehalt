@@ -60,9 +60,15 @@ jobs:
       - name: Fetch OCR models
         run: pnpm ocr:models
 
+      # `enablement: true` turns GitHub Pages on (Source = "GitHub Actions") via
+      # the workflow token on the first run, so no manual repo-settings step is
+      # needed. If an org policy forbids it, enable Pages once by hand instead
+      # (Settings → Pages → Source = "GitHub Actions").
       - name: Configure Pages
         id: pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       # GitHub Pages serves a project repo under /<repo>/. Build with that base
       # path so the routes, the PWA manifest, the service worker and the

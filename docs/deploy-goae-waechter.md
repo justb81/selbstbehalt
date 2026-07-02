@@ -41,12 +41,16 @@ reports that path as `steps.pages.outputs.base_path`, which the build passes as
 Once a custom domain is configured (below), `base_path` becomes `/`, so the next
 build automatically serves from the root — **no workflow or code change needed**.
 
-## One-time repository setting
+## Enabling Pages
 
-In **Settings → Pages**, set **Source = "GitHub Actions"**. This is a repository
-setting that cannot be scripted from the workflow; it must be enabled once by a
-maintainer before the first deploy. After that, the app is live at
-`https://justb81.github.io/selbstbehalt/`.
+The `configure-pages` step runs with `enablement: true`, so the **first**
+workflow run turns GitHub Pages on (Source = "GitHub Actions") itself using the
+workflow token — no manual repository setting is normally needed. After it
+completes, the app is live at `https://justb81.github.io/selbstbehalt/`.
+
+If an organisation policy forbids the token from enabling Pages (the
+`configure-pages` step then fails), enable it once by hand under **Settings →
+Pages → Source = "GitHub Actions"** and re-run the workflow.
 
 ## Custom domain (when a domain is decided)
 
