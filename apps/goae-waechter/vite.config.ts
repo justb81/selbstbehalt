@@ -8,7 +8,8 @@ import { defineConfig } from 'vite';
 // under a subpath (/<repo>/), so the web-app-manifest URLs (start_url, scope,
 // icons) are prefixed with the same BASE_PATH (issue #171). Unset (custom domain
 // at the root) → base "" → the manifest points at "/" as before.
-const base = (process.env.BASE_PATH ?? '').replace(/\/+$/, '');
+const rawBase = process.env.BASE_PATH ?? '';
+const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 
 export default defineConfig({
   // GOÄ-Wächter is a standalone demo (issue #170): no backend, no `/api` proxy —

@@ -7,7 +7,8 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 // and asset URL is prefixed to match (issue #171). A custom domain serves at
 // the root, where BASE_PATH is unset (or "/") → base "". A trailing slash is
 // stripped because SvelteKit requires paths.base to start, but not end, with "/".
-const base = (process.env.BASE_PATH ?? '').replace(/\/+$/, '');
+const rawBase = process.env.BASE_PATH ?? '';
+const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 
 /** @type {import('@sveltejs/kit').Config} */
 export default {

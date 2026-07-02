@@ -94,7 +94,11 @@ const OCR_ASSET_PATHS = {
  * from a third party at runtime — see `apps/frontend/static/models/ocr/README.md`.
  */
 export function resolveOcrAssets(base = ''): Pick<OcrEngineConfig, 'modelUrls' | 'wasmPath'> {
-  const prefix = base.replace(/\/+$/, '');
+  // Strip trailing slashes with a linear scan rather than a `/\/+$/` regex,
+  // which backtracks quadratically on long slash runs (CodeQL js/polynomial-redos).
+  let end = base.length;
+  while (end > 0 && base[end - 1] === '/') end--;
+  const prefix = base.slice(0, end);
   return {
     modelUrls: {
       detection: `${prefix}/${OCR_ASSET_PATHS.detection}`,
