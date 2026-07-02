@@ -6,7 +6,11 @@ name: release-please
 # Merging that PR is the only trigger for a release: release-please then tags
 # the merge commit `vX.Y.Z` and publishes a GitHub Release with the notes.
 # The tag push is what release.yml (image build + GHCR push + release assets)
-# listens for — this workflow never builds or pushes anything itself.
+# listens for. When a release is created, this workflow also calls
+# deploy-goae-waechter.yml to publish the GOÄ-Wächter demo to GitHub Pages —
+# done here, in the push-to-`main` context, rather than off a `release:
+# published` trigger, whose tag ref context the github-pages environment's
+# branch-protection rule rejects.
 on:
   push:
     branches: [main]
@@ -22,6 +26,8 @@ concurrency:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
     steps:
       # A PR (or commit) authored with the default GITHUB_TOKEN does not
       # trigger other workflows (a GitHub Actions anti-recursion rule), so
@@ -68,3 +74,19 @@ jobs:
             git commit -am "style: format release-please output"
             git push
           fi
+
+  # A release was just cut (the release-please PR was merged) ⇒ publish the
+  # standalone GOÄ-Wächter demo to GitHub Pages. Runs in this workflow's
+  # push-to-`main` context, so github.ref is refs/heads/main and the
+  # github-pages environment's default branch-protection rule accepts the
+  # deployment; a `release: published` trigger would run in the tag context and
+  # be rejected. Builds `main`'s HEAD, which is the just-tagged release commit.
+  deploy-goae-waechter:
+    name: Deploy GOÄ-Wächter demo (GitHub Pages)
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-goae-waechter.yml

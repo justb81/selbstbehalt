@@ -2,14 +2,22 @@
 name: Deploy GOÄ-Wächter (GitHub Pages)
 
 # Publishes the standalone GOÄ-Wächter demo PWA (issue #171, part of epic #166)
-# to GitHub Pages. Triggers only when a GitHub Release is published — i.e. when
-# a release-please release PR is merged (see release-please.yml) — plus manual
-# dispatch, so the demo doesn't get redeployed on every ordinary main push.
+# to GitHub Pages. Invoked as a reusable workflow by release-please.yml the
+# moment a release is cut (its release PR is merged), plus manual dispatch — so
+# the demo is republished on release, never on every ordinary main push.
+#
+# Why it is *called* rather than triggered by `release: published`: a
+# release-triggered run executes in the tag ref context (refs/tags/vX.Y.Z),
+# which the github-pages environment's default deployment protection rule
+# (default branch only) rejects — "Tag vX.Y.Z is not allowed to deploy to
+# github-pages". Called from release-please.yml, which runs on push to `main`,
+# the deploy runs in the default-branch context and is accepted, with no manual
+# environment-settings change (matching this repo's no-manual-settings approach).
+#
 # Artifact-based deploy (no gh-pages branch) so committing the large OCR model
 # binaries into git history is never needed.
 on:
-  release:
-    types: [published]
+  workflow_call: {}
   workflow_dispatch:
 
 # GitHub Pages permits a single concurrent deployment; queue rather than cancel

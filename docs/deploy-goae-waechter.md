@@ -11,11 +11,13 @@ CLAUDE.md §1.3/§8).
 
 ## How it deploys
 
-The workflow [`.github/workflows/deploy-goae-waechter.yml`](../.github/workflows/deploy-goae-waechter.yml):
+The workflow [`.github/workflows/deploy-goae-waechter.yml`](../.github/workflows/deploy-goae-waechter.yml)
+is a **reusable workflow** ([`workflow_call`](https://docs.github.com/actions/using-workflows/reusing-workflows)):
 
-1. runs on every push to the default branch that touches the demo app, the
-   shared `packages/medic-invoice-check`/`packages/shared`, the build scripts,
-   or the lockfile — plus manual **Run workflow** (`workflow_dispatch`);
+1. runs when a release is cut — [`release-please.yml`](../.github/workflows/release-please.yml)
+   calls it right after it publishes a `vX.Y.Z` release (so the demo is
+   republished on every release, never on every ordinary `main` push) — plus
+   manual **Run workflow** (`workflow_dispatch`);
 2. installs dependencies and fetches the PP-OCRv5 models with `pnpm ocr:models`
    (they are **not** committed to git — see
    [`static/models/ocr/README.md`](../apps/goae-waechter/static/models/ocr/README.md));
@@ -24,6 +26,22 @@ The workflow [`.github/workflows/deploy-goae-waechter.yml`](../.github/workflows
 4. publishes with `actions/upload-pages-artifact` + `actions/deploy-pages`
    (**artifact-based** — there is no `gh-pages` branch, so the repo does not grow
    by the ~50–100 MB of OCR model binaries on every deploy).
+
+### Why release-please calls it (and not a `release:` trigger)
+
+The `github-pages` environment enforces a **deployment branch protection rule**
+that only allows the repository's default branch (`main`) to deploy. A workflow
+triggered by the `release: published` event runs in the **tag** ref context
+(`refs/tags/vX.Y.Z`), so the deploy was rejected with:
+
+> Tag "vX.Y.Z" is not allowed to deploy to github-pages due to environment
+> protection rules.
+
+Calling this workflow from `release-please.yml` — which runs on `push` to
+`main` — makes the deploy run in the default-branch context, which the rule
+accepts, so no manual environment-settings change is needed. (`release-please`
+tags the merge commit and then, in the same run, calls this workflow gated on
+its `release_created` output, building `main`'s HEAD — the just-tagged commit.)
 
 ### Base path (why it is not hardcoded)
 
