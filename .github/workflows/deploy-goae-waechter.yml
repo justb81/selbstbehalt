@@ -2,20 +2,14 @@
 name: Deploy GOÄ-Wächter (GitHub Pages)
 
 # Publishes the standalone GOÄ-Wächter demo PWA (issue #171, part of epic #166)
-# to GitHub Pages. Triggers on pushes to the default branch that touch the demo
-# app, the shared scan/check engine, the shared types, or the build inputs, plus
-# manual dispatch. Artifact-based deploy (no gh-pages branch) so committing the
-# large OCR model binaries into git history is never needed.
+# to GitHub Pages. Triggers only when a GitHub Release is published — i.e. when
+# a release-please release PR is merged (see release-please.yml) — plus manual
+# dispatch, so the demo doesn't get redeployed on every ordinary main push.
+# Artifact-based deploy (no gh-pages branch) so committing the large OCR model
+# binaries into git history is never needed.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/goae-waechter/**'
-      - 'packages/medic-invoice-check/**'
-      - 'packages/shared/**'
-      - 'scripts/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-goae-waechter.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
 # GitHub Pages permits a single concurrent deployment; queue rather than cancel
