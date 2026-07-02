@@ -35,6 +35,7 @@ export {
   setAllImageLoader,
   disposeScanOcr,
   textToOcrResults,
+  configureOcr,
 } from './scan-ocr';
 export type { OcrRecognizer, MultiImageLoader } from './scan-ocr';
 export {

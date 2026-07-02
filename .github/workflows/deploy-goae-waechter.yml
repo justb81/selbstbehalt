@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Deploy GOÄ-Wächter (GitHub Pages)
+
+# Publishes the standalone GOÄ-Wächter demo PWA (issue #171, part of epic #166)
+# to GitHub Pages. Triggers on pushes to the default branch that touch the demo
+# app, the shared scan/check engine, the shared types, or the build inputs, plus
+# manual dispatch. Artifact-based deploy (no gh-pages branch) so committing the
+# large OCR model binaries into git history is never needed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/goae-waechter/**'
+      - 'packages/medic-invoice-check/**'
+      - 'packages/shared/**'
+      - 'scripts/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-goae-waechter.yml'
+  workflow_dispatch:
+
+# GitHub Pages permits a single concurrent deployment; queue rather than cancel
+# so an in-flight publish is never left half-applied.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Least privilege for the Pages deployment (OIDC-signed via id-token).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  # Git hooks are pointless in CI and `prepare` would try to install them.
+  HUSKY: '0'
+
+jobs:
+  build:
+    name: Build (static PWA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # On-device PP-OCRv5 models (not committed to git — see
+      # apps/goae-waechter/static/models/ocr/README.md). Fetched here exactly as
+      # apps/frontend's Docker build does, so they are baked into the published
+      # bundle and served same-origin — never a runtime CDN (CLAUDE.md §1.3/§8).
+      - name: Fetch OCR models
+        run: pnpm ocr:models
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # GitHub Pages serves a project repo under /<repo>/. Build with that base
+      # path so the routes, the PWA manifest, the service worker and the
+      # on-device model URLs all resolve; `configure-pages` reports it as
+      # steps.pages.outputs.base_path (and "/" once a custom domain is set, so a
+      # future domain switch needs no workflow change). The build also pulls in
+      # `pnpm ocr:wasm` (copy-ort-wasm) via the app's own build script.
+      - name: Build
+        run: pnpm --filter @selbstbehalt/goae-waechter... build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/goae-waechter/build
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -63,9 +63,9 @@ export interface OcrErrorPayload {
 /**
  * Local URLs of the three OCR model assets the `ppu-paddle-ocr` binding needs:
  * the PP-OCRv5 detection + recognition ONNX models and the character dictionary.
- * These point at on-device, same-origin assets under `/models/ocr/` — never a
+ * These point at on-device, same-origin assets under `models/ocr/` — never a
  * remote CDN — so both the image and the model stay local (docs/design.md §1.3,
- * §8). The service worker caches `/models/**` on first use (docs/design.md §6.3).
+ * §8). The service worker caches `models/**` on first use (docs/design.md §6.3).
  */
 export interface OcrModelUrls {
   detection: string;
@@ -74,16 +74,39 @@ export interface OcrModelUrls {
 }
 
 /**
- * Default, on-device model locations. The binding is *always* pointed at these
- * local paths (never its built-in CDN defaults) so no model is fetched from a
- * third party at runtime. The maintainer hosts the actual INT8 files here — see
- * `apps/frontend/static/models/ocr/README.md`.
+ * On-device asset locations, relative to the app's deploy base. The model files
+ * *and* the ONNX Runtime WASM are served same-origin under `models/**` (never a
+ * remote CDN), so both image and model stay local (docs/design.md §1.3, §8).
  */
-export const DEFAULT_MODEL_URLS: OcrModelUrls = {
-  detection: '/models/ocr/det.onnx',
-  recognition: '/models/ocr/rec.onnx',
-  dictionary: '/models/ocr/dict.txt',
-};
+const OCR_ASSET_PATHS = {
+  detection: 'models/ocr/det.onnx',
+  recognition: 'models/ocr/rec.onnx',
+  dictionary: 'models/ocr/dict.txt',
+  wasmDir: 'models/ort/',
+} as const;
+
+/**
+ * Resolve the on-device OCR asset URLs for a deploy base path: `''` at the
+ * domain root (apps/frontend, or a custom domain) or e.g. `'/selbstbehalt'` when
+ * GitHub Pages serves the GOÄ-Wächter demo under a project subpath (issue #171).
+ * A trailing slash on `base` is tolerated. The binding is *always* pointed at
+ * these local paths (never its built-in CDN defaults) so no model is fetched
+ * from a third party at runtime — see `apps/frontend/static/models/ocr/README.md`.
+ */
+export function resolveOcrAssets(base = ''): Pick<OcrEngineConfig, 'modelUrls' | 'wasmPath'> {
+  const prefix = base.replace(/\/+$/, '');
+  return {
+    modelUrls: {
+      detection: `${prefix}/${OCR_ASSET_PATHS.detection}`,
+      recognition: `${prefix}/${OCR_ASSET_PATHS.recognition}`,
+      dictionary: `${prefix}/${OCR_ASSET_PATHS.dictionary}`,
+    },
+    wasmPath: `${prefix}/${OCR_ASSET_PATHS.wasmDir}`,
+  };
+}
+
+/** Default, root-served on-device model locations ({@link resolveOcrAssets} at `''`). */
+export const DEFAULT_MODEL_URLS: OcrModelUrls = resolveOcrAssets().modelUrls;
 
 /** Engine construction options shared by the worker and the engine factory. */
 export interface OcrEngineConfig {
@@ -91,12 +114,17 @@ export interface OcrEngineConfig {
   language: 'de';
   /** Local URLs of the PP-OCRv5 models + dictionary (defaults to {@link DEFAULT_MODEL_URLS}). */
   modelUrls: OcrModelUrls;
+  /**
+   * Local, same-origin directory (trailing slash) the ONNX Runtime WASM assets
+   * are served from. Base-prefixed via {@link resolveOcrAssets} on a subpath deploy.
+   */
+  wasmPath: string;
 }
 
-/** Default engine configuration for German, on-device PP-OCRv5. */
+/** Default engine configuration for German, on-device PP-OCRv5 (root-served). */
 export const DEFAULT_ENGINE_CONFIG: OcrEngineConfig = {
   language: 'de',
-  modelUrls: DEFAULT_MODEL_URLS,
+  ...resolveOcrAssets(),
 };
 
 // ---------------------------------------------------------------------------
