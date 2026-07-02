@@ -8,15 +8,16 @@
 # The top-level `version:` key is intentionally omitted — it is obsolete in
 # Docker Compose v2 and only produces a warning.
 #
-# Build context is the repository root for both services (not ./frontend or
-# ./backend): the apps share the @selbstbehalt/shared workspace package and the
-# root pnpm-lock.yaml, which a per-app context could not resolve.
+# Build context is the repository root for both services (not ./apps/frontend
+# or ./apps/backend): the apps share the @selbstbehalt/shared workspace
+# package and the root pnpm-lock.yaml, which a per-app context could not
+# resolve.
 
 services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     environment:
       # SQLite file on the mounted volume; survives container restarts.
       DATABASE_PATH: /app/db/pkv.sqlite
@@ -52,7 +53,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: apps/frontend/Dockerfile
       args:
         # Empty by default → "same origin": the frontend's nginx proxies /api to
         # the backend, so the browser only talks to one origin (and the

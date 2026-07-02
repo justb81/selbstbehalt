@@ -23,8 +23,8 @@
       "bump-patch-for-minor-pre-major": false,
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        { "type": "json", "path": "backend/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "apps/backend/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "apps/frontend/package.json", "jsonpath": "$.version" },
         { "type": "json", "path": "packages/shared/package.json", "jsonpath": "$.version" }
       ]
     }

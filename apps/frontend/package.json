@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "node ../scripts/copy-ort-wasm.mjs && vite build",
+    "build": "node ../../scripts/copy-ort-wasm.mjs && vite build",
     "preview": "vite preview",
     "prepare": "svelte-kit sync",
     "lint": "eslint .",

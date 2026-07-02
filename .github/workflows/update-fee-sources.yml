@@ -41,12 +41,12 @@ jobs:
       - name: Detect changes
         id: diff
         run: |
-          if git diff --quiet -- data/input/ frontend/src/lib/data/; then
+          if git diff --quiet -- data/input/ apps/frontend/src/lib/data/; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No source or table changes — nothing to do."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff --stat -- data/input/ frontend/src/lib/data/ | tail -30
+            git diff --stat -- data/input/ apps/frontend/src/lib/data/ | tail -30
           fi
 
       - name: Open or update pull request
@@ -61,10 +61,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -B "$BRANCH"
-          git add data/input/ frontend/src/lib/data/
+          git add data/input/ apps/frontend/src/lib/data/
           git commit -m "chore(data): refresh GOÄ/GOZ/GOT fee-schedule tables from source"
           git push -f origin "$BRANCH"
-          BODY=$'Automated refresh of the official GOÄ/GOZ/GOT XML under `data/input/` and the regenerated lookup tables under `frontend/src/lib/data/`.\n\nProduced by `.github/workflows/update-fee-sources.yml` via `node scripts/fetch-sources.mjs` + `pnpm fees:build`; validated with `pnpm fees:validate`. Please review the diff (see docs/data-format.md §7).\n\nIf the checks did not run automatically, this PR was opened with the default `GITHUB_TOKEN` — re-run them from the Checks tab or set a `FEE_UPDATE_TOKEN` secret.'
+          BODY=$'Automated refresh of the official GOÄ/GOZ/GOT XML under `data/input/` and the regenerated lookup tables under `apps/frontend/src/lib/data/`.\n\nProduced by `.github/workflows/update-fee-sources.yml` via `node scripts/fetch-sources.mjs` + `pnpm fees:build`; validated with `pnpm fees:validate`. Please review the diff (see docs/data-format.md §7).\n\nIf the checks did not run automatically, this PR was opened with the default `GITHUB_TOKEN` — re-run them from the Checks tab or set a `FEE_UPDATE_TOKEN` secret.'
           if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -qx OPEN; then
             echo "PR already open for $BRANCH — branch updated in place."
           else

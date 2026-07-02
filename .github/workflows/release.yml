@@ -40,9 +40,9 @@ jobs:
       matrix:
         include:
           - image: backend
-            dockerfile: backend/Dockerfile
+            dockerfile: apps/backend/Dockerfile
           - image: frontend
-            dockerfile: frontend/Dockerfile
+            dockerfile: apps/frontend/Dockerfile
     steps:
       - uses: actions/checkout@v7
 

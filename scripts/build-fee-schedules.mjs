@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Generates the static fee-schedule lookup tables (frontend/src/lib/data/
+// Generates the static fee-schedule lookup tables (apps/frontend/src/lib/data/
 // {goae,goz,got}.json) from the official gesetze-im-internet.de XML exports
 // under data/input/. Reproducible and dependency-free (see scripts/check-
 // licenses.mjs for the same convention). The output format is defined in
-// docs/data-format.md / frontend/src/lib/data/fee-schedule.ts and enforced by
+// docs/data-format.md / apps/frontend/src/lib/data/fee-schedule.ts and enforced by
 // scripts/validate-fee-schedules.mjs.
 //
 // Maintainer workflow (see docs/data-format.md §7): update the source XML under
@@ -26,7 +26,7 @@ import {
 } from './lib/fee-constraints.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_DIR = join(ROOT, 'frontend', 'src', 'lib', 'data');
+const OUT_DIR = join(ROOT, 'apps', 'frontend', 'src', 'lib', 'data');
 
 const GOAE_LIMITS = {
   default: { regelhoechstsatz: 2.3, hoechstsatz: 3.5 },

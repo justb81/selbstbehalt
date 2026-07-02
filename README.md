@@ -42,8 +42,8 @@ Privately insured people in Germany juggle several administrative tasks for whic
 
 A pnpm monorepo with two workspaces:
 
-- **`frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable. OCR runs in a Web Worker via `ppu-paddle-ocr` (PP-OCRv5 on ONNX Runtime) with WebGPU + WASM fallback.
-- **`backend/`** — Hono (TypeScript) REST API on port 8080, backed by SQLite via Drizzle ORM.
+- **`apps/frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable. OCR runs in a Web Worker via `ppu-paddle-ocr` (PP-OCRv5 on ONNX Runtime) with WebGPU + WASM fallback.
+- **`apps/backend/`** — Hono (TypeScript) REST API on port 8080, backed by SQLite via Drizzle ORM.
 
 Deployed via Docker Compose, intended for a home network (Proxmox LXC / NAS) with optional VPN access.
 
@@ -72,10 +72,10 @@ pnpm test:e2e       # run Playwright end-to-end tests (frontend)
 
 The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo:
 
-- [`frontend/`](frontend/) — SvelteKit (Svelte 5, TypeScript) PWA
-- [`backend/`](backend/) — Hono REST API + SQLite
+- [`apps/frontend/`](apps/frontend/) — SvelteKit (Svelte 5, TypeScript) PWA
+- [`apps/backend/`](apps/backend/) — Hono REST API + SQLite
 
-Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
+Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `apps/frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
 
 ### Git hooks
 
