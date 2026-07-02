@@ -618,7 +618,7 @@
                 >
                 {#if pos.is_valid === false}
                   <span
-                    class="inline-flex items-center gap-1 rounded-full bg-warning/20 px-2 py-0.5 text-[0.68rem] font-semibold text-warning"
+                    class="inline-flex items-center gap-1 rounded-full border border-warning/70 px-2 py-0.5 text-[0.68rem] font-semibold text-warning"
                   >
                     <TriangleAlertIcon class="size-3" />
                     Auffällig
@@ -782,7 +782,7 @@
               </div>
               {#if pos.is_valid === false && pos.flag_reason}
                 <div
-                  class="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/15 px-2.5 py-2 text-xs font-medium text-warning"
+                  class="flex items-start gap-2 rounded-md border border-warning/60 px-2.5 py-2 text-xs font-medium text-warning"
                 >
                   <TriangleAlertIcon class="size-3.5 shrink-0 translate-y-px" />
                   <span>{pos.flag_reason}</span>
