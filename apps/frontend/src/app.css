@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/*
+ * @selbstbehalt/medic-invoice-check is a pnpm workspace symlink, not a real
+ * subdirectory — Tailwind's automatic content detection only picks up its
+ * classes on the first scan and misses anything added later, so any new
+ * utility class used only inside that package (never referenced by this
+ * app's own source) silently fails to compile. Register it explicitly.
+ */
+@source '../../../packages/medic-invoice-check/src';
+
 /* Class-based dark mode: dark: utilities apply when an ancestor has .dark */
 @custom-variant dark (&:is(.dark *));
 
