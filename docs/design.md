@@ -377,12 +377,12 @@ statt WebGPU-gebunden, DOM-/opencv-gebunden und damit nicht Worker-tauglich, und
 kein echtes PP-OCRv5.)
 
 Die Bindung sitzt hinter einem schmalen, injizierbaren Adapter-Seam
-(`apps/frontend/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
-(`apps/frontend/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
+(`packages/medic-invoice-check/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
+(`packages/medic-invoice-check/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
 Dinge explizit:
 
 ```typescript
-// apps/frontend/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
+// packages/medic-invoice-check/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
 import { PaddleOcrService } from 'ppu-paddle-ocr/web';
 
 const service = new PaddleOcrService({
@@ -411,9 +411,9 @@ Laufzeit.
 ### 4.3 GOÄ-Strukturparser
 
 Arztrechnungen nach §12 GOÄ folgen einem gesetzlich definierten Schema. Der
-Parser (`apps/frontend/src/lib/utils/goae-parser.ts`) ist reiner, deterministischer
+Parser (`packages/medic-invoice-check/src/lib/utils/goae-parser.ts`) ist reiner, deterministischer
 Code (kein LLM) und die **Konsumentenseite** des `fee-schedule/v1`-Formats
-(siehe `docs/data-format.md`, `apps/frontend/src/lib/data/fee-schedule.ts`). Er
+(siehe `docs/data-format.md`, `packages/medic-invoice-check/src/lib/data/fee-schedule.ts`). Er
 arbeitet in vier Schritten:
 
 1. **Feld- und Positionsextraktion** per Regex aus dem (OCR-)Text: Datum
@@ -806,7 +806,7 @@ aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur 
 
 | Komponente | Datei | Zweck |
 |---|---|---|
-| `OCRScanner` | `lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
+| `OCRScanner` | `packages/medic-invoice-check/src/lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
 | `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position |

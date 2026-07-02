@@ -28,9 +28,9 @@ import {
   parseInvoice,
   parsePositionLine,
   type ValidationContext,
-} from '$lib/utils/goae-parser';
-import type { ParsedInvoice } from '$lib/utils/goae-parser';
-import type { FeeScheduleId, FeeScheduleTable } from '$lib/data/fee-schedule';
+} from '../utils/goae-parser';
+import type { ParsedInvoice } from '../utils/goae-parser';
+import type { FeeScheduleId, FeeScheduleTable } from '../data/fee-schedule';
 
 import type { OcrResult } from './types';
 

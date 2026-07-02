@@ -20,19 +20,19 @@
     requestCameraStream as defaultRequestCameraStream,
     stopStream as defaultStopStream,
     CaptureError,
-  } from '$lib/ocr/capture';
-  import { preprocess as defaultPreprocess } from '$lib/ocr/preprocess';
-  import { loadAllInvoiceImages, recognizeInvoiceImage } from '$lib/ocr/scan-ocr';
-  import { buildScanResult, type ScanResult } from '$lib/ocr/scan-flow';
-  import { FEE_SCHEDULE_IDS, loadFeeTable } from '$lib/data/fee-tables';
-  import type { FeeScheduleId } from '$lib/data/fee-schedule';
-  import type { OcrProgress, OcrResult } from '$lib/ocr/types';
+  } from '../ocr/capture';
+  import { preprocess as defaultPreprocess } from '../ocr/preprocess';
+  import { loadAllInvoiceImages, recognizeInvoiceImage } from '../ocr/scan-ocr';
+  import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
+  import { FEE_SCHEDULE_IDS, loadFeeTable } from '../data/fee-tables';
+  import type { FeeScheduleId } from '../data/fee-schedule';
+  import type { OcrProgress, OcrResult } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Progress } from '$lib/components/ui/progress';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { Label } from '$lib/components/ui/label';
-  import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
+  import { Button } from './ui/button';
+  import { Progress } from './ui/progress';
+  import { Alert, AlertDescription } from './ui/alert';
+  import { Label } from './ui/label';
+  import { Select, SelectContent, SelectItem, SelectTrigger } from './ui/select';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {

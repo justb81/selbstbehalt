@@ -2,7 +2,7 @@
 
 The OCR engine runs PP-OCRv5 on **ONNX Runtime Web** (`ppu-paddle-ocr`). ONNX
 Runtime loads its WASM binaries at init from `ort.env.wasm.wasmPaths`, which the
-engine pins to **`/models/ort/`** (`apps/frontend/src/lib/ocr/engine.ts`) so they are
+engine pins to **`/models/ort/`** (`packages/medic-invoice-check/src/lib/ocr/engine.ts`) so they are
 served same-origin and never fetched from a CDN at runtime (CLAUDE.md privacy
 constraint; `docs/design.md` §1.3/§8). The service worker caches `/models/**` on
 first use (§6.3), so OCR works offline after the first run.

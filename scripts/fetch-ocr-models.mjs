@@ -36,7 +36,7 @@ const LFS =
 const RAW = 'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
 
 // Served filename ← upstream path. Keep in sync with DEFAULT_MODEL_URLS in
-// apps/frontend/src/lib/ocr/types.ts and static/models/ocr/README.md.
+// packages/medic-invoice-check/src/lib/ocr/types.ts and static/models/ocr/README.md.
 const ASSETS = [
   { out: 'det.onnx', url: `${LFS}/detection/PP-OCRv5_mobile_det_infer.onnx` },
   {

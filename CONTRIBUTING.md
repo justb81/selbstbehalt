@@ -91,7 +91,7 @@ This project follows Privacy by Design (see §1.3 and §8 of
 
 ## Fee-schedule data (GOÄ/GOZ/GOT)
 
-The GOÄ/GOZ/GOT lookup tables under `apps/frontend/src/lib/data/` are **not
+The GOÄ/GOZ/GOT lookup tables under `packages/medic-invoice-check/src/lib/data/` are **not
 hand-maintained**. They are generated reproducibly from the official source XML
 under [`data/input/`](data/input/) by the maintainer, and the tables are
 maintained **exclusively by the maintainer** ([@justb81](https://github.com/justb81)).

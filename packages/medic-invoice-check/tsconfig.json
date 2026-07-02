@@ -1,0 +1,14 @@
+{
+  // Inherit the repo-wide strictness from ../../tsconfig.base.json. Unlike the
+  // node-only @selbstbehalt/shared, this package ships browser code (Svelte
+  // components, the OCR pipeline, a Web Worker) so it needs the DOM libs; the
+  // worker entry pulls in WebWorker via its own `/// <reference lib="webworker" />`.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  // vitest-setup.ts registers the @testing-library/jest-dom matcher types
+  // (toBeInTheDocument, toHaveTextContent, …) used in the component tests.
+  "include": ["src/**/*.ts", "src/**/*.svelte", "vitest-setup.ts"]
+}
