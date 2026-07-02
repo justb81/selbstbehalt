@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0](https://github.com/justb81/selbstbehalt/compare/v1.2.0...v1.3.0) (2026-07-02)
+
+### Features
+
+- Cross-promote GOÄ-Wächter demo and GitHub repo; document full rule scope ([#203](https://github.com/justb81/selbstbehalt/issues/203)) ([1436e21](https://github.com/justb81/selbstbehalt/commit/1436e21a546c3d5ff88ab8d9aa233e4bb1cc04fb))
+
+### Bug Fixes
+
+- format and alert ([#201](https://github.com/justb81/selbstbehalt/issues/201)) ([e38770b](https://github.com/justb81/selbstbehalt/commit/e38770b72e1bf2157f3a1ae6d2fc2108df5053b5))
+
 ## [1.2.0](https://github.com/justb81/selbstbehalt/compare/v1.1.0...v1.2.0) (2026-07-02)
 
 ### Features
