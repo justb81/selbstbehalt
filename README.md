@@ -17,6 +17,7 @@
   <a href="https://github.com/justb81/selbstbehalt/actions/workflows/codeql.yml"><img src="https://github.com/justb81/selbstbehalt/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" /></a>
   <a href="https://github.com/justb81/selbstbehalt/actions/workflows/security.yml"><img src="https://github.com/justb81/selbstbehalt/actions/workflows/security.yml/badge.svg" alt="Security" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0" /></a>
+  <a href="https://justb81.github.io/selbstbehalt/"><img src="https://img.shields.io/badge/demo-GO%C3%84--W%C3%A4chter-2563eb" alt="Live demo: GOÄ-Wächter" /></a>
 </p>
 
 ---
@@ -28,8 +29,18 @@
 Privately insured people in Germany juggle several administrative tasks for which no complete, privacy-compliant, self-hostable tool exists. **selbstbehalt** ("deductible") covers three of them:
 
 - **Manage contracts** — keep multiple PKV contracts (full coverage, supplementary tariffs, Beihilfe) in one place.
-- **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag charges whose Steigerungsfaktor (multiplier) exceeds the legal limits (§5 GOÄ).
+- **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag every rule violation those fee schedules define: Steigerungsfaktor (multiplier) limits (§5 GOÄ), excluded/duplicate code combinations, missing base services, Höchstwert amount caps, frequency limits, and more.
 - **Günstigerprüfung** — decide, per invoice, whether to **submit it to the insurer** or **self-pay** to preserve your Beitragsrückerstattung (BRE, premium refund) — comparing the net reimbursement against the present value of the refund you'd forfeit by breaking your claim-free streak.
+
+## Live demo
+
+**[GOÄ-Wächter](https://justb81.github.io/selbstbehalt/)** is a free, standalone
+demo of the invoice-check engine above: scan or upload a doctor's invoice and
+get the full GOÄ/GOZ rule check — §5 Steigerungsfaktor limits, excluded code
+combinations, Höchstwerte, frequency limits, and more — right in your browser,
+no installation, no account, no backend. It's a fully static, 100&nbsp;%
+offline-capable PWA; the invoice image never leaves your device (see
+[Design principles](#design-principles)).
 
 ## Screenshots
 

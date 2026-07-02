@@ -290,7 +290,7 @@ base_amount      REAL NOT NULL      -- 1-facher Betrag laut GOÄ
 charged_amount   REAL NOT NULL      -- In Rechnung gestellter Betrag
 eligible_amount  REAL               -- Geschätzt erstattungsfähig (Erstattungs-Engine, §5.1)
 refund_amount    REAL               -- Tatsächlich erstattet (erfasst bei Status 'erstattet'); 0 = abgelehnt
-is_valid         BOOLEAN            -- Steigerungsfaktor innerhalb Regelgrenze?
+is_valid         BOOLEAN            -- Verstößt gegen keine GOÄ/GOZ/GOT-Regel (§5 Steigerungsfaktor, Ausschlüsse, Höchstwerte, Frequenzlimits, ...)?
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
@@ -985,7 +985,7 @@ services:
 - [ ] WebGPU-Verfügbarkeitsprüfung + WASM-Fallback
 - [ ] GOÄ-Lookup-Tabelle (JSON) aufbauen (GOÄ + GOZ)
 - [ ] OCR-Pipeline: Scan → Parse → Review-Screen
-- [ ] Steigerungsfaktor-Validierung
+- [ ] Regelvalidierung (§5 Steigerungsfaktor + Ausschlüsse/Höchstwerte/Frequenzlimits, siehe §4.3)
 
 ### Phase 3: PWA & Polish
 

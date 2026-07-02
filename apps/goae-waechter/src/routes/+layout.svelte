@@ -5,6 +5,7 @@
   import { configureOcr, resolveOcrAssets } from '@selbstbehalt/medic-invoice-check';
   import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
   import LockIcon from '@lucide/svelte/icons/lock';
+  import GithubIcon from '$lib/components/icons/GithubIcon.svelte';
   import PwaStatus from '$lib/components/PwaStatus.svelte';
   import '../app.css';
 
@@ -38,12 +39,23 @@
         </span>
         <span class="text-lg font-bold tracking-tight text-foreground">GOÄ-Wächter</span>
       </div>
-      <span
-        class="hidden items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground sm:inline-flex"
-      >
-        <LockIcon class="size-3.5 text-primary" />
-        100&nbsp;% lokal
-      </span>
+      <div class="hidden items-center gap-2 sm:flex">
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+        >
+          <LockIcon class="size-3.5 text-primary" />
+          100&nbsp;% lokal
+        </span>
+        <a
+          href="https://github.com/justb81/selbstbehalt/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <GithubIcon class="size-3.5" />
+          100&nbsp;% Open Source
+        </a>
+      </div>
     </div>
   </header>
 
@@ -55,6 +67,18 @@
   </main>
 
   <footer class="border-t border-border py-6 text-center text-sm text-muted-foreground">
-    <p class="m-0">GOÄ-Wächter · eine Demo von selbstbehalt (PKV Manager)</p>
+    <p class="m-0">
+      GOÄ-Wächter · eine Demo von
+      <a
+        href="https://github.com/justb81/selbstbehalt/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary hover:underline"
+      >
+        <GithubIcon />
+        PKV Manager „selbstbehalt“
+      </a>
+      auf GitHub
+    </p>
   </footer>
 </div>

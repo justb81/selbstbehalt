@@ -42,7 +42,7 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 | #13 | Stats-API (Jahr + BRE) | #8, #9, #12, #17 | 🚧 |
 | #14 | Backup-API (Export/Import) | #8, #9 | 🚧 |
 | #15 | GOÄ/GOZ/GOT-Lookup-Tabellen | #2 | ✅ |
-| #16 | GOÄ-Parser + Steigerungsfaktor-Validierung (§5) | #15, #4 | ✅ |
+| #16 | GOÄ-Parser + vollständige Regelvalidierung (§5 Steigerungsfaktor, Ausschlüsse, Höchstwerte, Frequenzlimits u. a.) | #15, #4 | ✅ |
 | #17 | BRE-Helfer (Streak/Projektion) | #4, #10 | ⬜ |
 | #65 | `included_benefits`-Schema (Tarif-Erstattungsregeln) | #8, #10 | ⬜ |
 | #66 | Erstattungs-Engine (`eligible_amount` aus Tarifbausteinen) | #65, #16, #4 | ⬜ |

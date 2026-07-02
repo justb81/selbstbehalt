@@ -54,8 +54,9 @@
   <p class="text-xs font-semibold uppercase tracking-widest text-primary">GOÄ · GOZ</p>
   <h1 class="text-3xl font-bold tracking-tight text-balance">Arztrechnung prüfen</h1>
   <p class="text-muted-foreground text-pretty">
-    Rechnung fotografieren oder als Bild/PDF hochladen — die GOÄ/GOZ-Prüfung (inkl. §5
-    Steigerungsfaktor) läuft direkt in diesem Browser.
+    Rechnung fotografieren oder als Bild/PDF hochladen — die vollständige GOÄ/GOZ-Prüfung
+    (Steigerungsfaktor nach §5, Ausschlüsse, Höchstwerte, Frequenzlimits u. a.) läuft direkt in
+    diesem Browser.
   </p>
 </div>
 
