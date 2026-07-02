@@ -303,7 +303,7 @@ const DATE_RE = /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/;
 const LABELLED_DATE_RE =
   /(?:Rechnungsdatum|Rechnungs-?datum|Datum|vom)\D{0,12}(\d{1,2}\.\d{1,2}\.\d{2,4})/i;
 const INVOICE_NO_RE =
-  /(?:Rechnungs-?\s?(?:nummer|nr)|Rechnung\s+Nr|Beleg-?nr|Re-?Nr)\.?\s*:?\s*([A-Za-z0-9][A-Za-z0-9\-/.]*)/i;
+  /(?:Rechnungs-?\s?(?:nummer|nr)|Rechnung\s+Nr|Beleg-?nr|Re-?Nr)\.?\s*(?::\s*)?([A-Za-z0-9][A-Za-z0-9\-/.]*)/i;
 const PROVIDER_RE =
   /\b(?:Dr\.?\s?med\.?|Dr\.|Prof\.|Praxis(?:gemeinschaft)?|Gemeinschaftspraxis|MVZ|Zahnarzt|Zahnärztin|Tierarzt|Tierärztin|Tierklinik|Klinik|Klinikum)\b/i;
 
@@ -508,7 +508,7 @@ export function parsePositionLine(line: string): RawPosition | null {
  * — OCR sometimes wraps the amount, or both factor and amount, onto the next
  * line when the description is long. Matches "17,43 €", "1,00 1,46 €", etc.
  */
-const BARE_NUMBER_RE = /^\s*\d[\d.,]*(?:\s+\d[\d.,]*)*\s*(?:[€$]|EUR)?\s*$/i;
+const BARE_NUMBER_RE = /^\s*\d[\d.,]*(?:\s+\d[\d.,]*)*\s*(?:(?:[€$]|EUR)\s*)?$/i;
 
 /**
  * Joins lines where OCR has wrapped the amount onto its own line: e.g.
