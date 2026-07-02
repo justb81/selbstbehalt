@@ -11,7 +11,7 @@ import { money, uuid } from './common.js';
 
 /**
  * The unified error envelope the backend returns for every non-2xx response
- * (see `backend/src/middleware/error.ts`).
+ * (see `apps/backend/src/middleware/error.ts`).
  */
 export const errorBodySchema = z.object({
   error: z.object({
@@ -23,7 +23,7 @@ export type ErrorBody = z.infer<typeof errorBodySchema>;
 
 /**
  * Response shape of the unauthenticated `/api/health` liveness/readiness probe
- * (see `backend/src/routes/health.ts`).
+ * (see `apps/backend/src/routes/health.ts`).
  */
 export const healthBodySchema = z.object({
   status: z.enum(['ok', 'degraded']),

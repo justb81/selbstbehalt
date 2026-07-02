@@ -77,7 +77,7 @@ export interface OcrModelUrls {
  * Default, on-device model locations. The binding is *always* pointed at these
  * local paths (never its built-in CDN defaults) so no model is fetched from a
  * third party at runtime. The maintainer hosts the actual INT8 files here — see
- * `frontend/static/models/ocr/README.md`.
+ * `apps/frontend/static/models/ocr/README.md`.
  */
 export const DEFAULT_MODEL_URLS: OcrModelUrls = {
   detection: '/models/ocr/det.onnx',

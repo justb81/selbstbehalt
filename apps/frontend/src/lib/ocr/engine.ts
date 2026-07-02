@@ -228,8 +228,8 @@ function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
 
 /**
  * Local, same-origin directory the ONNX Runtime WASM assets are served from.
- * `scripts/copy-ort-wasm.mjs` populates `frontend/static/models/ort/` at build
- * time; the service worker caches `/models/**` on first use (docs/design.md §6.3).
+ * `scripts/copy-ort-wasm.mjs` populates `apps/frontend/static/models/ort/` at
+ * build time; the service worker caches `/models/**` on first use (docs/design.md §6.3).
  */
 const ORT_WASM_PATH = '/models/ort/';
 

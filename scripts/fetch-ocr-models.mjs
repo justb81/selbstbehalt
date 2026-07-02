@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Downloads the on-device PP-OCRv5 model assets into
-// frontend/static/models/ocr/ so the OCR pipeline (docs/design.md §4, issue #27)
+// apps/frontend/static/models/ocr/ so the OCR pipeline (docs/design.md §4, issue #27)
 // can run client-side without ever fetching a model from a third-party CDN at
 // runtime (CLAUDE.md privacy constraint; §1.3/§8). The files are large binaries
 // and are git-ignored — re-run this script to (re)populate them.
@@ -13,7 +13,7 @@
 // plain-text dictionary comes from `raw.githubusercontent.com`.
 //
 // Each download is verified against the SHA-256 pinned in
-// frontend/static/models/ocr/models.sha256 (the canonical hash list) — a
+// apps/frontend/static/models/ocr/models.sha256 (the canonical hash list) — a
 // mismatch (supply-chain substitution, LFS corruption, truncated download)
 // deletes the bad file and fails. When intentionally refreshing the models,
 // update models.sha256 to the new hashes.
@@ -29,14 +29,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEST = join(ROOT, 'frontend/static/models/ocr');
+const DEST = join(ROOT, 'apps/frontend/static/models/ocr');
 
 const LFS =
   'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
 const RAW = 'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
 
 // Served filename ← upstream path. Keep in sync with DEFAULT_MODEL_URLS in
-// frontend/src/lib/ocr/types.ts and static/models/ocr/README.md.
+// apps/frontend/src/lib/ocr/types.ts and static/models/ocr/README.md.
 const ASSETS = [
   { out: 'det.onnx', url: `${LFS}/detection/PP-OCRv5_mobile_det_infer.onnx` },
   {
@@ -103,10 +103,10 @@ for (const { out, url } of ASSETS) {
     throw new Error(
       `SHA-256 mismatch for ${out}: expected ${want}, got ${got}. ` +
         `The download was deleted. If you intentionally changed the model source, ` +
-        `update frontend/static/models/ocr/models.sha256.`,
+        `update apps/frontend/static/models/ocr/models.sha256.`,
     );
   }
-  console.log(`frontend/static/models/ocr/${out} ← ${url} (sha256 ok)`);
+  console.log(`apps/frontend/static/models/ocr/${out} ← ${url} (sha256 ok)`);
 }
 
 console.log('OCR models fetched and verified');

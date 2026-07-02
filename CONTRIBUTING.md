@@ -40,8 +40,8 @@ pnpm typecheck      # type-check every workspace package
 Copy [`.env.example`](.env.example) to `.env` and adjust it for your setup.
 
 This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with two
-packages — [`frontend/`](frontend/) (SvelteKit PWA) and [`backend/`](backend/)
-(Hono REST API + SQLite). See [`README.md`](README.md) and
+packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA) and
+[`apps/backend/`](apps/backend/) (Hono REST API + SQLite). See [`README.md`](README.md) and
 [`docs/design.md`](docs/design.md) for the architecture.
 
 ## Branch & commit conventions
@@ -91,7 +91,7 @@ This project follows Privacy by Design (see §1.3 and §8 of
 
 ## Fee-schedule data (GOÄ/GOZ/GOT)
 
-The GOÄ/GOZ/GOT lookup tables under `frontend/src/lib/data/` are **not
+The GOÄ/GOZ/GOT lookup tables under `apps/frontend/src/lib/data/` are **not
 hand-maintained**. They are generated reproducibly from the official source XML
 under [`data/input/`](data/input/) by the maintainer, and the tables are
 maintained **exclusively by the maintainer** ([@justb81](https://github.com/justb81)).

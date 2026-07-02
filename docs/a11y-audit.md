@@ -6,9 +6,9 @@ accessibility score, and what's explicitly deferred.
 
 ## Automated coverage
 
-`frontend/e2e/a11y.spec.ts` runs an [`@axe-core/playwright`](https://www.npmjs.com/package/@axe-core/playwright)
+`apps/frontend/e2e/a11y.spec.ts` runs an [`@axe-core/playwright`](https://www.npmjs.com/package/@axe-core/playwright)
 scan (WCAG 2.0/2.1 A + AA rule sets) against every primary route and state,
-using the shared backend mocks in `frontend/e2e/fixtures.ts` (this e2e project
+using the shared backend mocks in `apps/frontend/e2e/fixtures.ts` (this e2e project
 has no live backend):
 
 - Dashboard (`/`) — empty and populated
@@ -23,14 +23,14 @@ has no live backend):
 - Settings (`/settings`)
 - Keyboard: the skip-link is the first `Tab` stop and moves focus to `#main-content`
 
-`frontend/e2e/responsive.spec.ts` checks 360×800 and 390×844 viewports (common
+`apps/frontend/e2e/responsive.spec.ts` checks 360×800 and 390×844 viewports (common
 small-Android widths) for page-level horizontal overflow and that the mobile
 bottom nav (including its "Mehr" overflow sheet) stays reachable, on the two
 table-heavy pages (`/invoices`, `/invoices/:id`).
 
 Both specs run in CI for free: `.github/workflows/ci.yml`'s existing `e2e` job
 runs `pnpm test:e2e`, and Playwright auto-discovers every spec under
-`frontend/e2e/` — no new workflow was needed.
+`apps/frontend/e2e/` — no new workflow was needed.
 
 ## Violations found and fixed
 
@@ -53,7 +53,7 @@ broader i18n cleanup was needed. The remaining `.toFixed(2)` calls in
 `invoices/[id]/+page.svelte` format the GOÄ *Steigerungsfaktor* (a multiplier,
 not currency) and are correctly left alone.
 
-Also added: a shared `EmptyState` component (`frontend/src/lib/components/EmptyState.svelte`,
+Also added: a shared `EmptyState` component (`apps/frontend/src/lib/components/EmptyState.svelte`,
 mirroring the existing `LoadingState`/`ErrorState` pattern) replacing ad-hoc
 "no data" markup on the invoices/contracts/persons/insured list and detail
 pages, for one consistent empty-state pattern across the app.

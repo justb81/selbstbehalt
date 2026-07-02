@@ -6,7 +6,7 @@ import globals from 'globals';
 import svelte from 'eslint-plugin-svelte';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
-import svelteConfig from './frontend/svelte.config.js';
+import svelteConfig from './apps/frontend/svelte.config.js';
 
 export default tseslint.config(
   // Globally ignored paths — generated output, dependencies, lockfile, source data.
@@ -23,7 +23,7 @@ export default tseslint.config(
       'data/**',
       // On-device OCR assets fetched/copied at build time (git-ignored vendor
       // binaries + their emscripten glue), not project source.
-      'frontend/static/models/**',
+      'apps/frontend/static/models/**',
     ],
   },
 
@@ -57,7 +57,7 @@ export default tseslint.config(
   // shadcn-svelte generated UI components use plain <a href> links rather than
   // SvelteKit's goto(); suppress the navigation rule for that directory only.
   {
-    files: ['frontend/src/lib/components/ui/**/*.svelte'],
+    files: ['apps/frontend/src/lib/components/ui/**/*.svelte'],
     rules: {
       'svelte/no-navigation-without-resolve': 'off',
     },

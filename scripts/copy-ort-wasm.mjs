@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Copies the ONNX Runtime Web WASM assets into frontend/static/models/ort/ so
-// they are served same-origin (no CDN at runtime — CLAUDE.md privacy
+// Copies the ONNX Runtime Web WASM assets into apps/frontend/static/models/ort/
+// so they are served same-origin (no CDN at runtime — CLAUDE.md privacy
 // constraint; docs/design.md §1.3/§8). The OCR engine points
-// `ort.env.wasm.wasmPaths` at `/models/ort/` (see frontend/src/lib/ocr/engine.ts),
+// `ort.env.wasm.wasmPaths` at `/models/ort/` (see apps/frontend/src/lib/ocr/engine.ts),
 // and the service worker already caches `/models/**` on first use (§6.3).
 //
 // Runs automatically as part of `pnpm --filter @selbstbehalt/frontend build`
@@ -21,11 +21,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEST = join(ROOT, 'frontend/static/models/ort');
+const DEST = join(ROOT, 'apps/frontend/static/models/ort');
 
 // onnxruntime-web is a dependency of the frontend package; resolve its dist dir
-// from there rather than the repo root (pnpm keeps it in frontend/node_modules).
-const requireFromFrontend = createRequire(join(ROOT, 'frontend/package.json'));
+// from there rather than the repo root (pnpm keeps it in
+// apps/frontend/node_modules).
+const requireFromFrontend = createRequire(join(ROOT, 'apps/frontend/package.json'));
 const distDir = dirname(requireFromFrontend.resolve('onnxruntime-web'));
 
 const FILES = [
@@ -38,6 +39,6 @@ const FILES = [
 mkdirSync(DEST, { recursive: true });
 for (const file of FILES) {
   copyFileSync(join(distDir, file), join(DEST, file));
-  console.log(`frontend/static/models/ort/${file} ← onnxruntime-web`);
+  console.log(`apps/frontend/static/models/ort/${file} ← onnxruntime-web`);
 }
 console.log('ONNX Runtime WASM assets copied');

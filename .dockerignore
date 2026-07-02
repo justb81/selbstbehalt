@@ -1,7 +1,7 @@
-# Docker build context is the repository root (see backend/ & frontend/
-# Dockerfile headers). Keep it small and reproducible: exclude installed
-# dependencies, build outputs and local runtime data — everything the images
-# need is installed/built fresh inside the build stage.
+# Docker build context is the repository root (see apps/backend/ &
+# apps/frontend/ Dockerfile headers). Keep it small and reproducible: exclude
+# installed dependencies, build outputs and local runtime data — everything
+# the images need is installed/built fresh inside the build stage.
 
 # Dependencies — reinstalled from the lockfile in the build stage.
 **/node_modules
@@ -15,7 +15,8 @@
 *.tsbuildinfo
 
 # Local runtime data: generated SQLite DBs, uploaded files, fee-schedule build
-# inputs (the generated JSON tables live in frontend/src/lib/data and are kept).
+# inputs (the generated JSON tables live in apps/frontend/src/lib/data and are
+# kept).
 data
 *.sqlite
 *.sqlite3

@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Implemented so far:
 
 - **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
-- **`backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
-- **`frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most other UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR pipeline runs **PP-OCRv5 via `ppu-paddle-ocr`** (ONNX Runtime, Web Worker, WebGPU/WASM) behind an injectable engine seam: the binding is bundled into a worker-only chunk, and both the models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). The one remaining step is verifying the WebGPU path + WASM fallback in a real browser (#27). See `docs/roadmap.md` and the open GitHub issues.
+- **`apps/backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
+- **`apps/frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most other UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR pipeline runs **PP-OCRv5 via `ppu-paddle-ocr`** (ONNX Runtime, Web Worker, WebGPU/WASM) behind an injectable engine seam: the binding is bundled into a worker-only chunk, and both the models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). The one remaining step is verifying the WebGPU path + WASM fallback in a real browser (#27). See `docs/roadmap.md` and the open GitHub issues.
 
 Reference material:
 
@@ -37,7 +37,7 @@ The domain is German and insurance-specific. Keep entity/field names in German w
 
 ## Architecture (planned)
 
-Monorepo via **pnpm workspaces** — `frontend/`, `backend/`, and `packages/shared/` (shared Zod schemas, types and domain helpers).
+Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, and `packages/shared/` (shared Zod schemas, types and domain helpers).
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
@@ -75,7 +75,7 @@ Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_position
 
 These hold the actual business value — get them right and keep them well-tested.
 
-### 1. GOÄ invoice parser (`frontend/.../utils/goae-parser.ts`)
+### 1. GOÄ invoice parser (`apps/frontend/.../utils/goae-parser.ts`)
 
 German doctor invoices follow the legally-defined GOÄ schema (§12 GOÄ). The parser regex-extracts line items, looks each GOÄ code up in a static JSON table (`data/goae-*.json`, ~4500 codes; also GOZ/GOT), and **validates the Steigerungsfaktor (multiplier) against the legal limits in §5 GOÄ**:
 
@@ -86,7 +86,7 @@ German doctor invoices follow the legally-defined GOÄ schema (§12 GOÄ). The p
 
 A line exceeding its limit is flagged (`is_valid = false`, with `flag_reason`). The GOÄ lookup tables are version-controlled static JSON — no LLM needed; GOÄ is public.
 
-### 2. Günstigerprüfung (`frontend/.../utils/guenstiger-pruefung.ts`)
+### 2. Günstigerprüfung (`apps/frontend/.../utils/guenstiger-pruefung.ts`)
 
 Decides **einreichen (submit)** vs **selbst_zahlen (self-pay)**. Submitting is worthwhile when:
 

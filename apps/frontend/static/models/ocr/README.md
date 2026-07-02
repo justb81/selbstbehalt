@@ -20,7 +20,7 @@ initial visit OCR works fully offline.
 | `/models/ocr/rec.onnx` | Latin mobile text **recognition** (covers German) | ~7.7 MB |
 | `/models/ocr/dict.txt` | Latin character **dictionary**                    | ~3 KB   |
 
-These paths are the defaults in `frontend/src/lib/ocr/types.ts`
+These paths are the defaults in `apps/frontend/src/lib/ocr/types.ts`
 (`DEFAULT_MODEL_URLS`); change them there and here together if you host a
 different model.
 

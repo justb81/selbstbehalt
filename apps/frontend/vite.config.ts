@@ -5,7 +5,7 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // Mirror the production nginx setup (frontend/nginx.conf) in local dev: proxy
+  // Mirror the production nginx setup (apps/frontend/nginx.conf) in local dev: proxy
   // /api to the backend so the app talks to a single same-origin endpoint. The
   // API client therefore needs no PUBLIC_API_URL during `vite dev` — it just
   // calls `/api/...` on the dev server. Override the target with API_PROXY_TARGET

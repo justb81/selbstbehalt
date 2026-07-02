@@ -1,6 +1,5 @@
 packages:
-  - 'frontend'
-  - 'backend'
+  - 'apps/*'
   # Shared code (Zod schemas & types) lives here, e.g. packages/shared.
   - 'packages/*'
 

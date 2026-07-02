@@ -65,7 +65,7 @@ jobs:
       - name: Fee-schedule tables (reproducible + valid)
         run: |
           pnpm fees:build
-          git diff --exit-code -- frontend/src/lib/data/ \
+          git diff --exit-code -- apps/frontend/src/lib/data/ \
             || (echo '::error::Generated fee-schedule tables are stale — run `pnpm fees:build` and commit the result.' && exit 1)
           pnpm fees:validate
 
@@ -114,7 +114,7 @@ jobs:
         with:
           name: playwright-report
           path: |
-            frontend/playwright-report/
-            frontend/test-results/
+            apps/frontend/playwright-report/
+            apps/frontend/test-results/
           if-no-files-found: ignore
           retention-days: 7

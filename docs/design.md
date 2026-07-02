@@ -377,17 +377,17 @@ statt WebGPU-gebunden, DOM-/opencv-gebunden und damit nicht Worker-tauglich, und
 kein echtes PP-OCRv5.)
 
 Die Bindung sitzt hinter einem schmalen, injizierbaren Adapter-Seam
-(`frontend/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
-(`frontend/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
+(`apps/frontend/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
+(`apps/frontend/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
 Dinge explizit:
 
 ```typescript
-// frontend/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
+// apps/frontend/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
 import { PaddleOcrService } from 'ppu-paddle-ocr/web';
 
 const service = new PaddleOcrService({
   // Immer lokale, gleich­ursprüngliche Modell-URLs — NIE die CDN-Defaults der
-  // Bindung (Privacy, §1.3/§8). Hosting: frontend/static/models/ocr/.
+  // Bindung (Privacy, §1.3/§8). Hosting: apps/frontend/static/models/ocr/.
   model: {
     detection: '/models/ocr/det.onnx',
     recognition: '/models/ocr/rec.onnx',
@@ -411,9 +411,9 @@ Laufzeit.
 ### 4.3 GOÄ-Strukturparser
 
 Arztrechnungen nach §12 GOÄ folgen einem gesetzlich definierten Schema. Der
-Parser (`frontend/src/lib/utils/goae-parser.ts`) ist reiner, deterministischer
+Parser (`apps/frontend/src/lib/utils/goae-parser.ts`) ist reiner, deterministischer
 Code (kein LLM) und die **Konsumentenseite** des `fee-schedule/v1`-Formats
-(siehe `docs/data-format.md`, `frontend/src/lib/data/fee-schedule.ts`). Er
+(siehe `docs/data-format.md`, `apps/frontend/src/lib/data/fee-schedule.ts`). Er
 arbeitet in vier Schritten:
 
 1. **Feld- und Positionsextraktion** per Regex aus dem (OCR-)Text: Datum
@@ -918,7 +918,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: apps/frontend/Dockerfile
       args:
         # Leer = gleiche Origin; nginx proxyt /api an das Backend.
         PUBLIC_API_URL: ${PUBLIC_API_URL:-}
@@ -931,7 +931,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     volumes:
       - ./data/db:/app/db        # SQLite-Datei persistent
       - ./data/files:/app/files  # Rechnungs-PDFs optional
@@ -970,7 +970,7 @@ services:
 
 ### Phase 1: MVP (Core-Funktionalität)
 
-- [ ] Monorepo-Setup (pnpm workspaces: `frontend/`, `backend/`)
+- [ ] Monorepo-Setup (pnpm workspaces: `apps/frontend/`, `apps/backend/`)
 - [ ] Datenbankschema mit Drizzle ORM implementieren
 - [ ] REST-API Endpunkte für Contracts und Invoices
 - [ ] SvelteKit-Grundgerüst mit Routing
@@ -1024,7 +1024,7 @@ services:
 pkv-manager/
 ├── docker-compose.yml
 ├── .env.example
-├── frontend/
+├── apps/frontend/
 │   ├── src/
 │   │   ├── routes/
 │   │   │   ├── +page.svelte              (Dashboard)
@@ -1050,7 +1050,7 @@ pkv-manager/
 │   │   └── app.webmanifest
 │   ├── static/
 │   └── package.json
-├── backend/
+├── apps/backend/
 │   ├── src/
 │   │   ├── index.ts                      (Hono App Entry)
 │   │   ├── routes/

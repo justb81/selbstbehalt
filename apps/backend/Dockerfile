@@ -9,8 +9,8 @@
 # root only to repair bind-mount ownership, then drops privileges (see
 # docker-entrypoint.sh). See docs/design.md §7.3.
 #
-# The build context is the repository ROOT (not ./backend) because the backend
-# depends on the @selbstbehalt/shared workspace package and the root
+# The build context is the repository ROOT (not ./apps/backend) because the
+# backend depends on the @selbstbehalt/shared workspace package and the root
 # pnpm-lock.yaml — a per-app context could not resolve either. docker-compose.yml
 # sets `context: .` accordingly.
 
@@ -28,8 +28,8 @@ WORKDIR /repo
 # Manifests first so the dependency-install layer caches across source changes.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/shared/package.json packages/shared/package.json
-COPY backend/package.json backend/package.json
-COPY frontend/package.json frontend/package.json
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/frontend/package.json apps/frontend/package.json
 # Install only the backend's subtree (backend + the shared package it needs).
 # --ignore-scripts: only the manifests have been copied so far, so the
 # @selbstbehalt/shared `prepare` script (`tsc -p tsconfig.build.json`) would
@@ -43,7 +43,7 @@ RUN --mount=type=cache,id=pnpm-store-backend,target=/pnpm/store \
 # Sources for the backend and its shared dependency.
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
-COPY backend backend
+COPY apps/backend apps/backend
 
 RUN pnpm --filter @selbstbehalt/shared build \
   && pnpm --filter @selbstbehalt/backend build
@@ -71,7 +71,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app ./
-COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY apps/backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Volume mount points for the SQLite database and optional invoice files. When

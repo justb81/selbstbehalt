@@ -11,7 +11,7 @@
 
 Kanonische Definitionen:
 
-- **TypeScript-Typen:** `frontend/src/lib/data/fee-schedule.ts`
+- **TypeScript-Typen:** `apps/frontend/src/lib/data/fee-schedule.ts`
 - **JSON-Schema (CI-Validierung):** `data/schema/fee-schedule.schema.json`
 - **Annotiertes Beispiel (jeder Constraint-Typ mit echtem Gesetzeswortlaut):**
   `data/examples/fee-schedule.example.json`
@@ -258,7 +258,7 @@ Beides ist dependency-frei (`node`, keine externen Pakete — wie
 `scripts/check-licenses.mjs`):
 
 - **`scripts/build-fee-schedules.mjs`** (`pnpm fees:build`) parst die CALS-
-  Tabellen unter `data/input/` und schreibt `frontend/src/lib/data/{goae,goz,
+  Tabellen unter `data/input/` und schreibt `apps/frontend/src/lib/data/{goae,goz,
   got}.json` inkl. `source`-Provenienz. Hilfsmodule: `scripts/lib/mini-xml.mjs`
   (winziger XML-Parser), `scripts/lib/fee-constraints.mjs` (Constraint-Extraktion).
 - **`scripts/validate-fee-schedules.mjs`** (`pnpm fees:validate`) prüft die in
