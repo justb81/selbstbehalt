@@ -69,7 +69,10 @@ RUN pnpm --filter @selbstbehalt/frontend build
 
 # ---- Stage 2: runtime (nginx serving the static SPA, non-root) ----
 FROM nginx:1.27-alpine AS runtime
-COPY apps/frontend/nginx.conf /etc/nginx/nginx.conf
+# security-headers.conf is `include`d by nginx.conf — nginx resolves a
+# relative `include` against the directory of the file that references it, so
+# it must land next to nginx.conf under /etc/nginx/.
+COPY apps/frontend/nginx.conf apps/frontend/security-headers.conf /etc/nginx/
 COPY --from=build /repo/apps/frontend/build /usr/share/nginx/html
 # Run as the unprivileged `nginx` user (uid 101) shipped with the base image.
 USER nginx

@@ -48,4 +48,23 @@ describe('createApp', () => {
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ status: 'degraded', db: 'down' });
   });
+
+  it('sets security headers on a normal response', async () => {
+    const res = await app().request('/api/health');
+    expect(res.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; frame-ancestors 'none'",
+    );
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('cross-origin');
+    expect(res.headers.get('X-Frame-Options')).toBe('DENY');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Strict-Transport-Security')).toContain('max-age=');
+  });
+
+  it('sets security headers on a 404 error response too', async () => {
+    const res = await app().request('/api/does-not-exist');
+    expect(res.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; frame-ancestors 'none'",
+    );
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  });
 });

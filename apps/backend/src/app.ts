@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
 
 import type { Config } from './config.js';
 import type { Database } from './db/client.js';
@@ -34,6 +35,23 @@ export function createApp({ db, config }: AppDeps) {
     '*',
     cors({
       origin: config.corsOrigins === '*' ? '*' : config.corsOrigins,
+    }),
+  );
+  // Security headers (§8, issue #31). The API is JSON-only, so the CSP locks
+  // everything down rather than allowlisting resource types. Cross-Origin-
+  // Resource-Policy is relaxed to 'cross-origin' (the default 'same-origin'
+  // would silently block the documented separate-origin + CORS_ORIGINS +
+  // X-API-Key deployment, §7.2, regardless of what CORS allows) — access
+  // control stays with CORS_ORIGINS and the API-key/reverse-proxy auth below,
+  // not with CORP. In the default single-origin setup the frontend's nginx
+  // proxies /api/ verbatim and does not add a second, conflicting header set
+  // (see apps/frontend/nginx.conf).
+  app.use(
+    '*',
+    secureHeaders({
+      contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      crossOriginResourcePolicy: 'cross-origin',
+      xFrameOptions: 'DENY',
     }),
   );
 

@@ -178,8 +178,11 @@ SELBSTBEHALT_VERSION=1.2.3 docker compose -f docker-compose.release.yml up -d
 
 The backend exposes an unauthenticated `/api/health` endpoint that drives the
 container healthcheck; the frontend only starts once the backend reports
-healthy (`depends_on: service_healthy`). Reverse-proxy/HTTPS hardening and a
-full self-hosting guide are tracked separately.
+healthy (`depends_on: service_healthy`). For HTTPS + HTTP Basic Auth in front
+of the app, the CSP/security headers already baked into both services, and
+when you actually need `PKV_API_KEY`, see [`docs/hardening.md`](docs/hardening.md)
+and the checklist in [`SECURITY.md`](SECURITY.md#hardening-checklist). A full
+self-hosting guide is tracked separately.
 
 ## Releases
 

@@ -27,15 +27,18 @@ export default defineConfig({
     // test hooks they rely on (e.g. the scan flow's `__selbstbehaltStubScan`).
     {
       name: 'chromium',
-      testIgnore: '**/pwa.spec.ts',
+      testIgnore: ['**/pwa.spec.ts', '**/csp.spec.ts'],
       use: { ...chrome, baseURL: DEV_URL },
     },
     // The PWA checks need a real build: the service worker is only emitted and
     // active in a production build (devOptions.enabled is false), so they run
-    // against `vite preview` of the built output (issue #27).
+    // against `vite preview` of the built output (issue #27). csp.spec.ts is
+    // grouped here too — not because it needs `vite preview` (it doesn't use
+    // `page` at all), but because it needs `build/` to exist, which this
+    // project's `test:e2e` step (`vite build && playwright test`) guarantees.
     {
       name: 'pwa',
-      testMatch: '**/pwa.spec.ts',
+      testMatch: ['**/pwa.spec.ts', '**/csp.spec.ts'],
       use: { ...chrome, baseURL: PREVIEW_URL },
     },
   ],

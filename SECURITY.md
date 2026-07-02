@@ -52,6 +52,37 @@ documented in the [README](README.md#security--supply-chain-automation).
 repository (**Settings → Code security**) so that credentials cannot be committed
 or pushed.
 
+## Hardening checklist
+
+Before exposing an instance beyond your own machine, work through
+[`docs/hardening.md`](docs/hardening.md) for the details behind each item:
+
+- [ ] **HTTPS reverse proxy with HTTP Basic Auth** in front of the app — see
+      [`deploy/reverse-proxy/traefik/`](deploy/reverse-proxy/traefik/) or
+      [`deploy/reverse-proxy/nginx/`](deploy/reverse-proxy/nginx/). Never run a
+      deployment reachable outside your own machine over plain HTTP, even on a
+      LAN — use a self-signed certificate there instead.
+- [ ] **CSP/security headers are intact.** Both services set their own
+      (`apps/frontend/security-headers.conf`, `apps/backend/src/app.ts`) — no
+      action needed unless you've modified either file, in which case rerun
+      `pnpm --filter @selbstbehalt/frontend test:e2e` (covers
+      `e2e/csp.spec.ts`) and re-check for `securitypolicyviolation` console
+      messages in the browser.
+- [ ] **`PKV_API_KEY`** is set if — and only if — the backend is reachable on
+      its own origin (a separate-origin/VPN deployment); leave it empty for
+      the default single-origin setup, where the reverse proxy's Basic Auth
+      already covers the API. See "External access" in
+      [`docs/hardening.md`](docs/hardening.md).
+- [ ] **`CORS_ORIGINS`** is a specific origin list, not `*`, whenever
+      `PKV_API_KEY` is set.
+- [ ] **Backups are encrypted at rest** if stored off-host (`/api/export/db`
+      output, or the host's `./data/db` volume) — the database itself is
+      unencrypted SQLite; protect exported copies with disk/volume encryption
+      or an encrypted backup destination.
+- [ ] **Secret scanning and push protection** are enabled on the repository
+      (**Settings → Code security**) — see
+      [Security & supply-chain automation](README.md#security--supply-chain-automation).
+
 ## Scope
 
 This is a self-hostable application. The most security-relevant areas are:

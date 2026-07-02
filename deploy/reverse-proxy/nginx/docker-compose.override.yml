@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Standalone nginx reverse proxy in front of selbstbehalt: HTTPS (Let's
+# Encrypt or a self-signed LAN cert) + HTTP Basic Auth, on top of the base
+# stack. See deploy/reverse-proxy/nginx/README.md for setup steps.
+#
+# Usage (from the repo root):
+#
+#   cp .env.example .env                                # then edit .env
+#   htpasswd -nB <user> > deploy/reverse-proxy/nginx/htpasswd   # see README
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f deploy/reverse-proxy/nginx/docker-compose.override.yml \
+#     --env-file .env \
+#     up -d --build
+
+services:
+  nginx-proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./selbstbehalt.conf:/etc/nginx/conf.d/selbstbehalt.conf:ro
+      - ./htpasswd:/etc/nginx/.htpasswd:ro
+      # Option B (self-signed LAN cert) — see README "Option B".
+      - ./certs:/etc/nginx/certs:ro
+      # Option A (Let's Encrypt) — see README "Option A".
+      - ./certbot-etc:/etc/letsencrypt:ro
+      - ./certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
