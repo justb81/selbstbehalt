@@ -2,7 +2,7 @@
   "name": "@selbstbehalt/medic-invoice-check",
   "version": "1.1.0",
   "private": true,
-  "description": "Framework-light, backend-free scan-and-check engine for German medical invoices (GOÄ and GOZ): the on-device OCR pipeline, the GOÄ/GOZ/GOT fee-schedule parser incl. §5 Steigerungsfaktor validation, the versioned fee tables, and the reusable scan + review UI (OCRScanner, InvoiceReview). Consumed by apps/frontend and the GOÄ-Wächter demo.",
+  "description": "Framework-light, backend-free scan-and-check engine for German medical invoices (GOÄ and GOZ): the on-device OCR pipeline, the GOÄ/GOZ/GOT fee-schedule parser validating the full rule set (§5 Steigerungsfaktor limits, code exclusions, Höchstwerte, frequency limits, and more), the versioned fee tables, and the reusable scan + review UI (OCRScanner, InvoiceReview). Consumed by apps/frontend and the GOÄ-Wächter demo.",
   "license": "Apache-2.0",
   "type": "module",
   "svelte": "./src/lib/index.ts",

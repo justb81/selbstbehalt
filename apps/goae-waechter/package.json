@@ -2,7 +2,7 @@
   "name": "@selbstbehalt/goae-waechter",
   "version": "1.1.0",
   "private": true,
-  "description": "GOÄ-Wächter: standalone, backend-free demo PWA for the GOÄ/GOZ invoice check (issue #166). Scan or upload an invoice, review it against the §5 GOÄ Steigerungsfaktor limits — entirely on-device, nothing is stored or sent anywhere.",
+  "description": "GOÄ-Wächter: standalone, backend-free demo PWA for the GOÄ/GOZ invoice check (issue #166). Scan or upload an invoice, review it against the full GOÄ/GOZ rule set — §5 Steigerungsfaktor limits, code exclusions, Höchstwerte, frequency limits, and more — entirely on-device, nothing is stored or sent anywhere.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {

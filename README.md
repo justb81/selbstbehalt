@@ -29,16 +29,17 @@
 Privately insured people in Germany juggle several administrative tasks for which no complete, privacy-compliant, self-hostable tool exists. **selbstbehalt** ("deductible") covers three of them:
 
 - **Manage contracts** — keep multiple PKV contracts (full coverage, supplementary tariffs, Beihilfe) in one place.
-- **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag charges whose Steigerungsfaktor (multiplier) exceeds the legal limits (§5 GOÄ).
+- **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag every rule violation those fee schedules define: Steigerungsfaktor (multiplier) limits (§5 GOÄ), excluded/duplicate code combinations, missing base services, Höchstwert amount caps, frequency limits, and more.
 - **Günstigerprüfung** — decide, per invoice, whether to **submit it to the insurer** or **self-pay** to preserve your Beitragsrückerstattung (BRE, premium refund) — comparing the net reimbursement against the present value of the refund you'd forfeit by breaking your claim-free streak.
 
 ## Live demo
 
 **[GOÄ-Wächter](https://justb81.github.io/selbstbehalt/)** is a free, standalone
 demo of the invoice-check engine above: scan or upload a doctor's invoice and
-get the GOÄ/GOZ §5 Steigerungsfaktor check right in your browser — no
-installation, no account, no backend. It's a fully static, 100&nbsp;% offline-capable
-PWA; the invoice image never leaves your device (see
+get the full GOÄ/GOZ rule check — §5 Steigerungsfaktor limits, excluded code
+combinations, Höchstwerte, frequency limits, and more — right in your browser,
+no installation, no account, no backend. It's a fully static, 100&nbsp;%
+offline-capable PWA; the invoice image never leaves your device (see
 [Design principles](#design-principles)).
 
 ## Screenshots
