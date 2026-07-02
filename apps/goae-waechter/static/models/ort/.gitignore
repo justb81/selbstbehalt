@@ -1,0 +1,8 @@
+# ONNX Runtime Web WASM assets. Copied from the installed onnxruntime-web
+# package by `scripts/copy-ort-wasm.mjs` (run automatically by the app's
+# build), not committed to git. Served same-origin under /models/ort/ so
+# nothing is fetched from a CDN at runtime (CLAUDE.md; §1.3/§8).
+*.wasm
+*.mjs
+!.gitignore
+!README.md

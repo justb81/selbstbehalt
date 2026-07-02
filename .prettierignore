@@ -30,6 +30,10 @@ apps/frontend/static/models/ocr/*.onnx
 apps/frontend/static/models/ocr/dict.txt
 apps/frontend/static/models/ort/*.mjs
 apps/frontend/static/models/ort/*.wasm
+apps/goae-waechter/static/models/ocr/*.onnx
+apps/goae-waechter/static/models/ocr/dict.txt
+apps/goae-waechter/static/models/ort/*.mjs
+apps/goae-waechter/static/models/ort/*.wasm
 
 # Authored long-form German documentation (single source of truth — kept
 # hand-formatted, not reflowed by Prettier).

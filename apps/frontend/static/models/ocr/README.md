@@ -37,13 +37,17 @@ pnpm ocr:models
 This runs `scripts/fetch-ocr-models.mjs`, which pulls the PP-OCRv5 mobile
 detection model, the Latin recognition model, and the Latin dictionary from the
 [`ppu-paddle-ocr-models`](https://github.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models)
-release repository into this directory. Re-run it to refresh the models.
+release repository into this directory — and, in the same run, into
+`apps/goae-waechter/static/models/ocr/` (issue #170), which serves an identical
+copy from its own origin. Re-run it to refresh the models in both apps.
 
 ## Integrity verification
 
 Each download is verified against the SHA-256 pinned in **`models.sha256`** (the
-canonical hash list, committed alongside this README). A mismatch — supply-chain
-substitution, Git-LFS corruption, or a truncated download — deletes the bad file
-and fails the script. When you intentionally refresh the models, regenerate the
-hashes (e.g. `sha256sum det.onnx rec.onnx dict.txt > models.sha256` from this
-directory) in the same change.
+canonical hash list, committed alongside this README — `apps/goae-waechter`'s
+copy of the same three files is verified against this list too, not a separate
+one). A mismatch — supply-chain substitution, Git-LFS corruption, or a truncated
+download — deletes the bad file and fails the script. When you intentionally
+refresh the models, regenerate the hashes (e.g.
+`sha256sum det.onnx rec.onnx dict.txt > models.sha256` from this directory) in
+the same change.

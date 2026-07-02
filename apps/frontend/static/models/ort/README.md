@@ -25,5 +25,7 @@ pnpm --filter @selbstbehalt/frontend build   # runs scripts/copy-ort-wasm.mjs fi
 pnpm ocr:wasm
 ```
 
-Re-run after upgrading `onnxruntime-web` so the served WASM matches the bundled
-JS runtime.
+The same script also populates `apps/goae-waechter/static/models/ort/` (issue
+#170) with an identical copy for that app's own build. Re-run after upgrading
+`onnxruntime-web` so the served WASM matches the bundled JS runtime in both
+apps.
