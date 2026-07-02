@@ -3,8 +3,8 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { textToOcrResults } from '$lib/ocr/scan-ocr';
-import type { ScanResult } from '$lib/ocr/scan-flow';
+import { textToOcrResults } from '../ocr/scan-ocr';
+import type { ScanResult } from '../ocr/scan-flow';
 import OCRScanner from './OCRScanner.svelte';
 
 const SAMPLE = ['250  Blutentnahme  2,3  5,36', '75  Bericht  3,5  26,53'].join('\n');

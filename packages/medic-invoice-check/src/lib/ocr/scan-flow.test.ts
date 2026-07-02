@@ -13,8 +13,8 @@ import {
 } from './scan-flow';
 import { textToOcrResults } from './scan-ocr';
 import type { OcrResult } from './types';
-import goaeJson from '$lib/data/goae.json';
-import type { FeeScheduleTable } from '$lib/data/fee-schedule';
+import goaeJson from '../data/goae.json';
+import type { FeeScheduleTable } from '../data/fee-schedule';
 
 const GOAE = goaeJson as unknown as FeeScheduleTable;
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';

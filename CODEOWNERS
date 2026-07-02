@@ -13,5 +13,5 @@
 *                           @justb81
 
 # Fee-schedule source XML and the generated lookup tables (maintainer-only).
-/data/input/                     @justb81
-/apps/frontend/src/lib/data/     @justb81
+/data/input/                                 @justb81
+/packages/medic-invoice-check/src/lib/data/  @justb81

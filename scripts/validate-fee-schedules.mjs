@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// CI gate for the generated fee-schedule tables (apps/frontend/src/lib/data/
+// CI gate for the generated fee-schedule tables (packages/medic-invoice-check/src/lib/data/
 // {goae,goz,got}.json). Enforces the format from docs/data-format.md §6:
 // schema shape, Ziffer uniqueness, referential integrity, price plausibility,
 // §5 category/limit consistency, and the symmetric-exclusion contract.
@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = ['goae.json', 'goz.json', 'got.json'].map((f) =>
-  join(ROOT, 'apps', 'frontend', 'src', 'lib', 'data', f),
+  join(ROOT, 'packages', 'medic-invoice-check', 'src', 'lib', 'data', f),
 );
 const CATEGORIES = ['default', 'technical', 'lab', 'inpatient'];
 const BENEFIT_CATEGORIES = [

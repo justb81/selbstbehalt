@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Implemented so far:
 
 - **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
+- **`packages/medic-invoice-check/`** (`@selbstbehalt/medic-invoice-check`) — the framework-light, backend-free scan-and-check engine shared by `apps/frontend` and the planned GOÄ-Wächter demo (issues #166/#169): the on-device OCR pipeline (**PP-OCRv5 via `ppu-paddle-ocr`**, ONNX Runtime, Web Worker, WebGPU/WASM, behind an injectable engine seam bundled into a worker-only chunk), the GOÄ/GOZ/GOT fee-schedule data + parser (§5 Steigerungsfaktor validation), and the reusable scan + review UI (`OCRScanner`, `InvoiceReview` — reduced Rechnungskopf + GOÄ/GOZ position table with hints/warnings, no tariff-dependent `eligible_amount`). The one remaining OCR step is verifying the WebGPU path + WASM fallback in a real browser (#27).
 - **`apps/backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
-- **`apps/frontend/`** — SvelteKit app shell + typed API client, the GOÄ/GOZ/GOT fee-schedule data and parser, the Günstigerprüfung engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). Most other UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR pipeline runs **PP-OCRv5 via `ppu-paddle-ocr`** (ONNX Runtime, Web Worker, WebGPU/WASM) behind an injectable engine seam: the binding is bundled into a worker-only chunk, and both the models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). The one remaining step is verifying the WebGPU path + WASM fallback in a real browser (#27). See `docs/roadmap.md` and the open GitHub issues.
+- **`apps/frontend/`** — SvelteKit app shell + typed API client, the Günstigerprüfung engine, the tariff-based Erstattungs-Engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). The invoice capture/review UI comes from `@selbstbehalt/medic-invoice-check`; `InvoiceForm` wraps `InvoiceReview` with person selection, notes, the `eligible_amount` reimbursement, and saving. Most other UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). See `docs/roadmap.md` and the open GitHub issues.
 
 Reference material:
 
@@ -75,9 +76,9 @@ Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_position
 
 These hold the actual business value — get them right and keep them well-tested.
 
-### 1. GOÄ invoice parser (`apps/frontend/.../utils/goae-parser.ts`)
+### 1. GOÄ invoice parser (`packages/medic-invoice-check/.../utils/goae-parser.ts`)
 
-German doctor invoices follow the legally-defined GOÄ schema (§12 GOÄ). The parser regex-extracts line items, looks each GOÄ code up in a static JSON table (`data/goae-*.json`, ~4500 codes; also GOZ/GOT), and **validates the Steigerungsfaktor (multiplier) against the legal limits in §5 GOÄ**:
+German doctor invoices follow the legally-defined GOÄ schema (§12 GOÄ). The parser regex-extracts line items, looks each GOÄ code up in a static JSON table (the versioned tables under `packages/medic-invoice-check/src/lib/data/{goae,goz,got}.json`, ~4500 codes across GOÄ/GOZ/GOT), and **validates the Steigerungsfaktor (multiplier) against the legal limits in §5 GOÄ**:
 
 - default (personal services): 2.3
 - technical: 1.8
