@@ -19,12 +19,19 @@
 import { createRequire } from 'node:module';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Every app that serves the ONNX Runtime WASM from its own static/models/ort/.
 // Keep in sync with fetch-ocr-models.mjs's DEST_APPS.
 const DEST_APPS = ['apps/frontend', 'apps/goae-waechter'];
+
+// Each app's `build` runs this from its own dir (cwd = the app), so copy only
+// that app's assets. Copying every app on every invocation makes the parallel
+// `pnpm -r build` runs race on the same destination files (EBUSY on Windows).
+// When invoked from the repo root (`pnpm ocr:wasm`), populate every app.
+const cwdApp = relative(ROOT, process.cwd()).split(sep).join('/');
+const targetApps = DEST_APPS.includes(cwdApp) ? [cwdApp] : DEST_APPS;
 
 // onnxruntime-web is a dependency of @selbstbehalt/medic-invoice-check (which
 // owns the OCR pipeline); resolve its dist dir from there. The apps only serve
@@ -40,7 +47,7 @@ const FILES = [
   'ort-wasm-simd-threaded.jsep.mjs',
 ];
 
-for (const app of DEST_APPS) {
+for (const app of targetApps) {
   const dest = join(ROOT, app, 'static/models/ort');
   mkdirSync(dest, { recursive: true });
   for (const file of FILES) {

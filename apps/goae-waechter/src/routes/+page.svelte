@@ -51,7 +51,7 @@
 </svelte:head>
 
 <div class="space-y-2">
-  <p class="text-xs font-semibold uppercase tracking-widest text-primary">GOÄ · GOZ · GOT</p>
+  <p class="text-xs font-semibold uppercase tracking-widest text-primary">GOÄ · GOZ</p>
   <h1 class="text-3xl font-bold tracking-tight text-balance">Arztrechnung prüfen</h1>
   <p class="text-muted-foreground text-pretty">
     Rechnung fotografieren oder als Bild/PDF hochladen — die GOÄ/GOZ-Prüfung (inkl. §5
