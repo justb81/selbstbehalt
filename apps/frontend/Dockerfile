@@ -67,12 +67,22 @@ ARG PUBLIC_API_URL=
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN pnpm --filter @selbstbehalt/frontend build
 
+# Substitutes the actual built inline-script CSP hash into
+# security-headers.conf (issue #31) — see the script and the template's own
+# comment for why this can't be a value hardcoded at authoring time.
+RUN node scripts/generate-frontend-security-headers.mjs \
+  apps/frontend/build/index.html \
+  apps/frontend/security-headers.conf \
+  apps/frontend/security-headers.generated.conf
+
 # ---- Stage 2: runtime (nginx serving the static SPA, non-root) ----
 FROM nginx:1.27-alpine AS runtime
+COPY apps/frontend/nginx.conf /etc/nginx/nginx.conf
 # security-headers.conf is `include`d by nginx.conf — nginx resolves a
 # relative `include` against the directory of the file that references it, so
-# it must land next to nginx.conf under /etc/nginx/.
-COPY apps/frontend/nginx.conf apps/frontend/security-headers.conf /etc/nginx/
+# it must land next to nginx.conf under /etc/nginx/. The *generated* (hash
+# already substituted) copy is used here, not the checked-in template.
+COPY --from=build /repo/apps/frontend/security-headers.generated.conf /etc/nginx/security-headers.conf
 COPY --from=build /repo/apps/frontend/build /usr/share/nginx/html
 # Run as the unprivileged `nginx` user (uid 101) shipped with the base image.
 USER nginx

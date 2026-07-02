@@ -21,11 +21,12 @@ adds.
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and
   `Permissions-Policy`. The file documents, directive by directive, exactly
   which app feature needs each relaxation from a maximally strict policy
-  (`wasm-unsafe-eval` for the on-device OCR's WebAssembly runtime, a pinned
-  script hash for SvelteKit's own inline init script, `unsafe-inline` for a
-  couple of shadcn-svelte components' dynamic inline `style` attributes,
-  `camera=(self)` for the invoice scanner) — read it there rather than here,
-  so the rationale can never drift out of sync with the policy itself.
+  (`wasm-unsafe-eval` for the on-device OCR's WebAssembly runtime, a
+  build-generated script hash for SvelteKit's own inline init script,
+  `unsafe-inline` for a couple of shadcn-svelte components' dynamic inline
+  `style` attributes, `camera=(self)` for the invoice scanner) — read it there
+  rather than here, so the rationale can never drift out of sync with the
+  policy itself.
 - **Backend** ([`apps/backend/src/app.ts`](../apps/backend/src/app.ts), via
   [`hono/secure-headers`](https://hono.dev/docs/middleware/builtin/secure-headers)):
   a locked-down `default-src 'none'` CSP plus the standard header set, tuned
@@ -39,14 +40,17 @@ on every route (including error responses) and that a headless Chromium
 instance loads the dashboard plus five other routes directly and opens the
 OCR scanner (which instantiates the same-origin module worker) without a
 single `securitypolicyviolation` event.
-[`apps/frontend/e2e/csp.spec.ts`](../apps/frontend/e2e/csp.spec.ts) guards the
-one fragile part of that result automatically in CI going forward: the pinned
-hash that allowlists SvelteKit's inline init script, which would otherwise
-silently go stale (and break the app under this CSP) on a SvelteKit upgrade or
-an accidental edit to `svelte.config.js`'s pinned `version.name`. Real-browser
-verification of the WebGPU execution path specifically remains tracked under
-issue #27, same as before this change — that's an OCR-correctness concern
-rather than a CSP one.
+The one fragile-looking part — the CSP hash that allowlists SvelteKit's inline
+init script — isn't a value hardcoded at authoring time: that script embeds
+Vite's content-hashed chunk filenames, which are *not* stable across builds or
+even machines (e.g. they can shift with the absolute build path), so a
+hardcoded hash would eventually go stale and silently break the app under this
+CSP. [`scripts/generate-frontend-security-headers.mjs`](../scripts/generate-frontend-security-headers.mjs)
+computes it fresh from the actual built `index.html` as part of the frontend
+Docker build, and [`apps/frontend/e2e/csp.spec.ts`](../apps/frontend/e2e/csp.spec.ts)
+exercises that same script in CI. Real-browser verification of the WebGPU
+execution path specifically remains tracked under issue #27, same as before
+this change — that's an OCR-correctness concern rather than a CSP one.
 
 ## Reverse proxy: HTTPS + HTTP Basic Auth
 

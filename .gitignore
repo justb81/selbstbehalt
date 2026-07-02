@@ -8,6 +8,9 @@ build/
 .svelte-kit/
 .output/
 *.tsbuildinfo
+# Generated at Docker build time by scripts/generate-frontend-security-headers.mjs
+# — the checked-in apps/frontend/security-headers.conf is only the template.
+apps/frontend/security-headers.generated.conf
 
 # Test & coverage output
 coverage/
