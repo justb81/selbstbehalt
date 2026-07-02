@@ -120,6 +120,12 @@ patched with grouped, cooldown-gated PRs (see above).
 **Secret scanning** and **Push protection** should be on so credentials cannot be
 committed or pushed. Report vulnerabilities via [`SECURITY.md`](SECURITY.md).
 
+The privacy-by-design and DSGVO review — the documented proof that invoice images
+never leave the device, that nothing third-party loads at runtime, and that
+erasure/portability work for every entity, plus the threat model and Art.-9
+processing overview — lives in
+[`docs/privacy-threat-model.md`](docs/privacy-threat-model.md).
+
 ### License headers
 
 Source files carry an [SPDX](https://spdx.dev/) short-form identifier as the first line (the full text lives in [`LICENSE`](LICENSE)):

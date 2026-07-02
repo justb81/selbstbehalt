@@ -15,7 +15,7 @@ import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { contracts, insuredPersons, invoices, persons } from '../db/schema.js';
+import { contracts, insuredPersons, invoiceStatusEvents, invoices, persons } from '../db/schema.js';
 
 let tmp: string;
 const handles: DbHandle[] = [];
@@ -42,7 +42,13 @@ function makeApp(name: string) {
   return { handle, app, dbPath };
 }
 
-/** Seed one Person → Vertrag → versicherte Person → Rechnung chain. */
+/**
+ * Seed one Person → Vertrag → versicherte Person → Rechnung chain, including an
+ * `invoice_status_events` row. Every invoice created through the API carries at
+ * least one status event (`invoices.ts` appends an initial 'neu' event on
+ * create), so seeding one here mirrors a real, API-populated database — and
+ * makes the import round-trip actually exercise that table.
+ */
 function seedChain(handle: DbHandle, insurer: string): string {
   const db = handle.db;
   const personId = db
@@ -65,7 +71,8 @@ function seedChain(handle: DbHandle, insurer: string): string {
     .values({ contractId, personId, monthlyPremium: 200 })
     .returning()
     .get().id;
-  db.insert(invoices)
+  const invoiceId = db
+    .insert(invoices)
     .values({
       insuredPersonId,
       invoiceDate: '2026-06-01',
@@ -73,7 +80,9 @@ function seedChain(handle: DbHandle, insurer: string): string {
       totalAmount: 85,
       eligibleAmount: 62.5,
     })
-    .run();
+    .returning()
+    .get().id;
+  db.insert(invoiceStatusEvents).values({ invoiceId, status: 'neu', note: 'angelegt' }).run();
   return contractId;
 }
 
@@ -116,7 +125,7 @@ describe('POST /api/import/db', () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: 'ok', tables_imported: 7 });
+    expect(body).toMatchObject({ status: 'ok', tables_imported: 8 });
     expect(body.rows_imported).toBeGreaterThan(0);
 
     // A safety backup of the pre-import target was written to disk.
@@ -132,6 +141,34 @@ describe('POST /api/import/db', () => {
     const sourceInvoices = await (await source.app.request('/api/invoices')).json();
     const targetInvoices = await (await target.app.request('/api/invoices')).json();
     expect(targetInvoices).toEqual(sourceInvoices);
+  });
+
+  it('restores the invoice status-event audit trail without orphaning the target', async () => {
+    // The source's audit trail must survive the export→import round-trip
+    // (Art. 20 portability), and — because the target already holds its own
+    // invoices *with* status events (the real shape of any API-populated DB) —
+    // reloading the invoices table without also reloading invoice_status_events
+    // would leave the target's events dangling and the final foreign_key_check
+    // would roll the whole import back with a 422.
+    const source = makeApp('source.sqlite');
+    seedChain(source.handle, 'DKV');
+    const bytes = await exportBytes(source.app);
+
+    const target = makeApp('target.sqlite');
+    seedChain(target.handle, 'Allianz');
+
+    const res = await target.app.request('/api/import/db?confirm=true', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-sqlite3' },
+      body: bytes,
+    });
+    expect(res.status).toBe(200);
+
+    // The target now holds exactly the source's audit trail — no orphans, no loss.
+    const sourceEvents = source.handle.db.select().from(invoiceStatusEvents).all();
+    const targetEvents = target.handle.db.select().from(invoiceStatusEvents).all();
+    expect(sourceEvents).toHaveLength(1);
+    expect(targetEvents).toEqual(sourceEvents);
   });
 
   it('accepts a multipart/form-data upload', async () => {

@@ -96,3 +96,8 @@ This is a self-hostable application. The most security-relevant areas are:
 Issues that depend on a misconfigured reverse proxy or an attacker who already
 has full control of the host are generally out of scope, but feel free to report
 if you're unsure.
+
+The threat model, the data-flow audit behind the "images stay on the device"
+and "no third-party runtime dependencies" guarantees, and the DSGVO Art.-9
+processing overview are documented in
+[`docs/privacy-threat-model.md`](docs/privacy-threat-model.md).
