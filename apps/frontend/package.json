@@ -46,7 +46,6 @@
     "fake-indexeddb": "6.2.5",
     "jsdom": "^29.1.1",
     "layerchart": "2.0.0-next.65",
-    "lighthouse": "^13.4.0",
     "mode-watcher": "^1.1.0",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",

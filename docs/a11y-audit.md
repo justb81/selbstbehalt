@@ -63,12 +63,15 @@ pages, for one consistent empty-state pattern across the app.
 **Score: 100 / 100** (Lighthouse 13.4.0), measured against a production build
 on `/`, `/invoices`, `/contracts`, and `/settings`.
 
-Reproduce locally:
+Reproduce locally (Lighthouse is intentionally *not* a project devDependency —
+running it via `pnpm dlx` keeps its large, one-off dependency tree, mainly a
+full `@sentry/node` + OpenTelemetry install for its own crash reporting, out of
+every contributor's and every Docker build's `pnpm install`):
 
 ```bash
 pnpm --filter @selbstbehalt/frontend build
 pnpm --filter @selbstbehalt/frontend preview --port 4173 &
-CHROME_PATH=<path-to-chrome> npx lighthouse http://localhost:4173/ \
+CHROME_PATH=<path-to-chrome> pnpm dlx lighthouse@13.4.0 http://localhost:4173/ \
   --only-categories=accessibility --chrome-flags="--headless"
 ```
 
