@@ -8,6 +8,11 @@ body:
       value: |
         Thanks for taking the time to file a bug! Please do **not** include real
         invoice images, health data, or other sensitive personal information.
+
+        For deployment/setup issues, check the
+        [self-hosting guide's Troubleshooting & FAQ](https://github.com/justb81/selbstbehalt/blob/main/docs/self-hosting.md#troubleshooting--faq)
+        first — it covers common cases (health checks, OCR/WebGPU fallback,
+        the handwriting limitation, camera/HTTPS requirements).
   - type: textarea
     id: what-happened
     attributes:

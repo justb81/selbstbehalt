@@ -31,6 +31,20 @@ Privately insured people in Germany juggle several administrative tasks for whic
 - **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag charges whose Steigerungsfaktor (multiplier) exceeds the legal limits (§5 GOÄ).
 - **Günstigerprüfung** — decide, per invoice, whether to **submit it to the insurer** or **self-pay** to preserve your Beitragsrückerstattung (BRE, premium refund) — comparing the net reimbursement against the present value of the refund you'd forfeit by breaking your claim-free streak.
 
+## Screenshots
+
+Everything shown below runs against your own self-hosted instance — no
+screenshot, model, or asset is loaded from a third party at runtime (see
+[Design principles](#design-principles) below).
+
+| Dashboard                                      | Rechnungen (invoices)                          |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ![Dashboard](assets/screenshots/dashboard.png) | ![Rechnungen](assets/screenshots/invoices.png) |
+
+| Günstigerprüfung (per-invoice verdict)                         | Verträge (contracts)                          |
+| -------------------------------------------------------------- | --------------------------------------------- |
+| ![Günstigerprüfung](assets/screenshots/guenstigerpruefung.png) | ![Verträge](assets/screenshots/contracts.png) |
+
 ## Design principles
 
 - **Privacy by design** — sensitive health data (invoice images, diagnoses) never leaves your device unencrypted. OCR runs entirely client-side in the browser.
@@ -187,8 +201,13 @@ container healthcheck; the frontend only starts once the backend reports
 healthy (`depends_on: service_healthy`). For HTTPS + HTTP Basic Auth in front
 of the app, the CSP/security headers already baked into both services, and
 when you actually need `PKV_API_KEY`, see [`docs/hardening.md`](docs/hardening.md)
-and the checklist in [`SECURITY.md`](SECURITY.md#hardening-checklist). A full
-self-hosting guide is tracked separately.
+and the checklist in [`SECURITY.md`](SECURITY.md#hardening-checklist).
+
+**[`docs/self-hosting.md`](docs/self-hosting.md)** is the full guide: Proxmox
+LXC/NAS deployment notes, the complete `.env` reference, VPN/Tailscale remote
+access, backup/restore (including the `/api/export/db` + `/api/import/db`
+endpoints), updating, and a troubleshooting/FAQ section (OCR/WebGPU, the
+handwriting limitation, camera/HTTPS requirements).
 
 ## Releases
 

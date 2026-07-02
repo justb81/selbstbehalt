@@ -16,7 +16,9 @@
 
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build` pass locally
 - [ ] Added/updated tests for the change (domain logic must stay well-covered)
-- [ ] Updated affected docs — no stale references left behind
+- [ ] Updated affected docs — no stale references left behind (README,
+      [docs/self-hosting.md](../docs/self-hosting.md),
+      [docs/design.md](../docs/design.md) as applicable)
 - [ ] Source files carry the SPDX license header
 - [ ] I did **not** hand-edit the generated `goae.json` / `goz.json` / `got.json`
       tables (data errors are reported as issues, not edited in PRs — see
