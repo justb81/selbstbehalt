@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 blank_issues_enabled: false
 contact_links:
+  - name: Self-hosting help (setup, config, troubleshooting)
+    url: https://github.com/justb81/selbstbehalt/blob/main/docs/self-hosting.md
+    about: Check the self-hosting guide (Docker/Proxmox/NAS, VPN, backup, troubleshooting & FAQ) before filing a deployment issue.
   - name: Security vulnerability
     url: https://github.com/justb81/selbstbehalt/security/advisories/new
     about: Please report security issues privately, not as a public issue. See SECURITY.md.
