@@ -17,6 +17,7 @@
   } from '@selbstbehalt/medic-invoice-check';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent } from '$lib/components/ui/card';
 
   function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
@@ -50,34 +51,39 @@
 </svelte:head>
 
 <div class="space-y-2">
-  <h1 class="text-2xl font-bold tracking-tight">Arztrechnung prüfen</h1>
-  <p class="text-muted-foreground">
+  <p class="text-xs font-semibold uppercase tracking-widest text-primary">GOÄ · GOZ · GOT</p>
+  <h1 class="text-3xl font-bold tracking-tight text-balance">Arztrechnung prüfen</h1>
+  <p class="text-muted-foreground text-pretty">
     Rechnung fotografieren oder als Bild/PDF hochladen — die GOÄ/GOZ-Prüfung (inkl. §5
     Steigerungsfaktor) läuft direkt in diesem Browser.
   </p>
 </div>
 
-<Alert>
-  <ShieldCheckIcon class="size-4" />
-  <AlertDescription>
+<Alert class="border-primary/20 bg-primary/5">
+  <ShieldCheckIcon class="size-4 text-primary" />
+  <AlertDescription class="text-foreground/80">
     Ihr Bild verlässt nie dieses Gerät: Erkennung und Prüfung laufen vollständig lokal. Es wird
     nichts hochgeladen, nichts gespeichert und nichts an einen Server gesendet.
   </AlertDescription>
 </Alert>
 
-<InvoiceReview
-  mode="create"
-  bind:invoiceDate
-  bind:invoiceNumber
-  bind:providerName
-  bind:providerType
-  bind:totalAmount
-  bind:positions
-  bind:scanResult
-/>
+<Card>
+  <CardContent>
+    <InvoiceReview
+      mode="create"
+      bind:invoiceDate
+      bind:invoiceNumber
+      bind:providerName
+      bind:providerType
+      bind:totalAmount
+      bind:positions
+      bind:scanResult
+    />
 
-{#if hasScan}
-  <div class="flex justify-end">
-    <Button variant="outline" onclick={reset}>Neue Rechnung prüfen</Button>
-  </div>
-{/if}
+    {#if hasScan}
+      <div class="flex justify-end pt-4">
+        <Button variant="outline" onclick={reset}>Neue Rechnung prüfen</Button>
+      </div>
+    {/if}
+  </CardContent>
+</Card>

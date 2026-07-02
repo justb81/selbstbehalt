@@ -3,6 +3,8 @@
   import type { Snippet } from 'svelte';
   import { base } from '$app/paths';
   import { configureOcr, resolveOcrAssets } from '@selbstbehalt/medic-invoice-check';
+  import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+  import LockIcon from '@lucide/svelte/icons/lock';
   import PwaStatus from '$lib/components/PwaStatus.svelte';
   import '../app.css';
 
@@ -24,18 +26,35 @@
     Zum Inhalt springen
   </a>
 
-  <header class="border-b border-border bg-background/95 backdrop-blur px-4 py-3">
-    <span class="text-lg font-bold text-primary">GOÄ-Wächter</span>
+  <header
+    class="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur supports-backdrop-filter:bg-card/70 px-4 py-3 sm:px-6"
+  >
+    <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <span
+          class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+        >
+          <ShieldCheckIcon class="size-4.5" />
+        </span>
+        <span class="text-lg font-bold tracking-tight text-foreground">GOÄ-Wächter</span>
+      </div>
+      <span
+        class="hidden items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground sm:inline-flex"
+      >
+        <LockIcon class="size-3.5 text-primary" />
+        100&nbsp;% lokal
+      </span>
+    </div>
   </header>
 
   <main id="main-content" tabindex="-1" class="flex-1 w-full focus:outline-none">
-    <div class="mx-auto max-w-3xl px-4 py-6 space-y-4">
+    <div class="mx-auto max-w-3xl px-4 py-8 space-y-6 sm:px-6">
       <PwaStatus />
       {@render children()}
     </div>
   </main>
 
-  <footer class="border-t border-border bg-muted py-4 text-center text-sm text-muted-foreground">
+  <footer class="border-t border-border py-6 text-center text-sm text-muted-foreground">
     <p class="m-0">GOÄ-Wächter · eine Demo von selbstbehalt (PKV Manager)</p>
   </footer>
 </div>
