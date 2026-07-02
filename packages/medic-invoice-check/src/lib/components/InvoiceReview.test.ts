@@ -114,7 +114,7 @@ describe('InvoiceReview — create mode', () => {
     const user = userEvent.setup();
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
 
-    await user.click(screen.getByText('+ Position hinzufügen'));
+    await user.click(screen.getByRole('button', { name: 'Position hinzufügen' }));
 
     expect(screen.queryByText(/Noch keine Positionen/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Position 1 entfernen/i })).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('InvoiceReview — create mode', () => {
     const user = userEvent.setup();
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
 
-    await user.click(screen.getByText('+ Position hinzufügen'));
+    await user.click(screen.getByRole('button', { name: 'Position hinzufügen' }));
     await user.click(screen.getByRole('button', { name: /Position 1 entfernen/i }));
 
     expect(screen.getByText(/Noch keine Positionen/)).toBeInTheDocument();

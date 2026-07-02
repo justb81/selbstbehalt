@@ -60,6 +60,7 @@
   import { Alert, AlertDescription } from './ui/alert';
   import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
   import InfoIcon from '@lucide/svelte/icons/info';
+  import PlusIcon from '@lucide/svelte/icons/plus';
   import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
   import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
   import { cn } from '../utils';
@@ -587,8 +588,9 @@
         {#if revalidating}
           <span class="text-xs text-muted-foreground">Wird geprüft …</span>
         {/if}
-        <Button type="button" variant="ghost" size="sm" onclick={addPosition} {disabled}>
-          + Position hinzufügen
+        <Button type="button" variant="default" onclick={addPosition} {disabled}>
+          <PlusIcon class="mr-1.5 size-3.5" />
+          Position hinzufügen
         </Button>
       </div>
     </div>
