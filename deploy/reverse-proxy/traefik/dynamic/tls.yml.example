@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Option B (self-signed LAN cert) only. Copy to dynamic/tls.yml (picked up
+# automatically by Traefik's file provider — no restart needed) after
+# generating the cert; see README.md "Option B". Not used at all for Option A
+# (Let's Encrypt) — leave dynamic/ empty in that case.
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/dynamic/selbstbehalt.crt
+      keyFile: /etc/traefik/dynamic/selbstbehalt.key

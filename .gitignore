@@ -8,6 +8,9 @@ build/
 .svelte-kit/
 .output/
 *.tsbuildinfo
+# Generated at Docker build time by scripts/generate-frontend-security-headers.mjs
+# — the checked-in apps/frontend/security-headers.conf is only the template.
+apps/frontend/security-headers.generated.conf
 
 # Test & coverage output
 coverage/
@@ -42,3 +45,14 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Reverse-proxy hardening examples (deploy/reverse-proxy, issue #31): local
+# secrets and generated certs, never checked in.
+deploy/reverse-proxy/traefik/htpasswd
+deploy/reverse-proxy/traefik/letsencrypt/
+deploy/reverse-proxy/traefik/dynamic/*
+!deploy/reverse-proxy/traefik/dynamic/*.example
+deploy/reverse-proxy/nginx/htpasswd
+deploy/reverse-proxy/nginx/certs/
+deploy/reverse-proxy/nginx/certbot-etc/
+deploy/reverse-proxy/nginx/certbot-webroot/

@@ -90,7 +90,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #28 | Jahresauswertung (`/stats`, Diagramme) | #13, #23 | ✅ |
 | #184 | CSV/PDF-Export der Jahresauswertung (aus #28 ausgegliedert) | #13, #28 | ⬜ |
 | #29 | Polish (A11y, i18n, Responsive, optional Push) | #19, #27, #12 | ⬜ |
-| #31 | Hardening (CSP, Header, Reverse-Proxy/HTTPS, SQLCipher) | #30, #9 | ⬜ |
+| #31 | Hardening (CSP, Header, Reverse-Proxy/HTTPS, SQLCipher) | #30, #9 | ✅ |
 | #32 | Privacy-/DSGVO-Review (Datenfluss-Audit) | #26, #31, #27 | ⬜ |
 | #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | 🚧 |
 | #34 | Docs (Self-Hosting-README, OpenAPI) | #11–#14, #30 | ⬜ |

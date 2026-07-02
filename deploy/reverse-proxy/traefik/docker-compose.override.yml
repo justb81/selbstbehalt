@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Traefik reverse proxy in front of selbstbehalt: HTTPS (Let's Encrypt or a
+# self-signed LAN cert) + HTTP Basic Auth, on top of the base stack.
+# See deploy/reverse-proxy/traefik/README.md for setup steps.
+#
+# Usage (from the repo root):
+#
+#   cp .env.example .env                         # then edit .env
+#   cp deploy/reverse-proxy/traefik/.env.example deploy/reverse-proxy/traefik/.env
+#   htpasswd -nB <user> > deploy/reverse-proxy/traefik/htpasswd   # see README
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f deploy/reverse-proxy/traefik/docker-compose.override.yml \
+#     --env-file .env --env-file deploy/reverse-proxy/traefik/.env \
+#     up -d --build
+
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Static TLS certs (self-signed LAN, README "Option B") are picked up
+      # from this directory; harmless/unused when only ACME (Option A) is set.
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Plain HTTP is always redirected — HTTPS is mandatory (docs/design.md §7.2).
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # Option A: Let's Encrypt. Only takes effect for routers that set
+      # `tls.certresolver=letsencrypt` (see the frontend service below); if you
+      # use Option B (self-signed) instead, these lines are simply unused.
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?set ACME_EMAIL in deploy/reverse-proxy/traefik/.env}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+      - ./dynamic:/etc/traefik/dynamic:ro
+      - ./htpasswd:/etc/traefik/htpasswd:ro
+    restart: unless-stopped
+
+  # The frontend is the only routed service (§7.2 single-origin default): its
+  # nginx proxies /api to the backend over the Compose network, so Basic Auth
+  # here also covers the API and there is no CORS to configure.
+  frontend:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.selbstbehalt.rule=Host(`${DOMAIN:?set DOMAIN in deploy/reverse-proxy/traefik/.env}`)
+      - traefik.http.routers.selbstbehalt.entrypoints=websecure
+      - traefik.http.routers.selbstbehalt.tls=true
+      # Option A (Let's Encrypt): keep this line. Option B (self-signed):
+      # delete it — the router then falls back to whatever default cert
+      # Traefik finds, which the dynamic/tls.yml file below provides.
+      - traefik.http.routers.selbstbehalt.tls.certresolver=letsencrypt
+      - traefik.http.services.selbstbehalt.loadbalancer.server.port=3000
+      - traefik.http.routers.selbstbehalt.middlewares=selbstbehalt-auth
+      - traefik.http.middlewares.selbstbehalt-auth.basicauth.usersfile=/etc/traefik/htpasswd
