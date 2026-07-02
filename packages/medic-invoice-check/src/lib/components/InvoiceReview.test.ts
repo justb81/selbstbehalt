@@ -238,7 +238,7 @@ describe('InvoiceReview — edit mode', () => {
     await waitFor(() => {
       const removeButtons = screen.getAllByRole('button', { name: /entfernen/i });
       for (const btn of removeButtons) {
-        expect(btn.closest('[data-slot="card"]')).toHaveClass('bg-warning/5');
+        expect(btn.closest('[data-slot="card"]')).toHaveClass('bg-warning/10', 'ring-warning/50');
       }
     });
   });

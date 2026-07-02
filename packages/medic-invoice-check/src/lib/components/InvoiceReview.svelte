@@ -61,6 +61,7 @@
   import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
   import InfoIcon from '@lucide/svelte/icons/info';
   import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
+  import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
   import { cn } from '../utils';
 
   // ---------------------------------------------------------------------------
@@ -606,7 +607,7 @@
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card class={cn(pos.is_valid === false && 'bg-warning/5')}>
+          <Card class={cn(pos.is_valid === false && 'bg-warning/10 ring-2 ring-warning/50')}>
             <CardHeader
               class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
             >
@@ -615,6 +616,14 @@
                 <span class="text-sm text-muted-foreground tabular-nums"
                   >· {formatEur(pos.charged_amount || 0)}</span
                 >
+                {#if pos.is_valid === false}
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-warning/20 px-2 py-0.5 text-[0.68rem] font-semibold text-warning"
+                  >
+                    <TriangleAlertIcon class="size-3" />
+                    Auffällig
+                  </span>
+                {/if}
               </div>
               <Button
                 type="button"
@@ -772,9 +781,12 @@
                 </div>
               </div>
               {#if pos.is_valid === false && pos.flag_reason}
-                <p class="text-xs text-warning">
-                  ⚠ {pos.flag_reason}
-                </p>
+                <div
+                  class="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/15 px-2.5 py-2 text-xs font-medium text-warning"
+                >
+                  <TriangleAlertIcon class="size-3.5 shrink-0 translate-y-px" />
+                  <span>{pos.flag_reason}</span>
+                </div>
               {/if}
               {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
                 <p class="text-xs italic text-muted-foreground">
