@@ -28,9 +28,12 @@ WORKDIR /repo
 # Manifests first so the dependency-install layer caches across source changes.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/medic-invoice-check/package.json packages/medic-invoice-check/package.json
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/frontend/package.json apps/frontend/package.json
-# Install only the frontend's subtree (frontend + the shared package it needs).
+# Install only the frontend's subtree (frontend + the shared and
+# medic-invoice-check packages it needs — the latter pulls in onnxruntime-web,
+# which copy-ort-wasm.mjs resolves from it below).
 # --ignore-scripts: only the manifests have been copied so far, so the
 # @selbstbehalt/shared `prepare` script (`tsc -p tsconfig.build.json`) would
 # fail — its sources don't exist in this layer yet. The frontend pulls in no
@@ -39,10 +42,12 @@ COPY apps/frontend/package.json apps/frontend/package.json
 RUN --mount=type=cache,id=pnpm-store-frontend,target=/pnpm/store \
   pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..." --ignore-scripts
 
-# Sources for the frontend and its shared dependency. `scripts/` holds the OCR
-# asset helpers (ocr:models, copy-ort-wasm) the frontend build invokes.
+# Sources for the frontend and its shared/medic-invoice-check dependencies.
+# `scripts/` holds the OCR asset helpers (ocr:models, copy-ort-wasm) the
+# frontend build invokes.
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
+COPY packages/medic-invoice-check packages/medic-invoice-check
 COPY apps/frontend apps/frontend
 COPY scripts scripts
 
