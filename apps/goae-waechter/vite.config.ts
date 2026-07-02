@@ -4,6 +4,13 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
+// Must mirror svelte.config.js's `paths.base`: on GitHub Pages the app is served
+// under a subpath (/<repo>/), so the web-app-manifest URLs (start_url, scope,
+// icons) are prefixed with the same BASE_PATH (issue #171). Unset (custom domain
+// at the root) → base "" → the manifest points at "/" as before.
+const rawBase = process.env.BASE_PATH ?? '';
+const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+
 export default defineConfig({
   // GOÄ-Wächter is a standalone demo (issue #170): no backend, no `/api` proxy —
   // unlike apps/frontend it never talks to a server at all.
@@ -25,18 +32,18 @@ export default defineConfig({
         short_name: 'GOÄ-Wächter',
         description:
           'Ihre Arztrechnung geprüft, bevor Sie zahlen – GOÄ-Prüfung in Sekunden, direkt im Browser, ganz ohne Cloud-Upload.',
-        start_url: '/',
-        scope: '/',
+        start_url: `${base}/`,
+        scope: `${base}/`,
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#2563eb',
         lang: 'de-DE',
         categories: ['health', 'utilities'],
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: `${base}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
+          { src: `${base}/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
           {
-            src: '/icons/icon-512-maskable.png',
+            src: `${base}/icons/icon-512-maskable.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

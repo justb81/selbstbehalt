@@ -30,10 +30,18 @@ const VERSION = hashManifest(PRECACHE);
 
 const SHELL_CACHE = `shell-${VERSION}`;
 const MODEL_CACHE = 'ocr-models';
-/** The SPA entry document; served (Cache First) for every navigation offline. */
-const SHELL_DOCUMENT = '/';
 
-const MODEL_PATH_PREFIX = '/models/';
+/**
+ * The site's base directory. The worker is served from it — `/` at the domain
+ * root (apps/frontend, a custom domain) or `/<repo>/` when GitHub Pages serves
+ * the demo under a project subpath (issue #171) — so resolving against the
+ * worker's own URL keeps the shell + model paths correct wherever it is hosted.
+ */
+const BASE_PATH = new URL('./', sw.location.href).pathname;
+/** The SPA entry document; served (Cache First) for every navigation offline. */
+const SHELL_DOCUMENT = BASE_PATH;
+
+const MODEL_PATH_PREFIX = `${BASE_PATH}models/`;
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(

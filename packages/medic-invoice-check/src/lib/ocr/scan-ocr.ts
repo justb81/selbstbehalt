@@ -14,7 +14,7 @@
  */
 import { fileToAllImageData } from './capture';
 import { OcrClient } from './ocr-client';
-import type { OcrBackend, OcrProgress, OcrResult } from './types';
+import type { OcrBackend, OcrEngineConfig, OcrProgress, OcrResult } from './types';
 
 /** Recognises one preprocessed frame into text lines, reporting progress. */
 export type OcrRecognizer = (
@@ -29,6 +29,18 @@ let client: OcrClient | null = null;
 let initPromise: Promise<OcrBackend> | null = null;
 let override: OcrRecognizer | null = null;
 let multiLoaderOverride: MultiImageLoader | null = null;
+let engineConfig: Partial<OcrEngineConfig> | undefined;
+
+/**
+ * Point the OCR pipeline's on-device assets at a non-root deploy base — e.g.
+ * GitHub Pages serving the GOÄ-Wächter demo under `/selbstbehalt/` (issue #171).
+ * Apps call this once at startup with `resolveOcrAssets(base)`; at the domain
+ * root it can be omitted (the defaults already resolve there). Must run before
+ * the first recognition, since the worker reads the config on `init()`.
+ */
+export function configureOcr(config: Partial<OcrEngineConfig>): void {
+  engineConfig = config;
+}
 
 /**
  * Default recognizer: a shared worker-backed client, initialised once on first
@@ -41,7 +53,7 @@ async function defaultRecognize(
   onProgress?: (progress: OcrProgress) => void,
 ): Promise<OcrResult[]> {
   const activeClient = (client ??= new OcrClient());
-  initPromise ??= activeClient.init({ onProgress }).catch((err: unknown) => {
+  initPromise ??= activeClient.init({ onProgress, config: engineConfig }).catch((err: unknown) => {
     client = null;
     initPromise = null;
     throw err;

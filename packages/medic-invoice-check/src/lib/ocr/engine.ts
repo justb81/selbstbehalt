@@ -98,8 +98,11 @@ export interface PaddleOcrModule {
 
 /** Injection points that make the adapter testable without the real package. */
 export interface CreatePaddleOcrEngineDeps {
-  /** Loads the OCR module; defaults to a lazy import of `ppu-paddle-ocr/web`. */
-  loadModule?: () => Promise<PaddleOcrModule>;
+  /**
+   * Loads the OCR module (pointing ONNX Runtime at `wasmPath` for its WASM
+   * assets first); defaults to a lazy import of `ppu-paddle-ocr/web`.
+   */
+  loadModule?: (wasmPath: string) => Promise<PaddleOcrModule>;
   /** Converts an {@link ImageData} frame into a source the binding accepts. */
   toImageSource?: (image: ImageData) => unknown;
 }
@@ -227,14 +230,6 @@ function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
 }
 
 /**
- * Local, same-origin directory the ONNX Runtime WASM assets are served from.
- * `scripts/copy-ort-wasm.mjs` populates each consuming app's own
- * `static/models/ort/` (apps/frontend and apps/goae-waechter) at build time;
- * each app's service worker caches `/models/**` on first use (docs/design.md §6.3).
- */
-const ORT_WASM_PATH = '/models/ort/';
-
-/**
  * Longest-side cap (px) the detector scales the frame to before inference. The
  * binding defaults to 640, which shrinks a full-page A4 invoice photo until body
  * text is only ~6 px tall and the detector misses most lines; 1280 keeps text
@@ -248,11 +243,13 @@ const DETECTION_MAX_SIDE_LENGTH = 1280;
  * code lands in a worker-only chunk (never the main bundle), and so unit tests
  * can inject a fake loader without resolving the package at all.
  */
-async function defaultLoadModule(): Promise<PaddleOcrModule> {
+async function defaultLoadModule(wasmPath: string): Promise<PaddleOcrModule> {
   // Point ONNX Runtime at the on-device WASM assets before the binding spins up
   // its session, so nothing is fetched from a CDN at runtime (privacy, §1.3/§8).
+  // `scripts/copy-ort-wasm.mjs` populates each app's own `static/models/ort/` at
+  // build time; the URL is base-prefixed on a subpath deploy (issue #171).
   const ort = await import('onnxruntime-web');
-  ort.env.wasm.wasmPaths = ORT_WASM_PATH;
+  ort.env.wasm.wasmPaths = wasmPath;
   return (await import('ppu-paddle-ocr/web')) as unknown as PaddleOcrModule;
 }
 
@@ -281,7 +278,7 @@ export function createPaddleOcrEngine(
         service = null;
       }
       onProgress?.({ phase: 'init', ratio: null, message: 'OCR-Modell wird geladen …' });
-      const mod = await loadModule();
+      const mod = await loadModule(config.wasmPath);
       const created = new mod.PaddleOcrService({
         model: {
           detection: config.modelUrls.detection,

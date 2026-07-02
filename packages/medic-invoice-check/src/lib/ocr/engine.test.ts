@@ -264,6 +264,17 @@ describe('createPaddleOcrEngine', () => {
     expect(second.initialize).toHaveBeenCalledOnce();
   });
 
+  it('points the module loader at the configured WASM path (base-prefixed on a subpath deploy)', async () => {
+    const loadModule = vi.fn().mockResolvedValue(fakeModule(fakeService()).module);
+    const engine = createPaddleOcrEngine(
+      'wasm',
+      { ...DEFAULT_ENGINE_CONFIG, wasmPath: '/selbstbehalt/models/ort/' },
+      { loadModule },
+    );
+    await engine.init();
+    expect(loadModule).toHaveBeenCalledWith('/selbstbehalt/models/ort/');
+  });
+
   it('dispose destroys the service so a later recognize fails again', async () => {
     const service = fakeService();
     const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
