@@ -1,0 +1,24 @@
+{
+  // Inherit the repo-wide strictness from ../../tsconfig.base.json first, then
+  // let SvelteKit's generated config own module/moduleResolution/paths/target/lib
+  // (extended last, so those win). Strict flags are intentionally NOT re-listed
+  // here so any future tightening in tsconfig.base.json reaches this app.
+  "extends": ["../../tsconfig.base.json", "./.svelte-kit/tsconfig.json"],
+  // Extend (rather than replace) SvelteKit's generated include with the root
+  // config/test-setup files it leaves out, so they are type-checked too.
+  // vitest-setup.ts registers the jest-dom matcher types used in component tests.
+  "include": [
+    ".svelte-kit/ambient.d.ts",
+    ".svelte-kit/env.d.ts",
+    ".svelte-kit/non-ambient.d.ts",
+    ".svelte-kit/types/**/$types.d.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest-setup.ts",
+    "playwright.config.ts",
+    "src/**/*.js",
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "e2e/**/*.ts"
+  ]
+}

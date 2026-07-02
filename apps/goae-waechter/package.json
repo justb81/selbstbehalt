@@ -1,0 +1,51 @@
+{
+  "name": "@selbstbehalt/goae-waechter",
+  "version": "1.1.0",
+  "private": true,
+  "description": "GOÄ-Wächter: standalone, backend-free demo PWA for the GOÄ/GOZ invoice check (issue #166). Scan or upload an invoice, review it against the §5 GOÄ Steigerungsfaktor limits — entirely on-device, nothing is stored or sent anywhere.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "node ../../scripts/copy-ort-wasm.mjs && vite build",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "svelte-kit sync && vitest run",
+    "test:watch": "svelte-kit sync && vitest",
+    "test:coverage": "svelte-kit sync && vitest run --coverage",
+    "test:e2e": "vite build && playwright test"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.21.0",
+    "@selbstbehalt/medic-invoice-check": "workspace:*",
+    "@selbstbehalt/shared": "workspace:*",
+    "bits-ui": "^2.18.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.66.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tailwindcss/vite": "^4.3.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.4.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vite-pwa/sveltekit": "1.1.0",
+    "jsdom": "^29.1.1",
+    "svelte": "^5.56.4",
+    "svelte-check": "^4.7.1",
+    "tailwind-variants": "^3.2.2",
+    "tailwindcss": "^4.3.1",
+    "vite": "^8.1.0",
+    "vite-plugin-pwa": "1.3.0",
+    "workbox-build": "7.4.1",
+    "workbox-window": "7.4.1"
+  }
+}

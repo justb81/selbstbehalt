@@ -24,6 +24,7 @@ export default tseslint.config(
       // On-device OCR assets fetched/copied at build time (git-ignored vendor
       // binaries + their emscripten glue), not project source.
       'apps/frontend/static/models/**',
+      'apps/goae-waechter/static/models/**',
     ],
   },
 
@@ -56,10 +57,11 @@ export default tseslint.config(
 
   // shadcn-svelte generated UI components use plain <a href> links rather than
   // SvelteKit's goto(); suppress the navigation rule for those directories only
-  // (the frontend's set and the subset vendored into @selbstbehalt/medic-invoice-check).
+  // (each app's own set and the subset vendored into @selbstbehalt/medic-invoice-check).
   {
     files: [
       'apps/frontend/src/lib/components/ui/**/*.svelte',
+      'apps/goae-waechter/src/lib/components/ui/**/*.svelte',
       'packages/medic-invoice-check/src/lib/components/ui/**/*.svelte',
     ],
     rules: {

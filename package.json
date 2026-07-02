@@ -22,7 +22,7 @@
     "test": "pnpm -r test",
     "test:watch": "pnpm -r --parallel test:watch",
     "test:coverage": "pnpm -r test:coverage",
-    "test:e2e": "pnpm --filter @selbstbehalt/frontend test:e2e",
+    "test:e2e": "pnpm --filter @selbstbehalt/frontend test:e2e && pnpm --filter @selbstbehalt/goae-waechter test:e2e",
     "audit": "pnpm audit --prod --audit-level high",
     "licenses:check": "node scripts/check-licenses.mjs",
     "fees:build": "node scripts/build-fee-schedules.mjs",

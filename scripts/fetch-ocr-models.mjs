@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Downloads the on-device PP-OCRv5 model assets into
-// apps/frontend/static/models/ocr/ so the OCR pipeline (docs/design.md §4, issue #27)
-// can run client-side without ever fetching a model from a third-party CDN at
-// runtime (CLAUDE.md privacy constraint; §1.3/§8). The files are large binaries
-// and are git-ignored — re-run this script to (re)populate them.
+// Downloads the on-device PP-OCRv5 model assets into every app's
+// static/models/ocr/ (apps/frontend and apps/goae-waechter — issue #170) so the
+// OCR pipeline (docs/design.md §4, issue #27) can run client-side without ever
+// fetching a model from a third-party CDN at runtime (CLAUDE.md privacy
+// constraint; §1.3/§8). The files are large binaries and are git-ignored —
+// re-run this script to (re)populate them.
 //
 // Source: the ppu-paddle-ocr model release repo. We pick the PP-OCRv5 *mobile*
 // detection model plus the *Latin* recognition model + dictionary, which cover
@@ -12,11 +13,12 @@
 // fetched from the `media.githubusercontent.com/media/...` LFS endpoint; the
 // plain-text dictionary comes from `raw.githubusercontent.com`.
 //
-// Each download is verified against the SHA-256 pinned in
-// apps/frontend/static/models/ocr/models.sha256 (the canonical hash list) — a
-// mismatch (supply-chain substitution, LFS corruption, truncated download)
-// deletes the bad file and fails. When intentionally refreshing the models,
-// update models.sha256 to the new hashes.
+// Each asset is downloaded once, verified against the SHA-256 pinned in
+// apps/frontend/static/models/ocr/models.sha256 (the canonical hash list — both
+// apps serve the identical models, so one hash list covers both), then copied
+// into every destination app. A mismatch (supply-chain substitution, LFS
+// corruption, truncated download) deletes the bad file and fails. When
+// intentionally refreshing the models, update models.sha256 to the new hashes.
 //
 // Dependency-free: uses the system `curl` (matches scripts/fetch-sources.mjs).
 //
@@ -24,12 +26,17 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEST = join(ROOT, 'apps/frontend/static/models/ocr');
+// Every app that serves the OCR models from its own static/models/ocr/. Keep in
+// sync with COPY_ORT_WASM's DEST_APPS.
+const DEST_APPS = ['apps/frontend', 'apps/goae-waechter'];
+const DEST_DIRS = DEST_APPS.map((app) => join(ROOT, app, 'static/models/ocr'));
+// The canonical hash list lives with the first app; the rest just receive a copy.
+const HASH_DIR = DEST_DIRS[0];
 
 const LFS =
   'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
@@ -48,7 +55,7 @@ const ASSETS = [
 
 /** Parses `models.sha256` (`<hex>  <filename>` per line) into a name→hash map. */
 function loadExpectedHashes() {
-  const text = readFileSync(join(DEST, 'models.sha256'), 'utf8');
+  const text = readFileSync(join(HASH_DIR, 'models.sha256'), 'utf8');
   const map = new Map();
   for (const line of text.split('\n')) {
     const m = line.trim().match(/^([0-9a-f]{64})\s+(.+)$/i);
@@ -58,13 +65,13 @@ function loadExpectedHashes() {
 }
 
 const expected = loadExpectedHashes();
-mkdirSync(DEST, { recursive: true });
+for (const dir of DEST_DIRS) mkdirSync(dir, { recursive: true });
 
 for (const { out, url } of ASSETS) {
   const want = expected.get(out);
   if (!want) throw new Error(`No SHA-256 pinned for ${out} in models.sha256 — refusing to fetch.`);
 
-  const dest = join(DEST, out);
+  const dest = join(HASH_DIR, out);
   try {
     execFileSync(
       'curl',
@@ -106,7 +113,12 @@ for (const { out, url } of ASSETS) {
         `update apps/frontend/static/models/ocr/models.sha256.`,
     );
   }
-  console.log(`apps/frontend/static/models/ocr/${out} ← ${url} (sha256 ok)`);
+
+  // Fan the verified download out to every other destination app.
+  for (const dir of DEST_DIRS.slice(1)) {
+    copyFileSync(dest, join(dir, out));
+  }
+  console.log(`${out} ← ${url} (sha256 ok) → ${DEST_APPS.join(', ')}`);
 }
 
 console.log('OCR models fetched and verified');

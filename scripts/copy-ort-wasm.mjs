@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Copies the ONNX Runtime Web WASM assets into apps/frontend/static/models/ort/
-// so they are served same-origin (no CDN at runtime — CLAUDE.md privacy
-// constraint; docs/design.md §1.3/§8). The OCR engine points
-// `ort.env.wasm.wasmPaths` at `/models/ort/` (see packages/medic-invoice-check/src/lib/ocr/engine.ts),
-// and the service worker already caches `/models/**` on first use (§6.3).
+// Copies the ONNX Runtime Web WASM assets into every app's static/models/ort/
+// (apps/frontend and apps/goae-waechter — issue #170) so they are served
+// same-origin (no CDN at runtime — CLAUDE.md privacy constraint; docs/design.md
+// §1.3/§8). The OCR engine points `ort.env.wasm.wasmPaths` at `/models/ort/`
+// (see packages/medic-invoice-check/src/lib/ocr/engine.ts), and each app's
+// service worker already caches `/models/**` on first use (§6.3).
 //
-// Runs automatically as part of `pnpm --filter @selbstbehalt/frontend build`
-// (and therefore in the Docker build); the copied files are git-ignored.
+// Runs automatically as part of each app's `build` script; the copied files are
+// git-ignored.
 //
 // We copy the JSEP build (WebGPU execution provider) and the plain build (WASM
 // fallback) — both the `.wasm` binary and its emscripten `.mjs` loader, which
@@ -21,12 +22,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEST = join(ROOT, 'apps/frontend/static/models/ort');
+// Every app that serves the ONNX Runtime WASM from its own static/models/ort/.
+// Keep in sync with fetch-ocr-models.mjs's DEST_APPS.
+const DEST_APPS = ['apps/frontend', 'apps/goae-waechter'];
 
 // onnxruntime-web is a dependency of @selbstbehalt/medic-invoice-check (which
-// owns the OCR pipeline); resolve its dist dir from there. The frontend only
-// serves the copied WASM under /models/ort/ same-origin — it no longer depends
-// on onnxruntime-web directly.
+// owns the OCR pipeline); resolve its dist dir from there. The apps only serve
+// the copied WASM under /models/ort/ same-origin — they no longer depend on
+// onnxruntime-web directly.
 const requireFromPackage = createRequire(join(ROOT, 'packages/medic-invoice-check/package.json'));
 const distDir = dirname(requireFromPackage.resolve('onnxruntime-web'));
 
@@ -37,9 +40,12 @@ const FILES = [
   'ort-wasm-simd-threaded.jsep.mjs',
 ];
 
-mkdirSync(DEST, { recursive: true });
-for (const file of FILES) {
-  copyFileSync(join(distDir, file), join(DEST, file));
-  console.log(`apps/frontend/static/models/ort/${file} ← onnxruntime-web`);
+for (const app of DEST_APPS) {
+  const dest = join(ROOT, app, 'static/models/ort');
+  mkdirSync(dest, { recursive: true });
+  for (const file of FILES) {
+    copyFileSync(join(distDir, file), join(dest, file));
+    console.log(`${app}/static/models/ort/${file} ← onnxruntime-web`);
+  }
 }
 console.log('ONNX Runtime WASM assets copied');

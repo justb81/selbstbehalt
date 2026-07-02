@@ -1,0 +1,4 @@
+# GOÄ-Wächter is a public demo (issue #166/#170) — unlike apps/frontend (a
+# private, self-hosted app), it is meant to be found and crawled.
+User-agent: *
+Allow: /
