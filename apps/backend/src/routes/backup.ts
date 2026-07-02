@@ -32,6 +32,7 @@ import {
   contracts,
   insuredPersons,
   invoicePositions,
+  invoiceStatusEvents,
   invoices,
   persons,
   submissions,
@@ -44,9 +45,14 @@ const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'latin1');
 const MAX_IMPORT_BYTES = 256 * 1024 * 1024; // 256 MiB
 
 /**
- * Application tables eligible for restore, in parent-before-child order. The
- * Drizzle-internal `__drizzle_migrations` table is deliberately excluded: the
- * live database keeps its own migration state, we only reload user data.
+ * Application tables eligible for restore, in parent-before-child order. This
+ * must cover *every* user-data table so an import fully round-trips the export
+ * (Art. 20) and leaves no orphaned child rows: the reload clears and reloads
+ * exactly these tables, so any table left out would keep its stale rows while
+ * its parent is replaced — dangling references the final `foreign_key_check`
+ * then rejects. The Drizzle-internal `__drizzle_migrations` table is
+ * deliberately excluded: the live database keeps its own migration state, we
+ * only reload user data.
  */
 const APP_TABLES = [
   persons,
@@ -54,6 +60,7 @@ const APP_TABLES = [
   insuredPersons,
   invoices,
   invoicePositions,
+  invoiceStatusEvents,
   submissions,
   brePeriods,
 ].map(getTableName);
