@@ -30,6 +30,18 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Diagnose network (temporary)
+        run: |
+          set +e
+          echo "--- DNS ---"; getent hosts www.gesetze-im-internet.de
+          echo "--- control: google.com ---"; curl -4 -sS -o /dev/null -w 'HTTP:%{http_code} time:%{time_total}\n' --connect-timeout 10 https://www.google.com/
+          echo "--- control: raw.githubusercontent.com ---"; curl -4 -sS -o /dev/null -w 'HTTP:%{http_code} time:%{time_total}\n' --connect-timeout 10 https://raw.githubusercontent.com/
+          echo "--- target homepage (IPv4) ---"; curl -4 -sS -o /dev/null -w 'HTTP:%{http_code} time:%{time_total}\n' --connect-timeout 10 https://www.gesetze-im-internet.de/
+          echo "--- target homepage (IPv6) ---"; curl -6 -sS -o /dev/null -w 'HTTP:%{http_code} time:%{time_total}\n' --connect-timeout 10 https://www.gesetze-im-internet.de/
+          echo "--- target zip, verbose, short timeout ---"; curl -4 -v --connect-timeout 10 --max-time 15 -o /dev/null https://www.gesetze-im-internet.de/go__1982/xml.zip 2>&1 | tail -40
+          echo "--- alternate source: recht.bund.de ---"; curl -4 -sS -o /dev/null -w 'HTTP:%{http_code} time:%{time_total}\n' --connect-timeout 10 https://www.recht.bund.de/
+          exit 0
+
       - name: Refresh official XML sources
         run: node scripts/fetch-sources.mjs
 
