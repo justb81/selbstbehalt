@@ -35,7 +35,7 @@ jobs:
       # the optional RELEASE_PLEASE_TOKEN repo secret (a PAT/GitHub App
       # token) isn't configured — the release PR still opens either way,
       # just without CI status checks. See docs/release.md.
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release-please
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
