@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/justb81/selbstbehalt/compare/v1.3.0...v1.4.0) (2026-07-04)
+
+### Features
+
+- **medic-invoice-check:** minimize/maximize GOÄ/GOZ positions ([#207](https://github.com/justb81/selbstbehalt/issues/207)) ([#211](https://github.com/justb81/selbstbehalt/issues/211)) ([d49c220](https://github.com/justb81/selbstbehalt/commit/d49c220d2936be49b9d5fbaa9f2b1676312ccd3c))
+
+### Bug Fixes
+
+- **scripts:** fall back to the Wayback Machine when gesetze-im-internet.de is unreachable from CI ([#209](https://github.com/justb81/selbstbehalt/issues/209)) ([8aeda89](https://github.com/justb81/selbstbehalt/commit/8aeda89698ecc8fc3f6e871d61238d8054731b1d))
+
 ## [1.3.0](https://github.com/justb81/selbstbehalt/compare/v1.2.0...v1.3.0) (2026-07-02)
 
 ### Features
