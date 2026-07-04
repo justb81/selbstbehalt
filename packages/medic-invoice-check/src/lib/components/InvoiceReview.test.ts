@@ -166,6 +166,94 @@ describe('InvoiceReview — edit mode', () => {
     expect(screen.getByRole('button', { name: /Position 1 entfernen/i })).toBeInTheDocument();
   });
 
+  it('does not collapse positions on initial mount, even when already valid (issue #207)', () => {
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
+    });
+    expect(screen.getByRole('textbox', { name: 'Ziffer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position 1 minimieren' })).toBeInTheDocument();
+  });
+
+  it('minimizes and re-expands a position via its toggle button (issue #207)', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Position 1 minimieren' }));
+    expect(screen.queryByRole('textbox', { name: 'Ziffer' })).not.toBeInTheDocument();
+    // Header stays visible while collapsed.
+    expect(screen.getByText('Position 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Position 1 entfernen/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Position 1 einblenden' }));
+    expect(screen.getByRole('textbox', { name: 'Ziffer' })).toBeInTheDocument();
+  });
+
+  it('collapses positions found valid after "Positionen neu einlesen", keeps flagged ones expanded (issue #207)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseInvoice).mockReturnValueOnce({
+      positions: [
+        {
+          ziffer: '1',
+          feeSchedule: 'GOÄ',
+          quantity: 1,
+          treatmentDate: '2025-03-14',
+          description: 'Beratung',
+          multiplier: 2.3,
+          baseAmount: 4.66,
+          chargedAmount: 10.73,
+          isValid: true,
+          flags: [],
+        },
+        {
+          ziffer: '605',
+          feeSchedule: 'GOÄ',
+          quantity: 1,
+          treatmentDate: '2025-03-14',
+          description: 'Sonographie',
+          multiplier: 1.8,
+          baseAmount: 20,
+          chargedAmount: 36,
+          isValid: false,
+          flags: [{ code: 'constraint_violation', reason: EXCLUDES_605_612_REASON }],
+        },
+      ],
+      violations: [],
+    } as never);
+
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        initialPositions: [{ ...SAMPLE_POSITION }],
+        reparseOcrRaw: SAMPLE_OCR_TEXT,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Positionen neu einlesen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Position 1 einblenden' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Position 2 minimieren' })).toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(1);
+  });
+
+  it('"Alle einklappen"/"Alle ausklappen" toggle every position at once, including flagged ones (issue #207)', async () => {
+    mockExcludesViolation();
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: EXCLUDES_POSITIONS.map((p) => ({ ...p })) },
+    });
+    await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
+
+    await user.click(screen.getByRole('button', { name: 'Alle einklappen' }));
+    expect(screen.queryAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Alle ausklappen' }));
+    expect(screen.getAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(2);
+  });
+
   it('automatically revalidates positions after mount, without needing a button', async () => {
     render(InvoiceReviewTestHarness, {
       props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },

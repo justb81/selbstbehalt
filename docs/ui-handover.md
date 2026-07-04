@@ -132,6 +132,10 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
   übernommen; nicht erkannte Felder bleiben unverändert.
 - Felder und Positionen bleiben vollständig bearbeitbar; OCR-Zeilen mit geringer Konfidenz oder
   §5-Auffälligkeiten werden mit Warnhinweis markiert.
+- Nach dem Einlesen/Neu-einlesen werden unauffällige Positionen automatisch auf ihre Titelzeile
+  (Nummer + Betrag) minimiert, auffällige bleiben ausgeklappt; jede Position lässt sich einzeln
+  per Klick ein-/ausklappen, zusätzlich "Alle einklappen"/"Alle ausklappen" oberhalb der Liste
+  (`#207`).
 - Opt-in-Checkbox zum Speichern des OCR-Rohtexts (Datenminimierung, §8.2).
 
 ### 3.8 Einstellungen (`#20`)
