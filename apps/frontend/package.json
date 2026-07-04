@@ -24,7 +24,7 @@
     "@selbstbehalt/shared": "workspace:*",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",
-    "date-fns": "4.1.0",
+    "date-fns": "4.4.0",
     "next-themes": "^0.4.6",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
