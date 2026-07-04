@@ -11,6 +11,11 @@
   re-validated automatically (debounced) whenever Kategorie, Ziffer, Faktor or
   Anzahl changes. An info icon opens the fee-schedule entry dialog.
 
+  Positions can be minimized to their title bar (issue #207): after a scan or
+  re-parse, positions found clear (`is_valid === true`) collapse automatically
+  while auffällige/unvalidated ones stay open; each card also has its own
+  toggle, plus "Alle einklappen"/"Alle ausklappen" above the list.
+
   It carries NO `eligible_amount`/Erstattungsspalte: reimbursement is
   tariff-dependent and computed by the consuming app around this component (see
   apps/frontend InvoiceForm + erstattungs-engine.ts). `benefit_category` is set
@@ -59,10 +64,13 @@
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
   import { Alert, AlertDescription } from './ui/alert';
   import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+  import { Collapsible, CollapsibleContent } from './ui/collapsible';
   import InfoIcon from '@lucide/svelte/icons/info';
   import PlusIcon from '@lucide/svelte/icons/plus';
   import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
   import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+  import ChevronsDownUpIcon from '@lucide/svelte/icons/chevrons-down-up';
+  import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
   import { cn } from '../utils';
 
   // ---------------------------------------------------------------------------
@@ -133,10 +141,31 @@
         benefit_category: null,
       },
     ];
+    open = [...open, true];
   }
 
   function removePosition(i: number) {
     positions = positions.filter((_, idx) => idx !== i);
+    open = open.filter((_, idx) => idx !== i);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Minimize/maximize per position (issue #207): a position card can be
+  // collapsed to its title bar (number + amount). Purely local UI state, kept
+  // index-aligned with `positions` — never part of `ReviewPositionRow`/the
+  // saved data. After a fresh OCR scan or re-parse, positions found "clear"
+  // (`is_valid === true`) start collapsed; auffällige/unvalidated ones stay
+  // open so they draw attention.
+  // ---------------------------------------------------------------------------
+
+  let open = $state<boolean[]>(positions.map(() => true));
+
+  function collapseAll() {
+    open = positions.map(() => false);
+  }
+
+  function expandAll() {
+    open = positions.map(() => true);
   }
 
   // ---------------------------------------------------------------------------
@@ -187,6 +216,7 @@
       confidence: p.confidence,
       benefit_category: null,
     }));
+    open = positions.map((p) => p.is_valid !== true);
     if (positions.length > 0) {
       totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
     }
@@ -412,6 +442,7 @@
         confidence: 1,
         benefit_category: null,
       }));
+      open = positions.map((p) => p.is_valid !== true);
       if (positions.length > 0) {
         totalAmount = roundCents(positions.reduce((s, p) => s + p.charged_amount, 0));
       }
@@ -588,6 +619,16 @@
         {#if revalidating}
           <span class="text-xs text-muted-foreground">Wird geprüft …</span>
         {/if}
+        {#if positions.length > 0}
+          <Button type="button" variant="outline" onclick={collapseAll} {disabled}>
+            <ChevronsDownUpIcon class="mr-1.5 size-3.5" />
+            Alle einklappen
+          </Button>
+          <Button type="button" variant="outline" onclick={expandAll} {disabled}>
+            <ChevronsUpDownIcon class="mr-1.5 size-3.5" />
+            Alle ausklappen
+          </Button>
+        {/if}
         <Button type="button" variant="default" onclick={addPosition} {disabled}>
           <PlusIcon class="mr-1.5 size-3.5" />
           Position hinzufügen
@@ -609,194 +650,214 @@
     {#if positions.length > 0}
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
-          <Card class={cn(pos.is_valid === false && 'bg-warning/10 ring-2 ring-warning/50')}>
-            <CardHeader
-              class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
-            >
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-semibold">Position {i + 1}</span>
-                <span class="text-sm text-muted-foreground tabular-nums"
-                  >· {formatEur(pos.charged_amount || 0)}</span
-                >
-                {#if pos.is_valid === false}
-                  <span
-                    class="inline-flex items-center gap-1 rounded-full border border-warning/70 px-2 py-0.5 text-[0.68rem] font-semibold text-warning"
-                  >
-                    <TriangleAlertIcon class="size-3" />
-                    Auffällig
-                  </span>
-                {/if}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onclick={() => removePosition(i)}
-                aria-label="Position {i + 1} entfernen"
-                {disabled}
-                class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          <Collapsible bind:open={open[i]}>
+            <Card class={cn(pos.is_valid === false && 'bg-warning/10 ring-2 ring-warning/50')}>
+              <CardHeader
+                class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
               >
-                ✕
-              </Button>
-            </CardHeader>
-            <CardContent class="flex flex-col gap-3">
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-datum">
-                    Datum <span class="text-destructive" aria-hidden="true">*</span>
-                  </Label>
-                  <Input
-                    id="pos-{i}-datum"
-                    type="date"
-                    bind:value={pos.treatment_date}
-                    {disabled}
-                  />
-                </div>
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-kategorie">Kategorie</Label>
-                  <Select
-                    type="single"
-                    value={pos.goae_category ?? ''}
-                    onValueChange={(v: string) => {
-                      pos.goae_category = (v || null) as GoaeCategory | null;
-                      void recalcBaseAmount(i);
-                    }}
-                    {disabled}
-                    items={goaeCategoryValues.map((cat) => ({
-                      value: cat,
-                      label: GOAE_CATEGORY_LABELS[cat] ?? cat,
-                    }))}
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-semibold">Position {i + 1}</span>
+                  <span class="text-sm text-muted-foreground tabular-nums"
+                    >· {formatEur(pos.charged_amount || 0)}</span
                   >
-                    <SelectTrigger class="w-full" id="pos-{i}-kategorie">
-                      <SelectValue placeholder="Kategorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {#each goaeCategoryValues as cat (cat)}
-                        <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
-                      {/each}
-                    </SelectContent>
-                  </Select>
+                  {#if pos.is_valid === false}
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full border border-warning/70 px-2 py-0.5 text-[0.68rem] font-semibold text-warning"
+                    >
+                      <TriangleAlertIcon class="size-3" />
+                      Auffällig
+                    </span>
+                  {/if}
                 </div>
-                {#if pos.goae_category !== 'Auslagenersatz'}
-                  <div class="space-y-1.5">
-                    <Label for="pos-{i}-ziffer">Ziffer</Label>
-                    <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onclick={() => (open[i] = !open[i])}
+                    aria-label="Position {i + 1} {open[i] ? 'minimieren' : 'einblenden'}"
+                    class="text-muted-foreground hover:text-foreground"
+                  >
+                    {#if open[i]}
+                      <ChevronsDownUpIcon class="size-3.5" />
+                    {:else}
+                      <ChevronsUpDownIcon class="size-3.5" />
+                    {/if}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onclick={() => removePosition(i)}
+                    aria-label="Position {i + 1} entfernen"
+                    {disabled}
+                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    ✕
+                  </Button>
+                </div>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent class="flex flex-col gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-datum">
+                        Datum <span class="text-destructive" aria-hidden="true">*</span>
+                      </Label>
                       <Input
-                        id="pos-{i}-ziffer"
-                        type="text"
-                        bind:value={pos.goae_number}
-                        onchange={() => void recalcBaseAmount(i)}
-                        placeholder="z.B. 1"
-                        required
+                        id="pos-{i}-datum"
+                        type="date"
+                        bind:value={pos.treatment_date}
                         {disabled}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
-                        title="Gebührenverzeichnis-Eintrag anzeigen"
-                        disabled={!pos.goae_number.trim() || infoLoading}
-                        onclick={() => openFeeInfo(pos)}
+                    </div>
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-kategorie">Kategorie</Label>
+                      <Select
+                        type="single"
+                        value={pos.goae_category ?? ''}
+                        onValueChange={(v: string) => {
+                          pos.goae_category = (v || null) as GoaeCategory | null;
+                          void recalcBaseAmount(i);
+                        }}
+                        {disabled}
+                        items={goaeCategoryValues.map((cat) => ({
+                          value: cat,
+                          label: GOAE_CATEGORY_LABELS[cat] ?? cat,
+                        }))}
                       >
-                        <InfoIcon class="size-3.5" />
-                      </Button>
+                        <SelectTrigger class="w-full" id="pos-{i}-kategorie">
+                          <SelectValue placeholder="Kategorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {#each goaeCategoryValues as cat (cat)}
+                            <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
+                          {/each}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {#if pos.goae_category !== 'Auslagenersatz'}
+                      <div class="space-y-1.5">
+                        <Label for="pos-{i}-ziffer">Ziffer</Label>
+                        <div class="flex items-center gap-1">
+                          <Input
+                            id="pos-{i}-ziffer"
+                            type="text"
+                            bind:value={pos.goae_number}
+                            onchange={() => void recalcBaseAmount(i)}
+                            placeholder="z.B. 1"
+                            required
+                            {disabled}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Gebührenverzeichnis-Eintrag anzeigen"
+                            disabled={!pos.goae_number.trim() || infoLoading}
+                            onclick={() => openFeeInfo(pos)}
+                          >
+                            <InfoIcon class="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    {/if}
+                  </div>
+                  <div class="space-y-1.5">
+                    <Label for="pos-{i}-beschreibung">Beschreibung</Label>
+                    <Textarea
+                      id="pos-{i}-beschreibung"
+                      bind:value={pos.description}
+                      placeholder="optional"
+                      rows={2}
+                      {disabled}
+                    />
+                  </div>
+                  <div
+                    class={cn(
+                      'grid grid-cols-2 gap-3',
+                      pos.goae_category !== 'Auslagenersatz' && 'sm:grid-cols-4',
+                    )}
+                  >
+                    {#if pos.goae_category !== 'Auslagenersatz'}
+                      <div class="space-y-1.5">
+                        <Label for="pos-{i}-faktor">Faktor</Label>
+                        <Input
+                          id="pos-{i}-faktor"
+                          type="number"
+                          bind:value={pos.multiplier}
+                          oninput={() => recalcChargedAmount(i)}
+                          min="0.01"
+                          step="0.01"
+                          required
+                          {disabled}
+                          class="text-right"
+                        />
+                      </div>
+                    {/if}
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-anzahl">Anz.</Label>
+                      <Input
+                        id="pos-{i}-anzahl"
+                        type="number"
+                        bind:value={pos.quantity}
+                        oninput={() => recalcChargedAmount(i)}
+                        min="1"
+                        step="1"
+                        required
+                        {disabled}
+                        class="text-right"
+                      />
+                    </div>
+                    {#if pos.goae_category !== 'Auslagenersatz'}
+                      <div class="space-y-1.5">
+                        <Label for="pos-{i}-basis">Basis (€)</Label>
+                        <Input
+                          id="pos-{i}-basis"
+                          type="number"
+                          bind:value={pos.base_amount}
+                          oninput={() => recalcChargedAmount(i)}
+                          min="0"
+                          step="0.01"
+                          required
+                          {disabled}
+                          class="text-right"
+                        />
+                      </div>
+                    {/if}
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-betrag">Betrag (€)</Label>
+                      <Input
+                        id="pos-{i}-betrag"
+                        type="number"
+                        bind:value={pos.charged_amount}
+                        oninput={recalcTotal}
+                        min="0"
+                        step="0.01"
+                        required
+                        {disabled}
+                        class="text-right"
+                      />
                     </div>
                   </div>
-                {/if}
-              </div>
-              <div class="space-y-1.5">
-                <Label for="pos-{i}-beschreibung">Beschreibung</Label>
-                <Textarea
-                  id="pos-{i}-beschreibung"
-                  bind:value={pos.description}
-                  placeholder="optional"
-                  rows={2}
-                  {disabled}
-                />
-              </div>
-              <div
-                class={cn(
-                  'grid grid-cols-2 gap-3',
-                  pos.goae_category !== 'Auslagenersatz' && 'sm:grid-cols-4',
-                )}
-              >
-                {#if pos.goae_category !== 'Auslagenersatz'}
-                  <div class="space-y-1.5">
-                    <Label for="pos-{i}-faktor">Faktor</Label>
-                    <Input
-                      id="pos-{i}-faktor"
-                      type="number"
-                      bind:value={pos.multiplier}
-                      oninput={() => recalcChargedAmount(i)}
-                      min="0.01"
-                      step="0.01"
-                      required
-                      {disabled}
-                      class="text-right"
-                    />
-                  </div>
-                {/if}
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-anzahl">Anz.</Label>
-                  <Input
-                    id="pos-{i}-anzahl"
-                    type="number"
-                    bind:value={pos.quantity}
-                    oninput={() => recalcChargedAmount(i)}
-                    min="1"
-                    step="1"
-                    required
-                    {disabled}
-                    class="text-right"
-                  />
-                </div>
-                {#if pos.goae_category !== 'Auslagenersatz'}
-                  <div class="space-y-1.5">
-                    <Label for="pos-{i}-basis">Basis (€)</Label>
-                    <Input
-                      id="pos-{i}-basis"
-                      type="number"
-                      bind:value={pos.base_amount}
-                      oninput={() => recalcChargedAmount(i)}
-                      min="0"
-                      step="0.01"
-                      required
-                      {disabled}
-                      class="text-right"
-                    />
-                  </div>
-                {/if}
-                <div class="space-y-1.5">
-                  <Label for="pos-{i}-betrag">Betrag (€)</Label>
-                  <Input
-                    id="pos-{i}-betrag"
-                    type="number"
-                    bind:value={pos.charged_amount}
-                    oninput={recalcTotal}
-                    min="0"
-                    step="0.01"
-                    required
-                    {disabled}
-                    class="text-right"
-                  />
-                </div>
-              </div>
-              {#if pos.is_valid === false && pos.flag_reason}
-                <div
-                  class="flex items-start gap-2 rounded-md border border-warning/60 px-2.5 py-2 text-xs font-medium text-warning"
-                >
-                  <TriangleAlertIcon class="size-3.5 shrink-0 translate-y-px" />
-                  <span>{pos.flag_reason}</span>
-                </div>
-              {/if}
-              {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
-                <p class="text-xs italic text-muted-foreground">
-                  Unsichere Erkennung – bitte prüfen.
-                </p>
-              {/if}
-            </CardContent>
-          </Card>
+                  {#if pos.is_valid === false && pos.flag_reason}
+                    <div
+                      class="flex items-start gap-2 rounded-md border border-warning/60 px-2.5 py-2 text-xs font-medium text-warning"
+                    >
+                      <TriangleAlertIcon class="size-3.5 shrink-0 translate-y-px" />
+                      <span>{pos.flag_reason}</span>
+                    </div>
+                  {/if}
+                  {#if pos.confidence < DEFAULT_CONFIDENCE_THRESHOLD}
+                    <p class="text-xs italic text-muted-foreground">
+                      Unsichere Erkennung – bitte prüfen.
+                    </p>
+                  {/if}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         {/each}
       </div>
     {:else}
