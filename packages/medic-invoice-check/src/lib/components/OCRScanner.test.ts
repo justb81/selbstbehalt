@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -40,12 +40,13 @@ describe('OCRScanner', () => {
     expect(result.parsed.positions).toHaveLength(2);
   });
 
-  it('parses against the selected schedule', async () => {
+  it('auto-detects the schedule from the recognised text (issue #183)', async () => {
     const onScanned = vi.fn<(r: ScanResult) => void>();
-    // The schedule selector is a shadcn Select (bits-ui custom component), not a
-    // native <select>, so userEvent.selectOptions does not work in jsdom. Pass the
-    // schedule prop directly to test the parsing behaviour in isolation.
-    render(OCRScanner, { props: { onScanned, deps: stubDeps(), schedule: 'GOZ' } });
+    const dentistSample = [
+      'Zahnarztpraxis Dr. Beispiel',
+      '30  Eingehende Untersuchung  2,3  14,51',
+    ].join('\n');
+    render(OCRScanner, { props: { onScanned, deps: stubDeps(dentistSample) } });
 
     await userEvent.upload(
       screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
@@ -53,7 +54,22 @@ describe('OCRScanner', () => {
     );
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect((onScanned.mock.calls[0]?.[0] as ScanResult).schedule).toBe('GOZ');
+    const result = onScanned.mock.calls[0]?.[0] as ScanResult;
+    expect(result.providerType).toBe('zahnarzt');
+    expect(result.schedule).toBe('GOZ');
+  });
+
+  it('scans a file dropped onto the drop zone (issue #224)', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = stubDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    const dropzone = screen.getByText('Rechnung hierher ziehen oder auswählen').parentElement!;
+    const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
+    await fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(deps.fileToImages).toHaveBeenCalledWith(file);
   });
 
   it('concatenates OCR results from a multi-page PDF into one parsed invoice', async () => {

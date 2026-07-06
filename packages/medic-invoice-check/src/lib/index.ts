@@ -13,7 +13,7 @@
 export * from './ocr/index.js';
 export * from './utils/goae-parser.js';
 export * from './data/fee-schedule.js';
-export { FEE_SCHEDULE_IDS, loadFeeTable } from './data/fee-tables.js';
+export { FEE_SCHEDULE_IDS, SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from './data/fee-tables.js';
 
 // --- Components -------------------------------------------------------------
 export { default as OCRScanner } from './components/OCRScanner.svelte';

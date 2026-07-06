@@ -42,7 +42,7 @@ export {
   buildScanResult,
   ocrResultsToText,
   meanConfidence,
-  defaultProviderType,
+  scheduleForProviderType,
   toReviewPositions,
   toInvoicePayload,
   DEFAULT_CONFIDENCE_THRESHOLD,

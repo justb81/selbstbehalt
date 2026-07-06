@@ -1,9 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   OCRScanner (docs/design.md §4.1/§6.2, issue #26): captures an invoice frame —
-  from the camera or a file/PDF upload — preprocesses it, runs client-side OCR
-  with live progress, parses it against the chosen fee schedule, and hands the
-  resulting `ScanResult` to its parent for review.
+  from the camera, a file/PDF upload, or a drag-and-drop — preprocesses it,
+  runs client-side OCR with live progress, parses it against a fee schedule
+  guessed from the recognised text (issues #183/#224 — see `detectProviderType`
+  in `../utils/goae-parser`), and hands the resulting `ScanResult` to its
+  parent for review. There is no manual pre-scan schedule selection; a wrong
+  guess is corrected afterwards via the per-position Kategorie picker in
+  `InvoiceReview`, same as any other misread field.
 
   Privacy by design: the frame is recognised on-device and discarded as soon as
   OCR finishes; only the parsed text/metadata leaves this component (never the
@@ -24,15 +28,14 @@
   import { preprocess as defaultPreprocess } from '../ocr/preprocess';
   import { loadAllInvoiceImages, recognizeInvoiceImage } from '../ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
-  import { FEE_SCHEDULE_IDS, loadFeeTable } from '../data/fee-tables';
-  import type { FeeScheduleId } from '../data/fee-schedule';
+  import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
   import type { OcrProgress, OcrResult } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
   import { Alert, AlertDescription } from './ui/alert';
-  import { Label } from './ui/label';
-  import { Select, SelectContent, SelectItem, SelectTrigger } from './ui/select';
+  import CameraIcon from '@lucide/svelte/icons/camera';
+  import { cn } from '../utils';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
@@ -48,13 +51,10 @@
   }
 
   let {
-    schedule = $bindable<FeeScheduleId>('GOÄ'),
     onScanned,
     deps = {},
     autoFile = null,
   }: {
-    /** Fee schedule the captured invoice is parsed against. */
-    schedule?: FeeScheduleId;
     /** Called with the parsed result once a frame has been recognised. */
     onScanned: (result: ScanResult) => void;
     deps?: Partial<ScannerDeps>;
@@ -89,6 +89,8 @@
   let stream: MediaStream | null = null;
   let video = $state<HTMLVideoElement | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
+  let dragDepth = $state(0);
+  const isDragging = $derived(dragDepth > 0);
 
   function messageFor(err: unknown): string {
     if (err instanceof CaptureError) return err.message;
@@ -107,14 +109,14 @@
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
-      const table = await loadFeeTable(schedule);
+      const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
       const allResults: OcrResult[] = [];
       for (const image of images) {
         const prepared = preprocess(image);
         const results = await recognize(prepared, (p) => (progress = p));
         allResults.push(...results);
       }
-      onScanned(buildScanResult(allResults, schedule, table));
+      onScanned(buildScanResult(allResults, tables));
       phase = 'idle';
       progress = null;
     } catch (err) {
@@ -147,6 +149,33 @@
   onMount(() => {
     if (autoFile) void handleFile(autoFile);
   });
+
+  // Drop zone (issue #224). `dragDepth` counts nested enter/leave pairs so the
+  // highlight doesn't flicker off while the pointer crosses a child element.
+  function onDropzoneClick(): void {
+    fileInput?.click();
+  }
+
+  function onDragEnter(event: DragEvent): void {
+    event.preventDefault();
+    dragDepth += 1;
+  }
+
+  function onDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  function onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+  }
+
+  async function onDrop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    dragDepth = 0;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) await handleFile(file);
+  }
 
   async function startCamera(): Promise<void> {
     error = null;
@@ -217,41 +246,59 @@
     </div>
   {:else}
     <div class="flex flex-col gap-3">
-      <div class="flex flex-col gap-1.5 max-w-48">
-        <Label for="fee-schedule-select">Gebührenordnung</Label>
-        <Select
-          type="single"
-          value={schedule as string}
-          onValueChange={(v: string) => {
-            schedule = v as FeeScheduleId;
-          }}
+      <div
+        role="presentation"
+        onclick={onDropzoneClick}
+        ondragenter={onDragEnter}
+        ondragover={onDragOver}
+        ondragleave={onDragLeave}
+        ondrop={onDrop}
+        class={cn(
+          'flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-7 text-center transition-colors',
+          isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+        )}
+      >
+        <div
+          class={cn(
+            'flex size-11 items-center justify-center rounded-full transition-colors',
+            isDragging ? 'bg-primary text-primary-foreground' : 'bg-accent text-primary',
+          )}
         >
-          <SelectTrigger id="fee-schedule-select" aria-label="Gebührenordnung">
-            {schedule}
-          </SelectTrigger>
-          <SelectContent>
-            {#each FEE_SCHEDULE_IDS as id (id)}
-              <SelectItem value={id} label={id} />
-            {/each}
-          </SelectContent>
-        </Select>
+          <CameraIcon class="size-5.5" />
+        </div>
+        <p class="text-sm font-semibold">Rechnung hierher ziehen oder auswählen</p>
+        <p class="text-muted-foreground -mt-1.5 text-xs">Foto, Bild oder PDF</p>
+        <div class="flex flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onclick={(e: MouseEvent) => {
+              e.stopPropagation();
+              fileInput?.click();
+            }}
+          >
+            Datei wählen
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            onclick={(e: MouseEvent) => {
+              e.stopPropagation();
+              void startCamera();
+            }}
+          >
+            Kamera öffnen
+          </Button>
+        </div>
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept="image/*,application/pdf"
+          class="sr-only"
+          aria-label="Rechnungsdatei (Bild oder PDF)"
+          onchange={onFileChange}
+        />
       </div>
-
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="default" onclick={startCamera}>Kamera öffnen</Button>
-        <Button type="button" variant="outline" onclick={() => fileInput?.click()}>
-          Datei wählen
-        </Button>
-      </div>
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept="image/*,application/pdf"
-        capture="environment"
-        class="sr-only"
-        aria-label="Rechnungsdatei (Bild oder PDF)"
-        onchange={onFileChange}
-      />
       <p class="text-muted-foreground text-sm">
         Foto, Bild oder PDF. Die Erkennung läuft vollständig auf diesem Gerät; das Bild verlässt es
         nie und wird nach der Erkennung verworfen.

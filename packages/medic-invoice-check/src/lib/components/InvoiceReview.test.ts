@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../ocr', () => ({
   DEFAULT_CONFIDENCE_THRESHOLD: 0.7,
-  defaultProviderType: vi.fn(() => 'arzt'),
   disposeScanOcr: vi.fn(),
   toReviewPositions: vi.fn(() => []),
 }));
@@ -13,6 +12,7 @@ vi.mock('../ocr', () => ({
 vi.mock('../data/fee-tables', () => ({
   loadFeeTable: vi.fn(async () => ({ entries: [] })),
   FEE_SCHEDULE_IDS: ['GOÄ', 'GOZ', 'GOT'],
+  SUPPORTED_INVOICE_SCHEDULES: ['GOÄ', 'GOZ'],
 }));
 
 vi.mock('../utils/goae-parser', () => ({
@@ -378,6 +378,40 @@ describe('InvoiceReview — edit mode', () => {
     // triggers must skip lookupPosition entirely for an Auslagenersatz row.
     await waitPastDebounce();
     expect(lookupPosition).not.toHaveBeenCalled();
+  });
+
+  it('does not offer "GOT" in the Kategorie dropdown (issues #183/#224)', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    await user.click(categoryTrigger);
+    expect(document.querySelector('[data-value="GOÄ"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOZ"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOT"]')).not.toBeInTheDocument();
+  });
+
+  it('still displays and keeps a legacy "GOT" row instead of blanking it', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        initialPositions: [{ ...SAMPLE_POSITION, goae_category: 'GOT' }],
+      },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    // The row's own (otherwise unofferred) value must still render, not a blank placeholder.
+    expect(categoryTrigger).toHaveTextContent('GOT');
+
+    await user.click(categoryTrigger);
+    expect(document.querySelector('[data-value="GOT"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOÄ"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOZ"]')).toBeInTheDocument();
   });
 
   it('shows "Positionen neu einlesen" when reparseOcrRaw is provided', () => {

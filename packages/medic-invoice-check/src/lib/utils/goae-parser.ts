@@ -43,7 +43,7 @@
  * Provide a single total amount per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
-import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
+import { roundCents, type BenefitCategory, type ProviderType } from '@selbstbehalt/shared';
 
 import type {
   Constraint,
@@ -339,6 +339,33 @@ export function extractInvoiceFields(text: string): {
   const providerName = lines.find((l) => PROVIDER_RE.test(l)) ?? lines[0] ?? null;
 
   return { invoiceDate, invoiceNumber, providerName };
+}
+
+const ORTHODONTIST_RE = /\bKieferorthop(?:äde|ädin|ädisch|ädie)\w*\b|\bKFO\b/i;
+/**
+ * No leading `\b`: German compounds concatenate freely (Fach-, Kassen-,
+ * Vertrags-zahnarzt), so matching the "zahnarzt"/"zahnärzt" stem anywhere
+ * catches them without enumerating every prefix — the stem never occurs as
+ * an accidental substring of an unrelated word.
+ */
+const DENTIST_RE =
+  /Zahnarzt\w*|Zahnärzt\w*|Zahnklinik\w*|Zahnheilkunde|Mundheilkunde|Kieferheilkunde/i;
+const HOSPITAL_RE = /\b(?:Krankenhaus|Klinikum|Klinik)\b/i;
+
+/**
+ * Guesses the invoice's provider type from OCR text (issues #183/#224):
+ * checked in order of specificity so "kieferorthopädische Zahnarztpraxis"
+ * resolves to the more specific orthodontist match. Used to preselect the
+ * `providerType` header field and, from that, the primary fee schedule
+ * (`GOZ` for `zahnarzt`/`kieferorthopaede`, `GOÄ` otherwise) — replacing the
+ * removed pre-scan Gebührenordnung dropdown. `'sonstiges'` is never
+ * auto-detected; it stays a manual-only catch-all, as today.
+ */
+export function detectProviderType(text: string): ProviderType {
+  if (ORTHODONTIST_RE.test(text)) return 'kieferorthopaede';
+  if (DENTIST_RE.test(text)) return 'zahnarzt';
+  if (HOSPITAL_RE.test(text)) return 'krankenhaus';
+  return 'arzt';
 }
 
 // ---------------------------------------------------------------------------
