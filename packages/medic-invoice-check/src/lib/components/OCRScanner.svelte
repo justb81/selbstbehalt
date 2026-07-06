@@ -89,8 +89,8 @@
   let stream: MediaStream | null = null;
   let video = $state<HTMLVideoElement | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
-  let isDragging = $state(false);
-  let dragDepth = 0;
+  let dragDepth = $state(0);
+  const isDragging = $derived(dragDepth > 0);
 
   function messageFor(err: unknown): string {
     if (err instanceof CaptureError) return err.message;
@@ -159,7 +159,6 @@
   function onDragEnter(event: DragEvent): void {
     event.preventDefault();
     dragDepth += 1;
-    isDragging = true;
   }
 
   function onDragOver(event: DragEvent): void {
@@ -169,13 +168,11 @@
   function onDragLeave(event: DragEvent): void {
     event.preventDefault();
     dragDepth = Math.max(0, dragDepth - 1);
-    if (dragDepth === 0) isDragging = false;
   }
 
   async function onDrop(event: DragEvent): Promise<void> {
     event.preventDefault();
     dragDepth = 0;
-    isDragging = false;
     const file = event.dataTransfer?.files?.[0];
     if (file) await handleFile(file);
   }
@@ -297,7 +294,6 @@
           bind:this={fileInput}
           type="file"
           accept="image/*,application/pdf"
-          capture="environment"
           class="sr-only"
           aria-label="Rechnungsdatei (Bild oder PDF)"
           onchange={onFileChange}

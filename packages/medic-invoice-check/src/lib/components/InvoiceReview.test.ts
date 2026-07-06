@@ -394,6 +394,26 @@ describe('InvoiceReview — edit mode', () => {
     expect(document.querySelector('[data-value="GOT"]')).not.toBeInTheDocument();
   });
 
+  it('still displays and keeps a legacy "GOT" row instead of blanking it', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        initialPositions: [{ ...SAMPLE_POSITION, goae_category: 'GOT' }],
+      },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    // The row's own (otherwise unofferred) value must still render, not a blank placeholder.
+    expect(categoryTrigger).toHaveTextContent('GOT');
+
+    await user.click(categoryTrigger);
+    expect(document.querySelector('[data-value="GOT"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOÄ"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="GOZ"]')).toBeInTheDocument();
+  });
+
   it('shows "Positionen neu einlesen" when reparseOcrRaw is provided', () => {
     render(InvoiceReviewTestHarness, {
       props: {

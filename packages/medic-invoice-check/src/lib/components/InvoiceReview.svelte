@@ -128,6 +128,18 @@
     'Auslagenersatz',
   ];
 
+  /**
+   * A row's own category is always included in its options, even when it's
+   * not generally offered (e.g. `GOT` on a position saved before GOT was
+   * excluded here) — otherwise the Select shows a blank trigger for that
+   * value and picking any option would silently rewrite it.
+   */
+  function categoryOptionsFor(current: GoaeCategory | null): GoaeCategory[] {
+    return current && !SELECTABLE_GOAE_CATEGORIES.includes(current)
+      ? [...SELECTABLE_GOAE_CATEGORIES, current]
+      : SELECTABLE_GOAE_CATEGORIES;
+  }
+
   // ---------------------------------------------------------------------------
   // Positions add/remove
   // ---------------------------------------------------------------------------
@@ -428,12 +440,8 @@
     reparsing = true;
     reparseError = null;
     try {
-      const [goaeTable, gozTable, gotTable] = await Promise.all([
-        loadFeeTable('GOÄ'),
-        loadFeeTable('GOZ'),
-        loadFeeTable('GOT'),
-      ]);
-      const parsed = parseInvoice(rawOcr, [goaeTable, gozTable, gotTable], {});
+      const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
+      const parsed = parseInvoice(rawOcr, tables, {});
       positions = parsed.positions.map((p) => ({
         goae_number: p.ziffer,
         goae_category: isAuslagenersatzDescription(p.description)
@@ -729,7 +737,7 @@
                           void recalcBaseAmount(i);
                         }}
                         {disabled}
-                        items={SELECTABLE_GOAE_CATEGORIES.map((cat) => ({
+                        items={categoryOptionsFor(pos.goae_category).map((cat) => ({
                           value: cat,
                           label: GOAE_CATEGORY_LABELS[cat] ?? cat,
                         }))}
@@ -738,7 +746,7 @@
                           <SelectValue placeholder="Kategorie" />
                         </SelectTrigger>
                         <SelectContent>
-                          {#each SELECTABLE_GOAE_CATEGORIES as cat (cat)}
+                          {#each categoryOptionsFor(pos.goae_category) as cat (cat)}
                             <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
                           {/each}
                         </SelectContent>

@@ -209,10 +209,23 @@ describe('detectProviderType (issues #183/#224)', () => {
   it('detects an orthodontist ahead of the more generic dentist match', () => {
     expect(detectProviderType('Kieferorthopädische Praxis Dr. Muster')).toBe('kieferorthopaede');
     expect(detectProviderType('Praxis für KFO')).toBe('kieferorthopaede');
+    expect(detectProviderType('Praxis für Kieferorthopädie')).toBe('kieferorthopaede');
+    expect(detectProviderType('Fachzahnarzt für Kieferorthopädie')).toBe('kieferorthopaede');
+  });
+
+  it('detects a dentist from compound words a leading word boundary would miss', () => {
+    expect(detectProviderType('Fachzahnarzt Dr. Beispiel\n1  Beratung  2,3  10,72')).toBe(
+      'zahnarzt',
+    );
+    expect(detectProviderType('Zahnärzte Mustermann & Partner')).toBe('zahnarzt');
   });
 
   it('detects a hospital from "Krankenhaus"/"Klinikum"', () => {
     expect(detectProviderType('Klinikum Musterstadt, Chirurgische Abteilung')).toBe('krankenhaus');
+  });
+
+  it('prefers the dental reading of a "Klinik" named for dental wording', () => {
+    expect(detectProviderType('Klinik für Zahn-, Mund- und Kieferheilkunde')).toBe('zahnarzt');
   });
 
   it('defaults to "arzt" when no keyword matches', () => {

@@ -341,9 +341,15 @@ export function extractInvoiceFields(text: string): {
   return { invoiceDate, invoiceNumber, providerName };
 }
 
-const ORTHODONTIST_RE = /\b(?:Kieferorthop(?:äde|ädin|ädisch\w*)|KFO)\b/i;
+const ORTHODONTIST_RE = /\bKieferorthop(?:äde|ädin|ädisch|ädie)\w*\b|\bKFO\b/i;
+/**
+ * No leading `\b`: German compounds concatenate freely (Fach-, Kassen-,
+ * Vertrags-zahnarzt), so matching the "zahnarzt"/"zahnärzt" stem anywhere
+ * catches them without enumerating every prefix — the stem never occurs as
+ * an accidental substring of an unrelated word.
+ */
 const DENTIST_RE =
-  /\b(?:Zahnarzt|Zahnärztin|zahnärztlich\w*|Zahnarztpraxis|Kassenzahnärztlich\w*)\b/i;
+  /Zahnarzt\w*|Zahnärzt\w*|Zahnklinik\w*|Zahnheilkunde|Mundheilkunde|Kieferheilkunde/i;
 const HOSPITAL_RE = /\b(?:Krankenhaus|Klinikum|Klinik)\b/i;
 
 /**
