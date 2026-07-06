@@ -18,7 +18,7 @@ import { money } from '../common.js';
 
 /** A reimbursement percentage, 0–100. */
 const pct = z
-  .number({ invalid_type_error: 'Prozentsatz muss eine Zahl sein' })
+  .number({ error: 'Prozentsatz muss eine Zahl sein' })
   .min(0, 'Prozentsatz darf nicht negativ sein')
   .max(100, 'Prozentsatz darf 100 nicht überschreiten');
 
