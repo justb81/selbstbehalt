@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/justb81/selbstbehalt/compare/v1.4.0...v1.4.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **zod:** adapt to zod v4 breaking changes ([#222](https://github.com/justb81/selbstbehalt/issues/222)) ([ded2ad7](https://github.com/justb81/selbstbehalt/commit/ded2ad760410b5eb84f60c10ad41e517118e041b))
+
 ## [1.4.0](https://github.com/justb81/selbstbehalt/compare/v1.3.0...v1.4.0) (2026-07-04)
 
 ### Features
