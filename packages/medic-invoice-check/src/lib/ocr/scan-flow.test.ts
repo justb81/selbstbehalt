@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildScanResult,
-  defaultProviderType,
   meanConfidence,
   ocrResultsToText,
+  scheduleForProviderType,
   toInvoicePayload,
   toReviewPositions,
   type ReviewState,
@@ -14,9 +14,11 @@ import {
 import { textToOcrResults } from './scan-ocr';
 import type { OcrResult } from './types';
 import goaeJson from '../data/goae.json';
+import gozJson from '../data/goz.json';
 import type { FeeScheduleTable } from '../data/fee-schedule';
 
 const GOAE = goaeJson as unknown as FeeScheduleTable;
+const GOZ = gozJson as unknown as FeeScheduleTable;
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 
 // A realistic GOÄ invoice: one clean line (250), one over the §5 limit (75 at
@@ -51,9 +53,10 @@ describe('ocrResultsToText / meanConfidence', () => {
 });
 
 describe('buildScanResult', () => {
-  it('parses an invoice against the chosen schedule', () => {
-    const result = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ', GOAE);
+  it('detects the provider type from the OCR text and parses against the derived schedule', () => {
+    const result = buildScanResult(textToOcrResults(SAMPLE), [GOAE, GOZ]);
 
+    expect(result.providerType).toBe('arzt');
     expect(result.schedule).toBe('GOÄ');
     expect(result.parsed.invoiceDate).toBe('2026-03-15');
     expect(result.parsed.invoiceNumber).toBe('R-2026-001');
@@ -66,6 +69,23 @@ describe('buildScanResult', () => {
     expect(unknown?.known).toBe(false);
   });
 
+  it('detects a dentist invoice and parses against GOZ instead', () => {
+    const dentistSample = [
+      'Zahnarztpraxis Dr. med. dent. Mustermann',
+      '30   Eingehende Untersuchung   2,3   14,51',
+    ].join('\n');
+    const result = buildScanResult(textToOcrResults(dentistSample), [GOAE, GOZ]);
+    expect(result.providerType).toBe('zahnarzt');
+    expect(result.schedule).toBe('GOZ');
+    expect(result.parsed.positions[0]?.feeSchedule).toBe('GOZ');
+  });
+
+  it('accepts a single-table array', () => {
+    const result = buildScanResult(textToOcrResults(SAMPLE), [GOAE]);
+    expect(result.schedule).toBe('GOÄ');
+    expect(result.parsed.positions).toHaveLength(3);
+  });
+
   it('aligns per-position confidence by order, even for duplicate line text', () => {
     // Two identical position lines must keep their own confidences (no collapse
     // to a single min-merged value); the header line is ignored.
@@ -74,22 +94,24 @@ describe('buildScanResult', () => {
       { text: '250  Blutentnahme  2,3  5,36', bbox: { points: [] }, confidence: 0.4 },
       { text: '250  Blutentnahme  2,3  5,36', bbox: { points: [] }, confidence: 0.95 },
     ];
-    const result = buildScanResult(results, 'GOÄ', GOAE);
+    const result = buildScanResult(results, [GOAE]);
     expect(result.parsed.positions).toHaveLength(2);
     expect(result.positionConfidence).toEqual([0.4, 0.95]);
   });
 });
 
-describe('defaultProviderType', () => {
-  it('maps schedules to a sensible provider type', () => {
-    expect(defaultProviderType('GOÄ')).toBe('arzt');
-    expect(defaultProviderType('GOZ')).toBe('zahnarzt');
-    expect(defaultProviderType('GOT')).toBe('sonstiges');
+describe('scheduleForProviderType', () => {
+  it('maps zahnarzt/kieferorthopaede to GOZ and everything else to GOÄ', () => {
+    expect(scheduleForProviderType('arzt')).toBe('GOÄ');
+    expect(scheduleForProviderType('zahnarzt')).toBe('GOZ');
+    expect(scheduleForProviderType('kieferorthopaede')).toBe('GOZ');
+    expect(scheduleForProviderType('krankenhaus')).toBe('GOÄ');
+    expect(scheduleForProviderType('sonstiges')).toBe('GOÄ');
   });
 });
 
 describe('toReviewPositions / toInvoicePayload', () => {
-  const scan = buildScanResult(textToOcrResults(SAMPLE), 'GOÄ', GOAE);
+  const scan = buildScanResult(textToOcrResults(SAMPLE), [GOAE]);
 
   it('builds editable positions carrying flags', () => {
     const positions = toReviewPositions(scan);
@@ -101,8 +123,7 @@ describe('toReviewPositions / toInvoicePayload', () => {
   it('detects Auslagenersatz (§10 GOÄ) from the description and overrides goaeCategory', () => {
     const auslagenScan = buildScanResult(
       textToOcrResults('250  Blutentnahme  2,3  5,36\n9999 Portopauschale Versandkosten 1,0  2,80'),
-      'GOÄ',
-      GOAE,
+      [GOAE],
     );
     const positions = toReviewPositions(auslagenScan);
     expect(positions[0]?.goaeCategory).toBe('GOÄ');

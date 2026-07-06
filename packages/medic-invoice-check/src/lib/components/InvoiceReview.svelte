@@ -28,7 +28,6 @@
   import { onDestroy } from 'svelte';
   import {
     formatEur,
-    goaeCategoryValues,
     providerTypeValues,
     roundCents,
     type BenefitCategory,
@@ -37,12 +36,11 @@
   } from '@selbstbehalt/shared';
   import {
     DEFAULT_CONFIDENCE_THRESHOLD,
-    defaultProviderType,
     disposeScanOcr,
     toReviewPositions,
     type ScanResult,
   } from '../ocr';
-  import { loadFeeTable } from '../data/fee-tables';
+  import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
   import {
     buildIndex,
     isAuslagenersatzDescription,
@@ -110,6 +108,7 @@
   const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
     arzt: 'Arzt/Ärztin',
     zahnarzt: 'Zahnarzt/Zahnärztin',
+    kieferorthopaede: 'Kieferorthopäde',
     krankenhaus: 'Krankenhaus',
     sonstiges: 'Sonstiges',
   };
@@ -118,6 +117,16 @@
   const GOAE_CATEGORY_LABELS: Partial<Record<GoaeCategory, string>> = {
     Auslagenersatz: 'Auslagenersatz (§10 GOÄ)',
   };
+
+  /**
+   * Categories offered by the per-position Kategorie picker. GOT (veterinary)
+   * is deliberately excluded here — issues #183/#224 — pending a separate
+   * vet-invoice app; the shared schema/DB column still accept it unchanged.
+   */
+  const SELECTABLE_GOAE_CATEGORIES: GoaeCategory[] = [
+    ...SUPPORTED_INVOICE_SCHEDULES,
+    'Auslagenersatz',
+  ];
 
   // ---------------------------------------------------------------------------
   // Positions add/remove
@@ -173,7 +182,6 @@
   // ---------------------------------------------------------------------------
 
   let showScanner = $state(false);
-  let ocrSchedule = $state<FeeScheduleId>('GOÄ');
   // Own copy of `sharedFile` (issue #158): cleared once consumed so a later
   // manual "Neu scannen / hochladen" opens a fresh scanner instead of
   // re-auto-scanning the same shared PDF.
@@ -199,7 +207,7 @@
     if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
     if (result.parsed.invoiceNumber) invoiceNumber = result.parsed.invoiceNumber;
     if (result.parsed.providerName) providerName = result.parsed.providerName;
-    providerType = defaultProviderType(result.schedule);
+    providerType = result.providerType;
     positions = toReviewPositions(result).map((p) => ({
       goae_number: p.goaeNumber,
       goae_category: isAuslagenersatzDescription(p.description)
@@ -506,7 +514,7 @@
         {/if}
       </div>
       {#if showScanner}
-        <OCRScanner bind:schedule={ocrSchedule} {onScanned} {autoFile} />
+        <OCRScanner {onScanned} {autoFile} />
       {/if}
     </div>
 
@@ -721,7 +729,7 @@
                           void recalcBaseAmount(i);
                         }}
                         {disabled}
-                        items={goaeCategoryValues.map((cat) => ({
+                        items={SELECTABLE_GOAE_CATEGORIES.map((cat) => ({
                           value: cat,
                           label: GOAE_CATEGORY_LABELS[cat] ?? cat,
                         }))}
@@ -730,7 +738,7 @@
                           <SelectValue placeholder="Kategorie" />
                         </SelectTrigger>
                         <SelectContent>
-                          {#each goaeCategoryValues as cat (cat)}
+                          {#each SELECTABLE_GOAE_CATEGORIES as cat (cat)}
                             <SelectItem value={cat} label={GOAE_CATEGORY_LABELS[cat] ?? cat} />
                           {/each}
                         </SelectContent>

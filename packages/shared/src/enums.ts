@@ -13,7 +13,13 @@ export const contractTypeSchema = z.enum(contractTypeValues);
 export type ContractType = z.infer<typeof contractTypeSchema>;
 
 /** Kind of healthcare provider that issued an invoice (`invoices.provider_type`). */
-export const providerTypeValues = ['arzt', 'zahnarzt', 'krankenhaus', 'sonstiges'] as const;
+export const providerTypeValues = [
+  'arzt',
+  'zahnarzt',
+  'kieferorthopaede',
+  'krankenhaus',
+  'sonstiges',
+] as const;
 export const providerTypeSchema = z.enum(providerTypeValues);
 export type ProviderType = z.infer<typeof providerTypeSchema>;
 

@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import { FEE_SCHEDULE_IDS, loadFeeTable } from './fee-tables';
+import { FEE_SCHEDULE_IDS, SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from './fee-tables';
 
 describe('fee-tables', () => {
   it('exposes the three bundled schedules in display order', () => {
     expect(FEE_SCHEDULE_IDS).toEqual(['GOÄ', 'GOZ', 'GOT']);
+  });
+
+  it('excludes GOT from the human medical/dental scan UI (issues #183/#224)', () => {
+    expect(SUPPORTED_INVOICE_SCHEDULES).toEqual(['GOÄ', 'GOZ']);
   });
 
   it('lazily loads each id into a table tagged with the matching schedule', async () => {

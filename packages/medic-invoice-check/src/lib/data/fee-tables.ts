@@ -7,14 +7,22 @@
  * they are pulled in via per-schedule dynamic `import()` — each becomes its own
  * code-split chunk that is fetched (and `JSON.parse`d) only when the user
  * actually scans against that schedule, then cached. This module itself stays
- * JSON-free, so importing {@link FEE_SCHEDULE_IDS} for the dropdown never drags
- * a table in. Tables are generated reproducibly from the source XML under
- * `data/input/` (see docs/data-format.md, `pnpm fees:build`); never edited here.
+ * JSON-free, so importing {@link FEE_SCHEDULE_IDS} never drags a table in.
+ * Tables are generated reproducibly from the source XML under `data/input/`
+ * (see docs/data-format.md, `pnpm fees:build`); never edited here.
  */
 import type { FeeScheduleId, FeeScheduleTable } from './fee-schedule';
 
-/** Schedules the scan flow can parse against, in display order. */
+/** Every schedule this package's data covers (part of the public API). */
 export const FEE_SCHEDULE_IDS: readonly FeeScheduleId[] = ['GOÄ', 'GOZ', 'GOT'];
+
+/**
+ * Schedules the human medical/dental scan-and-check UI (`OCRScanner`,
+ * `InvoiceReview`) offers and auto-detects against. GOT (veterinary) is
+ * deliberately excluded here — issues #183/#224 — pending a separate
+ * vet-invoice app; its table and parser rules stay fully supported above.
+ */
+export const SUPPORTED_INVOICE_SCHEDULES: readonly FeeScheduleId[] = ['GOÄ', 'GOZ'];
 
 /** Per-schedule dynamic importers — each resolves to its own bundle chunk. */
 const loaders: Record<FeeScheduleId, () => Promise<{ default: unknown }>> = {

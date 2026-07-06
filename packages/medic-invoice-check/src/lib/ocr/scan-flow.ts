@@ -24,6 +24,7 @@ import {
 } from '@selbstbehalt/shared';
 
 import {
+  detectProviderType,
   isAuslagenersatzDescription,
   parseInvoice,
   parsePositionLine,
@@ -46,6 +47,12 @@ export const DEFAULT_CONFIDENCE_THRESHOLD = 0.8;
 export interface ScanResult {
   /** Fee schedule the positions were parsed and validated against. */
   schedule: FeeScheduleId;
+  /**
+   * Provider type guessed from the OCR text (issues #183/#224) — what
+   * determined {@link schedule}. Preselects the invoice header's "Art" field;
+   * the user can still correct it like any other extracted field.
+   */
+  providerType: ProviderType;
   /** The recognised text, newline-joined (for review + optional `ocr_raw`). */
   ocrText: string;
   /** The fully parsed + validated invoice. */
@@ -91,37 +98,42 @@ function positionConfidences(results: OcrResult[]): number[] {
 }
 
 /**
- * Parses recognised OCR lines into a {@link ScanResult}. Pass an array of
- * tables to support mixed invoices (e.g. `[gozTable, goaeTable]`); the first
- * element is the primary/default schedule. A single table is also accepted.
+ * Provider type → primary fee schedule (issues #183/#224): `zahnarzt` and
+ * `kieferorthopaede` bill under `GOZ`; everything else defaults to `GOÄ`.
+ * The counterpart to {@link detectProviderType} — together they replace the
+ * removed pre-scan Gebührenordnung dropdown.
+ */
+export function scheduleForProviderType(type: ProviderType): FeeScheduleId {
+  return type === 'zahnarzt' || type === 'kieferorthopaede' ? 'GOZ' : 'GOÄ';
+}
+
+/**
+ * Parses recognised OCR lines into a {@link ScanResult}. The provider type
+ * (and from it, the primary schedule) is guessed from the OCR text itself
+ * rather than passed in — see {@link detectProviderType} — so `tables` is
+ * simply every schedule the caller supports; whichever one matches the
+ * guessed schedule is tried first, with the rest available as fallback for
+ * per-line prefix overrides (`Ä`/`Z`) elsewhere on the same invoice.
  */
 export function buildScanResult(
   results: OcrResult[],
-  schedule: FeeScheduleId,
-  tables: FeeScheduleTable | FeeScheduleTable[],
+  tables: FeeScheduleTable[],
   context: ValidationContext = {},
 ): ScanResult {
   const ocrText = ocrResultsToText(results);
-  const parsed = parseInvoice(ocrText, tables, context);
+  const providerType = detectProviderType(ocrText);
+  const schedule = scheduleForProviderType(providerType);
+  const primary = tables.find((t) => t.feeSchedule === schedule) ?? tables[0]!;
+  const ordered = [primary, ...tables.filter((t) => t !== primary)];
+  const parsed = parseInvoice(ocrText, ordered, context);
   return {
     schedule,
+    providerType,
     ocrText,
     parsed,
     meanConfidence: meanConfidence(results),
     positionConfidence: positionConfidences(results),
   };
-}
-
-/** Schedule → default provider type for a freshly scanned invoice. */
-export function defaultProviderType(schedule: FeeScheduleId): ProviderType {
-  switch (schedule) {
-    case 'GOZ':
-      return 'zahnarzt';
-    case 'GOT':
-      return 'sonstiges';
-    default:
-      return 'arzt';
-  }
 }
 
 /** A single editable invoice line in the review screen. */
