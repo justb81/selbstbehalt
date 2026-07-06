@@ -8,7 +8,7 @@ export const brePeriodCreateSchema = z
   .object({
     insured_person_id: uuid,
     year: z
-      .number({ invalid_type_error: 'Jahr muss eine Zahl sein' })
+      .number({ error: 'Jahr muss eine Zahl sein' })
       .int('Jahr muss eine Ganzzahl sein')
       .min(1900, 'Jahr ist unplausibel')
       .max(2200, 'Jahr ist unplausibel'),

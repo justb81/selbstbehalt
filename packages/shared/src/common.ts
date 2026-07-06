@@ -14,7 +14,7 @@ export const uuid = z.string().uuid({ message: 'Muss eine gültige UUID sein' })
  * rounded to whole cents to avoid binary-float drift creeping into the DB.
  */
 export const money = z
-  .number({ invalid_type_error: 'Betrag muss eine Zahl sein' })
+  .number({ error: 'Betrag muss eine Zahl sein' })
   .finite('Betrag muss endlich sein')
   .nonnegative('Betrag darf nicht negativ sein')
   .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, {

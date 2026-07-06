@@ -18,14 +18,12 @@
     apiUrl: z.string(),
     apiKey: z.string(),
     taxRatePct: z
-      .number({ invalid_type_error: 'Muss eine Zahl sein' })
+      .number({ error: 'Muss eine Zahl sein' })
       .min(0, 'Muss ≥ 0 % sein')
       .max(100, 'Muss ≤ 100 % sein'),
-    discountRatePct: z
-      .number({ invalid_type_error: 'Muss eine Zahl sein' })
-      .min(0, 'Muss ≥ 0 % sein'),
+    discountRatePct: z.number({ error: 'Muss eine Zahl sein' }).min(0, 'Muss ≥ 0 % sein'),
     claimFreeProbabilityPct: z
-      .number({ invalid_type_error: 'Muss eine Zahl sein' })
+      .number({ error: 'Muss eine Zahl sein' })
       .min(0, 'Muss ≥ 0 % sein')
       .max(100, 'Muss ≤ 100 % sein'),
   });

@@ -28,7 +28,7 @@ export const invoicePositionInputSchema = z
     treatment_date: z.string().date('Leistungsdatum muss im Format JJJJ-MM-TT vorliegen'),
     description: z.string().nullish(),
     multiplier: z
-      .number({ invalid_type_error: 'Steigerungsfaktor muss eine Zahl sein' })
+      .number({ error: 'Steigerungsfaktor muss eine Zahl sein' })
       .finite()
       .positive('Steigerungsfaktor muss größer als 0 sein'),
     base_amount: money,
