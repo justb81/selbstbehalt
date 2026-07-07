@@ -13,8 +13,6 @@ export interface Settings {
   apiUrl: string;
   /** Optional X-API-Key for VPN/external access (§7.2). */
   apiKey: string;
-  /** Grenzsteuersatz 0–1 (z.B. 0.25 = 25 %) für §33-EStG-Schätzung (Günstigerprüfung). */
-  taxRate: number;
   /** Jährliche Diskontrate ≥ 0 (z.B. 0.03 = 3 %) für den BRE-NPV (design §5.1). */
   discountRate: number;
   /** Wahrscheinlichkeit 0–1, in einem künftigen Jahr leistungsfrei zu bleiben (design §5.2.2). */
@@ -24,7 +22,6 @@ export interface Settings {
 const DEFAULTS: Settings = {
   apiUrl: '',
   apiKey: '',
-  taxRate: 0.25,
   discountRate: 0.03,
   claimFreeProbability: 0.7,
 };

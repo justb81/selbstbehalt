@@ -464,35 +464,6 @@ describe('calculateGCP — recommendation thresholds', () => {
   });
 });
 
-describe('calculateGCP — tax saving (Steuervorteil)', () => {
-  it('defaults to zero — the engine invents no §33 benefit', () => {
-    const result = calculateGCP(input());
-    expect(result.breakdown.taxSavingFromSelfPay).toBe(0);
-  });
-
-  it('lowers the net benefit of submitting by the tax saving', () => {
-    const base = input({ erstattungsBetrag: 800, selbstbehalt: 0, asOf: '2024-06-01' });
-    const without = calculateGCP(base);
-    const with200 = calculateGCP({ ...base, taxSavingFromSelfPay: 200 });
-    expect(with200.netBenefitOfSubmitting).toBeCloseTo(without.netBenefitOfSubmitting - 200, 2);
-    expect(with200.breakdown.taxSavingFromSelfPay).toBe(200);
-  });
-
-  it('can flip recommendation to selbst_zahlen', () => {
-    const base = input({
-      erstattungsBetrag: 200,
-      selbstbehalt: 0,
-      monthlyPremium: 10,
-      discountRate: 0,
-      asOf: '2024-12-01',
-    });
-    expect(calculateGCP(base).recommendation).toBe('einreichen');
-    expect(calculateGCP({ ...base, taxSavingFromSelfPay: 200 }).recommendation).toBe(
-      'selbst_zahlen',
-    );
-  });
-});
-
 describe('calculateGCP — breakdown fields', () => {
   it('reports the service year in breakdown', () => {
     const result = calculateGCP(input({ year: 2023 }));
@@ -548,10 +519,6 @@ describe('calculateGCP — determinism & injectable date', () => {
 });
 
 describe('calculateGCP — input validation', () => {
-  it('rejects a negative tax saving', () => {
-    expect(() => calculateGCP(input({ taxSavingFromSelfPay: -1 }))).toThrow(RangeError);
-  });
-
   it('rejects discountRate ≤ −1', () => {
     expect(() => calculateGCP(input({ discountRate: -1 }))).toThrow(RangeError);
     expect(() => calculateGCP(input({ discountRate: -2 }))).toThrow(RangeError);

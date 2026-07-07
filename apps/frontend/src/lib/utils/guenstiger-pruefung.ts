@@ -17,8 +17,11 @@
  * ## Decision rule (design §5.2.3)
  *
  * ```
- *   max(0, R_Y − S)  >  NPV(ΔBRE) + Steuervorteil
+ *   max(0, R_Y − S)  >  NPV(ΔBRE)
  * ```
+ *
+ * No tax benefit (§33 EStG) is netted in here — intentionally out of scope,
+ * see design §5.2.4 ("Steuervorteil — bewusst nicht berücksichtigt").
  *
  * Special case `alreadyBroken`: if a refund for year Y already flowed,
  * NPV(ΔBRE) = 0 — always recommend submitting for that year.
@@ -137,11 +140,6 @@ export interface GCP_YearInput {
   breStructure: BREStructure;
   /** Monthly premium in EUR — the base of the projected refund. */
   monthlyPremium: number;
-  /**
-   * Tax saved in EUR by self-paying (§33 EStG, above the zumutbare Belastung).
-   * Caller-supplied; defaults to 0 — the engine does not estimate it. Non-negative.
-   */
-  taxSavingFromSelfPay?: number;
   /** Annual discount rate i. Defaults to {@link DEFAULT_DISCOUNT_RATE}. */
   discountRate?: number;
   /**
@@ -197,8 +195,6 @@ export interface GCP_Result {
     discountRate: number;
     /** Claim-free probability p stored for j≥1 terms (issue #141). */
     claimFreeProbability: number;
-    /** Tax saved by self-paying (§33 EStG). */
-    taxSavingFromSelfPay: number;
   };
   /** German plain-text rationale for the recommendation. */
   explanation: string;
@@ -241,7 +237,7 @@ function buildExplanation(
   refundAfterDeductible: number,
   year: number,
   alreadyBroken: boolean,
-  costOfSubmitting: number,
+  lostBREValue_NPV: number,
   ladderTerms: GCP_LadderTerm[],
 ): string {
   if (alreadyBroken) {
@@ -253,7 +249,7 @@ function buildExplanation(
 
   const refund = formatEur(refundAfterDeductible);
   const advantage = formatEur(Math.abs(netBenefit));
-  const cost = formatEur(costOfSubmitting);
+  const cost = formatEur(lostBREValue_NPV);
   const recoveryTerms = ladderTerms.filter((t) => t.j > 0);
   const recoveryHint =
     recoveryTerms.length > 0
@@ -263,19 +259,19 @@ function buildExplanation(
   if (netBenefit === 0) {
     return (
       `Beide Optionen sind für Leistungsjahr ${year} mit ${refund} Nettoerstattung ` +
-      `gegenüber ${cost} entgehendem Vorteil${recoveryHint} etwa gleichwertig. Im Zweifel selbst ` +
+      `gegenüber ${cost} entgehendem BRE-Vorteil${recoveryHint} etwa gleichwertig. Im Zweifel selbst ` +
       `zahlen, um die BRE-Staffel zu erhalten.`
     );
   }
   if (recommendation === 'einreichen') {
     return (
       `Einreichen lohnt sich für Leistungsjahr ${year}: Die Nettoerstattung von ${refund} ` +
-      `übersteigt den entgehenden Vorteil aus BRE${recoveryHint} und Steuerersparnis (${cost}) um ${advantage}.`
+      `übersteigt den entgehenden BRE-Vorteil${recoveryHint} (${cost}) um ${advantage}.`
     );
   }
   return (
-    `Selbst zahlen lohnt sich für Leistungsjahr ${year}: Der entgehende Vorteil aus ` +
-    `BRE${recoveryHint} und Steuerersparnis (${cost}) übersteigt die Nettoerstattung von ${refund} um ${advantage}.`
+    `Selbst zahlen lohnt sich für Leistungsjahr ${year}: Der entgehende BRE-Vorteil` +
+    `${recoveryHint} (${cost}) übersteigt die Nettoerstattung von ${refund} um ${advantage}.`
   );
 }
 
@@ -289,8 +285,8 @@ function buildExplanation(
  * Implements the full multi-year NPV(ΔBRE) sum (design §5.2.4, issues #140 + #141):
  *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
  *
- * @throws RangeError if `taxSavingFromSelfPay` is negative, `discountRate ≤ −1`,
- *   `claimFreeProbability` outside [0, 1], or `payoutMonth` outside [1, 12].
+ * @throws RangeError if `discountRate ≤ −1`, `claimFreeProbability` outside [0, 1],
+ *   or `payoutMonth` outside [1, 12].
  */
 export function calculateGCP(input: GCP_YearInput): GCP_Result {
   const {
@@ -300,16 +296,12 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
     selbstbehalt,
     breStructure,
     monthlyPremium,
-    taxSavingFromSelfPay: taxSavingInput = 0,
     discountRate = DEFAULT_DISCOUNT_RATE,
     claimFreeProbability = DEFAULT_CLAIM_FREE_PROBABILITY,
     payoutMonth = DEFAULT_PAYOUT_MONTH,
     asOf = new Date(),
   } = input;
 
-  if (!(taxSavingInput >= 0)) {
-    throw new RangeError(`Steuervorteil darf nicht negativ sein, war ${taxSavingInput}`);
-  }
   if (!(discountRate > -1)) {
     throw new RangeError(`Diskontrate muss größer als -1 sein, war ${discountRate}`);
   }
@@ -325,7 +317,6 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
   const refundAfterDeductible = roundCents(Math.max(0, erstattungsBetrag - selbstbehalt));
   const currentStreakYears = getCurrentStreakYears(breStructure, asOf);
   const nMax = maxStreakLevel(breStructure);
-  const taxSavingFromSelfPay = roundCents(taxSavingInput);
 
   let ladderTerms: GCP_LadderTerm[];
   let lostBREValue_NPV: number;
@@ -351,12 +342,9 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
     lostBREValue_NPV = roundCents(ladderTerms.reduce((sum, t) => sum + t.discounted, 0));
   }
 
-  const netBenefitOfSubmitting = roundCents(
-    refundAfterDeductible - lostBREValue_NPV - taxSavingFromSelfPay,
-  );
+  const netBenefitOfSubmitting = roundCents(refundAfterDeductible - lostBREValue_NPV);
   // Tie (netBenefit === 0) goes to self-pay: preserve the streak when in doubt.
   const recommendation = netBenefitOfSubmitting > 0 ? 'einreichen' : 'selbst_zahlen';
-  const costOfSubmitting = roundCents(lostBREValue_NPV + taxSavingFromSelfPay);
 
   return {
     recommendation,
@@ -370,7 +358,6 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
       ladderTerms,
       discountRate,
       claimFreeProbability,
-      taxSavingFromSelfPay,
     },
     explanation: buildExplanation(
       recommendation,
@@ -378,7 +365,7 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
       refundAfterDeductible,
       year,
       alreadyBroken,
-      costOfSubmitting,
+      lostBREValue_NPV,
       ladderTerms,
     ),
   };
