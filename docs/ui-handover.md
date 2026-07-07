@@ -141,7 +141,7 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 ### 3.8 Einstellungen (`#20`)
 - **Stammdaten** → Personen verwalten.
 - **Server**: API-URL, API-Key (X-API-Key).
-- **Günstigerprüfung**: Diskontierungsrate (wirksam), persönlicher Steuersatz, **§33-Hinweis** (siehe §5).
+- **Günstigerprüfung**: Diskontierungsrate (wirksam).
 - **Datenschutz**: Toggle „Rechnungsbilder lokal speichern" (Default aus).
 - **Datensicherung**: Export/Import der SQLite-DB (Art. 20 DSGVO).
 
@@ -170,14 +170,13 @@ Wartezeit, Beihilfe-Satz (Tarif trägt Restquote) sowie die Aufbaujahres-/Zahnst
 
 Die **GCPCard** zeigt die Größen aus `design.md` §5.3 (`GCP_Result.breakdown`):
 Rechnungsbetrag, Erstattung PKV (est.), verbleibender Selbstbehalt, **Nettoerstattung**
-(`max(0, R − S)`), BRE-Staffel, drohender BRE-Verlust, **NPV BRE-Verlust** (abgezinst mit der
-Diskontrate aus den Einstellungen) und **Steuervorteil (§33 EStG)**.
+(`max(0, R − S)`), BRE-Staffel, drohender BRE-Verlust und **NPV BRE-Verlust** (abgezinst mit der
+Diskontrate aus den Einstellungen).
 
-> **Wichtig:** Der Steuervorteil wird **nicht geschätzt**. Gemäß §5.1/§5.2 fließt er als
-> `taxSavingFromSelfPay` mit **Default 0 €** ein („kein erfundener Vorteil"), bis der §33-Helfer
-> vorliegt. Die Karte weist 0 € mit erklärendem Hinweis aus; die Einstellungen enthalten denselben Hinweis.
-> Kopf, Empfehlung („Einreichen"/„Selbst zahlen") und Netto-Vorteil ergeben sich aus
-> `R − S − NPV(ΔBRE) − Steuervorteil`.
+> **Wichtig:** Ein Steuervorteil (§33 EStG) wird **bewusst nicht berücksichtigt** — siehe
+> `design.md` §5.2.4 und Issue #64 (geschlossen, „won't do"). Kopf, Empfehlung
+> („Einreichen"/„Selbst zahlen") und Netto-Vorteil ergeben sich ausschließlich aus
+> `R − S − NPV(ΔBRE)`.
 
 ---
 
@@ -211,7 +210,7 @@ Diskontrate aus den Einstellungen) und **Steuervorteil (§33 EStG)**.
 - **Leistungs-Editor im Wizard** deckt Satz/Wartezeit/Jahreslimit/Beihilfe ab; die vollständige
   **`tiers`/`annual_staffel`**-Pflege (mehrstufige Schwellen, Zahnstaffel) wird angezeigt,
   aber im Schnell-Editor noch nicht bearbeitet.
-- **§33-EStG-Helfer** offen → Steuervorteil bleibt 0 € (Folge-Issue).
+- **§33-EStG-Steuervorteil** wird absichtlich nicht berechnet (Issue #64 geschlossen, „won't do") — siehe `design.md` §5.2.4.
 - **Stats-Seite** (`/stats`) noch nicht entworfen (Issue #28).
 
 ---

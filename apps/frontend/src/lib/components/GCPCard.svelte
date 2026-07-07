@@ -131,13 +131,6 @@
           <dd class="text-right font-medium tabular-nums">
             {(result.breakdown.discountRate * 100).toFixed(1)} %
           </dd>
-
-          {#if result.breakdown.taxSavingFromSelfPay > 0}
-            <dt class="text-muted-foreground">Steuerersparnis (§33 EStG)</dt>
-            <dd class="text-right font-medium tabular-nums">
-              {formatEur(result.breakdown.taxSavingFromSelfPay)}
-            </dd>
-          {/if}
         </dl>
       </CollapsibleContent>
     </Collapsible>

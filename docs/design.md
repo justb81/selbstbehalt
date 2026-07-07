@@ -595,7 +595,6 @@ statusabhängig:
 | $$i$$ | Diskontierungsrate (Standard: 3 % p.a.) |
 | $$p$$ | Wahrscheinlichkeit, in einem künftigen Jahr leistungsfrei zu bleiben (Standard: 0,7) |
 | $$\tau_j$$ | Monate von `asOf` bis zum BRE-Auszahlungstermin des Jahres $$Y+j$$ |
-| $$\text{Steuervorteil}$$ | Steuerersparnis bei Selbstzahlung — extern berechnet, injiziert (Default 0), siehe unten |
 
 #### 5.2.3 Entscheidungsregel (All-or-Nothing pro Jahr)
 
@@ -604,7 +603,7 @@ Entweder das Jahr bleibt unter dem Selbstbehalt (alles selbst zahlen, BRE erhalt
 Schwelle wird überschritten, und dann wird **alles** Erstattungsfähige eingereicht (jeder Euro
 oberhalb von $$S$$ wird voll erstattet, der BRE-Verlust fällt nur einmal an).
 
-$$ \max(0,\; R_Y - S) \;>\; \text{NPV}(\Delta \text{BRE}) + \text{Steuervorteil} $$
+$$ \max(0,\; R_Y - S) \;>\; \text{NPV}(\Delta \text{BRE}) $$
 
 **Sonderfall „Staffel bereits gebrochen":** Ist für Jahr $$Y$$ bereits eine Erstattung geflossen
 (eine Position mit `treatment_date` in $$Y$$ auf einer `erstattet`-Rechnung mit `refund_amount > 0`),
@@ -640,7 +639,7 @@ ausgezahlt; $$\tau_j$$ ist die Monatsdistanz von `asOf` bis zum Juli von $$Y+1+j
 Verlust sofort/realisiert, keine Abzinsung). Der Auszahlungsmonat ist vorerst fest Juli; ihn pro
 Vertrag konfigurierbar zu machen ist ein Folge-Issue.
 
-**Steuervorteil — nicht in der Engine geschätzt:** Selbst gezahlte Arztrechnungen sind nur als **außergewöhnliche Belastungen (§33 EStG)** absetzbar, und auch nur der Teil **oberhalb der zumutbaren Belastung** — einer einkommensabhängigen, über das Jahr kumulierten Schwelle (≈ 1–7 % des Gesamtbetrags der Einkünfte, gestaffelt nach Familienstand und Kinderzahl), die eine einzelne Rechnung selten überschreitet. Eine korrekte Berechnung braucht Einkommen, Veranlagungsart, Kinderzahl und die bereits selbst getragenen Jahreskosten; die Günstigerprüfung-Engine berechnet den Wert daher **nicht** selbst, sondern erhält ihn vom Aufrufer (`taxSavingFromSelfPay`, Default `0` — kein erfundener Vorteil). Ein eigener §33-Helfer liefert den Wert später (Folge-Issue). Da der Selbstbehalt und die Selbstzahl-Summe ohnehin Jahresgrößen sind, gehört auch der Steuervorteil auf Jahresebene.
+**Steuervorteil — bewusst nicht berücksichtigt:** Selbst gezahlte Arztrechnungen sind unter Umständen als **außergewöhnliche Belastungen (§33 EStG)** absetzbar, aber nur der Teil **oberhalb der zumutbaren Belastung** — einer einkommensabhängigen, über das Jahr kumulierten Schwelle (≈ 1–7 % des Gesamtbetrags der Einkünfte, gestaffelt nach Familienstand und Kinderzahl), die eine einzelne Rechnung selten überschreitet. Eine korrekte Berechnung bräuchte Einkommen, Veranlagungsart, Kinderzahl und die bereits selbst getragenen Jahreskosten des Nutzers — Angaben, die in der weit überwiegenden Mehrheit der Fälle ohnehin nicht zum Tragen kämen und die App unnötig verkomplizieren würden. Die Günstigerprüfung-Engine rechnet daher **ausschließlich** mit `max(0, R_Y - S) > NPV(ΔBRE)`; ein Steuervorteil fließt nicht ein. Das ist eine bewusste Scope-Entscheidung (nicht bloß eine fehlende Funktion) — siehe Issue #64, das aus diesem Grund geschlossen wurde.
 
 #### 5.2.5 Rechenbeispiel
 
@@ -676,7 +675,6 @@ interface GCP_YearInput {
   selbstbehalt: number;            // S — Selbstbehalt p.a. der Person (self_retention)
   breStructure: BREStructure;
   monthlyPremium: number;
-  taxSavingFromSelfPay?: number;   // Steuervorteil (§33 EStG), extern berechnet; Default 0
   discountRate?: number;           // i — Default: 0.03
   claimFreeProbability?: number;   // p — Default: 0.7
   payoutMonth?: number;            // BRE-Auszahlungsmonat (1–12); Default: 7 (Juli)
@@ -701,7 +699,6 @@ interface GCP_Result {
     }>;
     discountRate: number;
     claimFreeProbability: number;
-    taxSavingFromSelfPay: number;
   };
   explanation: string;             // deutscher Klartext
 }
@@ -779,7 +776,7 @@ Jahres zusammen. Die einzelne Rechnung zeigt **kein** eigenes Verdikt mehr, sond
 /persons                → Personen (Versicherungsnehmer und Haushaltsmitglieder als Identitäten)
 /persons/[id]           → Personendetail + Bearbeitung
 /stats                  → Jahresauswertung (Kosten, Erstattungen, BRE — vollständige Analyse, geplant)
-/settings               → Server-URL, Steuersatz, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Datenbankexport
+/settings               → Server-URL, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Datenbankexport
 ```
 
 **Informationsarchitektur und Rollentrennung:**

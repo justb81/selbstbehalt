@@ -14,7 +14,6 @@ const BREAKDOWN: GCP_Result['breakdown'] = {
   ladderTerms: [{ j: 0, gross: 100, probability: 1, monthsToPayout: 6, discounted: 97 }],
   discountRate: 0.03,
   claimFreeProbability: 0.7,
-  taxSavingFromSelfPay: 0,
 };
 
 const SUBMIT_RESULT: GCP_Result = {
@@ -93,19 +92,5 @@ describe('GCPCard', () => {
   it('renders the breakdown summary toggle', () => {
     render(GCPCard, { props: { result: SUBMIT_RESULT } });
     expect(screen.getByText('Rechenweg anzeigen')).toBeInTheDocument();
-  });
-
-  it('omits the Steuerersparnis row when taxSavingFromSelfPay is zero', () => {
-    render(GCPCard, { props: { result: SUBMIT_RESULT } });
-    expect(screen.queryByText(/Steuerersparnis/)).not.toBeInTheDocument();
-  });
-
-  it('shows the Steuerersparnis row when taxSavingFromSelfPay > 0', () => {
-    const withTax: GCP_Result = {
-      ...SUBMIT_RESULT,
-      breakdown: { ...BREAKDOWN, taxSavingFromSelfPay: 50 },
-    };
-    render(GCPCard, { props: { result: withTax } });
-    expect(screen.getByText(/Steuerersparnis/)).toBeInTheDocument();
   });
 });

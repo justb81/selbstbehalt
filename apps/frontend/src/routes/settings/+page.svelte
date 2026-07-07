@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Einstellungs-Seite (docs/design.md §6.1, issue #20): Server-URL, X-API-Key,
-  Steuersatz, Diskontrate sowie DB-Export/-Import.
+  Diskontrate sowie DB-Export/-Import.
 -->
 <script lang="ts">
   import { z } from 'zod';
@@ -17,10 +17,6 @@
   const settingsSchema = z.object({
     apiUrl: z.string(),
     apiKey: z.string(),
-    taxRatePct: z
-      .number({ error: 'Muss eine Zahl sein' })
-      .min(0, 'Muss ≥ 0 % sein')
-      .max(100, 'Muss ≤ 100 % sein'),
     discountRatePct: z.number({ error: 'Muss eine Zahl sein' }).min(0, 'Muss ≥ 0 % sein'),
     claimFreeProbabilityPct: z
       .number({ error: 'Muss eine Zahl sein' })
@@ -31,7 +27,6 @@
   // Local editable copies (displayed as %)
   let apiUrl = $state($settings.apiUrl);
   let apiKey = $state($settings.apiKey);
-  let taxRatePct = $state($settings.taxRate * 100);
   let discountRatePct = $state($settings.discountRate * 100);
   let claimFreeProbabilityPct = $state($settings.claimFreeProbability * 100);
 
@@ -44,7 +39,6 @@
     const result = settingsSchema.safeParse({
       apiUrl,
       apiKey,
-      taxRatePct,
       discountRatePct,
       claimFreeProbabilityPct,
     });
@@ -56,7 +50,6 @@
       ...s,
       apiUrl: apiUrl.trim(),
       apiKey: apiKey.trim(),
-      taxRate: taxRatePct / 100,
       discountRate: discountRatePct / 100,
       claimFreeProbability: claimFreeProbabilityPct / 100,
     }));
@@ -204,22 +197,6 @@
           </p>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="space-y-1">
-              <Label for="taxRate">Grenzsteuersatz (%)</Label>
-              <Input
-                id="taxRate"
-                type="number"
-                bind:value={taxRatePct}
-                min="0"
-                max="100"
-                step="0.5"
-                required
-              />
-              <p class="text-xs text-muted-foreground">
-                Wird für den §33-EStG-Steuervorteil benötigt (0–100 %).
-              </p>
-            </div>
-
             <div class="space-y-1">
               <Label for="discountRate">Diskontrate (% p.a.)</Label>
               <Input
