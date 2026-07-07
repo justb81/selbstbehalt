@@ -2,16 +2,14 @@
 
 ## [1.7.0](https://github.com/justb81/selbstbehalt/compare/v1.6.0...v1.7.0) (2026-07-07)
 
-
 ### Features
 
-* **backend:** add positions-based stats aggregation endpoints ([#239](https://github.com/justb81/selbstbehalt/issues/239)) ([#240](https://github.com/justb81/selbstbehalt/issues/240)) ([55ba2ca](https://github.com/justb81/selbstbehalt/commit/55ba2ca36f577cd398757fdf202a7f26e4f25702))
-* **frontend:** shared, filterable invoice list on both invoice pages ([#242](https://github.com/justb81/selbstbehalt/issues/242)) ([4399204](https://github.com/justb81/selbstbehalt/commit/43992045641695f0133b0e5886245fc94c8f99e7))
-
+- **backend:** add positions-based stats aggregation endpoints ([#239](https://github.com/justb81/selbstbehalt/issues/239)) ([#240](https://github.com/justb81/selbstbehalt/issues/240)) ([55ba2ca](https://github.com/justb81/selbstbehalt/commit/55ba2ca36f577cd398757fdf202a7f26e4f25702))
+- **frontend:** shared, filterable invoice list on both invoice pages ([#242](https://github.com/justb81/selbstbehalt/issues/242)) ([4399204](https://github.com/justb81/selbstbehalt/commit/43992045641695f0133b0e5886245fc94c8f99e7))
 
 ### Bug Fixes
 
-* **gcp:** break BRE streak only when reimbursements exceed the Selbstbehalt ([#241](https://github.com/justb81/selbstbehalt/issues/241)) ([abb8541](https://github.com/justb81/selbstbehalt/commit/abb854190ea3c4be8a59b4694007fe53ea1dc975))
+- **gcp:** break BRE streak only when reimbursements exceed the Selbstbehalt ([#241](https://github.com/justb81/selbstbehalt/issues/241)) ([abb8541](https://github.com/justb81/selbstbehalt/commit/abb854190ea3c4be8a59b4694007fe53ea1dc975))
 
 ## [1.6.0](https://github.com/justb81/selbstbehalt/compare/v1.5.1...v1.6.0) (2026-07-07)
 
