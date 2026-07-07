@@ -193,16 +193,14 @@
   // OCR (create mode only)
   // ---------------------------------------------------------------------------
 
-  let showScanner = $state(false);
   // Own copy of `sharedFile` (issue #158): cleared once consumed so a later
-  // manual "Neu scannen / hochladen" opens a fresh scanner instead of
-  // re-auto-scanning the same shared PDF.
+  // manual scan/upload starts fresh instead of re-auto-scanning the same
+  // shared PDF.
   let autoFile = $state<File | null>(null);
 
   $effect(() => {
     if (sharedFile) {
       autoFile = sharedFile;
-      showScanner = true;
     }
   });
 
@@ -214,7 +212,6 @@
 
   function onScanned(result: ScanResult): void {
     scanResult = result;
-    showScanner = false;
     autoFile = null;
     if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
     if (result.parsed.invoiceNumber) invoiceNumber = result.parsed.invoiceNumber;
@@ -498,32 +495,15 @@
 </script>
 
 <div class="flex flex-col gap-4">
-  <!-- OCR section (create mode only) -->
+  <!-- OCR section (create mode only): the scanner/dropzone is always visible. -->
   {#if mode === 'create'}
     <div class="flex flex-col gap-3 border-b border-border pb-4">
-      <div class="flex flex-wrap items-center gap-3">
-        {#if !showScanner}
-          <Button type="button" variant="outline" onclick={() => (showScanner = true)} {disabled}>
-            {hasScan ? 'Neu scannen / hochladen' : 'Rechnung scannen / hochladen'}
-          </Button>
-          {#if hasScan}
-            <span class="text-sm text-green-600 dark:text-green-500">
-              ✓ Aus Scan übernommen – bitte prüfen
-            </span>
-          {:else}
-            <span class="text-sm text-muted-foreground">
-              Optional. Die Erkennung läuft auf diesem Gerät; das Bild verlässt es nie.
-            </span>
-          {/if}
-        {:else}
-          <Button type="button" variant="ghost" size="sm" onclick={() => (showScanner = false)}>
-            Schließen
-          </Button>
-        {/if}
-      </div>
-      {#if showScanner}
-        <OCRScanner {onScanned} {autoFile} />
+      {#if hasScan}
+        <span class="text-sm text-green-600 dark:text-green-500">
+          ✓ Aus Scan übernommen – bitte prüfen
+        </span>
       {/if}
+      <OCRScanner {onScanned} {autoFile} />
     </div>
 
     {#if hasScan && lowConfidence}

@@ -79,7 +79,7 @@
     disabled?: boolean;
     saving?: boolean;
     formError?: string | null;
-    /** A file handed in from the PWA share target (issue #158); opens the scanner and scans it automatically. */
+    /** A file handed in from the PWA share target (issue #158); scanned automatically by the always-visible scanner. */
     sharedFile?: File | null;
     onSave: (payload: FormPayload) => void;
   } = $props();
