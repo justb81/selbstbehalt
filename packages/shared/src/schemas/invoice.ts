@@ -75,14 +75,30 @@ export const invoiceStatusChangeSchema = z
 
 /**
  * `PUT /api/invoices/:id/refund` body: per-position refund amounts.
- * Sets invoice status → erstattet and writes refund_amount per position.
- * refund_amount = 0 represents a rejection (Ablehnung) for that position.
+ * From status `eingereicht`, sets invoice status → erstattet and writes
+ * refund_amount per position. From status `erstattet`, corrects the
+ * already-recorded amounts in place without changing the status (issue #230
+ * "Bearbeiten"). refund_amount = 0 represents a rejection (Ablehnung) for
+ * that position.
  */
 export const invoiceRefundPayloadSchema = z
   .object({
     positions: z.array(z.object({ id: uuid, refund_amount: money.nullable() }).strict()),
     note: z.string().nullish(),
     refund_date: isoDate.nullish(),
+  })
+  .strict();
+
+/**
+ * `POST /api/invoices/:id/revert` body (issue #230 "Löschen"): undoes the
+ * invoice's last status transition, moving it back to the predecessor status
+ * (bezahlt→geprüft, eingereicht→bezahlt, erstattet→eingereicht) and discarding
+ * the data that step captured — the `submissions` row for eingereicht, or the
+ * per-position `refund_amount`/`refund_date` for erstattet.
+ */
+export const invoiceRevertSchema = z
+  .object({
+    note: z.string().nullish(),
   })
   .strict();
 
@@ -94,3 +110,4 @@ export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;
 export type InvoiceUpdatePayload = z.infer<typeof invoiceUpdatePayloadSchema>;
 export type InvoiceStatusChange = z.infer<typeof invoiceStatusChangeSchema>;
 export type InvoiceRefundPayload = z.infer<typeof invoiceRefundPayloadSchema>;
+export type InvoiceRevert = z.infer<typeof invoiceRevertSchema>;

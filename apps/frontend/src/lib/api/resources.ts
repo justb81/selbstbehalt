@@ -27,6 +27,7 @@ import {
   type Invoice,
   type InvoiceCreatePayload,
   type InvoiceRefundPayload,
+  type InvoiceRevert,
   type InvoiceStatusChange,
   type InvoiceStatusEvent,
   type InvoiceUpdatePayload,
@@ -36,6 +37,7 @@ import {
   type PersonUpdate,
   type Submission,
   type SubmissionInput,
+  type SubmissionUpdate,
   type YearStats,
 } from '@selbstbehalt/shared';
 import { z } from 'zod';
@@ -132,9 +134,23 @@ export function createResources(request: ApiRequester) {
         body: data,
         schema: submissionSchema,
       }),
+    getSubmission: (invoiceId: string) =>
+      request(`/api/invoices/${id(invoiceId)}/submission`, { schema: submissionSchema }),
+    updateSubmission: (invoiceId: string, data: SubmissionUpdate) =>
+      request(`/api/invoices/${id(invoiceId)}/submission`, {
+        method: 'PUT',
+        body: data,
+        schema: submissionSchema,
+      }),
     refund: (invoiceId: string, data: InvoiceRefundPayload) =>
       request(`/api/invoices/${id(invoiceId)}/refund`, {
         method: 'PUT',
+        body: data,
+        schema: invoiceWithPositionsSchema,
+      }),
+    revert: (invoiceId: string, data: InvoiceRevert) =>
+      request(`/api/invoices/${id(invoiceId)}/revert`, {
+        method: 'POST',
         body: data,
         schema: invoiceWithPositionsSchema,
       }),

@@ -9,14 +9,21 @@
 // Invoices in status bezahlt/eingereicht/erstattet are locked for editing.
 // `eligible_amount` and `self_paid_amount` on invoices are server-computed
 // from positions on every write; clients must not set them directly.
+//
+// Stepping back a step (Issue #230): POST /:id/revert undoes bezahlt →
+// geprüft, eingereicht → bezahlt, or erstattet → eingereicht, discarding the
+// data that step captured. PUT /:id/submission and PUT /:id/refund instead
+// correct that data in place without changing the status.
 
 import {
   invoiceCreatePayloadSchema,
   invoiceRefundPayloadSchema,
+  invoiceRevertSchema,
   invoiceStatusChangeSchema,
   invoiceStatusValues,
   invoiceUpdatePayloadSchema,
   submissionInputSchema,
+  submissionUpdateSchema,
   uuid,
   type InvoiceStatus,
   type InvoiceWithPositions,
@@ -34,7 +41,7 @@ import {
   invoices,
   submissions,
 } from '../db/schema.js';
-import { assertFkExists, requireRow } from '../lib/db-helpers.js';
+import { assertFkExists, requireRow, updateOrReturn } from '../lib/db-helpers.js';
 import {
   serializeInvoice,
   serializePosition,
@@ -45,6 +52,7 @@ import {
   toPositionInsert,
   toStatusEventInsert,
   toSubmissionInsert,
+  toSubmissionUpdate,
 } from '../lib/serialize.js';
 import { parseJsonBody, parseQuery } from '../lib/validation.js';
 
@@ -63,6 +71,18 @@ const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   erstattet: [],
 };
 
+/**
+ * Predecessor status for `POST /:id/revert` (issue #230 "Löschen"): undoes the
+ * step that produced the current status, discarding the data it captured.
+ * `geprüft→neu` already has an undo path via the generic `/status` transition
+ * (geprüft has no captured data to discard), so it is intentionally absent here.
+ */
+const PREVIOUS_STATUS: Partial<Record<InvoiceStatus, InvoiceStatus>> = {
+  bezahlt: 'geprüft',
+  eingereicht: 'bezahlt',
+  erstattet: 'eingereicht',
+};
+
 const isoDateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Datum muss JJJJ-MM-TT sein');
 
 const listQuerySchema = z.object({
@@ -75,6 +95,17 @@ const listQuerySchema = z.object({
 
 function findInvoice(db: Database, id: string) {
   return db.select().from(invoices).where(eq(invoices.id, id)).get();
+}
+
+/** The most recent submission of an invoice, or undefined if it was never submitted. */
+function findLatestSubmission(db: Database, invoiceId: string) {
+  return db
+    .select()
+    .from(submissions)
+    .where(eq(submissions.invoiceId, invoiceId))
+    .orderBy(desc(submissions.submittedAt))
+    .limit(1)
+    .get();
 }
 
 /**
@@ -299,12 +330,55 @@ export function createInvoicesRoute(db: Database) {
 
       return c.json(serializeSubmission(submission), 201);
     })
-    .put('/:id/refund', async (c) => {
+    .get('/:id/submission', (c) => {
+      const id = c.req.param('id');
+      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
+      const submission = requireRow(
+        () => findLatestSubmission(db, id),
+        'Für diese Rechnung liegt keine Einreichung vor',
+      );
+      return c.json(serializeSubmission(submission));
+    })
+    .put('/:id/submission', async (c) => {
+      // Corrects the submission captured by /submit in place (issue #230
+      // "Bearbeiten") — the invoice stays 'eingereicht', no new status event.
       const id = c.req.param('id');
       const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       if (invoice.status !== 'eingereicht') {
         throw new HTTPException(409, {
-          message: `Erstattung nur für eingereichte Rechnungen möglich (Status: '${invoice.status}')`,
+          message: `Einreichung kann nur im Status 'eingereicht' bearbeitet werden (Status: '${invoice.status}')`,
+        });
+      }
+      const submission = requireRow(
+        () => findLatestSubmission(db, id),
+        'Für diese Rechnung liegt keine Einreichung vor',
+      );
+
+      const input = await parseJsonBody(c, submissionUpdateSchema);
+      const changes = toSubmissionUpdate(input);
+      const updated = updateOrReturn(
+        changes,
+        () =>
+          db
+            .update(submissions)
+            .set(changes)
+            .where(eq(submissions.id, submission.id))
+            .returning()
+            .get()!,
+        submission,
+      );
+      return c.json(serializeSubmission(updated));
+    })
+    .put('/:id/refund', async (c) => {
+      const id = c.req.param('id');
+      const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
+      // From 'eingereicht' this captures the refund for the first time and
+      // transitions to 'erstattet'; from 'erstattet' it corrects the
+      // already-recorded amounts in place (issue #230 "Bearbeiten").
+      const isFirstCapture = invoice.status === 'eingereicht';
+      if (!isFirstCapture && invoice.status !== 'erstattet') {
+        throw new HTTPException(409, {
+          message: `Erstattung nur für eingereichte oder bereits erstattete Rechnungen möglich (Status: '${invoice.status}')`,
         });
       }
 
@@ -320,13 +394,7 @@ export function createInvoicesRoute(db: Database) {
         }
         // Update submission refund_date if provided.
         if (input.refund_date) {
-          const latest = tx
-            .select()
-            .from(submissions)
-            .where(eq(submissions.invoiceId, id))
-            .orderBy(desc(submissions.submittedAt))
-            .limit(1)
-            .get();
+          const latest = findLatestSubmission(tx as unknown as Database, id);
           if (latest) {
             tx.update(submissions)
               .set({ refundDate: input.refund_date })
@@ -335,9 +403,49 @@ export function createInvoicesRoute(db: Database) {
           }
         }
         recalcInvoiceSums(tx as unknown as Database, id);
-        tx.update(invoices).set({ status: 'erstattet' }).where(eq(invoices.id, id)).run();
+        if (isFirstCapture) {
+          tx.update(invoices).set({ status: 'erstattet' }).where(eq(invoices.id, id)).run();
+          tx.insert(invoiceStatusEvents)
+            .values(toStatusEventInsert(id, 'erstattet', input.note))
+            .run();
+        }
+      });
+
+      return c.json(invoiceWithPositions(db, id));
+    })
+    .post('/:id/revert', async (c) => {
+      // Undoes the invoice's last status transition (issue #230 "Löschen"),
+      // discarding the data that step captured.
+      const id = c.req.param('id');
+      const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
+      const previous = PREVIOUS_STATUS[invoice.status as InvoiceStatus];
+      if (!previous) {
+        throw new HTTPException(409, {
+          message: `Der Schritt zu Status '${invoice.status}' kann nicht rückgängig gemacht werden`,
+        });
+      }
+      const input = await parseJsonBody(c, invoiceRevertSchema);
+
+      db.transaction((tx) => {
+        if (invoice.status === 'eingereicht') {
+          // Discard the submission captured by bezahlt → eingereicht.
+          tx.delete(submissions).where(eq(submissions.invoiceId, id)).run();
+        }
+        if (invoice.status === 'erstattet') {
+          // Discard the refund captured by eingereicht → erstattet.
+          tx.update(invoicePositions)
+            .set({ refundAmount: null })
+            .where(eq(invoicePositions.invoiceId, id))
+            .run();
+          tx.update(submissions)
+            .set({ refundDate: null })
+            .where(eq(submissions.invoiceId, id))
+            .run();
+          recalcInvoiceSums(tx as unknown as Database, id);
+        }
+        tx.update(invoices).set({ status: previous }).where(eq(invoices.id, id)).run();
         tx.insert(invoiceStatusEvents)
-          .values(toStatusEventInsert(id, 'erstattet', input.note))
+          .values(toStatusEventInsert(id, previous, input.note))
           .run();
       });
 

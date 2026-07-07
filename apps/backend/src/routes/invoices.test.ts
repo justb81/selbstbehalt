@@ -309,4 +309,158 @@ describe('PUT /api/invoices/:id/refund', () => {
     const res = await json('PUT', `/api/invoices/${body.id}/refund`, { positions: [] });
     expect(res.status).toBe(409);
   });
+
+  it('corrects an already-recorded refund in place without a new status event', async () => {
+    const { invoiceId, positionId } = await submittedWithPosition();
+    await json('PUT', `/api/invoices/${invoiceId}/refund`, {
+      positions: [{ id: positionId, refund_amount: 62.5 }],
+      refund_date: '2026-07-01',
+    });
+
+    const res = await json('PUT', `/api/invoices/${invoiceId}/refund`, {
+      positions: [{ id: positionId, refund_amount: 55 }],
+      refund_date: '2026-07-05',
+    });
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail.status).toBe('erstattet');
+    expect(detail.positions[0].refund_amount).toBe(55);
+
+    const events = await (await app.request(`/api/invoices/${invoiceId}/events`)).json();
+    expect(events.filter((e: { status: string }) => e.status === 'erstattet')).toHaveLength(1);
+  });
+});
+
+describe('GET/PUT /api/invoices/:id/submission', () => {
+  async function submittedInvoice() {
+    const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+    await json('POST', `/api/invoices/${body.id}/submit`, {
+      submitted_via: 'email',
+      expected_refund: 62.5,
+    });
+    return body.id as string;
+  }
+
+  it('returns the current submission', async () => {
+    const invoiceId = await submittedInvoice();
+    const res = await app.request(`/api/invoices/${invoiceId}/submission`);
+    expect(res.status).toBe(200);
+    const submission = await res.json();
+    expect(submission.submitted_via).toBe('email');
+    expect(submission.expected_refund).toBe(62.5);
+  });
+
+  it('returns 404 when the invoice was never submitted', async () => {
+    const { body } = await createInvoice();
+    const res = await app.request(`/api/invoices/${body.id}/submission`);
+    expect(res.status).toBe(404);
+  });
+
+  it('corrects the submission in place while staying eingereicht', async () => {
+    const invoiceId = await submittedInvoice();
+    const res = await json('PUT', `/api/invoices/${invoiceId}/submission`, {
+      submitted_via: 'post',
+      expected_refund: 70,
+    });
+    expect(res.status).toBe(200);
+    const updated = await res.json();
+    expect(updated.submitted_via).toBe('post');
+    expect(updated.expected_refund).toBe(70);
+
+    const detail = await (await app.request(`/api/invoices/${invoiceId}`)).json();
+    expect(detail.status).toBe('eingereicht');
+  });
+
+  it('rejects editing the submission of a non-eingereicht invoice with 409', async () => {
+    const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+    const res = await json('PUT', `/api/invoices/${body.id}/submission`, { submitted_via: 'post' });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('POST /api/invoices/:id/revert', () => {
+  it('reverts bezahlt back to geprüft', async () => {
+    const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'geprüft' });
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+
+    const res = await json('POST', `/api/invoices/${body.id}/revert`, {});
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail.status).toBe('geprüft');
+  });
+
+  it('reverts eingereicht back to bezahlt and deletes the submission', async () => {
+    const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+    await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' });
+
+    const res = await json('POST', `/api/invoices/${body.id}/revert`, {});
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail.status).toBe('bezahlt');
+
+    const submissionRes = await app.request(`/api/invoices/${body.id}/submission`);
+    expect(submissionRes.status).toBe(404);
+
+    // The invoice is bezahlt again — it can be re-submitted.
+    const resubmit = await json('POST', `/api/invoices/${body.id}/submit`, {
+      submitted_via: 'post',
+    });
+    expect(resubmit.status).toBe(201);
+  });
+
+  it('reverts erstattet back to eingereicht and clears the refund amounts', async () => {
+    const { body } = await createInvoice({
+      ...baseInvoice(),
+      positions: [
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
+      ],
+    });
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+    await json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' });
+    await json('PUT', `/api/invoices/${body.id}/refund`, {
+      positions: [{ id: body.positions[0].id, refund_amount: 10.72 }],
+      refund_date: '2026-07-01',
+    });
+
+    const res = await json('POST', `/api/invoices/${body.id}/revert`, {});
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail.status).toBe('eingereicht');
+    expect(detail.positions[0].refund_amount).toBeNull();
+    expect(detail.self_paid_amount).toBe(10.72);
+
+    const submission = await (await app.request(`/api/invoices/${body.id}/submission`)).json();
+    expect(submission.refund_date).toBeNull();
+  });
+
+  it('logs the revert as a status event', async () => {
+    const { body } = await createInvoice();
+    await json('PUT', `/api/invoices/${body.id}`, { status: 'bezahlt' });
+    await json('POST', `/api/invoices/${body.id}/revert`, { note: 'Falsches Datum erfasst' });
+
+    const events = await (await app.request(`/api/invoices/${body.id}/events`)).json();
+    expect(events[0].status).toBe('geprüft');
+    expect(events[0].note).toBe('Falsches Datum erfasst');
+  });
+
+  it('rejects reverting a neu invoice with 409', async () => {
+    const { body } = await createInvoice();
+    const res = await json('POST', `/api/invoices/${body.id}/revert`, {});
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 404 when reverting an unknown invoice', async () => {
+    const res = await json('POST', `/api/invoices/${crypto.randomUUID()}/revert`, {});
+    expect(res.status).toBe(404);
+  });
 });
