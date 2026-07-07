@@ -87,22 +87,26 @@
       })),
     ).sort((a, b) => b.year - a.year); // most recent first
 
+    // The streak is broken only once realised reimbursements exceed the deductible.
+    const selbstbehalt = insuredPerson.self_retention;
+
     if (!insuredPerson.bre_structure) {
-      return aggregates.map(({ year, R_Y, alreadyBroken }): YearVerdict => ({
+      return aggregates.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => ({
         year,
         R_Y,
-        alreadyBroken,
+        alreadyBroken: alreadyReimbursed > selbstbehalt,
         gcp: null,
       }));
     }
 
-    return aggregates.map(({ year, R_Y, alreadyBroken }): YearVerdict => {
+    return aggregates.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => {
+      const alreadyBroken = alreadyReimbursed > selbstbehalt;
       try {
         const gcp = calculateGCP({
           year,
           erstattungsBetrag: R_Y,
-          alreadyBroken,
-          selbstbehalt: insuredPerson!.self_retention,
+          alreadyReimbursed,
+          selbstbehalt,
           breStructure: insuredPerson!.bre_structure!,
           monthlyPremium: insuredPerson!.monthly_premium,
           discountRate: $settings.discountRate,

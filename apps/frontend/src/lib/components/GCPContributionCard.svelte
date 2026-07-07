@@ -22,7 +22,10 @@
     totalR_Y: number;
     /** Annual Selbstbehalt. */
     selbstbehalt: number;
-    /** Whether the BRE streak for this year is already broken by a prior refund. */
+    /**
+     * Whether the BRE streak for this year is already broken — i.e. the reimbursements
+     * already realised for the year exceed the Selbstbehalt.
+     */
     alreadyBroken: boolean;
   }
 
@@ -96,18 +99,18 @@
           <div class="mt-3 text-sm">
             {#if c.alreadyBroken}
               <p class="text-amber-700 dark:text-amber-400">
-                Die BRE-Staffel für {c.year} ist bereits durch eine Erstattung gebrochen — Einreichen
-                ohne BRE-Abzug sinnvoll.
+                Die bereits erstatteten Beträge übersteigen den Selbstbehalt — die BRE-Staffel für {c.year}
+                ist gebrochen. Einreichen ohne BRE-Abzug sinnvoll.
               </p>
             {:else if overThreshold}
               <p class="text-primary">
                 Gesamt-Erstattungsbetrag {formatEur(c.totalR_Y)} übersteigt den Selbstbehalt von
-                {formatEur(c.selbstbehalt)} — Einreichen könnte lohnend sein.
+                {formatEur(c.selbstbehalt)} — erst hier bricht Einreichen die BRE-Staffel.
               </p>
             {:else}
               <p class="text-muted-foreground">
                 Gesamt-Erstattungsbetrag {formatEur(c.totalR_Y)} liegt noch unter dem Selbstbehalt von
-                {formatEur(c.selbstbehalt)}
+                {formatEur(c.selbstbehalt)} — Einreichen ist folgenlos, die Staffel bleibt erhalten
                 {#if shareOfThreshold < 1}
                   (diese Rechnung: {Math.round(shareOfThreshold * 100)} % des Selbstbehalts){/if}.
               </p>
