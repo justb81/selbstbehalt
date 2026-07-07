@@ -7,9 +7,29 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner';
   import { isOnline, pendingWrites } from '$lib/offline/index.js';
+  import {
+    installAvailable,
+    initInstallPrompt,
+    promptInstall,
+    dismissInstall,
+  } from '$lib/pwa/install.js';
   import { initPwa } from '$lib/pwa/register.js';
 
   const { needRefresh, offlineReady, updateServiceWorker } = initPwa();
+  initInstallPrompt();
+
+  $effect(() => {
+    if ($installAvailable) {
+      toast('App installieren?', {
+        id: 'pwa-install',
+        duration: Infinity,
+        action: { label: 'Installieren', onClick: () => void promptInstall() },
+        cancel: { label: 'Nicht jetzt', onClick: () => dismissInstall() },
+      });
+    } else {
+      toast.dismiss('pwa-install');
+    }
+  });
 
   $effect(() => {
     if ($needRefresh) {
