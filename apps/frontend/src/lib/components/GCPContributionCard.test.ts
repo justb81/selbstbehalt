@@ -69,12 +69,15 @@ describe('GCPContributionCard', () => {
   it('shows "Staffel gebrochen" badge and message when alreadyBroken', () => {
     render(GCPContributionCard, {
       props: {
-        contributions: [{ ...BASE, alreadyBroken: true }],
+        // Broken = reimbursements already exceed the deductible.
+        contributions: [{ ...BASE, totalR_Y: 800, selbstbehalt: 600, alreadyBroken: true }],
         insuredPersonId: 'ip-1',
       },
     });
     expect(screen.getByText('Staffel gebrochen')).toBeInTheDocument();
-    expect(screen.getByText(/BRE-Staffel.*bereits.*gebrochen/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/übersteigen den Selbstbehalt.*BRE-Staffel.*gebrochen/),
+    ).toBeInTheDocument();
   });
 
   it('renders multiple years', () => {

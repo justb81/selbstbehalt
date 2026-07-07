@@ -612,9 +612,18 @@ oberhalb von $$S$$ wird voll erstattet, der BRE-Verlust fällt nur einmal an).
 
 $$ \max(0,\; R_Y - S) \;>\; \text{NPV}(\Delta \text{BRE}) $$
 
-**Sonderfall „Staffel bereits gebrochen":** Ist für Jahr $$Y$$ bereits eine Erstattung geflossen
-(eine Position mit `treatment_date` in $$Y$$ auf einer `erstattet`-Rechnung mit `refund_amount > 0`),
-ist die BRE für $$Y$$ versenkt: $$\text{NPV}(\Delta \text{BRE}) = 0$$ ⇒ für $$Y$$ **alles einreichen**.
+**Unterhalb des Selbstbehalts kostet Einreichen nichts.** Solange $$R_Y \le S$$, zahlt der
+Versicherer nichts aus, das Jahr bleibt leistungsfrei und die Staffel bleibt erhalten — Einreichen
+ist folgenlos. Der $$\text{NPV}(\Delta \text{BRE})$$ wird also **erst fällig, wenn die Jahressumme den
+Selbstbehalt tatsächlich reißt** (vgl. §5.2.1, Punkt 2); die Engine weist ihn unterhalb der Schwelle
+als $$0$$ aus. Erst die Rechnung, die $$R_Y$$ über $$S$$ hebt, ist entscheidend.
+
+**Sonderfall „Staffel bereits gebrochen":** Die Staffel für $$Y$$ ist erst dann unwiderruflich
+gebrochen, wenn die **bereits ausgezahlten** Erstattungen des Jahres den Selbstbehalt übersteigen —
+also die Summe der `refund_amount` über `erstattet`-Positionen mit `treatment_date` in $$Y$$ größer
+als $$S$$ ist. Dann ist die BRE für $$Y$$ versenkt: $$\text{NPV}(\Delta \text{BRE}) = 0$$ ⇒ für $$Y$$
+**alles einreichen**. Eine einzelne kleine Erstattung, die unter dem Selbstbehalt bleibt, bricht die
+Staffel **nicht**.
 
 #### 5.2.4 BRE-Verlust als Differenz zweier abgezinster Ströme
 
@@ -670,7 +679,10 @@ mehrjährige Hochklettern kostet.
 
 Die Engine arbeitet **pro versicherter Person × Leistungsjahr**. Ein vorgelagerter Aggregations-
 Helfer bündelt die Positionen aller Rechnungen (außer `neu`) nach Leistungsjahr und liefert je Jahr
-`R_Y` (statusabhängig: tatsächlich erstattet vs. geschätzt) sowie das Flag „bereits gebrochen".
+`R_Y` (statusabhängig: tatsächlich erstattet vs. geschätzt) sowie die bereits **realisierte**
+Erstattung `alreadyReimbursed` (Σ `refund_amount` der `erstattet`-Positionen). Ob damit die Staffel
+gebrochen ist, entscheidet erst der Vergleich mit dem Selbstbehalt in `calculateGCP` — der Helfer
+kennt `S` nicht und liefert daher die Summe, nicht das Verdikt.
 
 ```typescript
 // guenstiger-pruefung.ts
@@ -678,7 +690,7 @@ Helfer bündelt die Positionen aller Rechnungen (außer `neu`) nach Leistungsjah
 interface GCP_YearInput {
   year: number;                    // Leistungsjahr Y
   erstattungsBetrag: number;       // R_Y — aggregiert über Positionen mit treatment_date in Y
-  alreadyBroken: boolean;          // Y bereits gebrochen? (Erstattung > 0 für Y bereits geflossen)
+  alreadyReimbursed: number;       // bereits realisierte Erstattung für Y (Σ refund_amount)
   selbstbehalt: number;            // S — Selbstbehalt p.a. der Person (self_retention)
   breStructure: BREStructure;
   monthlyPremium: number;
@@ -693,10 +705,13 @@ interface GCP_Result {
   netBenefitOfSubmitting: number;  // > 0 = Einreichen lohnt; ≤ 0 = selbst zahlen
   breakdown: {
     year: number;
+    relevantAmount: number;        // R_Y
+    selbstbehalt: number;          // S
     refundAfterDeductible: number; // max(0, R_Y − S)
     currentStreakYears: number;    // s
-    alreadyBroken: boolean;        // war die Staffel für Y schon gebrochen?
-    lostBREValue_NPV: number;      // Σ über j (= 0, wenn alreadyBroken)
+    alreadyReimbursed: number;     // bereits realisierte Erstattung für Y
+    alreadyBroken: boolean;        // alreadyReimbursed > S ⇒ Staffel für Y unwiderruflich gebrochen
+    lostBREValue_NPV: number;      // Σ über j (= 0 unter Selbstbehalt ODER wenn bereits gebrochen)
     ladderTerms: Array<{           // Aufschlüsselung der NPV-Summe (Transparenz/UI)
       j: number;
       gross: number;               // B(min(s+1+j,nMax)) − B(min(j,nMax))
@@ -711,7 +726,8 @@ interface GCP_Result {
 }
 
 // NPV(ΔBRE): Differenz aus Selbstzahl- und Reset-Pfad, p^j-gedämpft, auf asOf abgezinst.
-// Bei alreadyBroken === true ist die BRE für Y bereits versenkt ⇒ NPV = 0.
+// Der Verlust fällt nur an, wenn Einreichen den Selbstbehalt tatsächlich reißt (R_Y > S) und die
+// Staffel noch intakt ist. Unter dem Selbstbehalt oder bei alreadyReimbursed > S ist NPV = 0.
 function calculateGCP(input: GCP_YearInput): GCP_Result { /* … siehe §5.2.4 … */ }
 ```
 

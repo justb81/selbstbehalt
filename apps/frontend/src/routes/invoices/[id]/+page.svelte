@@ -111,6 +111,8 @@
       byYear.set(year, (byYear.get(year) ?? 0) + amount);
     }
 
+    const selbstbehalt = insuredPerson.self_retention;
+
     return Array.from(byYear.entries())
       .sort((a, b) => b[0] - a[0])
       .map(([year, amount]) => {
@@ -119,8 +121,9 @@
           year,
           amount: roundCents(amount),
           totalR_Y: agg?.R_Y ?? roundCents(amount),
-          selbstbehalt: insuredPerson!.self_retention,
-          alreadyBroken: agg?.alreadyBroken ?? false,
+          selbstbehalt,
+          // Broken only once realised reimbursements exceed the deductible.
+          alreadyBroken: (agg?.alreadyReimbursed ?? 0) > selbstbehalt,
         };
       });
   });

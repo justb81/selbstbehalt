@@ -7,8 +7,11 @@ import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
 
 const BREAKDOWN: GCP_Result['breakdown'] = {
   year: 2024,
+  relevantAmount: 700,
+  selbstbehalt: 500,
   refundAfterDeductible: 200,
   currentStreakYears: 0,
+  alreadyReimbursed: 0,
   alreadyBroken: false,
   lostBREValue_NPV: 97,
   ladderTerms: [{ j: 0, gross: 100, probability: 1, monthsToPayout: 6, discounted: 97 }],
@@ -28,6 +31,26 @@ const SELFPAY_RESULT: GCP_Result = {
   netBenefitOfSubmitting: -100,
   explanation: 'Selbst zahlen lohnt sich.',
   breakdown: BREAKDOWN,
+};
+
+/** Year still under the deductible: nothing reimbursed, streak safe, no BRE at stake. */
+const UNDER_THRESHOLD_RESULT: GCP_Result = {
+  recommendation: 'selbst_zahlen',
+  netBenefitOfSubmitting: 0,
+  explanation: 'Die erstattungsfähige Jahressumme liegt noch unter dem Selbstbehalt.',
+  breakdown: {
+    year: 2024,
+    relevantAmount: 300,
+    selbstbehalt: 500,
+    refundAfterDeductible: 0,
+    currentStreakYears: 1,
+    alreadyReimbursed: 0,
+    alreadyBroken: false,
+    lostBREValue_NPV: 0,
+    ladderTerms: [],
+    discountRate: 0.03,
+    claimFreeProbability: 0.7,
+  },
 };
 
 describe('GCPCard', () => {
@@ -56,9 +79,17 @@ describe('GCPCard', () => {
     expect(screen.getByText(/Vorteil Selbst zahlen/)).toBeInTheDocument();
   });
 
-  it('shows "Beide Optionen gleichwertig" when net benefit is zero', () => {
+  it('shows "Beide Optionen gleichwertig" when net benefit is zero (over threshold)', () => {
     render(GCPCard, { props: { result: { ...SUBMIT_RESULT, netBenefitOfSubmitting: 0 } } });
     expect(screen.getByText('Beide Optionen gleichwertig')).toBeInTheDocument();
+  });
+
+  it('shows the neutral under-threshold state instead of a self-pay warning', () => {
+    render(GCPCard, { props: { result: UNDER_THRESHOLD_RESULT } });
+    expect(screen.getByText('Noch unter Selbstbehalt')).toBeInTheDocument();
+    expect(screen.getByText('BRE-Staffel nicht gefährdet')).toBeInTheDocument();
+    // Must NOT frame the forfeitable BRE as a self-pay advantage below the deductible.
+    expect(screen.queryByText(/Vorteil Selbst zahlen/)).not.toBeInTheDocument();
   });
 
   it('renders no action buttons when no callbacks provided', () => {

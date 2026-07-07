@@ -32,13 +32,17 @@ function ladder(currentStreakStart: string | null): BREStructure {
   };
 }
 
-/** Baseline GCP_YearInput; spread and override per test. */
+/**
+ * Baseline GCP_YearInput; spread and override per test. Defaults to `selbstbehalt: 0`
+ * so the bare fixture already crosses the deductible and the NPV/ladder is computed
+ * — tests that need the under-deductible case set `selbstbehalt` explicitly.
+ */
 function input(overrides: Partial<GCP_YearInput> = {}): GCP_YearInput {
   return {
     year: 2024,
     erstattungsBetrag: 250,
-    alreadyBroken: false,
-    selbstbehalt: 500,
+    alreadyReimbursed: 0,
+    selbstbehalt: 0,
     breStructure: ladder('2023-06-01'), // ~0 complete years at 2024-05-01
     monthlyPremium: 100,
     asOf: '2024-05-01',
@@ -77,7 +81,7 @@ describe('aggregateByYear — basic grouping', () => {
     ];
     const result = aggregateByYear(invoices);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ year: 2024, R_Y: 250, alreadyBroken: false });
+    expect(result[0]).toMatchObject({ year: 2024, R_Y: 250, alreadyReimbursed: 0 });
   });
 
   it('aggregates eligible_amount for bezahlt invoices', () => {
@@ -88,7 +92,7 @@ describe('aggregateByYear — basic grouping', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r).toMatchObject({ year: 2024, R_Y: 200, alreadyBroken: false });
+    expect(r).toMatchObject({ year: 2024, R_Y: 200, alreadyReimbursed: 0 });
   });
 
   it('aggregates eligible_amount for eingereicht invoices', () => {
@@ -99,7 +103,7 @@ describe('aggregateByYear — basic grouping', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r).toMatchObject({ year: 2024, R_Y: 80, alreadyBroken: false });
+    expect(r).toMatchObject({ year: 2024, R_Y: 80, alreadyReimbursed: 0 });
   });
 
   it('uses refund_amount for erstattet invoices, not eligible_amount', () => {
@@ -111,9 +115,10 @@ describe('aggregateByYear — basic grouping', () => {
     ];
     const [r] = aggregateByYear(invoices);
     expect(r?.R_Y).toBe(180);
+    expect(r?.alreadyReimbursed).toBe(180);
   });
 
-  it('sets alreadyBroken when an erstattet position has refund_amount > 0', () => {
+  it('accumulates alreadyReimbursed from an erstattet position with refund_amount > 0', () => {
     const invoices: GCP_InvoiceData[] = [
       {
         status: 'erstattet',
@@ -121,10 +126,11 @@ describe('aggregateByYear — basic grouping', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r?.alreadyBroken).toBe(true);
+    expect(r?.alreadyReimbursed).toBe(50);
+    expect(r?.R_Y).toBe(50);
   });
 
-  it('does NOT set alreadyBroken when erstattet has refund_amount = 0 (rejected)', () => {
+  it('records zero alreadyReimbursed when erstattet has refund_amount = 0 (rejected)', () => {
     const invoices: GCP_InvoiceData[] = [
       {
         status: 'erstattet',
@@ -132,7 +138,7 @@ describe('aggregateByYear — basic grouping', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r?.alreadyBroken).toBe(false);
+    expect(r?.alreadyReimbursed).toBe(0);
     expect(r?.R_Y).toBe(0);
   });
 });
@@ -150,10 +156,10 @@ describe('aggregateByYear — multiple invoices, one year', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r).toMatchObject({ year: 2024, R_Y: 520, alreadyBroken: false });
+    expect(r).toMatchObject({ year: 2024, R_Y: 520, alreadyReimbursed: 0 });
   });
 
-  it('sets alreadyBroken on a year if any invoice in that year is erstattet with refund > 0', () => {
+  it('accumulates realised reimbursement from the erstattet invoices of a year', () => {
     const invoices: GCP_InvoiceData[] = [
       {
         status: 'bezahlt',
@@ -165,7 +171,7 @@ describe('aggregateByYear — multiple invoices, one year', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r?.alreadyBroken).toBe(true);
+    expect(r?.alreadyReimbursed).toBe(200);
     // R_Y = bezahlt eligible_amount + erstattet refund_amount
     expect(r?.R_Y).toBe(600);
   });
@@ -184,23 +190,23 @@ describe('aggregateByYear — invoice spanning two service years (Sammelrechnung
     ];
     const results = aggregateByYear(invoices).sort((a, b) => a.year - b.year);
     expect(results).toHaveLength(2);
-    expect(results[0]).toMatchObject({ year: 2023, R_Y: 150, alreadyBroken: false });
-    expect(results[1]).toMatchObject({ year: 2024, R_Y: 250, alreadyBroken: false });
+    expect(results[0]).toMatchObject({ year: 2023, R_Y: 150, alreadyReimbursed: 0 });
+    expect(results[1]).toMatchObject({ year: 2024, R_Y: 250, alreadyReimbursed: 0 });
   });
 
-  it('alreadyBroken is year-scoped: one broken year does not affect another', () => {
+  it('alreadyReimbursed is year-scoped: one year does not affect another', () => {
     const invoices: GCP_InvoiceData[] = [
       {
         status: 'erstattet',
         positions: [
-          { treatment_date: '2023-11-01', eligible_amount: 100, refund_amount: 100 }, // breaks 2023
+          { treatment_date: '2023-11-01', eligible_amount: 100, refund_amount: 100 }, // 2023
           { treatment_date: '2024-02-01', eligible_amount: 80, refund_amount: 0 }, // 2024, rejected
         ],
       },
     ];
     const results = aggregateByYear(invoices).sort((a, b) => a.year - b.year);
-    expect(results[0]).toMatchObject({ year: 2023, alreadyBroken: true });
-    expect(results[1]).toMatchObject({ year: 2024, alreadyBroken: false });
+    expect(results[0]).toMatchObject({ year: 2023, alreadyReimbursed: 100 });
+    expect(results[1]).toMatchObject({ year: 2024, alreadyReimbursed: 0 });
   });
 });
 
@@ -216,7 +222,7 @@ describe('aggregateByYear — treats null/undefined amounts as zero', () => {
     expect(r?.R_Y).toBe(0);
   });
 
-  it('treats null refund_amount as 0 (no streak break)', () => {
+  it('treats null refund_amount as 0 (no realised reimbursement)', () => {
     const invoices: GCP_InvoiceData[] = [
       {
         status: 'erstattet',
@@ -224,7 +230,7 @@ describe('aggregateByYear — treats null/undefined amounts as zero', () => {
       },
     ];
     const [r] = aggregateByYear(invoices);
-    expect(r?.alreadyBroken).toBe(false);
+    expect(r?.alreadyReimbursed).toBe(0);
     expect(r?.R_Y).toBe(0);
   });
 });
@@ -243,6 +249,14 @@ describe('calculateGCP — below Selbstbehalt', () => {
     const result = calculateGCP(input({ erstattungsBetrag: 300, selbstbehalt: 500 }));
     expect(result.recommendation).toBe('selbst_zahlen');
   });
+
+  it('charges no BRE cost below the deductible — submitting there is inconsequential', () => {
+    const result = calculateGCP(input({ erstattungsBetrag: 300, selbstbehalt: 500 }));
+    expect(result.breakdown.lostBREValue_NPV).toBe(0);
+    expect(result.breakdown.ladderTerms).toHaveLength(0);
+    expect(result.netBenefitOfSubmitting).toBe(0);
+    expect(result.explanation).toContain('unter dem Selbstbehalt');
+  });
 });
 
 describe('calculateGCP — above Selbstbehalt', () => {
@@ -251,6 +265,19 @@ describe('calculateGCP — above Selbstbehalt', () => {
       input({ erstattungsBetrag: 800, selbstbehalt: 500, monthlyPremium: 10 }),
     );
     expect(result.breakdown.refundAfterDeductible).toBe(300);
+  });
+
+  it('only starts charging the BRE cost for the amount that crosses the deductible', () => {
+    // At exactly S: still under the threshold (no payout, no BRE cost).
+    const atThreshold = calculateGCP(input({ erstattungsBetrag: 500, selbstbehalt: 500 }));
+    expect(atThreshold.breakdown.lostBREValue_NPV).toBe(0);
+    expect(atThreshold.breakdown.ladderTerms).toHaveLength(0);
+
+    // One euro over S: the streak is now at stake, so the NPV kicks in.
+    const overThreshold = calculateGCP(input({ erstattungsBetrag: 501, selbstbehalt: 500 }));
+    expect(overThreshold.breakdown.refundAfterDeductible).toBe(1);
+    expect(overThreshold.breakdown.lostBREValue_NPV).toBeGreaterThan(0);
+    expect(overThreshold.breakdown.ladderTerms.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -286,7 +313,7 @@ describe('calculateGCP — Sofort-Term NPV (j=0)', () => {
     expect(result.breakdown.ladderTerms[0]?.probability).toBe(1);
   });
 
-  it('produces at least one ladder term (j=0 always present when not alreadyBroken)', () => {
+  it('produces at least one ladder term (j=0 always present when the deductible is crossed)', () => {
     const result = calculateGCP(input());
     expect(result.breakdown.ladderTerms.length).toBeGreaterThanOrEqual(1);
     expect(result.breakdown.ladderTerms[0]?.j).toBe(0);
@@ -356,30 +383,62 @@ describe('calculateGCP — τ₀ discounting', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// calculateGCP — streak-break threshold (design §5.2.1, point 2)
+// ---------------------------------------------------------------------------
+
+describe('calculateGCP — streak breaks only above the Selbstbehalt', () => {
+  it('a realised refund BELOW the deductible does NOT break the streak', () => {
+    // The user's exact scenario: a small reimbursement has flowed, but stays well
+    // under the annual Selbstbehalt → the year is still leistungsfrei, streak intact.
+    const result = calculateGCP(
+      input({ alreadyReimbursed: 50, erstattungsBetrag: 300, selbstbehalt: 500 }),
+    );
+    expect(result.breakdown.alreadyBroken).toBe(false);
+    expect(result.breakdown.lostBREValue_NPV).toBe(0);
+    expect(result.explanation).not.toContain('gebrochen');
+    expect(result.explanation).toContain('unter dem Selbstbehalt');
+  });
+
+  it('realised refunds that EXCEED the deductible break the streak', () => {
+    const result = calculateGCP(
+      input({ alreadyReimbursed: 600, erstattungsBetrag: 900, selbstbehalt: 500 }),
+    );
+    expect(result.breakdown.alreadyBroken).toBe(true);
+    expect(result.breakdown.lostBREValue_NPV).toBe(0);
+    expect(result.recommendation).toBe('einreichen');
+  });
+
+  it('realised refunds exactly at the deductible do not break the streak', () => {
+    // "übersteigen" = strictly greater than; at exactly S nothing is paid above it.
+    const result = calculateGCP(
+      input({ alreadyReimbursed: 500, erstattungsBetrag: 500, selbstbehalt: 500 }),
+    );
+    expect(result.breakdown.alreadyBroken).toBe(false);
+  });
+});
+
 describe('calculateGCP — alreadyBroken special case', () => {
-  it('sets lostBREValue_NPV = 0 when alreadyBroken', () => {
-    const result = calculateGCP(input({ alreadyBroken: true, erstattungsBetrag: 800 }));
+  it('sets lostBREValue_NPV = 0 when realised reimbursements exceed S', () => {
+    const result = calculateGCP(
+      input({ alreadyReimbursed: 600, erstattungsBetrag: 800, selbstbehalt: 500 }),
+    );
+    expect(result.breakdown.alreadyBroken).toBe(true);
     expect(result.breakdown.lostBREValue_NPV).toBe(0);
     expect(result.breakdown.ladderTerms).toHaveLength(0);
   });
 
-  it('always recommends einreichen when alreadyBroken and R_Y > S', () => {
+  it('always recommends einreichen once the streak is already broken', () => {
     const result = calculateGCP(
-      input({ alreadyBroken: true, erstattungsBetrag: 800, selbstbehalt: 500 }),
+      input({ alreadyReimbursed: 600, erstattungsBetrag: 800, selbstbehalt: 500 }),
     );
     expect(result.recommendation).toBe('einreichen');
   });
 
-  it('recommends selbst_zahlen when alreadyBroken but R_Y < S (nothing to gain)', () => {
+  it('explanation states the streak is already broken', () => {
     const result = calculateGCP(
-      input({ alreadyBroken: true, erstattungsBetrag: 200, selbstbehalt: 500 }),
+      input({ alreadyReimbursed: 600, erstattungsBetrag: 800, selbstbehalt: 500 }),
     );
-    expect(result.breakdown.refundAfterDeductible).toBe(0);
-    expect(result.recommendation).toBe('selbst_zahlen');
-  });
-
-  it('explanation mentions streak already broken', () => {
-    const result = calculateGCP(input({ alreadyBroken: true, erstattungsBetrag: 800 }));
     expect(result.explanation).toContain('bereits');
     expect(result.explanation).toContain('Einreichen empfohlen');
   });
@@ -398,7 +457,7 @@ describe('calculateGCP — recommendation thresholds', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 100,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: singleLevel,
       monthlyPremium: 100,
@@ -419,7 +478,7 @@ describe('calculateGCP — recommendation thresholds', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 100.01,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: singleLevel,
       monthlyPremium: 100,
@@ -439,7 +498,7 @@ describe('calculateGCP — recommendation thresholds', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 99.99,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: singleLevel,
       monthlyPremium: 100,
@@ -470,6 +529,15 @@ describe('calculateGCP — breakdown fields', () => {
     expect(result.breakdown.year).toBe(2023);
   });
 
+  it('reports the relevant amount, Selbstbehalt and realised reimbursement', () => {
+    const result = calculateGCP(
+      input({ erstattungsBetrag: 800, selbstbehalt: 500, alreadyReimbursed: 120 }),
+    );
+    expect(result.breakdown.relevantAmount).toBe(800);
+    expect(result.breakdown.selbstbehalt).toBe(500);
+    expect(result.breakdown.alreadyReimbursed).toBe(120);
+  });
+
   it('reports currentStreakYears correctly', () => {
     // streak started 2022-04-01, asOf 2024-05-01 → 2 complete years
     const result = calculateGCP(input({ breStructure: ladder('2022-04-01'), asOf: '2024-05-01' }));
@@ -498,8 +566,10 @@ describe('calculateGCP — explanation contains year', () => {
     expect(result.explanation).toContain('Einreichen lohnt sich');
   });
 
-  it('selbst_zahlen explanation references the service year', () => {
-    const result = calculateGCP(input({ year: 2025, erstattungsBetrag: 50 }));
+  it('selbst_zahlen explanation references the service year (over threshold)', () => {
+    // erstattungsBetrag 50 > S 0 → crosses the deductible, but the BRE at stake
+    // outweighs the tiny net refund → self-pay.
+    const result = calculateGCP(input({ year: 2025, erstattungsBetrag: 50, selbstbehalt: 0 }));
     expect(result.recommendation).toBe('selbst_zahlen');
     expect(result.explanation).toContain('2025');
     expect(result.explanation).toContain('Selbst zahlen lohnt sich');
@@ -565,7 +635,7 @@ describe('calculateGCP — acceptance criteria (design §5.2 / issue #140)', () 
 
   it('alreadyBroken ⇒ einreichen without BRE deduction (R_Y > S)', () => {
     const result = calculateGCP(
-      input({ alreadyBroken: true, erstattungsBetrag: 800, selbstbehalt: 500 }),
+      input({ alreadyReimbursed: 600, erstattungsBetrag: 800, selbstbehalt: 500 }),
     );
     expect(result.breakdown.lostBREValue_NPV).toBe(0);
     expect(result.recommendation).toBe('einreichen');
@@ -626,7 +696,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 10_000, // large → always einreichen, focus on NPV
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: ladderDesign525('2022-07-01'),
       monthlyPremium: 1, // B values are fixed_amount_eur → monthlyPremium doesn't matter
@@ -645,7 +715,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 10_000,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: ladder('2023-01-01'),
       monthlyPremium: 100,
@@ -667,7 +737,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 10_000,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: ladder('2022-01-01'), // s=2 so there are recovery terms
       monthlyPremium: 100,
@@ -687,15 +757,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
   });
 
   it('s ≥ nMax: only immediate term (both reset-paths reach nMax, no recovery gap)', () => {
-    // s=5 >> nMax=3: reset path B(min(j,3)), gain path B(min(6+j,3))=B(3) for all j
-    // j=0: B(min(6,3))-B(min(0,3))=B(3)-B(0)=300-0=300
-    // j=1: B(min(7,3))-B(min(1,3))=B(3)-B(1)=300-100=200
-    // j=2: B(min(8,3))-B(min(2,3))=B(3)-B(2)=300-200=100
-    // j=3 would be 0 → loop breaks; so actually 3 terms up to j=2 (nMax-1=2)
-    // Wait: nMax=3, loop is j=0 to nMax-1=2. Let me check the loop...
-    // The loop runs j < nMax, so j=0,1,2. The "break" only triggers when gap=0.
-    // At j=0: B(3)-B(0)=300, j=1: B(3)-B(1)=200, j=2: B(3)-B(2)=100 → no break needed.
-    // So s≥nMax gives exactly nMax terms. The "only immediate term" case is when nMax=1.
+    // nMax=1: j=0 only (j=1 would be j < 1, loop doesn't run)
     const singleLevelLadder: BREStructure = {
       type: 'staffel',
       levels: [{ claim_free_years: 1, bre_years: 1, pct_of_premium: 100 }],
@@ -704,7 +766,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 10_000,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: singleLevelLadder,
       monthlyPremium: 100,
@@ -713,7 +775,6 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
       payoutMonth: 7,
       asOf: '2024-07-01',
     });
-    // nMax=1: j=0 only (j=1 would be j < 1, loop doesn't run)
     expect(result.breakdown.ladderTerms).toHaveLength(1);
     expect(result.breakdown.ladderTerms[0]?.j).toBe(0);
   });
@@ -722,7 +783,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const result = calculateGCP({
       year: 2024,
       erstattungsBetrag: 10_000,
-      alreadyBroken: true,
+      alreadyReimbursed: 10_000, // fully realised → exceeds S=0 → streak broken
       selbstbehalt: 0,
       breStructure: ladder('2022-01-01'),
       monthlyPremium: 100,
@@ -731,6 +792,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
       payoutMonth: 7,
       asOf: '2024-07-01',
     });
+    expect(result.breakdown.alreadyBroken).toBe(true);
     expect(result.breakdown.lostBREValue_NPV).toBe(0);
     expect(result.breakdown.ladderTerms).toHaveLength(0);
   });
@@ -739,7 +801,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const base = {
       year: 2024,
       erstattungsBetrag: 10_000,
-      alreadyBroken: false,
+      alreadyReimbursed: 0,
       selbstbehalt: 0,
       breStructure: ladder('2023-01-01'), // s=1 → still has recovery transient
       monthlyPremium: 100,

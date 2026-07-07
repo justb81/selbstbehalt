@@ -30,6 +30,11 @@
   } = $props();
 
   const isSubmit = $derived(result.recommendation === 'einreichen');
+  // The year is still under the deductible: submitting neither reimburses nor
+  // breaks the BRE streak, so this is a safe/neutral state — not a warning.
+  const underThreshold = $derived(
+    result.breakdown.refundAfterDeductible === 0 && !result.breakdown.alreadyBroken,
+  );
 
   let breakdownOpen = $state(false);
 </script>
@@ -39,7 +44,9 @@
     'border-2',
     isSubmit
       ? 'border-primary bg-primary/5'
-      : 'border-amber-500/60 bg-amber-50/40 dark:bg-amber-900/10',
+      : underThreshold
+        ? 'border-border bg-muted/30'
+        : 'border-amber-500/60 bg-amber-50/40 dark:bg-amber-900/10',
   )}
 >
   <CardHeader>
@@ -50,22 +57,34 @@
           'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl',
           isSubmit
             ? 'bg-primary/15 text-primary'
-            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+            : underThreshold
+              ? 'bg-muted text-muted-foreground'
+              : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
         )}
       >
-        {isSubmit ? '✓' : '€'}
+        {isSubmit || underThreshold ? '✓' : '€'}
       </span>
       <div>
         <strong
           class={cn(
             'block text-lg font-semibold',
-            isSubmit ? 'text-primary' : 'text-amber-700 dark:text-amber-400',
+            isSubmit
+              ? 'text-primary'
+              : underThreshold
+                ? 'text-foreground'
+                : 'text-amber-700 dark:text-amber-400',
           )}
         >
-          {isSubmit ? 'Einreichen empfohlen' : 'Selbst zahlen empfohlen'}
+          {isSubmit
+            ? 'Einreichen empfohlen'
+            : underThreshold
+              ? 'Noch unter Selbstbehalt'
+              : 'Selbst zahlen empfohlen'}
         </strong>
         <div class="text-muted-foreground mt-1 text-sm">
-          {#if result.netBenefitOfSubmitting > 0}
+          {#if underThreshold}
+            BRE-Staffel nicht gefährdet
+          {:else if result.netBenefitOfSubmitting > 0}
             Vorteil Einreichen: <strong class="text-foreground"
               >{formatEur(result.netBenefitOfSubmitting)}</strong
             >
@@ -97,7 +116,17 @@
           <dt class="text-muted-foreground">Leistungsjahr</dt>
           <dd class="text-right font-medium tabular-nums">{result.breakdown.year}</dd>
 
-          <dt class="text-muted-foreground">Erstattungsbetrag nach Selbstbehalt</dt>
+          <dt class="text-muted-foreground">Erstattungsfähig gesamt (R)</dt>
+          <dd class="text-right font-medium tabular-nums">
+            {formatEur(result.breakdown.relevantAmount)}
+          </dd>
+
+          <dt class="text-muted-foreground">Selbstbehalt (S)</dt>
+          <dd class="text-right font-medium tabular-nums">
+            {formatEur(result.breakdown.selbstbehalt)}
+          </dd>
+
+          <dt class="text-muted-foreground">Nettoerstattung max(0, R − S)</dt>
           <dd class="text-right font-medium tabular-nums">
             {formatEur(result.breakdown.refundAfterDeductible)}
           </dd>
@@ -111,7 +140,12 @@
 
           {#if result.breakdown.alreadyBroken}
             <dt class="col-span-2 text-xs text-amber-600 dark:text-amber-400">
-              Staffel für dieses Leistungsjahr bereits gebrochen
+              Bereits erstattet {formatEur(result.breakdown.alreadyReimbursed)} — übersteigt den Selbstbehalt,
+              Staffel für dieses Leistungsjahr gebrochen.
+            </dt>
+          {:else if underThreshold}
+            <dt class="col-span-2 text-xs text-muted-foreground">
+              Jahressumme unter Selbstbehalt — Einreichen bricht die Staffel nicht.
             </dt>
           {/if}
 
