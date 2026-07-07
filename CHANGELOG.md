@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/justb81/selbstbehalt/compare/v1.5.0...v1.5.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* always show the invoice scanner/dropzone ([#228](https://github.com/justb81/selbstbehalt/issues/228)) ([33513eb](https://github.com/justb81/selbstbehalt/commit/33513eb9e0cd5c2161fa466ff4e5c07e901aa88b))
+
 ## [1.5.0](https://github.com/justb81/selbstbehalt/compare/v1.4.1...v1.5.0) (2026-07-07)
 
 ### Features
