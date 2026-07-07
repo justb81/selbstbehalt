@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/justb81/selbstbehalt/compare/v1.4.1...v1.5.0) (2026-07-07)
+
+
+### Features
+
+* **frontend:** capture beforeinstallprompt to surface an install prompt ([#226](https://github.com/justb81/selbstbehalt/issues/226)) ([5e1c10e](https://github.com/justb81/selbstbehalt/commit/5e1c10ec483d69adba0a4451c56b87b8846a86b5))
+
 ## [1.4.1](https://github.com/justb81/selbstbehalt/compare/v1.4.0...v1.4.1) (2026-07-06)
 
 ### Bug Fixes
