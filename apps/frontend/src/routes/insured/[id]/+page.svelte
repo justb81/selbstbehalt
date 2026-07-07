@@ -8,7 +8,6 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
   import {
     formatDate,
@@ -22,13 +21,11 @@
   import { aggregateByYear, calculateGCP, type GCP_Result } from '$lib/utils/guenstiger-pruefung';
   import BRETracker from '$lib/components/BRETracker.svelte';
   import GCPCard from '$lib/components/GCPCard.svelte';
-  import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent } from '$lib/components/ui/card';
   import { Separator } from '$lib/components/ui/separator';
   import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
@@ -113,23 +110,6 @@
         return { year, R_Y, alreadyBroken, gcp: null };
       }
     });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Invoice grouping by year for the invoice list section
-  // ---------------------------------------------------------------------------
-
-  const invoicesByYear = $derived.by(() => {
-    const map = new SvelteMap<number, InvoiceWithPositions[]>();
-    for (const inv of [...invoices].sort((a, b) =>
-      (b.invoice_date ?? '').localeCompare(a.invoice_date ?? ''),
-    )) {
-      const year = inv.invoice_date ? parseInt(inv.invoice_date.substring(0, 4), 10) : 0;
-      const list = map.get(year) ?? [];
-      list.push(inv);
-      map.set(year, list);
-    }
-    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   });
 </script>
 
@@ -247,7 +227,8 @@
       <Separator />
     {/if}
 
-    <!-- Invoice list grouped by year -->
+    <!-- Invoice list — the same component the Rechnungsarchiv uses, scoped to
+         this insured person (no Person filter since it is a single person). -->
     <section class="space-y-4">
       <div class="flex items-center justify-between gap-3 flex-wrap">
         <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -256,45 +237,7 @@
         <Button size="sm" href={resolve('/invoices/new')}>+ Neue Rechnung</Button>
       </div>
 
-      {#if invoices.length === 0}
-        <EmptyState compact message="Noch keine Rechnungen vorhanden." />
-      {:else}
-        {#each invoicesByYear as [year, yearInvoices] (year)}
-          <div class="space-y-2">
-            <p class="text-sm font-medium text-muted-foreground">{year || '—'}</p>
-            <Card>
-              <CardContent class="p-0">
-                {#each yearInvoices as inv, i (inv.id)}
-                  {#if i > 0}
-                    <Separator />
-                  {/if}
-                  <a
-                    href={resolve('/invoices/[id]', { id: inv.id })}
-                    class="flex items-center justify-between gap-3 px-4 py-3 no-underline hover:bg-muted/50 transition-colors rounded-md group"
-                  >
-                    <div class="flex flex-col gap-0.5 min-w-0">
-                      <span
-                        class="font-medium text-sm group-hover:text-primary transition-colors truncate"
-                      >
-                        {inv.provider_name}
-                      </span>
-                      <span class="text-xs text-muted-foreground"
-                        >{formatDate(inv.invoice_date)}</span
-                      >
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                      <InvoiceBadge status={inv.status} />
-                      <span class="text-sm font-semibold tabular-nums"
-                        >{formatEur(inv.total_amount)}</span
-                      >
-                    </div>
-                  </a>
-                {/each}
-              </CardContent>
-            </Card>
-          </div>
-        {/each}
-      {/if}
+      <InvoiceList {invoices} newInvoiceHref={resolve('/invoices/new')} />
     </section>
   {/if}
 </div>
