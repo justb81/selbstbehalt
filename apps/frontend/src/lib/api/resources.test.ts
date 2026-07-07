@@ -87,6 +87,20 @@ describe('createResources', () => {
     expect(calls[1]!.path).toBe(`/api/stats/bre/${UUID}`);
   });
 
+  it('maps the positions/reductions/validations roll-up endpoints (#239)', async () => {
+    const { request, calls } = stubRequester();
+    const { stats } = createResources(request);
+
+    await stats.positions(UUID);
+    await stats.reductions('tariff');
+    await stats.validations();
+
+    expect(calls[0]!.path).toBe(`/api/stats/positions/${UUID}`);
+    expect(calls[1]!).toMatchObject({ path: '/api/stats/reductions' });
+    expect(calls[1]!.opts.query).toEqual({ group_by: 'tariff' });
+    expect(calls[2]!.path).toBe('/api/stats/validations');
+  });
+
   it('maps insured-person methods to the nested and item endpoints', async () => {
     const { request, calls } = stubRequester();
     const { insured } = createResources(request);
