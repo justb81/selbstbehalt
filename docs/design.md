@@ -892,6 +892,10 @@ POST   /api/invoices/:id/revert       → Letzten Schritt zurücknehmen (bezahlt
 
 GET    /api/stats/year/:year          → Jahresauswertung
 GET    /api/stats/bre/:insuredPersonId → BRE-Verlauf einer versicherten Person
+GET    /api/stats/positions/:insuredPersonId → Positions-Jahres-Roll-up nach Leistungsjahr (§5.2.1-Statusregel, Issue #239)
+GET    /api/stats/reductions?group_by=tariff|provider_name|provider_type|goae_number
+                                       → Kürzungs-/Ablehnungs-Roll-up über erstattete Positionen (Issue #239)
+GET    /api/stats/validations         → Beanstandungen nach flag_reason-Kategorie + Steigerungsfaktor-Verteilung (Issue #239)
 
 GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup)
 POST   /api/import/db                 → Datenbank-Wiederherstellung

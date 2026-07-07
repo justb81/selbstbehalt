@@ -13,7 +13,10 @@ import {
   invoiceStatusEventSchema,
   invoiceWithPositionsSchema,
   personSchema,
+  positionYearRollupSchema,
+  reductionRollupSchema,
   submissionSchema,
+  validationRollupSchema,
   yearStatsSchema,
   type BREHistory,
   type Contract,
@@ -35,9 +38,13 @@ import {
   type Person,
   type PersonCreate,
   type PersonUpdate,
+  type PositionYearRollup,
+  type ReductionGroupBy,
+  type ReductionRollup,
   type Submission,
   type SubmissionInput,
   type SubmissionUpdate,
+  type ValidationRollup,
   type YearStats,
 } from '@selbstbehalt/shared';
 import { z } from 'zod';
@@ -165,6 +172,14 @@ export function createResources(request: ApiRequester) {
       request(`/api/stats/year/${encodeURIComponent(year)}`, { schema: yearStatsSchema }),
     bre: (insuredPersonId: string) =>
       request(`/api/stats/bre/${id(insuredPersonId)}`, { schema: breHistorySchema }),
+    positions: (insuredPersonId: string) =>
+      request(`/api/stats/positions/${id(insuredPersonId)}`, { schema: positionYearRollupSchema }),
+    reductions: (groupBy: ReductionGroupBy) =>
+      request('/api/stats/reductions', {
+        query: { group_by: groupBy },
+        schema: reductionRollupSchema,
+      }),
+    validations: () => request('/api/stats/validations', { schema: validationRollupSchema }),
   };
 
   return { health, persons, contracts, insured, invoices, stats };
@@ -182,6 +197,10 @@ export type {
   InvoiceStatusEvent,
   InvoiceWithPositions,
   Person,
+  PositionYearRollup,
+  ReductionGroupBy,
+  ReductionRollup,
   Submission,
+  ValidationRollup,
   YearStats,
 };

@@ -8,6 +8,7 @@
 import { z } from 'zod';
 
 import { money, uuid } from './common.js';
+import { goaeCategorySchema } from './enums.js';
 
 /**
  * The unified error envelope the backend returns for every non-2xx response
@@ -71,6 +72,121 @@ export const breHistorySchema = z.object({
   years: z.array(breHistoryYearSchema),
 });
 export type BREHistory = z.infer<typeof breHistorySchema>;
+
+/**
+ * One Leistungsjahr on an insured person's positions roll-up (see #239). Amounts
+ * are split by the §5.2.1 status rule: `refund_amount` sums only positions on
+ * `erstattet` invoices, `eligible_amount` only positions on `geprüft`/`bezahlt`/
+ * `eingereicht` invoices, and `charged_amount` sums across all of those (i.e.
+ * everything except `neu`). Summing `eligible_amount + refund_amount` yields the
+ * Günstigerprüfung's `R_Y` for that year.
+ */
+export const positionYearRollupYearSchema = z.object({
+  year: z.number().int(),
+  charged_amount: money,
+  eligible_amount: money,
+  refund_amount: money,
+});
+export type PositionYearRollupYear = z.infer<typeof positionYearRollupYearSchema>;
+
+/**
+ * Response of `GET /api/stats/positions/:insuredPersonId` (#239): the positions
+ * roll-up by Leistungsjahr (`invoice_positions.treatment_date` year) that feeds
+ * the Günstigerprüfung KPIs (#234/#235/#236). Years with no non-`neu` positions
+ * are omitted rather than zero-filled.
+ */
+export const positionYearRollupSchema = z.object({
+  insured_person_id: uuid,
+  years: z.array(positionYearRollupYearSchema),
+});
+export type PositionYearRollup = z.infer<typeof positionYearRollupSchema>;
+
+/** Dimension `GET /api/stats/reductions` (#239) groups the Kürzungs-Roll-up by. */
+export const reductionGroupByValues = [
+  'tariff',
+  'provider_name',
+  'provider_type',
+  'goae_number',
+] as const;
+export const reductionGroupBySchema = z.enum(reductionGroupByValues);
+export type ReductionGroupBy = z.infer<typeof reductionGroupBySchema>;
+
+/**
+ * One group of the Kürzungs-Roll-up (see #239): `eligible_amount` (expected) vs.
+ * `refund_amount` (received) over `erstattet` positions with a decided
+ * `refund_amount` (i.e. not `null`). `rejection_count`/`rejection_amount` count
+ * the subset that was rejected outright (`refund_amount = 0` while
+ * `eligible_amount > 0`). `open_count` — positions with `refund_amount = null`,
+ * "not yet decided" — is reported separately so it is never mistaken for a €0
+ * outcome.
+ */
+export const reductionRollupGroupSchema = z.object({
+  /** The tariff/provider/Ziffer value for this group; `null` when unset. */
+  group: z.string().nullable(),
+  eligible_amount: money,
+  refund_amount: money,
+  reduction_amount: money,
+  rejection_count: z.number().int().nonnegative(),
+  rejection_amount: money,
+  open_count: z.number().int().nonnegative(),
+});
+export type ReductionRollupGroup = z.infer<typeof reductionRollupGroupSchema>;
+
+/** Response of `GET /api/stats/reductions?group_by=...` (#239). */
+export const reductionRollupSchema = z.object({
+  group_by: reductionGroupBySchema,
+  groups: z.array(reductionRollupGroupSchema),
+});
+export type ReductionRollup = z.infer<typeof reductionRollupSchema>;
+
+/**
+ * Coarse category a `flag_reason` string is bucketed into (see #239). Derived
+ * heuristically from the fixed German phrase templates the GOÄ parser emits
+ * (`packages/medic-invoice-check/.../goae-parser.ts`) — not a persisted column.
+ */
+export const validationFlagCategoryValues = [
+  'steigerungsfaktor',
+  'ausschluss',
+  'erfordert',
+  'bestandteil',
+  'hoechstwert',
+  'frequenz',
+  'dauer',
+  'alter',
+  'unbekannte_ziffer',
+  'sonstiges',
+] as const;
+export const validationFlagCategorySchema = z.enum(validationFlagCategoryValues);
+export type ValidationFlagCategory = z.infer<typeof validationFlagCategorySchema>;
+
+/** One `flag_reason` category in the Validierungs-Roll-up (see #239). */
+export const validationFlagRollupGroupSchema = z.object({
+  category: validationFlagCategorySchema,
+  count: z.number().int().nonnegative(),
+  charged_amount: money,
+});
+export type ValidationFlagRollupGroup = z.infer<typeof validationFlagRollupGroupSchema>;
+
+/** Steigerungsfaktor distribution for one `goae_category` (see #239). */
+export const multiplierDistributionSchema = z.object({
+  goae_category: goaeCategorySchema,
+  count: z.number().int().positive(),
+  avg_multiplier: z.number().positive(),
+  min_multiplier: z.number().positive(),
+  max_multiplier: z.number().positive(),
+});
+export type MultiplierDistribution = z.infer<typeof multiplierDistributionSchema>;
+
+/**
+ * Response of `GET /api/stats/validations` (#239): the beanstandete-Positionen
+ * roll-up (grouped by `flag_reason` category) plus the Steigerungsfaktor
+ * distribution per `goae_category`, feeding #238.
+ */
+export const validationRollupSchema = z.object({
+  flags: z.array(validationFlagRollupGroupSchema),
+  multiplier_distribution: z.array(multiplierDistributionSchema),
+});
+export type ValidationRollup = z.infer<typeof validationRollupSchema>;
 
 /**
  * Response of `POST /api/import/db` (#14): the result of restoring an uploaded

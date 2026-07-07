@@ -6,6 +6,10 @@ import {
   errorBodySchema,
   healthBodySchema,
   importResultSchema,
+  multiplierDistributionSchema,
+  positionYearRollupSchema,
+  reductionRollupSchema,
+  validationRollupSchema,
   yearStatsSchema,
 } from './api.js';
 
@@ -91,6 +95,104 @@ describe('breHistorySchema', () => {
     expect(breHistorySchema.safeParse({ insured_person_id: 'nope', years: [] }).success).toBe(
       false,
     );
+  });
+});
+
+describe('positionYearRollupSchema', () => {
+  it('accepts a per-year positions roll-up', () => {
+    const result = positionYearRollupSchema.safeParse({
+      insured_person_id: '11111111-1111-4111-8111-111111111111',
+      years: [
+        { year: 2025, charged_amount: 300, eligible_amount: 230, refund_amount: 80 },
+        { year: 2026, charged_amount: 100, eligible_amount: 0, refund_amount: 0 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects negative amounts', () => {
+    expect(
+      positionYearRollupSchema.safeParse({
+        insured_person_id: '11111111-1111-4111-8111-111111111111',
+        years: [{ year: 2025, charged_amount: -1, eligible_amount: 0, refund_amount: 0 }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('reductionRollupSchema', () => {
+  const valid = {
+    group_by: 'tariff',
+    groups: [
+      {
+        group: 'Komfort',
+        eligible_amount: 500,
+        refund_amount: 420,
+        reduction_amount: 80,
+        rejection_count: 1,
+        rejection_amount: 50,
+        open_count: 2,
+      },
+      {
+        group: null,
+        eligible_amount: 0,
+        refund_amount: 0,
+        reduction_amount: 0,
+        rejection_count: 0,
+        rejection_amount: 0,
+        open_count: 0,
+      },
+    ],
+  };
+
+  it('accepts groups including a null group value', () => {
+    expect(reductionRollupSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('rejects an unknown group_by dimension', () => {
+    expect(reductionRollupSchema.safeParse({ ...valid, group_by: 'nope' }).success).toBe(false);
+  });
+});
+
+describe('validationRollupSchema', () => {
+  it('accepts flag categories and a multiplier distribution', () => {
+    const result = validationRollupSchema.safeParse({
+      flags: [
+        { category: 'steigerungsfaktor', count: 3, charged_amount: 210 },
+        { category: 'sonstiges', count: 1, charged_amount: 50 },
+      ],
+      multiplier_distribution: [
+        {
+          goae_category: 'GOÄ',
+          count: 10,
+          avg_multiplier: 2.1,
+          min_multiplier: 1,
+          max_multiplier: 3.5,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an unknown flag category', () => {
+    expect(
+      validationRollupSchema.safeParse({
+        flags: [{ category: 'nope', count: 1, charged_amount: 10 }],
+        multiplier_distribution: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown goae_category in the multiplier distribution', () => {
+    expect(
+      multiplierDistributionSchema.safeParse({
+        goae_category: 'nope',
+        count: 1,
+        avg_multiplier: 1,
+        min_multiplier: 1,
+        max_multiplier: 1,
+      }).success,
+    ).toBe(false);
   });
 });
 
