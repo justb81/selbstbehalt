@@ -91,18 +91,18 @@ async function waitPastDebounce() {
 const SAMPLE_OCR_TEXT = 'Praxis Dr. med. Mustermann\n1  Beratung  2,3  10.73';
 
 describe('InvoiceReview — create mode', () => {
-  it('renders the OCR scan button', () => {
+  it('always renders the OCR scanner (no toggle button)', () => {
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
-    expect(screen.getByText('Rechnung scannen / hochladen')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument();
+    expect(screen.queryByText('Rechnung scannen / hochladen')).not.toBeInTheDocument();
   });
 
-  it('opens the scanner automatically for a shared file (issue #158)', async () => {
+  it('accepts a shared file without a toggle (issue #158)', async () => {
     const sharedFile = new File(['x'], 'geteilte-rechnung.pdf', { type: 'application/pdf' });
     render(InvoiceReviewTestHarness, { props: { mode: 'create', sharedFile } });
     await waitFor(() =>
-      expect(screen.queryByText('Rechnung scannen / hochladen')).not.toBeInTheDocument(),
+      expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument(),
     );
-    expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument();
   });
 
   it('shows the "empty positions" hint initially', () => {
@@ -139,11 +139,11 @@ describe('InvoiceReview — create mode', () => {
 });
 
 describe('InvoiceReview — edit mode', () => {
-  it('does not render the OCR scan button', () => {
+  it('does not render the OCR scanner', () => {
     render(InvoiceReviewTestHarness, {
       props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
     });
-    expect(screen.queryByText('Rechnung scannen / hochladen')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Rechnungsdatei (Bild oder PDF)')).not.toBeInTheDocument();
   });
 
   it('pre-fills the header fields from the bound props', () => {

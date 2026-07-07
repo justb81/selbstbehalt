@@ -88,9 +88,7 @@ test('scan → parse → save files a metadata-only invoice', async ({ page }) =
   await page.goto('/invoices/new');
   await expect(page.getByRole('heading', { level: 1, name: 'Rechnung erfassen' })).toBeVisible();
 
-  // Open the OCR scanner section (issue #109: scanner is now inside the form).
-  await page.getByRole('button', { name: 'Rechnung scannen / hochladen' }).click();
-
+  // The OCR scanner section is always visible inside the form (no toggle).
   // Drive the scan from fixture text via the dev-only hook: it bypasses the
   // headless-incompatible image codec and the model-downloading OCR binding,
   // while the upload UI, parsing, and save all run for real.

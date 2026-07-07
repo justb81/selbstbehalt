@@ -68,9 +68,8 @@ test.describe('axe: core flows', () => {
     await mockBackend(page, { populated: true });
     await page.goto('/invoices/new');
     await expect(page.getByRole('heading', { level: 1, name: 'Rechnung erfassen' })).toBeVisible();
-    await expectNoViolations(page);
-
-    await page.getByRole('button', { name: 'Rechnung scannen / hochladen' }).click();
+    // The OCR scanner panel is always visible (no toggle), so it is covered here.
+    await expect(page.getByLabel('Rechnungsdatei (Bild oder PDF)')).toBeAttached();
     await expectNoViolations(page);
   });
 
