@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/justb81/selbstbehalt/compare/v1.5.1...v1.6.0) (2026-07-07)
+
+
+### Features
+
+* **invoices:** allow stepping back a status transition (delete or edit) ([#233](https://github.com/justb81/selbstbehalt/issues/233)) ([5e8564b](https://github.com/justb81/selbstbehalt/commit/5e8564b2d02afd64aebfce3520dd30e84ac2c053)), closes [#230](https://github.com/justb81/selbstbehalt/issues/230)
+
+
+### Bug Fixes
+
+* **frontend:** remove unused Steuervorteil (§33 EStG) scaffold from GCP ([#231](https://github.com/justb81/selbstbehalt/issues/231)) ([9ba7697](https://github.com/justb81/selbstbehalt/commit/9ba76978ca6090552026b390556950f60ce302ac)), closes [#64](https://github.com/justb81/selbstbehalt/issues/64)
+
 ## [1.5.1](https://github.com/justb81/selbstbehalt/compare/v1.5.0...v1.5.1) (2026-07-07)
 
 ### Bug Fixes
