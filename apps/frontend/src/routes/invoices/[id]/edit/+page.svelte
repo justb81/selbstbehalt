@@ -2,8 +2,12 @@
 <!--
   Rechnungsbearbeitung (issue #119): edit a saved invoice's header fields and
   positions, and re-validate positions against the Gebührenordnung. Only
-  invoices with status 'neu', 'geprüft', or 'selbst_gezahlt' are editable
-  (before any formal submission to the insurer).
+  invoices with status 'neu' or 'geprüft' are editable (before any formal
+  submission to the insurer). "Selbst zahlen" is not a separate status — it is
+  an invoice that stays at 'bezahlt' and is never submitted; a 'bezahlt'
+  invoice's header fields can no longer be edited, but its last step can be
+  undone or corrected via the "Letzter Schritt" controls on the invoice detail
+  page (issue #230).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';

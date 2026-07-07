@@ -10,6 +10,8 @@ vi.mock('$lib/api', () => ({
       events: vi.fn().mockResolvedValue([]),
       changeStatus: vi.fn().mockResolvedValue({}),
       refund: vi.fn().mockResolvedValue({}),
+      revert: vi.fn().mockResolvedValue({}),
+      getSubmission: vi.fn().mockRejectedValue(new Error('not found')),
     },
   },
   ApiError: class ApiError extends Error {},
@@ -267,5 +269,81 @@ describe('InvoiceStatusFlow', () => {
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
 
     expect(await screen.findByText('Keine Positionen vorhanden.')).toBeInTheDocument();
+  });
+});
+
+describe('Letzter Schritt (issue #230)', () => {
+  it('shows no "Letzter Schritt" section for status neu', async () => {
+    render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
+    await screen.findByText('Neu');
+    expect(screen.queryByText('Letzter Schritt')).not.toBeInTheDocument();
+  });
+
+  it('shows only "Löschen" (no "Bearbeiten") for status bezahlt', async () => {
+    render(InvoiceStatusFlow, {
+      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
+    });
+    expect(await screen.findByText('Letzter Schritt')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+  });
+
+  it('reverts the invoice when "Löschen" is confirmed', async () => {
+    const user = userEvent.setup();
+    const onChanged = vi.fn();
+    render(InvoiceStatusFlow, {
+      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Löschen' }));
+    await user.click(await screen.findByRole('button', { name: 'Ja, löschen' }));
+
+    await waitFor(() => expect(api.invoices.revert).toHaveBeenCalledWith('inv-1', {}));
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('shows "Bearbeiten" for status eingereicht and navigates to the submit page', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+
+    await waitFor(() => expect(goto).toHaveBeenCalledWith('/invoices/inv-1/submit'));
+  });
+
+  it('opens the refund form pre-filled for editing when "Bearbeiten" is clicked for status erstattet', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: {
+          ...BASE_INVOICE,
+          status: 'erstattet',
+          positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }],
+        },
+        onChanged: vi.fn(),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+
+    expect(await screen.findByText('Erstattungsbeträge korrigieren')).toBeInTheDocument();
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Position 1/);
+    expect((input as HTMLInputElement).value).toBe('7.25');
+    expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeInTheDocument();
+  });
+
+  it('shows an error alert when revert fails', async () => {
+    vi.mocked(api.invoices.revert).mockRejectedValueOnce(new Error('Revert-Fehler'));
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Löschen' }));
+    await user.click(await screen.findByRole('button', { name: 'Ja, löschen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Revert-Fehler');
   });
 });

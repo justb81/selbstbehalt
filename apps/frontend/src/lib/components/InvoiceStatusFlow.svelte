@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  InvoiceStatusFlow (docs/design.md §6.2, issue #142):
+  InvoiceStatusFlow (docs/design.md §6.2, issue #142; step-back issue #230):
   Shows the current invoice status, the allowed transitions as action buttons,
   the per-position refund-entry form (for the eingereicht → erstattet step),
-  and the full status-event audit trail.
+  the "letzter Schritt" undo/edit controls, and the full status-event audit
+  trail.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -23,6 +24,16 @@
   import { Textarea } from '$lib/components/ui/textarea';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import {
+    AlertDialogRoot,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+    AlertDialogCancel,
+  } from '$lib/components/ui/alert-dialog';
   import {
     Table,
     TableBody,
@@ -96,7 +107,7 @@
       return;
     }
     if (to === 'erstattet') {
-      openRefundForm();
+      openRefundForm('create');
       return;
     }
     actioning = true;
@@ -112,7 +123,63 @@
     }
   }
 
-  // ---- Refund capture (eingereicht → erstattet) ----------------------------
+  // ---- Letzter Schritt: rückgängig machen / bearbeiten (issue #230) --------
+  //
+  // "Löschen" reverts the invoice to the status before its last transition,
+  // discarding the data that step captured (the submission, or the refund
+  // amounts). "Bearbeiten" instead reopens that step's input mask pre-filled
+  // with the current values, so they can be corrected without changing status.
+
+  const PREVIOUS_STATUS: Partial<Record<InvoiceStatus, InvoiceStatus>> = {
+    bezahlt: 'geprüft',
+    eingereicht: 'bezahlt',
+    erstattet: 'eingereicht',
+  };
+
+  const REVERT_WARNING: Partial<Record<InvoiceStatus, string>> = {
+    bezahlt: 'Der Status wird auf „Geprüft" zurückgesetzt.',
+    eingereicht:
+      'Der Status wird auf „Bezahlt" zurückgesetzt und die erfasste Einreichung wird gelöscht.',
+    erstattet:
+      'Der Status wird auf „Eingereicht" zurückgesetzt und die erfassten Erstattungsbeträge werden gelöscht.',
+  };
+
+  const previousStatus = $derived(PREVIOUS_STATUS[invoice.status]);
+  const canEditLastStep = $derived(
+    invoice.status === 'eingereicht' || invoice.status === 'erstattet',
+  );
+
+  let confirmRevert = $state(false);
+  let reverting = $state(false);
+  let revertError = $state<string | null>(null);
+
+  function editLastStep() {
+    if (invoice.status === 'eingereicht') {
+      void goto(resolve('/invoices/[id]/submit', { id: invoice.id }));
+    } else if (invoice.status === 'erstattet') {
+      openRefundForm('edit');
+    }
+  }
+
+  async function revertLastStep() {
+    reverting = true;
+    revertError = null;
+    try {
+      await api.invoices.revert(invoice.id, {});
+      confirmRevert = false;
+      await loadEvents();
+      onChanged();
+    } catch (e) {
+      revertError =
+        e instanceof ApiError || e instanceof Error
+          ? e.message
+          : 'Rückgängig machen fehlgeschlagen.';
+    } finally {
+      reverting = false;
+    }
+  }
+
+  // ---- Refund capture (eingereicht → erstattet, or its "Bearbeiten") -------
 
   type RefundRow = {
     id: string;
@@ -124,25 +191,39 @@
   };
 
   let showRefundForm = $state(false);
+  let refundFormMode = $state<'create' | 'edit'>('create');
   let refundRows = $state<RefundRow[]>([]);
   let refundDate = $state('');
   let refundNote = $state('');
   let refunding = $state(false);
   let refundError = $state<string | null>(null);
 
-  function openRefundForm() {
+  async function openRefundForm(mode: 'create' | 'edit') {
+    refundFormMode = mode;
     refundRows = invoice.positions.map((p) => ({
       id: p.id,
       goae_number: p.goae_number,
       description: p.description ?? null,
       charged_amount: p.charged_amount,
       eligible_amount: p.eligible_amount ?? null,
-      refund_amount: p.eligible_amount ?? p.charged_amount,
+      refund_amount:
+        mode === 'edit'
+          ? (p.refund_amount ?? p.eligible_amount ?? p.charged_amount)
+          : (p.eligible_amount ?? p.charged_amount),
     }));
     refundDate = new Date().toISOString().slice(0, 10);
-    refundNote = '';
+    refundNote = mode === 'edit' ? (events.find((e) => e.status === 'erstattet')?.note ?? '') : '';
     refundError = null;
     showRefundForm = true;
+
+    if (mode === 'edit') {
+      try {
+        const submission = await api.invoices.getSubmission(invoice.id);
+        if (submission.refund_date) refundDate = submission.refund_date;
+      } catch {
+        // No submission (shouldn't happen once erstattet) — keep today's date.
+      }
+    }
   }
 
   async function submitRefund() {
@@ -209,10 +290,72 @@
       </Alert>
     {/if}
 
-    <!-- Refund capture form (eingereicht → erstattet) -->
+    <!-- Letzter Schritt: rückgängig machen / bearbeiten (issue #230) -->
+    {#if previousStatus}
+      <div class="rounded-md border border-border bg-muted/10 p-3 space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Letzter Schritt
+        </p>
+        <div class="flex flex-wrap gap-2">
+          {#if canEditLastStep}
+            <Button
+              variant="outline"
+              size="sm"
+              onclick={editLastStep}
+              disabled={actioning || refunding || reverting}
+            >
+              Bearbeiten
+            </Button>
+          {/if}
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-destructive text-destructive hover:bg-destructive/10"
+            onclick={() => (confirmRevert = true)}
+            disabled={actioning || refunding || reverting}
+          >
+            Löschen
+          </Button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Revert confirmation -->
+    <AlertDialogRoot
+      bind:open={confirmRevert}
+      onOpenChange={(open) => {
+        if (!open) revertError = null;
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Letzten Schritt löschen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {REVERT_WARNING[invoice.status] ?? 'Der letzte Schritt wird rückgängig gemacht.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {#if revertError}
+          <Alert variant="destructive">
+            <AlertDescription>{revertError}</AlertDescription>
+          </Alert>
+        {/if}
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onclick={revertLastStep} disabled={reverting}>
+            {reverting ? 'Wird gelöscht …' : 'Ja, löschen'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialogRoot>
+
+    <!-- Refund capture form (eingereicht → erstattet, or its "Bearbeiten") -->
     {#if showRefundForm}
       <div class="rounded-md border border-border bg-muted/20 p-4 space-y-4">
-        <p class="text-sm font-medium">Erstattungsbeträge je Position erfassen</p>
+        <p class="text-sm font-medium">
+          {refundFormMode === 'edit'
+            ? 'Erstattungsbeträge korrigieren'
+            : 'Erstattungsbeträge je Position erfassen'}
+        </p>
         <p class="text-xs text-muted-foreground">
           Betrag 0 = abgelehnt. Vorbefüllt mit dem erstattungsfähigen Betrag je Position.
         </p>
@@ -281,7 +424,11 @@
 
         <div class="flex flex-wrap gap-2">
           <Button onclick={submitRefund} disabled={refunding}>
-            {refunding ? 'Wird gespeichert …' : 'Erstattung speichern'}
+            {refunding
+              ? 'Wird gespeichert …'
+              : refundFormMode === 'edit'
+                ? 'Änderungen speichern'
+                : 'Erstattung speichern'}
           </Button>
           <Button
             variant="outline"

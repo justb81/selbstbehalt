@@ -268,6 +268,13 @@ neu ↔ geprüft → bezahlt → eingereicht → erstattet
   erfasst (`positions.refund_amount`). **„Abgelehnt"** ist *kein* eigener Status, sondern
   `erstattet` mit `refund_amount = 0`.
 - Jeder Statuswechsel wird mit Zeitstempel in `invoice_status_events` protokolliert (s. u.).
+- **Schritt zurück (Issue #230):** Die Schritte `bezahlt`, `eingereicht` und `erstattet` lassen sich
+  über `POST /api/invoices/:id/revert` je einen Schritt zurücknehmen (→ `geprüft`/`bezahlt`/
+  `eingereicht`); dabei werden die dort erfassten Zusatzdaten verworfen — die `submissions`-Zeile
+  bzw. die per-Position erfassten `refund_amount`/`refund_date`. Alternativ lassen sich die zuletzt
+  erfassten Werte **ohne Statuswechsel** korrigieren: `PUT /api/invoices/:id/submission` für die
+  Einreichung (nur im Status `eingereicht`), erneutes `PUT /api/invoices/:id/refund` für die
+  Erstattung (auch im Status `erstattet`).
 
 #### `invoice_positions`
 
@@ -806,7 +813,7 @@ aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur 
 | `OCRScanner` | `packages/medic-invoice-check/src/lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
-| `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position |
+| `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position + „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
 | `ContractCard` | `lib/components/ContractCard.svelte` | Vertragszusammenfassung |
 | `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige; `compact` + optionaler `href` für verlinkte Kompaktkarten (Dashboard, Vertragsdetail) |
 | `InvoiceBadge` | `lib/components/InvoiceBadge.svelte` | Status-Badge für Rechnungen |
@@ -876,7 +883,12 @@ DELETE /api/invoices/:id              → Rechnung löschen
 
 POST   /api/invoices/:id/status       → Statuswechsel (schreibt invoice_status_events mit Zeitstempel)
 POST   /api/invoices/:id/submit       → Einreichung erfassen (→ Status 'eingereicht')
-PUT    /api/invoices/:id/refund       → Erstattungseingang je Position erfassen (→ Status 'erstattet')
+GET    /api/invoices/:id/submission   → Aktuelle Einreichung lesen
+PUT    /api/invoices/:id/submission   → Einreichung korrigieren (Status bleibt 'eingereicht')
+PUT    /api/invoices/:id/refund       → Erstattung je Position erfassen (→ Status 'erstattet') oder,
+                                         bei bereits 'erstattet', korrigieren (Status bleibt gleich)
+POST   /api/invoices/:id/revert       → Letzten Schritt zurücknehmen (bezahlt/eingereicht/erstattet
+                                         → Vorgängerstatus, verwirft dessen Zusatzdaten, Issue #230)
 
 GET    /api/stats/year/:year          → Jahresauswertung
 GET    /api/stats/bre/:insuredPersonId → BRE-Verlauf einer versicherten Person

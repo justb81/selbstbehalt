@@ -4,6 +4,11 @@
   of an invoice to the insurer. Only metadata is captured here — the actual
   refund amounts are tracked per position via PUT /api/invoices/:id/refund
   (Issue #139).
+
+  Doubles as the "Bearbeiten" form for the eingereicht step (issue #230): if
+  the invoice is already eingereicht, the existing submission is loaded and
+  corrections are saved via PUT /api/invoices/:id/submission in place, instead
+  of creating a new submission and transitioning the status.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -37,11 +42,27 @@
   let loading = $state(true);
   let loadError = $state<string | null>(null);
 
+  const mode = $derived(
+    invoice?.status === 'bezahlt' ? 'create' : invoice?.status === 'eingereicht' ? 'edit' : null,
+  );
+
+  // ---- Form state ----
+  const nowIso = new Date().toISOString().slice(0, 16); // datetime-local format
+  let submittedAt = $state(nowIso);
+  let submittedVia = $state<SubmissionChannel>('app');
+  let expectedRefund = $state<number | null>(null);
+
   async function loadInvoice() {
     loading = true;
     loadError = null;
     try {
       invoice = await api.invoices.get(invoiceId);
+      if (invoice.status === 'eingereicht') {
+        const submission = await api.invoices.getSubmission(invoiceId);
+        submittedAt = submission.submitted_at ? submission.submitted_at.slice(0, 16) : nowIso;
+        submittedVia = submission.submitted_via ?? 'app';
+        expectedRefund = submission.expected_refund ?? null;
+      }
     } catch (e) {
       loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
@@ -51,25 +72,24 @@
 
   onMount(loadInvoice);
 
-  // ---- Form state ----
-  const nowIso = new Date().toISOString().slice(0, 16); // datetime-local format
-  let submittedAt = $state(nowIso);
-  let submittedVia = $state<SubmissionChannel>('app');
-  let expectedRefund = $state<number | null>(null);
-
   let saving = $state(false);
   let formError = $state<string | null>(null);
 
   async function submit() {
-    if (!invoice) return;
+    if (!invoice || !mode) return;
     saving = true;
     formError = null;
     try {
-      await api.invoices.submit(invoice.id, {
+      const payload = {
         submitted_at: submittedAt ? `${submittedAt}:00Z` : null,
         submitted_via: submittedVia,
         expected_refund: expectedRefund,
-      });
+      };
+      if (mode === 'edit') {
+        await api.invoices.updateSubmission(invoice.id, payload);
+      } else {
+        await api.invoices.submit(invoice.id, payload);
+      }
       await goto(resolve('/invoices/[id]', { id: invoice.id }));
     } catch (e) {
       formError =
@@ -84,15 +104,32 @@
     'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 </script>
 
-<svelte:head><title>Einreichung · selbstbehalt</title></svelte:head>
+<svelte:head
+  ><title>{mode === 'edit' ? 'Einreichung bearbeiten' : 'Einreichung'} · selbstbehalt</title
+  ></svelte:head
+>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <h1 class="text-2xl font-bold tracking-tight">Einreichung</h1>
+  <h1 class="text-2xl font-bold tracking-tight">
+    {mode === 'edit' ? 'Einreichung bearbeiten' : 'Einreichung'}
+  </h1>
 
   {#if loading}
     <LoadingState label="Rechnungsdaten werden geladen …" />
   {:else if loadError}
     <ErrorState title="Fehler" message={loadError} onRetry={loadInvoice} />
+  {:else if invoice && !mode}
+    <Card>
+      <CardContent class="pt-4 space-y-3">
+        <p class="text-sm text-muted-foreground">
+          Diese Rechnung hat den Status <strong class="text-foreground">{invoice.status}</strong> und
+          kann derzeit nicht (mehr) eingereicht werden.
+        </p>
+        <Button variant="outline" href={resolve('/invoices/[id]', { id: invoice.id })}>
+          Zur Rechnung
+        </Button>
+      </CardContent>
+    </Card>
   {:else if invoice}
     <p class="text-sm text-muted-foreground">
       Rechnung <strong class="text-foreground">{invoice.provider_name}</strong> vom {formatDate(
@@ -152,7 +189,11 @@
 
           <div class="flex flex-wrap gap-2 items-center">
             <Button type="submit" disabled={saving}>
-              {saving ? 'Wird gespeichert …' : 'Einreichung speichern'}
+              {saving
+                ? 'Wird gespeichert …'
+                : mode === 'edit'
+                  ? 'Änderungen speichern'
+                  : 'Einreichung speichern'}
             </Button>
             <Button variant="outline" href={resolve('/invoices/[id]', { id: invoiceId })}
               >Abbrechen</Button

@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // Registers @testing-library/jest-dom matchers (e.g. toBeInTheDocument) with Vitest.
 import '@testing-library/jest-dom/vitest';
+import { afterEach } from 'vitest';
+
+// bits-ui's Dialog/AlertDialog lock body scroll while open by setting inline
+// styles (padding-right, overflow, pointer-events: none) on <body>. The lock
+// is released via presence/exit-animation detection, which waits for a real
+// `transitionend`/animation frame that JSDOM never fires — so a dialog closed
+// at the end of one test can leave the next test's page unclickable. Reset it
+// unconditionally after every test.
+afterEach(() => {
+  document.body.removeAttribute('style');
+});
 
 // JSDOM does not implement window.matchMedia; svelte-sonner's Toaster calls it in a
 // $effect. Provide a minimal stub so component tests that include the AppShell don't
