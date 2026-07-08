@@ -312,6 +312,22 @@ describe('migration 0005 — non-fee-schedule base_amount backfill', () => {
     expect(readBase(id)).toBe(12.5);
   });
 
+  it('converges (does not drift) for a non-evenly-divisible amount — the accepted residual', () => {
+    // quantity 3 / charged 10.00 has no exact 2-decimal per-unit Basis: base = 3.33 and
+    // 3 × 3.33 = 9.99 ≠ 10.00, so the row stays a (read-tolerated) invariant violator.
+    // The backfill must rewrite it to the same 3.33 on every run rather than drift.
+    const id = insertPosition({
+      goaeCategory: 'Auslagenersatz',
+      quantity: 3,
+      baseAmount: 0,
+      chargedAmount: 10,
+    });
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(3.33);
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(3.33);
+  });
+
   it('leaves GOÄ positions and already-consistent rows untouched, and is idempotent', () => {
     const goae = insertPosition({
       goaeCategory: 'GOÄ',

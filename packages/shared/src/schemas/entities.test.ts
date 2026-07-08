@@ -269,6 +269,21 @@ describe('invoicePositionSchema (persisted read)', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // Migration 0005 backfills base = ROUND(charged / quantity, 2); a non-evenly-divisible
+  // amount (quantity 3, charged 10 → base 3.33, 3 × 3.33 = 9.99) leaves a 1-cent residual
+  // the read schema must still tolerate (the write schema would reject it — by design).
+  it('accepts a backfilled non-divisible row (quantity 3, base 3.33, charged 10)', () => {
+    const result = invoicePositionSchema.safeParse({
+      ...persisted,
+      goae_number: '',
+      goae_category: 'Arznei-/Hilfsmittel',
+      quantity: 3,
+      base_amount: 3.33,
+      charged_amount: 10,
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('submissionCreateSchema', () => {
