@@ -52,20 +52,19 @@ function insured(id: string, personId: string): InsuredPerson {
   };
 }
 
-const INVOICES: Invoice[] = [
-  invoice({
-    id: 'inv-a',
-    insured_person_id: 'ip-a',
-    provider_name: 'Dr. Arzt',
-    provider_type: 'arzt',
-  }),
-  invoice({
-    id: 'inv-b',
-    insured_person_id: 'ip-b',
-    provider_name: 'Zahnarzt Weber',
-    provider_type: 'zahnarzt',
-  }),
-];
+const INVOICE_ALICE = invoice({
+  id: 'inv-a',
+  insured_person_id: 'ip-a',
+  provider_name: 'Dr. Arzt',
+  provider_type: 'arzt',
+});
+const INVOICE_BOB = invoice({
+  id: 'inv-b',
+  insured_person_id: 'ip-b',
+  provider_name: 'Zahnarzt Weber',
+  provider_type: 'zahnarzt',
+});
+const INVOICES: Invoice[] = [INVOICE_ALICE, INVOICE_BOB];
 const PERSONS = [person('p-a', 'Alice'), person('p-b', 'Bob')];
 const INSURED = [insured('ip-a', 'p-a'), insured('ip-b', 'p-b')];
 
@@ -96,6 +95,26 @@ describe('InvoiceList', () => {
 
     expect(screen.queryByRole('link', { name: 'Dr. Arzt' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Zahnarzt Weber' })).toBeInTheDocument();
+  });
+
+  it('offers a tab for every insured person, even one without invoices', async () => {
+    const user = userEvent.setup();
+    render(InvoiceList, {
+      props: {
+        // Only Alice has invoices; Bob is insured but has none yet.
+        invoices: [INVOICE_ALICE],
+        persons: PERSONS,
+        insuredPersons: INSURED,
+      },
+    });
+
+    expect(screen.getByRole('tab', { name: 'Alice' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Bob' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Bob' }));
+
+    expect(screen.queryByRole('link', { name: 'Dr. Arzt' })).not.toBeInTheDocument();
+    expect(screen.getByText('Keine Rechnungen entsprechen dem Filter.')).toBeInTheDocument();
   });
 
   it('hides the Person filter when scoped (no person mapping provided)', () => {

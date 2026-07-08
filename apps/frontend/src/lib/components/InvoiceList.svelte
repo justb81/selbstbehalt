@@ -5,10 +5,11 @@
   two stay visually and functionally identical.
 
   Filters:
-  - Person — rendered as tabs when the list spans ≥2 persons (needs `persons`
-    + `insuredPersons` to map an invoice's insured_person_id to a person).
-    Omit those props (e.g. on a page already scoped to one insured person) and
-    the person filter disappears.
+  - Person — rendered as tabs when ≥2 insured persons exist (needs `persons`
+    + `insuredPersons` to map an invoice's insured_person_id to a person). Every
+    insured person is offered, including ones without invoices yet. Omit those
+    props (e.g. on a page already scoped to one insured person) and the person
+    filter disappears.
   - Art des Leistungserbringers (provider type) — a select, shown when ≥2
     distinct types are present. The type is also a table column.
   - Status and free-text search (Leistungserbringer / Rechnungsnummer).
@@ -94,14 +95,12 @@
   // insured_person_id -> person_id, so an invoice can be traced to its person.
   const personIdByInsured = $derived(new Map(insuredPersons.map((ip) => [ip.id, ip.person_id])));
 
-  // Persons that actually own an invoice in this list, sorted by name — the
-  // person filter only offers people the current data can filter to.
+  // The persons who are insured somewhere (i.e. can own invoices), sorted by
+  // name — the filter offers every such person, not only those who happen to
+  // have an invoice already, so a person with none yet is still selectable.
   const personOptions = $derived.by(() => {
     const ids = new SvelteSet<string>();
-    for (const inv of invoices) {
-      const pid = personIdByInsured.get(inv.insured_person_id);
-      if (pid) ids.add(pid);
-    }
+    for (const ip of insuredPersons) ids.add(ip.person_id);
     return persons.filter((p) => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   });
   const showPersonFilter = $derived(personOptions.length >= 2);
