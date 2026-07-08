@@ -117,19 +117,21 @@
   /** Display label override for `goae_category` options; falls back to the raw value. */
   const GOAE_CATEGORY_LABELS: Partial<Record<GoaeCategory, string>> = {
     Auslagenersatz: 'Auslagenersatz (§10 GOÄ)',
+    'Material-/Laborkosten': 'Material-/Laborkosten (§9 GOZ)',
   };
 
   /**
    * Categories offered by the per-position Kategorie picker. GOT (veterinary)
    * is deliberately excluded here — issues #183/#224 — pending a separate
    * vet-invoice app; the shared schema/DB column still accept it unchanged.
-   * The non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
-   * Ziffer/Faktor and are billed as Anzahl × Basis.
+   * The non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel,
+   * Material-/Laborkosten) have no Ziffer/Faktor and are billed as Anzahl × Basis.
    */
   const SELECTABLE_GOAE_CATEGORIES: GoaeCategory[] = [
     ...SUPPORTED_INVOICE_SCHEDULES,
     'Auslagenersatz',
     'Arznei-/Hilfsmittel',
+    'Material-/Laborkosten',
   ];
 
   /**
@@ -451,9 +453,11 @@
       const parsed = parseInvoice(rawOcr, tables, {});
       positions = parsed.positions.map((p) => ({
         goae_number: p.ziffer,
-        goae_category: isAuslagenersatzDescription(p.description)
-          ? 'Auslagenersatz'
-          : (p.feeSchedule as GoaeCategory),
+        goae_category:
+          p.nonScheduleCategory ??
+          (isAuslagenersatzDescription(p.description)
+            ? 'Auslagenersatz'
+            : (p.feeSchedule as GoaeCategory)),
         quantity: p.quantity,
         treatment_date: p.treatmentDate ?? '',
         description: p.description ?? '',

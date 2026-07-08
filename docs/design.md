@@ -289,7 +289,7 @@ id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
-goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz' | 'Arznei-/Hilfsmittel'
+goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz' | 'Arznei-/Hilfsmittel' | 'Material-/Laborkosten'
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup (bzw. Bezeichnung bei Rezept-Belegen)
 quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3 (bei Nicht-GO-Kategorien fix 1)
@@ -301,22 +301,33 @@ is_valid         BOOLEAN            -- Verstößt gegen keine GOÄ/GOZ/GOT-Regel
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
-`goae_category` trägt neben den drei Gebührenordnungen zwei **Nicht-Gebührenordnungs-Kategorien**:
+`goae_category` trägt neben den drei Gebührenordnungen drei **Nicht-Gebührenordnungs-Kategorien**:
 
-- **`Auslagenersatz`** für §10 GOÄ — typischerweise Porto-/Versandkosten, die zum tatsächlichen
+- **`Auslagenersatz`** für §10 GOÄ — Porto-/Versandkosten **und Materialkosten**, die zum tatsächlichen
   Betrag statt zu einem GOÄ-Satz abgerechnet werden. Der GOÄ-Parser erkennt Auslagenersatz-
   Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und setzt die
   Kategorie beim Einlesen automatisch; sie bleibt in der UI jederzeit manuell umstellbar.
 - **`Arznei-/Hilfsmittel`** für per Rezept eingereichte Belege (Apotheke/Sanitätshaus): erfasst mit
   Bezeichnung, Menge und Einzelpreis — ohne Ziffer/Steigerungsfaktor. Wird ausschließlich manuell
   gewählt (keine OCR-Schlüsselwort-Erkennung).
+- **`Material-/Laborkosten`** für §9-GOZ-Praxislabor-Auslagen: zahnärztliche/kieferorthopädische
+  Rechnungen führen diese als **eine Summenzeile** („Auslagen nach §9 GOZ gemäß Praxislaborbeleg:
+  1.001,91"). Der Parser übernimmt sie als **eine** Sammelposition (Anzahl 1 × Basis) und schließt
+  den beigefügten „Eigenlabor-/Materialbeleg" (BEB/BEL-Zeilen, nur zur Information) von der
+  Positionsextraktion aus — dessen Beträge sind bereits in der Summenzeile enthalten (§4.3, #251).
 
-Beide Nicht-GO-Kategorien haben **keine Ziffer/keinen Steigerungsfaktor**; ihr Betrag ist
+Alle drei Nicht-GO-Kategorien haben **keine Ziffer/keinen Steigerungsfaktor**; ihr Betrag ist
 `quantity × base_amount` (Anzahl × Basis, `multiplier` fix 1), was das geteilte Zod-Schema auf Cent
-genau prüft. Sie durchlaufen keine Ziffer-/Steigerungsfaktor-Prüfung gegen ein Gebührenverzeichnis
-(`is_valid = true` ohne Lookup) und werden in der Erstattungs-Engine **zunächst zu 100 % von
-`charged_amount`** erstattet — unabhängig von Tarifstufen, Wartezeit, Beihilfe-Quote oder
-Summengrenzen (§5.1).
+genau prüft (`isNonScheduleCategory`). Sie durchlaufen keine Ziffer-/Steigerungsfaktor-Prüfung gegen
+ein Gebührenverzeichnis (`is_valid = true` ohne Lookup).
+
+Für die **Erstattung** unterscheiden sie sich jedoch (`isFlatReimbursedCategory`):
+
+- **`Arznei-/Hilfsmittel`** wird in der Erstattungs-Engine **zunächst zu 100 % von `charged_amount`**
+  erstattet — unabhängig von Tarifstufen, Wartezeit, Beihilfe-Quote oder Summengrenzen (§5.1).
+- **`Auslagenersatz`** und **`Material-/Laborkosten`** sind fachlich **kein** pauschaler Auslagenersatz:
+  zahntechnische Leistungen werden quotal erstattet. Sie durchlaufen daher die normale §5.1-Pipeline mit
+  einer aus dem Rechnungskontext abgeleiteten `benefit_category` (§5.1, `deriveAuslagenBenefitCategory`).
 
 > **Ausblick:** Für `Arznei-/Hilfsmittel` ist die 100 %-Behandlung bewusst vorläufig — die reale
 > Erstattung wird über die vom Versicherer zurückgemeldete `refund_amount` korrigiert. Als spätere
@@ -453,14 +464,17 @@ arbeitet in vier Schritten:
    geprüft — **die Grenzen kommen ausschließlich aus den Daten, nicht
    hartkodiert**. `fixedFactor`-Einträge werden gegen ihren festen
    Gebührensatz geprüft. Ergebnis: `isValid` + `flags` (mit `flag_reason`).
-   Die Nicht-GO-Kategorien (`Auslagenersatz`, `Arznei-/Hilfsmittel`) haben keine
-   Ziffer, gegen die dieser Schritt prüfen könnte, und werden über
-   `isNonScheduleCategory(goae_category)` komplett vom Tabellen-Lookup
-   ausgenommen — `lookupPosition` selbst kennt diese Werte nicht (s. §5.1 zur
-   Erstattung). Für §10 `Auslagenersatz` setzt der exportierte reine Helfer
-   `isAuslagenersatzDescription` (Schlüsselwort-Erkennung in der Beschreibung)
-   die Kategorie beim Einlesen zusätzlich automatisch; `Arznei-/Hilfsmittel`
-   wird ausschließlich manuell in der UI gewählt.
+   Die Nicht-GO-Kategorien (`Auslagenersatz`, `Arznei-/Hilfsmittel`,
+   `Material-/Laborkosten`) haben keine Ziffer, gegen die dieser Schritt prüfen
+   könnte, und werden über `isNonScheduleCategory(goae_category)` komplett vom
+   Tabellen-Lookup ausgenommen (s. §5.1 zur Erstattung). Für §10 `Auslagenersatz`
+   setzt der exportierte reine Helfer `isAuslagenersatzDescription`
+   (Schlüsselwort-Erkennung in der Beschreibung) die Kategorie beim Einlesen
+   zusätzlich automatisch; `Arznei-/Hilfsmittel` wird ausschließlich manuell in
+   der UI gewählt. Die §9-GOZ-Summenzeile erkennt `extractPositions` selbst
+   (`matchMaterialLaborSummary`) und übernimmt sie als eine
+   `Material-/Laborkosten`-Sammelposition; ein beigefügter Eigenlabor-/
+   Materialbeleg (`isBelegSectionMarker`) beendet die Positionsextraktion (#251).
 4. **Validierung über die ganze Rechnung** gegen das Abhängigkeitsmodell:
    `excludes`/`mutualExclusion` (symmetrisch normalisierte Inkompatibilitäts-
    Paare), `requires`, `componentOf`, `maxFrequency`, `maxAmount`,
@@ -515,7 +529,7 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 interface ErstattungPosition {
   category: BenefitCategory;        // benefitCategory aus dem GOÄ-Parser (+ ggf. Kontext-Override)
   chargedAmount: number;            // in Rechnung gestellter Betrag der Position
-  isFullyReimbursed?: boolean;      // isNonScheduleCategory(goae_category) (Auslagenersatz/Arznei-/Hilfsmittel); überspringt die Pipeline unten komplett
+  isFullyReimbursed?: boolean;      // isFlatReimbursedCategory(goae_category) (nur Arznei-/Hilfsmittel); überspringt die Pipeline unten komplett
 }
 
 interface ErstattungInput {
@@ -566,21 +580,37 @@ das Rechnungsdatum.
 Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
 die Günstigerprüfung (§5.2/§5.3) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
 
-**Pauschal erstattete Nicht-GO-Positionen** (`isNonScheduleCategory(goae_category)` →
+**Pauschal (100 %) erstattete Positionen** (`isFlatReimbursedCategory(goae_category)` →
 `isFullyReimbursed: true`) überspringen die fünfstufige Pipeline oben vollständig und werden
 **zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit, Schwellen-Staffel,
 Beihilfe-Quote oder Summengrenzen. Sie fließen in `fullyReimbursedAmount` (separat von `byCategory`)
-und summieren sich mit in `eligibleAmount` ein. Das betrifft:
+und summieren sich mit in `eligibleAmount` ein. Das betrifft **nur**:
 
-- **`Auslagenersatz`** nach §10 GOÄ (typischerweise Porto-/Versandkosten); beim Einlesen automatisch
-  aus der Positionsbeschreibung erkannt (§4.3, `isAuslagenersatzDescription`), in der UI manuell
-  umstellbar.
 - **`Arznei-/Hilfsmittel`** (per-Rezept-Belege, Anzahl × Basis); ausschließlich manuell gewählt.
 
 > **Ausblick:** Die 100 %-Behandlung von `Arznei-/Hilfsmittel` ist vorläufig und wird über die reale
 > `refund_amount` des Versicherers korrigiert. Als spätere Option lässt sich die Kategorie über eine
 > echte `BenefitCategory` (z.B. `hilfsmittel`) durch die obige generische Pipeline führen, um
 > Tarif-Staffeln/-Limits zu berücksichtigen — das `included_benefits`-Modell trägt das bereits.
+
+**Auslagen-Sammelpositionen mit abgeleiteter `benefit_category`.** §10-GOÄ-`Auslagenersatz` (auch
+Materialkosten) und §9-GOZ-`Material-/Laborkosten` sind **kein** pauschaler Auslagenersatz —
+zahntechnische Leistungen erstatten PKV-Tarife quotal (Zahnersatz-/KFO-Quote, Staffeln, Limits).
+Sie durchlaufen daher die normale fünfstufige Pipeline. Da sie keine Ziffer und damit keinen
+Tabellen-Lookup haben, wird ihre `benefit_category` zur Berechnungszeit **deterministisch abgeleitet**
+(transient, nichts persistiert, keine Zusatzeingabe) — analog dazu, wie Ziffern-Positionen ihre
+Kategorie transient aus dem Lookup beziehen. Der reine Helfer `deriveAuslagenBenefitCategory(positions,
+feeSchedule, providerType)`:
+
+1. **Betragsgewichtete Dominanz** der Honorar-Positionen derselben Gebührenordnung (§9-GOZ →
+   GOZ-Positionen, §10-GOÄ → GOÄ-Positionen); ein eindeutiger Sieger (kein Gleichstand) gewinnt.
+2. **Fallback** (keine passenden Honorar-Positionen / Gleichstand): Provider-Typ-Mapping
+   (`kieferorthopaede`→`kieferorthopaedie`, `zahnarzt`→`zahnbehandlung`, `arzt`→`ambulant`,
+   `krankenhaus`→`stationaer`).
+3. **Letzter Fallback:** `sonstiges`.
+
+Beispiel: GOZ-Honorar ≈ 275 € `kieferorthopaedie` vs. ≈ 104 € `zahnbehandlung` → die 1.001,91 €
+Laborkosten laufen unter der KFO-Erstattungsregel des Tarifs.
 
 ### 5.2 Entscheidungslogik
 

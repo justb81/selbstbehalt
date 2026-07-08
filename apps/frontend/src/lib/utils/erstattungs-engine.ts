@@ -60,13 +60,15 @@ export interface ErstattungPosition {
    */
   treatmentDate?: DateInput;
   /**
-   * True for non-fee-schedule positions reimbursed at a flat 100 % — §10 GOÄ
-   * Auslagenersatz (Porto-/Versandkosten) and per-Rezept Arznei-/Hilfsmittel, i.e.
-   * `isNonScheduleCategory(goae_category)`. Skips the whole `category` pipeline
-   * below: always reimbursed at 100 % of `chargedAmount`, regardless of tariff
-   * tiers, Wartezeit, Beihilfe-Quote or Summengrenzen. (Provisional for
-   * Arznei-/Hilfsmittel; the insurer's actual `refund_amount` corrects it later —
-   * see §5.1 for the future per-tariff-category option.)
+   * True only for positions reimbursed at a flat 100 % — per-Rezept
+   * Arznei-/Hilfsmittel, i.e. `isFlatReimbursedCategory(goae_category)`. Skips the
+   * whole `category` pipeline below: always reimbursed at 100 % of `chargedAmount`,
+   * regardless of tariff tiers, Wartezeit, Beihilfe-Quote or Summengrenzen.
+   * (Provisional; the insurer's actual `refund_amount` corrects it later — see §5.1.)
+   *
+   * The Auslagen categories §10-GOÄ Auslagenersatz and §9-GOZ Material-/Laborkosten
+   * are **not** flat: the caller assigns them a `category` derived from the invoice's
+   * honorar positions and they run the pipeline below like any covered benefit (#251).
    */
   isFullyReimbursed?: boolean;
 }
@@ -128,15 +130,14 @@ export interface ErstattungResult {
   /**
    * Per-position eligible amounts, proportionally distributed from `byCategory`.
    * Positions blocked by a waiting period receive `eligible_amount = 0`.
-   * Flat-reimbursed positions (Auslagenersatz, Arznei-/Hilfsmittel) receive
+   * Flat-reimbursed positions (Arznei-/Hilfsmittel) receive
    * `eligible_amount = chargedAmount`.
    * Has the same length and order as {@link ErstattungInput.positions}.
    */
   byPosition: ErstattungByPosition[];
   /**
    * Summe der pauschal (100 %) erstatteten Positionen außerhalb der `byCategory`-
-   * Pipeline — §10 GOÄ Auslagenersatz (Porto/Versand) und Arznei-/Hilfsmittel.
-   * Included in `eligibleAmount`.
+   * Pipeline — nur `Arznei-/Hilfsmittel` (#248). Included in `eligibleAmount`.
    */
   fullyReimbursedAmount: number;
 }
@@ -284,8 +285,8 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     eligible_amount: 0,
   }));
 
-  // Flat-reimbursed positions (Auslagenersatz, Arznei-/Hilfsmittel) skip the
-  // category pipeline entirely — always reimbursed at 100 % of chargedAmount.
+  // Flat-reimbursed positions (Arznei-/Hilfsmittel) skip the category pipeline
+  // entirely — always reimbursed at 100 % of chargedAmount.
   let fullyReimbursedAmount = 0;
 
   // Per-position waiting-period check using individual treatment dates.

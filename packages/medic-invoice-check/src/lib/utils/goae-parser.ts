@@ -43,7 +43,12 @@
  * Provide a single total amount per line (no separate Einzel-/Gesamtbetrag columns).
  */
 
-import { roundCents, type BenefitCategory, type ProviderType } from '@selbstbehalt/shared';
+import {
+  roundCents,
+  type BenefitCategory,
+  type GoaeCategory,
+  type ProviderType,
+} from '@selbstbehalt/shared';
 
 import type {
   Constraint,
@@ -94,6 +99,15 @@ export interface RawPosition {
    * Optional so tests that construct minimal `RawPosition` fixtures compile.
    */
   detectedSchedule?: FeeScheduleId | null;
+  /**
+   * Set for non-fee-schedule Sammelpositionen extracted directly (no Ziffer, no
+   * table lookup) — currently only the §9-GOZ practice-lab expense summary line
+   * (`'Material-/Laborkosten'`). When set, {@link lookupPosition} skips the
+   * Ziffer lookup and §5 check and marks the position valid; the tariff
+   * benefit_category is derived later (frontend) from the invoice's honorar
+   * positions, not from a table. `null`/absent for ordinary positions.
+   */
+  nonScheduleCategory?: GoaeCategory | null;
 }
 
 /** Why a single position was flagged during lookup / §5 validation. */
@@ -164,6 +178,13 @@ export interface ParsedPosition {
    * Each position on a mixed invoice (e.g. GOZ + GOÄ) carries its own schedule.
    */
   feeSchedule: FeeScheduleId;
+  /**
+   * Non-fee-schedule category for Sammelpositionen extracted without a Ziffer —
+   * currently only `'Material-/Laborkosten'` (§9-GOZ practice-lab summary line).
+   * The review UI maps this straight onto the row's `goae_category`. `null`/absent
+   * for ordinary fee-schedule positions. See {@link RawPosition.nonScheduleCategory}.
+   */
+  nonScheduleCategory?: GoaeCategory | null;
 }
 
 /** The type of cross-invoice rule a {@link ConstraintViolation} reports. */
@@ -688,6 +709,10 @@ function joinContinuationLines(lines: string[]): string[] {
  */
 function standsAlone(line: string): boolean {
   if (ZIFFER_RE.test(line)) return true;
+  // A §9-GOZ practice-lab summary line carries only a single amount (no
+  // Faktor+Betrag pair), so it would otherwise be mistaken for a wrapped
+  // description continuation and merged into the position above it.
+  if (matchMaterialLaborSummary(line)) return true;
   return hasDecimalAmountPair(line.split(/\s+/).filter(Boolean));
 }
 
@@ -747,6 +772,49 @@ function joinDescriptionContinuations(lines: string[]): string[] {
 }
 
 /**
+ * Marks the start of an Eigenlabor-/Materialbeleg (BEB/BEL practice-lab receipt)
+ * attached to a dental/orthodontic invoice: an "nur zur Information" annex whose
+ * amounts are already contained in the invoice total via the §9-GOZ summary line.
+ * Everything from such a marker to the end of the document must **not** be parsed
+ * as GOZ positions — its lines carry no Steigerungsfaktor and its BEB/BEL numbers
+ * collide with the GOZ Nummernraum (they'd otherwise become pseudo `unknown_ziffer`
+ * positions, the Einzelpreis misread as a Faktor). Case-insensitive, OCR-tolerant.
+ * The §9 summary line itself mentions "Praxislaborbeleg" but is caught earlier by
+ * {@link matchMaterialLaborSummary} so it is never treated as a section marker.
+ */
+const BELEG_SECTION_MARKER_RE =
+  /eigenlabor|materialbeleg|praxislaborbeleg|anlage\s+zu\s+r(?:g|ech)|beleg\s+dient\s+nur|nur\s+(?:zur?|für)\s+(?:ihrer?\s+)?information/i;
+
+/** Whether `line` starts an Eigenlabor-/Materialbeleg section (see {@link BELEG_SECTION_MARKER_RE}). */
+export function isBelegSectionMarker(line: string): boolean {
+  return BELEG_SECTION_MARKER_RE.test(line);
+}
+
+/**
+ * The §9-GOZ practice-lab expense summary line the main invoice prints as a single
+ * total (e.g. `Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91`). Spellings
+ * vary ("gemäß Praxislaborbeleg", "gemäß beiliegendem Beleg", with/without a colon).
+ * The §-sign is optional (OCR frequently drops it). Returns the EUR amount and the
+ * descriptive text preceding it, or `null` when the line is not such a summary.
+ */
+const MATERIAL_LABOR_SUMMARY_RE = /Auslagen\s+nach\s+§?\s*9\s*GOZ\b[^\d]*?(\d[\d.]*,\d{2})/i;
+
+export function matchMaterialLaborSummary(
+  line: string,
+): { amount: number; description: string } | null {
+  const m = MATERIAL_LABOR_SUMMARY_RE.exec(line);
+  if (!m || !m[1]) return null;
+  const amount = parseGermanNumber(m[1]);
+  if (Number.isNaN(amount)) return null;
+  const description =
+    m[0]
+      .slice(0, m[0].length - m[1].length)
+      .replace(/[:\s]+$/, '')
+      .trim() || 'Auslagen nach §9 GOZ';
+  return { amount, description };
+}
+
+/**
  * Extracts every position line from invoice text. A standalone date line
  * (see {@link BARE_DATE_RE} — a Sammelrechnung's Leistungsdatum printed once
  * before the block of positions it covers) is itself never a position, but
@@ -755,13 +823,51 @@ function joinDescriptionContinuations(lines: string[]): string[] {
  *
  * `isKnownZiffer`, when given, is threaded into {@link parsePositionLine} to
  * drive its Tabellen-Lookahead for bare FDI tooth numbers (issue #250).
+ *
+ * Two dental/orthodontic special cases (issue #251) are handled on the **raw**
+ * lines, before the continuation-joining runs: the §9-GOZ practice-lab summary
+ * line becomes one `Material-/Laborkosten` Sammelposition
+ * ({@link matchMaterialLaborSummary}), and an attached Eigenlabor-/Materialbeleg
+ * ({@link isBelegSectionMarker}) truncates extraction — cutting it before the
+ * join step keeps the marker from being absorbed as a description continuation.
  */
 export function extractPositions(text: string, isKnownZiffer?: ZifferKnownCheck): RawPosition[] {
   const positions: RawPosition[] = [];
-  const lines = joinDescriptionContinuations(joinContinuationLines(text.split(/\r?\n/)));
+
+  // Truncate at the first Eigenlabor-/Materialbeleg marker (but never at the §9
+  // summary line, which also mentions "Praxislaborbeleg"). Done on the raw lines
+  // so the marker isn't first merged into a preceding position by the
+  // continuation joiner and thereby hidden from this check.
+  const rawLines = text.split(/\r?\n/);
+  const cutAt = rawLines.findIndex(
+    (l) => isBelegSectionMarker(l) && matchMaterialLaborSummary(l) === null,
+  );
+  const kept = cutAt === -1 ? rawLines : rawLines.slice(0, cutAt);
+
+  const lines = joinDescriptionContinuations(joinContinuationLines(kept));
   let currentDate: string | null = null;
   for (const line of lines) {
-    const bareDate = BARE_DATE_RE.exec(line.trim());
+    const trimmed = line.trim();
+
+    // §9-GOZ practice-lab expenses → one Material-/Laborkosten Sammelposition
+    // (Anzahl 1 × Basis = Betrag), checked before the bare-date/position parsing.
+    const summary = matchMaterialLaborSummary(trimmed);
+    if (summary) {
+      positions.push({
+        ziffer: '',
+        quantity: 1,
+        multiplier: 1,
+        chargedAmount: summary.amount,
+        raw: trimmed,
+        ocrDescription: summary.description,
+        treatmentDate: currentDate,
+        detectedSchedule: null,
+        nonScheduleCategory: 'Material-/Laborkosten',
+      });
+      continue;
+    }
+
+    const bareDate = BARE_DATE_RE.exec(trimmed);
     if (bareDate) {
       currentDate = toIso(bareDate[1]!, bareDate[2]!, bareDate[3]!);
       continue;
@@ -806,6 +912,33 @@ export function lookupPosition(
 ): ParsedPosition {
   const normalizedZiffer = normalizeZiffer(raw.ziffer);
   const flags: PositionFlag[] = [];
+
+  if (raw.nonScheduleCategory) {
+    // A non-fee-schedule Sammelposition (currently only the §9-GOZ practice-lab
+    // expense summary → 'Material-/Laborkosten'): no Ziffer, so no table lookup
+    // and no §5 factor check. The amount is Anzahl × Basis; the tariff
+    // benefit_category is derived later (frontend) from the invoice's honorar
+    // positions, not from a table lookup, so it is valid without a lookup.
+    return {
+      ziffer: '',
+      normalizedZiffer: '',
+      description: raw.ocrDescription ?? undefined,
+      quantity: raw.quantity,
+      multiplier: raw.multiplier,
+      chargedAmount: raw.chargedAmount,
+      baseAmount: roundCents(raw.chargedAmount / (raw.quantity || 1)),
+      category: null,
+      benefitCategory: null,
+      maxMultiplier: null,
+      known: false,
+      isValid: true,
+      flags,
+      raw: raw.raw,
+      treatmentDate: raw.treatmentDate ?? null,
+      feeSchedule: table.feeSchedule,
+      nonScheduleCategory: raw.nonScheduleCategory,
+    };
+  }
 
   if (raw.ziffer === '') {
     // parsePositionLine's Ziffer-less fallback: the line resolved a real
@@ -942,7 +1075,7 @@ export function validateInvoice(
   const present = new Set(indicesByZiffer.keys());
 
   // --- Incompatibility: excludes + mutualExclusion → symmetric pair set ---
-  const PAIR_SEP = ' ';
+  const PAIR_SEP = ' ';
   const conflictRule = new Map<string, { sourceText: string; ruleId?: string }>();
   const addPair = (a: string, b: string, rule: { sourceText: string; ruleId?: string }): void => {
     if (a === b) return;

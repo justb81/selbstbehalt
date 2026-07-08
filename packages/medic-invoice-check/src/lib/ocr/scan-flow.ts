@@ -26,6 +26,8 @@ import {
 import {
   detectProviderType,
   isAuslagenersatzDescription,
+  isBelegSectionMarker,
+  matchMaterialLaborSummary,
   parseInvoice,
   parsePositionLine,
   type ValidationContext,
@@ -88,13 +90,24 @@ export function meanConfidence(results: OcrResult[]): number {
 
 /**
  * Confidence of each recognised line the parser reads as a position, in order.
- * `parseInvoice` extracts positions from the same lines in the same order
- * ({@link parsePositionLine} per line), so this array aligns 1:1 with
- * {@link ParsedInvoice.positions} by index — robust to duplicate line text and
- * whitespace differences, unlike a text-keyed lookup.
+ * `parseInvoice` extracts positions from the same lines in the same order, so
+ * this array aligns 1:1 with {@link ParsedInvoice.positions} by index — robust to
+ * duplicate line text and whitespace differences, unlike a text-keyed lookup.
+ *
+ * Mirrors {@link extractPositions}' two dental special cases (#251): a §9-GOZ
+ * practice-lab summary line is counted (it becomes one Material-/Laborkosten
+ * position even though {@link parsePositionLine} rejects it), and an attached
+ * Eigenlabor-/Materialbeleg truncates the count (its lines are not extracted).
  */
 function positionConfidences(results: OcrResult[]): number[] {
-  return results.filter((r) => parsePositionLine(r.text)).map((r) => r.confidence);
+  const out: number[] = [];
+  for (const r of results) {
+    if (isBelegSectionMarker(r.text) && matchMaterialLaborSummary(r.text) === null) break;
+    if (matchMaterialLaborSummary(r.text) !== null || parsePositionLine(r.text)) {
+      out.push(r.confidence);
+    }
+  }
+  return out;
 }
 
 /**
@@ -141,9 +154,11 @@ export interface ReviewPosition {
   /** Billing number (Ziffer). */
   goaeNumber: string;
   /**
-   * Fee schedule this position is billed under (GOÄ / GOZ / GOT), or
-   * `Auslagenersatz` (§10 GOÄ, e.g. Porto-/Versandkosten) when the description
-   * matched {@link isAuslagenersatzDescription} — overridable by the user.
+   * Fee schedule this position is billed under (GOÄ / GOZ / GOT), or a
+   * non-fee-schedule category: `Material-/Laborkosten` for a §9-GOZ practice-lab
+   * summary line (from `ParsedPosition.nonScheduleCategory`), or `Auslagenersatz`
+   * (§10 GOÄ, e.g. Porto-/Versandkosten) when the description matched
+   * {@link isAuslagenersatzDescription} — both overridable by the user.
    */
   goaeCategory: GoaeCategory;
   /** Anzahl (quantity). */
@@ -196,7 +211,9 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
     if (p.treatmentDate !== null) lastDate = p.treatmentDate;
     return {
       goaeNumber: p.ziffer,
-      goaeCategory: isAuslagenersatzDescription(p.description) ? 'Auslagenersatz' : p.feeSchedule,
+      goaeCategory:
+        p.nonScheduleCategory ??
+        (isAuslagenersatzDescription(p.description) ? 'Auslagenersatz' : p.feeSchedule),
       quantity: p.quantity,
       treatmentDate: p.treatmentDate ?? lastDate,
       description: p.description ?? null,

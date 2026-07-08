@@ -16,6 +16,7 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import {
+    isFlatReimbursedCategory,
     isNonScheduleCategory,
     roundCents,
     type BenefitCategory,
@@ -30,6 +31,10 @@
     type ScanResult,
   } from '@selbstbehalt/medic-invoice-check';
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
+  import {
+    deriveAuslagenBenefitCategory,
+    type AuslagenDerivationPosition,
+  } from '$lib/utils/auslagen-benefit-category';
   import { Button } from '$lib/components/ui/button';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
@@ -156,18 +161,46 @@
   // the form; only assembled into the save payload.
   // ---------------------------------------------------------------------------
 
+  /**
+   * Benefit category fed to the Erstattungs-Engine for one position. Fee-schedule
+   * positions use their looked-up `benefit_category`. The Auslagen Sammelpositionen
+   * (§9-GOZ Material-/Laborkosten, §10-GOÄ Auslagenersatz) have no lookup, so their
+   * category is derived transiently from the invoice's honorar positions (issue
+   * #251) — amount-weighted dominance within the same Gebührenordnung, falling back
+   * to the provider type.
+   */
+  function benefitCategoryFor(
+    p: ReviewPositionRow,
+    honorarPositions: AuslagenDerivationPosition[],
+  ): BenefitCategory {
+    if (p.goae_category === 'Material-/Laborkosten') {
+      return deriveAuslagenBenefitCategory(honorarPositions, 'GOZ', providerType);
+    }
+    if (p.goae_category === 'Auslagenersatz') {
+      return deriveAuslagenBenefitCategory(honorarPositions, 'GOÄ', providerType);
+    }
+    return (p.benefit_category ?? 'sonstiges') as BenefitCategory;
+  }
+
   function computeEligibleAmounts(): (number | null)[] {
     const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
     if (!(insuredPerson?.included_benefits && insuredPerson.start_date)) {
       return positions.map(() => null);
     }
+    const honorarPositions: AuslagenDerivationPosition[] = positions.map((p) => ({
+      goaeCategory: p.goae_category,
+      benefitCategory: p.benefit_category,
+      chargedAmount: p.charged_amount,
+    }));
     const erstattungPositions: ErstattungPosition[] = positions.map((p) => ({
-      category: (p.benefit_category ?? 'sonstiges') as BenefitCategory,
+      category: benefitCategoryFor(p, honorarPositions),
       chargedAmount: p.charged_amount,
       treatmentDate: p.treatment_date || invoiceDate,
-      // Auslagenersatz and Arznei-/Hilfsmittel are provisionally reimbursed at 100 %,
-      // outside the tariff pipeline (corrected later by the insurer's refund_amount).
-      isFullyReimbursed: isNonScheduleCategory(p.goae_category),
+      // Only Arznei-/Hilfsmittel is reimbursed flat at 100 %, outside the tariff
+      // pipeline (provisional; corrected later by the insurer's refund_amount).
+      // Auslagenersatz and Material-/Laborkosten run the §5.1 pipeline under their
+      // derived benefit_category.
+      isFullyReimbursed: isFlatReimbursedCategory(p.goae_category),
     }));
     const result = computeErstattung({
       positions: erstattungPositions,
