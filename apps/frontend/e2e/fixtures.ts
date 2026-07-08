@@ -180,4 +180,24 @@ export async function mockBackend(
         })
       : route.fallback(),
   );
+  // Positions roll-up per Leistungsjahr (#239) — feeds the Selbstbehalt radar (#234).
+  await page.route('**/api/stats/positions/*', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: populated
+            ? {
+                insured_person_id: INSURED_ID,
+                years: [
+                  {
+                    year: new Date().getFullYear(),
+                    charged_amount: 58,
+                    eligible_amount: 54.89,
+                    refund_amount: 0,
+                  },
+                ],
+              }
+            : { insured_person_id: INSURED_ID, years: [] },
+        })
+      : route.fallback(),
+  );
 }

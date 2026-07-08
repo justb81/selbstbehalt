@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   aggregateByYear,
+  calculateBRELadderNPV,
   calculateGCP,
   DEFAULT_CLAIM_FREE_PROBABILITY,
   DEFAULT_DISCOUNT_RATE,
@@ -812,6 +813,103 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     const multi = calculateGCP({ ...base, claimFreeProbability: 1 });
     const single = calculateGCP({ ...base, claimFreeProbability: 0 });
     expect(multi.breakdown.lostBREValue_NPV).toBeGreaterThan(single.breakdown.lostBREValue_NPV);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calculateBRELadderNPV — the shared, ungated ladder-NPV helper (issue #234)
+// ---------------------------------------------------------------------------
+
+describe('calculateBRELadderNPV', () => {
+  it('reproduces the design §5.2.5 example independently of any Selbstbehalt: ≈751 €', () => {
+    // Same fixture as the calculateGCP §5.2.5 test — the helper computes the loss
+    // directly, with no R_Y / deductible gating.
+    const { npv, ladderTerms } = calculateBRELadderNPV({
+      year: 2024,
+      breStructure: ladderDesign525('2022-07-01'), // s=2
+      monthlyPremium: 1,
+      discountRate: 0.03,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-07-01',
+    });
+    expect(ladderTerms).toHaveLength(3); // j=0 gap 500, j=1 gap 300, j=2 gap 150
+    expect(npv).toBeCloseTo(750.21, 0);
+  });
+
+  it('matches calculateGCP.breakdown.lostBREValue_NPV when the year crosses the deductible', () => {
+    // The engine and the helper must agree — single source of the ladder math.
+    const shared = {
+      year: 2024,
+      breStructure: ladder('2022-04-01'), // s=2
+      monthlyPremium: 100,
+      discountRate: 0.03,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-05-01',
+    };
+    const helper = calculateBRELadderNPV(shared);
+    const gcp = calculateGCP({
+      ...shared,
+      erstattungsBetrag: 10_000, // well above S → crosses the deductible
+      alreadyReimbursed: 0,
+      selbstbehalt: 500,
+    });
+    expect(helper.npv).toBe(gcp.breakdown.lostBREValue_NPV);
+    expect(helper.ladderTerms).toEqual(gcp.breakdown.ladderTerms);
+  });
+
+  it('returns the potential loss even when the engine reports 0 (year under the deductible)', () => {
+    // This is exactly why the helper exists: the threshold marker S + NPV must be
+    // drawable while the year is still under S, where calculateGCP reports NPV = 0.
+    const shared = {
+      year: 2024,
+      breStructure: ladder('2022-04-01'),
+      monthlyPremium: 100,
+      discountRate: 0.03,
+      claimFreeProbability: 0.7,
+      payoutMonth: 7,
+      asOf: '2024-05-01',
+    };
+    const gcpUnder = calculateGCP({
+      ...shared,
+      erstattungsBetrag: 100,
+      alreadyReimbursed: 0,
+      selbstbehalt: 500, // R_Y < S → engine NPV = 0
+    });
+    expect(gcpUnder.breakdown.lostBREValue_NPV).toBe(0);
+    expect(calculateBRELadderNPV(shared).npv).toBeGreaterThan(0);
+  });
+
+  it('applies the documented defaults for discountRate, claimFreeProbability, payoutMonth', () => {
+    const withDefaults = calculateBRELadderNPV({
+      year: 2024,
+      breStructure: ladder('2022-04-01'),
+      monthlyPremium: 100,
+      asOf: '2024-05-01',
+    });
+    const explicit = calculateBRELadderNPV({
+      year: 2024,
+      breStructure: ladder('2022-04-01'),
+      monthlyPremium: 100,
+      discountRate: DEFAULT_DISCOUNT_RATE,
+      claimFreeProbability: DEFAULT_CLAIM_FREE_PROBABILITY,
+      payoutMonth: DEFAULT_PAYOUT_MONTH,
+      asOf: '2024-05-01',
+    });
+    expect(withDefaults).toEqual(explicit);
+  });
+
+  it('validates its inputs like the engine', () => {
+    const base = {
+      year: 2024,
+      breStructure: ladder('2022-04-01'),
+      monthlyPremium: 100,
+      asOf: '2024-05-01',
+    };
+    expect(() => calculateBRELadderNPV({ ...base, discountRate: -1 })).toThrow(RangeError);
+    expect(() => calculateBRELadderNPV({ ...base, claimFreeProbability: 1.1 })).toThrow(RangeError);
+    expect(() => calculateBRELadderNPV({ ...base, payoutMonth: 13 })).toThrow(RangeError);
   });
 });
 
