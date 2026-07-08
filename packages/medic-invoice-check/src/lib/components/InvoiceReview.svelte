@@ -223,9 +223,7 @@
     providerType = result.providerType;
     positions = toReviewPositions(result).map((p) => ({
       goae_number: p.goaeNumber,
-      goae_category: isAuslagenersatzDescription(p.description)
-        ? 'Auslagenersatz'
-        : (result.schedule as GoaeCategory),
+      goae_category: p.goaeCategory,
       quantity: p.quantity,
       treatment_date: p.treatmentDate ?? '',
       description: p.description ?? '',
