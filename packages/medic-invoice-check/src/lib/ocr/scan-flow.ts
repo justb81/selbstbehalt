@@ -102,10 +102,9 @@ export function meanConfidence(results: OcrResult[]): number {
 function positionConfidences(results: OcrResult[]): number[] {
   const out: number[] = [];
   for (const r of results) {
-    if (isBelegSectionMarker(r.text) && matchMaterialLaborSummary(r.text) === null) break;
-    if (matchMaterialLaborSummary(r.text) !== null || parsePositionLine(r.text)) {
-      out.push(r.confidence);
-    }
+    const summary = matchMaterialLaborSummary(r.text);
+    if (summary === null && isBelegSectionMarker(r.text)) break;
+    if (summary !== null || parsePositionLine(r.text)) out.push(r.confidence);
   }
   return out;
 }

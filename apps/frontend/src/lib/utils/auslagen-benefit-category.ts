@@ -13,8 +13,12 @@
  */
 import type { BenefitCategory, GoaeCategory, ProviderType } from '@selbstbehalt/shared';
 
-/** The fee schedule an Auslagen position belongs to: §9 → GOZ, §10 → GOÄ. */
-export type AuslagenFeeSchedule = 'GOÄ' | 'GOZ' | 'GOT';
+/**
+ * The fee schedule an Auslagen position belongs to: §9 → GOZ, §10 → GOÄ. GOT
+ * (veterinary) is out of scope for this UI (see `SELECTABLE_GOAE_CATEGORIES`),
+ * so it is deliberately excluded — an unsupported schedule cannot be passed.
+ */
+export type AuslagenFeeSchedule = 'GOÄ' | 'GOZ';
 
 /** One invoice position, reduced to what the derivation needs. */
 export interface AuslagenDerivationPosition {
