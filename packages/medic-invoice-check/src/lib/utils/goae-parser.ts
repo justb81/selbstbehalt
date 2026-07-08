@@ -402,11 +402,68 @@ const DATE_PREFIX_RE = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s+/;
 const BARE_DATE_RE = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*$/;
 
 /**
- * A Ziffer, preceded by an optional region tag (OK/UK for upper/lower jaw) and
- * an optional schedule-prefix letter. Group 1 captures the prefix letter
- * (Ä→GOÄ, Z→GOZ, A as OCR variant of Ä). Group 2 captures the billing number.
+ * One FDI tooth-region token (§10 Abs. 2 Nr. 5 GOZ Zahnangaben) that can
+ * never be a Gebührenziffer: a hyphenated range (`16-26`) and/or ends on a
+ * comma/semicolon list separator (`16,` / `16,17,`) — real Ziffern never
+ * contain a hyphen and never end on a separator, so any token matching this
+ * is unambiguously a Zahnangabe, not a billing number (issue #250).
  */
-const ZIFFER_RE = /^\s*(?:(?:OK|UK)\s+)?([ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b/;
+const TOOTH_TOKEN_SRC = String.raw`\d{1,2}(?:[-,;]\d{1,2})+[,;]?|\d{1,2}[,;]`;
+
+/**
+ * A Ziffer, preceded by an optional region tag (OK/UK for upper/lower jaw), a
+ * repeated run of unambiguous FDI tooth-region tokens ({@link TOOTH_TOKEN_SRC})
+ * and an optional schedule-prefix letter. Group 1 captures the tooth-region
+ * text (empty string when absent). Group 2 captures the prefix letter
+ * (Ä→GOÄ, Z→GOZ, A as OCR variant of Ä). Group 3 captures the billing
+ * number. The trailing negative lookahead rejects a match where the digits
+ * are themselves the start of a hyphen/comma/semicolon-joined run (e.g. the
+ * "36" in a wrapped "36-46 …" continuation line) — such a token was already
+ * offered to the tooth-token run above and rejecting it here, rather than
+ * letting the Ziffer group fall back to a partial match, keeps the line
+ * unparseable so it is left for the continuation-join to re-attach instead.
+ */
+const ZIFFER_RE = new RegExp(
+  String.raw`^\s*(?:(?:OK|UK)\s+)?((?:(?:${TOOTH_TOKEN_SRC})\s+)*)([ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b(?![-,;]\d)`,
+);
+
+/**
+ * Lightweight re-application of the schedule-prefix + Ziffer pattern (no
+ * tooth-token/region handling), used by the Tabellen-Lookahead in
+ * {@link parsePositionLine} to test the token immediately following a
+ * bare-tooth-number candidate.
+ */
+const NEXT_ZIFFER_RE = /^\s*([ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b/;
+
+/**
+ * Whether `ziffer` is a plausible bare FDI tooth number, per the real
+ * quadrant-based scheme: permanent teeth `11–18`/`21–28`/`31–38`/`41–48`
+ * (quadrant digit 1–4, tooth digit 1–8), deciduous teeth
+ * `51–55`/`61–65`/`71–75`/`81–85` (quadrant digit 5–8, tooth digit 1–5) — a
+ * contiguous `11–48`/`51–85` range check would also accept non-existent
+ * numbers like `20`/`30`/`60`/`70`/`80`, several of which are real GOÄ
+ * Ziffern (PR #256 review). Used by the Tabellen-Lookahead to decide whether
+ * a bare numeric token (no hyphen/comma to strip on its own, e.g. "16" in
+ * "16 0065 …") is worth checking against the next token before accepting it
+ * as the Ziffer (issue #250).
+ */
+function isPlausibleFdiTooth(ziffer: string): boolean {
+  if (!/^\d{2}$/.test(ziffer)) return false;
+  const quadrant = Number(ziffer[0]);
+  const tooth = Number(ziffer[1]);
+  if (quadrant >= 1 && quadrant <= 4) return tooth >= 1 && tooth <= 8;
+  if (quadrant >= 5 && quadrant <= 8) return tooth >= 1 && tooth <= 5;
+  return false;
+}
+
+/**
+ * Resolves whether `ziffer` is a known billing number in the active fee
+ * schedule table — the Tabellen-Lookahead (issue #250) uses this to decide
+ * whether a bare numeric token should be read as a tooth number instead of a
+ * Ziffer. `schedule` is the schedule detected from a prefix letter on the
+ * candidate token, if any, else `null` for "use the caller's default table".
+ */
+export type ZifferKnownCheck = (ziffer: string, schedule: FeeScheduleId | null) => boolean;
 
 interface NumericToken {
   value: number;
@@ -466,8 +523,20 @@ function hasDecimalAmountPair(tokens: string[]): boolean {
   return !!amountTok && !!factorTok && !amountTok.integer && !factorTok.integer;
 }
 
-/** Parses one line into a {@link RawPosition}, or null if it is not one. */
-export function parsePositionLine(line: string): RawPosition | null {
+/**
+ * Parses one line into a {@link RawPosition}, or null if it is not one.
+ *
+ * `isKnownZiffer`, when given, drives the Tabellen-Lookahead (issue #250):
+ * a bare tooth number has no separator to strip on its own (e.g.
+ * "16 0065 …"), so it is provisionally read as the Ziffer; it is only
+ * reinterpreted as a Zahnangabe when the *next* token resolves as a known
+ * Ziffer in the active table — "16" is itself a valid GOÄ Ziffer, so in
+ * doubt the provisional reading stands.
+ */
+export function parsePositionLine(
+  line: string,
+  isKnownZiffer?: ZifferKnownCheck,
+): RawPosition | null {
   // Extract and strip a leading treatment date (e.g. "07.05.24 ").
   const dateM = DATE_PREFIX_RE.exec(line);
   const treatmentDate =
@@ -475,18 +544,49 @@ export function parsePositionLine(line: string): RawPosition | null {
   const stripped = dateM ? line.slice(dateM[0].length) : line;
 
   const zm = ZIFFER_RE.exec(stripped);
-  const prefixLetter = zm?.[1]?.trim(); // 'Ä', 'A', 'Z' or undefined
-  const ziffer = zm?.[2];
+  let toothLabel = zm?.[1]?.trim() || null;
+  const prefixLetter = zm?.[2]?.trim(); // 'Ä', 'A', 'Z' or undefined
+  let ziffer = zm?.[3];
+  let matchLength = zm ? zm[0].length : 0;
 
   let detectedSchedule: FeeScheduleId | null = null;
   if (prefixLetter === 'Ä' || prefixLetter === 'A') detectedSchedule = 'GOÄ';
   else if (prefixLetter === 'Z') detectedSchedule = 'GOZ';
 
+  if (zm && ziffer && isKnownZiffer && isPlausibleFdiTooth(ziffer)) {
+    const rest = stripped.slice(matchLength);
+    const nm = NEXT_ZIFFER_RE.exec(rest);
+    const nextZiffer = nm?.[2];
+    if (nm && nextZiffer) {
+      // A bare quantity/factor integer (1–2 digits) can also resolve as a
+      // known Ziffer (e.g. GOÄ "2", "11") on a line whose Leistungslegende
+      // OCR dropped — a real billing number printed after a Zahnangabe runs
+      // at least three digits (GOZ prints them zero-padded to four, e.g.
+      // "0065"/"2030"), and one glued straight onto a decimal separator
+      // ("1,8" truncated to "1") is the head of a Faktor/Betrag, not a
+      // Ziffer. Excluding both keeps the lookahead from misfiring on a
+      // description-less line (PR #256 review).
+      const nextDigits = nextZiffer.replace(/[a-zA-Z]$/, '');
+      const looksLikeScheduleCode =
+        nextDigits.length >= 3 && !/^[.,]\d/.test(rest.slice(nm[0].length));
+      const nextPrefixLetter = nm[1]?.trim();
+      let nextSchedule = detectedSchedule;
+      if (nextPrefixLetter === 'Ä' || nextPrefixLetter === 'A') nextSchedule = 'GOÄ';
+      else if (nextPrefixLetter === 'Z') nextSchedule = 'GOZ';
+      if (looksLikeScheduleCode && isKnownZiffer(nextZiffer, nextSchedule)) {
+        toothLabel = [toothLabel, ziffer].filter(Boolean).join(' ');
+        ziffer = nextZiffer;
+        detectedSchedule = nextSchedule;
+        matchLength += nm[0].length;
+      }
+    }
+  }
+
   // No Ziffer match (e.g. OCR lost the leading number to a column-layout
   // issue): fall through and try the line unanchored, using every token —
   // the guard below only accepts it if it still resolves a real Faktor +
   // Betrag pair, so `ziffer: ''` never fires on stray text.
-  const tokens = (zm ? stripped.slice(zm[0].length) : stripped).split(/\s+/).filter(Boolean);
+  const tokens = (zm ? stripped.slice(matchLength) : stripped).split(/\s+/).filter(Boolean);
 
   // Gather the maximal trailing run of numeric tokens (stops at the first word,
   // so description text before the numbers is captured).
@@ -498,8 +598,13 @@ export function parsePositionLine(line: string): RawPosition | null {
 
   // Descriptive words before the trailing numeric run — what the printer put
   // between the Ziffer and the amounts (Leistungslegende on the invoice line).
+  // A stripped tooth-region label (Zahnangabe) is kept by prepending it here
+  // so the review UI still shows it, even though it is no longer the Ziffer.
   const descTokens = tokens.slice(0, trailingStartIdx);
-  const ocrDescription = descTokens.length > 0 ? descTokens.join(' ').trim() || null : null;
+  const ocrDescription =
+    [toothLabel, descTokens.length > 0 ? descTokens.join(' ').trim() : null]
+      .filter(Boolean)
+      .join(' ') || null;
 
   const explicitQty = trailing.find((t) => t.isQuantityMarker);
   const core = trailing.filter((t) => !t.isQuantityMarker);
@@ -647,8 +752,11 @@ function joinDescriptionContinuations(lines: string[]): string[] {
  * before the block of positions it covers) is itself never a position, but
  * is applied forward as `treatmentDate` to every following position that
  * doesn't carry its own inline date, until a later date line supersedes it.
+ *
+ * `isKnownZiffer`, when given, is threaded into {@link parsePositionLine} to
+ * drive its Tabellen-Lookahead for bare FDI tooth numbers (issue #250).
  */
-export function extractPositions(text: string): RawPosition[] {
+export function extractPositions(text: string, isKnownZiffer?: ZifferKnownCheck): RawPosition[] {
   const positions: RawPosition[] = [];
   const lines = joinDescriptionContinuations(joinContinuationLines(text.split(/\r?\n/)));
   let currentDate: string | null = null;
@@ -658,7 +766,7 @@ export function extractPositions(text: string): RawPosition[] {
       currentDate = toIso(bareDate[1]!, bareDate[2]!, bareDate[3]!);
       continue;
     }
-    const p = parsePositionLine(line);
+    const p = parsePositionLine(line, isKnownZiffer);
     if (p) positions.push(p.treatmentDate === null ? { ...p, treatmentDate: currentDate } : p);
   }
   return positions;
@@ -1120,8 +1228,17 @@ export function parseInvoice(
   }
   const primaryEntry = tableBySchedule.get(primaryTable.feeSchedule)!;
 
+  // Drives the Tabellen-Lookahead in parsePositionLine (issue #250): resolves
+  // against the schedule detected on the candidate token, falling back to the
+  // primary/default table, mirroring how positions themselves pick a table
+  // below.
+  const isKnownZiffer: ZifferKnownCheck = (ziffer, schedule) => {
+    const entry = tableBySchedule.get(schedule ?? primaryTable.feeSchedule) ?? primaryEntry;
+    return entry.index.has(normalizeZiffer(ziffer));
+  };
+
   const fields = extractInvoiceFields(text);
-  const rawPositions = extractPositions(text);
+  const rawPositions = extractPositions(text, isKnownZiffer);
 
   const rawPositionsLookedUp = rawPositions.map((raw) => {
     const scheduleId = raw.detectedSchedule ?? primaryTable.feeSchedule;
