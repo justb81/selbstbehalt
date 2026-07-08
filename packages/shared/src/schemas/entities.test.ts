@@ -17,6 +17,7 @@ describe('enums', () => {
     expect(invoiceStatusValues).toContain('bezahlt');
     expect(goaeCategoryValues).toContain('GOÄ');
     expect(goaeCategoryValues).toContain('Auslagenersatz');
+    expect(goaeCategoryValues).toContain('Arznei-/Hilfsmittel');
   });
 });
 
@@ -180,10 +181,12 @@ describe('invoicePositionCreateSchema', () => {
     expect(invoicePositionCreateSchema.safeParse({ ...base, multiplier: 0 }).success).toBe(false);
   });
 
-  it('accepts goae_category: Auslagenersatz (§10 GOÄ)', () => {
+  it('accepts goae_category: Auslagenersatz (§10 GOÄ) with charged = Anzahl × Basis', () => {
     const result = invoicePositionCreateSchema.safeParse({
       ...base,
       goae_category: 'Auslagenersatz',
+      base_amount: 20.11,
+      charged_amount: 20.11, // quantity defaults to 1
     });
     expect(result.success).toBe(true);
     expect(result.success && result.data.goae_category).toBe('Auslagenersatz');
@@ -194,8 +197,40 @@ describe('invoicePositionCreateSchema', () => {
       ...base,
       goae_number: '',
       goae_category: 'Auslagenersatz',
+      base_amount: 20.11,
+      charged_amount: 20.11,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts goae_category: Arznei-/Hilfsmittel with charged = Anzahl × Basis', () => {
+    const result = invoicePositionCreateSchema.safeParse({
+      ...base,
+      goae_number: '',
+      goae_category: 'Arznei-/Hilfsmittel',
+      quantity: 3,
+      base_amount: 12.5,
+      charged_amount: 37.5,
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.goae_category).toBe('Arznei-/Hilfsmittel');
+  });
+
+  it('rejects a non-fee-schedule position whose Gesamtbetrag ≠ Anzahl × Basis', () => {
+    const result = invoicePositionCreateSchema.safeParse({
+      ...base,
+      goae_number: '',
+      goae_category: 'Arznei-/Hilfsmittel',
+      quantity: 2,
+      base_amount: 10,
+      charged_amount: 25, // should be 20
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('does not apply the Anzahl × Basis rule to GOÄ positions (Basis × Faktor × Anzahl)', () => {
+    // base × multiplier: 20.11 × 2.3 = 46.25, unrelated to quantity × base — must stay valid.
+    expect(invoicePositionCreateSchema.safeParse(base).success).toBe(true);
   });
 
   it('rejects an unknown goae_category', () => {

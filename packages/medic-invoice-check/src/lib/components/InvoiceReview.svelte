@@ -28,6 +28,7 @@
   import { onDestroy } from 'svelte';
   import {
     formatEur,
+    isNonScheduleCategory,
     providerTypeValues,
     roundCents,
     type BenefitCategory,
@@ -122,10 +123,13 @@
    * Categories offered by the per-position Kategorie picker. GOT (veterinary)
    * is deliberately excluded here — issues #183/#224 — pending a separate
    * vet-invoice app; the shared schema/DB column still accept it unchanged.
+   * The non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
+   * Ziffer/Faktor and are billed as Anzahl × Basis.
    */
   const SELECTABLE_GOAE_CATEGORIES: GoaeCategory[] = [
     ...SUPPORTED_INVOICE_SCHEDULES,
     'Auslagenersatz',
+    'Arznei-/Hilfsmittel',
   ];
 
   /**
@@ -270,15 +274,17 @@
   function recalcChargedAmount(i: number) {
     const pos = positions[i];
     if (!pos) return;
-    pos.charged_amount = roundCents(
-      (pos.base_amount || 0) * (pos.multiplier || 0) * (pos.quantity || 0),
-    );
+    // Non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel): Anzahl × Basis
+    // (no Steigerungsfaktor). GOÄ/GOZ/GOT: Basis × Faktor × Anzahl.
+    pos.charged_amount = isNonScheduleCategory(pos.goae_category)
+      ? roundCents((pos.base_amount || 0) * (pos.quantity || 0))
+      : roundCents((pos.base_amount || 0) * (pos.multiplier || 0) * (pos.quantity || 0));
     recalcTotal();
   }
 
   async function recalcBaseAmount(i: number) {
     const pos = positions[i];
-    if (!pos || pos.goae_category === 'Auslagenersatz' || !pos.goae_number.trim()) return;
+    if (!pos || isNonScheduleCategory(pos.goae_category) || !pos.goae_number.trim()) return;
     const schedule = categoryToSchedule(pos.goae_category);
     const table = await loadFeeTable(schedule);
     const index = buildIndex(table);
@@ -295,7 +301,7 @@
     try {
       const schedules = new Set(
         positions
-          .filter((p) => p.goae_category !== 'Auslagenersatz')
+          .filter((p) => !isNonScheduleCategory(p.goae_category))
           .map((p) => categoryToSchedule(p.goae_category)),
       );
       const tableEntries = await Promise.all(
@@ -305,16 +311,18 @@
       const indexes = new Map([...tables.entries()].map(([s, t]) => [s, buildIndex(t)]));
 
       // The looked-up ParsedPosition (indexed by row) for the whole-invoice
-      // constraint check that follows — Auslagenersatz rows have no Ziffer to
-      // check and are left as a hole (skipped by validatePositions).
+      // constraint check that follows — non-fee-schedule rows (Auslagenersatz,
+      // Arznei-/Hilfsmittel) have no Ziffer to check and are left as a hole
+      // (skipped by validatePositions).
       const parsedByIndex: ParsedPosition[] = [];
 
       positions.forEach((pos, i) => {
-        // §10 GOÄ Auslagenersatz (Porto/Versand etc.) has no Ziffer/Steigerungsfaktor
-        // to validate against a fee table — auto-detected (upgrade-only, a manual
-        // 'Auslagenersatz' choice is never reverted) or already set by the user.
+        // Non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
+        // Ziffer/Steigerungsfaktor to validate against a fee table — either chosen by
+        // the user or, for §10 Auslagenersatz, auto-detected from the description
+        // (upgrade-only, a manual choice is never reverted).
         if (
-          pos.goae_category === 'Auslagenersatz' ||
+          isNonScheduleCategory(pos.goae_category) ||
           isAuslagenersatzDescription(pos.description)
         ) {
           return;
@@ -342,12 +350,16 @@
 
       positions = positions.map((pos, i) => {
         if (
-          pos.goae_category === 'Auslagenersatz' ||
+          isNonScheduleCategory(pos.goae_category) ||
           isAuslagenersatzDescription(pos.description)
         ) {
           return {
             ...pos,
-            goae_category: 'Auslagenersatz' as GoaeCategory,
+            // Keep an explicit non-fee-schedule category; description-detected §10
+            // rows (no explicit category yet) are upgraded to Auslagenersatz.
+            goae_category: isNonScheduleCategory(pos.goae_category)
+              ? pos.goae_category
+              : ('Auslagenersatz' as GoaeCategory),
             is_valid: true,
             flag_reason: null,
             benefit_category: null,
@@ -475,8 +487,9 @@
   let infoEntry = $state<InfoEntry | null>(null);
   let infoLoading = $state(false);
 
-  // Only reachable for pos.goae_category !== 'Auslagenersatz' — the info button
-  // is hidden alongside the Ziffer field for Auslagenersatz positions.
+  // Only reachable for fee-schedule categories — the info button is hidden
+  // alongside the Ziffer field for non-fee-schedule positions (Auslagenersatz,
+  // Arznei-/Hilfsmittel).
   async function openFeeInfo(pos: ReviewPositionRow) {
     if (!pos.goae_number.trim()) return;
     infoLoading = true;
@@ -714,7 +727,10 @@
                         value={pos.goae_category ?? ''}
                         onValueChange={(v: string) => {
                           pos.goae_category = (v || null) as GoaeCategory | null;
-                          void recalcBaseAmount(i);
+                          // Non-fee-schedule: recompute Gesamtbetrag = Anzahl × Basis (Faktor
+                          // no longer applies). GOÄ/GOZ: pull Basis from the fee table.
+                          if (isNonScheduleCategory(pos.goae_category)) recalcChargedAmount(i);
+                          else void recalcBaseAmount(i);
                         }}
                         {disabled}
                         items={categoryOptionsFor(pos.goae_category).map((cat) => ({
@@ -732,7 +748,7 @@
                         </SelectContent>
                       </Select>
                     </div>
-                    {#if pos.goae_category !== 'Auslagenersatz'}
+                    {#if !isNonScheduleCategory(pos.goae_category)}
                       <div class="space-y-1.5">
                         <Label for="pos-{i}-ziffer">Ziffer</Label>
                         <div class="flex items-center gap-1">
@@ -773,10 +789,12 @@
                   <div
                     class={cn(
                       'grid grid-cols-2 gap-3',
-                      pos.goae_category !== 'Auslagenersatz' && 'sm:grid-cols-4',
+                      isNonScheduleCategory(pos.goae_category)
+                        ? 'sm:grid-cols-3'
+                        : 'sm:grid-cols-4',
                     )}
                   >
-                    {#if pos.goae_category !== 'Auslagenersatz'}
+                    {#if !isNonScheduleCategory(pos.goae_category)}
                       <div class="space-y-1.5">
                         <Label for="pos-{i}-faktor">Faktor</Label>
                         <Input
@@ -806,24 +824,26 @@
                         class="text-right"
                       />
                     </div>
-                    {#if pos.goae_category !== 'Auslagenersatz'}
-                      <div class="space-y-1.5">
-                        <Label for="pos-{i}-basis">Basis (€)</Label>
-                        <Input
-                          id="pos-{i}-basis"
-                          type="number"
-                          bind:value={pos.base_amount}
-                          oninput={() => recalcChargedAmount(i)}
-                          min="0"
-                          step="0.01"
-                          required
-                          {disabled}
-                          class="text-right"
-                        />
-                      </div>
-                    {/if}
                     <div class="space-y-1.5">
-                      <Label for="pos-{i}-betrag">Betrag (€)</Label>
+                      <Label for="pos-{i}-basis">Basis (€)</Label>
+                      <Input
+                        id="pos-{i}-basis"
+                        type="number"
+                        bind:value={pos.base_amount}
+                        oninput={() => recalcChargedAmount(i)}
+                        min="0"
+                        step="0.01"
+                        required
+                        {disabled}
+                        class="text-right"
+                      />
+                    </div>
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-betrag">
+                        {isNonScheduleCategory(pos.goae_category)
+                          ? 'Gesamtbetrag (€)'
+                          : 'Betrag (€)'}
+                      </Label>
                       <Input
                         id="pos-{i}-betrag"
                         type="number"
@@ -832,6 +852,7 @@
                         min="0"
                         step="0.01"
                         required
+                        readonly={isNonScheduleCategory(pos.goae_category)}
                         {disabled}
                         class="text-right"
                       />

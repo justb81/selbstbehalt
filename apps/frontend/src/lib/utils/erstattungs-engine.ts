@@ -60,12 +60,15 @@ export interface ErstattungPosition {
    */
   treatmentDate?: DateInput;
   /**
-   * True for §10 GOÄ Auslagenersatz (e.g. Porto-/Versandkosten) — i.e.
-   * `goae_category === 'Auslagenersatz'`. Skips the whole `category` pipeline
-   * below: always reimbursed at 100 % of `chargedAmount`, regardless of
-   * tariff tiers, Wartezeit, Beihilfe-Quote or Summengrenzen.
+   * True for non-fee-schedule positions reimbursed at a flat 100 % — §10 GOÄ
+   * Auslagenersatz (Porto-/Versandkosten) and per-Rezept Arznei-/Hilfsmittel, i.e.
+   * `isNonScheduleCategory(goae_category)`. Skips the whole `category` pipeline
+   * below: always reimbursed at 100 % of `chargedAmount`, regardless of tariff
+   * tiers, Wartezeit, Beihilfe-Quote or Summengrenzen. (Provisional for
+   * Arznei-/Hilfsmittel; the insurer's actual `refund_amount` corrects it later —
+   * see §5.1 for the future per-tariff-category option.)
    */
-  isAuslagenersatz?: boolean;
+  isFullyReimbursed?: boolean;
 }
 
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
@@ -125,15 +128,17 @@ export interface ErstattungResult {
   /**
    * Per-position eligible amounts, proportionally distributed from `byCategory`.
    * Positions blocked by a waiting period receive `eligible_amount = 0`.
-   * Auslagenersatz positions (§10 GOÄ) receive `eligible_amount = chargedAmount`.
+   * Flat-reimbursed positions (Auslagenersatz, Arznei-/Hilfsmittel) receive
+   * `eligible_amount = chargedAmount`.
    * Has the same length and order as {@link ErstattungInput.positions}.
    */
   byPosition: ErstattungByPosition[];
   /**
-   * Summe der §10 GOÄ Auslagenersatz-Positionen (Porto/Versand etc.) — stets
-   * voll erstattet, außerhalb der `byCategory`-Pipeline. Included in `eligibleAmount`.
+   * Summe der pauschal (100 %) erstatteten Positionen außerhalb der `byCategory`-
+   * Pipeline — §10 GOÄ Auslagenersatz (Porto/Versand) und Arznei-/Hilfsmittel.
+   * Included in `eligibleAmount`.
    */
-  auslagenersatzAmount: number;
+  fullyReimbursedAmount: number;
 }
 
 /**
@@ -279,18 +284,18 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     eligible_amount: 0,
   }));
 
-  // §10 GOÄ Auslagenersatz positions skip the category pipeline entirely —
-  // always reimbursed at 100 % of chargedAmount.
-  let auslagenersatzAmount = 0;
+  // Flat-reimbursed positions (Auslagenersatz, Arznei-/Hilfsmittel) skip the
+  // category pipeline entirely — always reimbursed at 100 % of chargedAmount.
+  let fullyReimbursedAmount = 0;
 
   // Per-position waiting-period check using individual treatment dates.
   const categoryGroups = new Map<BenefitCategory, PositionEntry[]>();
   for (let idx = 0; idx < input.positions.length; idx++) {
     const pos = input.positions[idx]!;
-    if (pos.isAuslagenersatz) {
+    if (pos.isFullyReimbursed) {
       const amount = roundCents(pos.chargedAmount);
       byPosition[idx]!.eligible_amount = amount;
-      auslagenersatzAmount += amount;
+      fullyReimbursedAmount += amount;
       continue;
     }
     const benefit = benefitMap.get(pos.category);
@@ -341,12 +346,12 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
   }
 
   const eligibleAmount = roundCents(
-    byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0) + auslagenersatzAmount,
+    byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0) + fullyReimbursedAmount,
   );
   return {
     eligibleAmount,
     byCategory,
     byPosition,
-    auslagenersatzAmount: roundCents(auslagenersatzAmount),
+    fullyReimbursedAmount: roundCents(fullyReimbursedAmount),
   };
 }

@@ -53,7 +53,7 @@ const SAMPLE_INVOICE: InvoiceWithPositions = {
   ],
 };
 
-/** An invoice whose single position is §10 GOÄ Auslagenersatz. */
+/** An invoice whose single position is §10 GOÄ Auslagenersatz (Betrag = Anzahl × Basis). */
 const AUSLAGEN_INVOICE: InvoiceWithPositions = {
   ...SAMPLE_INVOICE,
   positions: [
@@ -62,9 +62,28 @@ const AUSLAGEN_INVOICE: InvoiceWithPositions = {
       id: 'pos-a',
       goae_category: 'Auslagenersatz',
       goae_number: 'PORTO',
+      quantity: 1,
       multiplier: 2,
       base_amount: 5,
       charged_amount: 5,
+    },
+  ],
+};
+
+/** An invoice whose single position is a per-Rezept Arznei-/Hilfsmittel line (Anzahl × Basis). */
+const ARZNEI_INVOICE: InvoiceWithPositions = {
+  ...SAMPLE_INVOICE,
+  positions: [
+    {
+      ...SAMPLE_INVOICE.positions[0]!,
+      id: 'pos-h',
+      goae_category: 'Arznei-/Hilfsmittel',
+      goae_number: '',
+      description: 'Einlagen',
+      quantity: 2,
+      multiplier: 2.3,
+      base_amount: 15,
+      charged_amount: 30,
     },
   ],
 };
@@ -229,7 +248,7 @@ describe('InvoiceForm — edit mode (wrapper)', () => {
     expect(payload.positions[0]!.quantity).toBe(2);
   });
 
-  it('clears Ziffer/Faktor/Basis on save for an Auslagenersatz position', async () => {
+  it('clears the Ziffer and fixes Faktor at 1 on save for an Auslagenersatz position, keeping Basis', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn<(p: FormPayload) => void>();
     render(InvoiceForm, {
@@ -246,7 +265,31 @@ describe('InvoiceForm — edit mode (wrapper)', () => {
     const payload = onSave.mock.calls[0]![0];
     expect(payload.positions[0]!.goae_number).toBe('');
     expect(payload.positions[0]!.multiplier).toBe(1);
-    expect(payload.positions[0]!.base_amount).toBe(0);
+    // Basis (Einzelpreis) is kept — the amount is Anzahl × Basis, not zeroed.
+    expect(payload.positions[0]!.base_amount).toBe(5);
     expect(payload.positions[0]!.charged_amount).toBe(5);
+  });
+
+  it('saves an Arznei-/Hilfsmittel position as Anzahl × Basis with no Ziffer/Faktor', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: ARZNEI_INVOICE,
+        insuredOptions: INSURED_OPTIONS,
+        onSave,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.goae_category).toBe('Arznei-/Hilfsmittel');
+    expect(payload.positions[0]!.goae_number).toBe('');
+    expect(payload.positions[0]!.multiplier).toBe(1);
+    expect(payload.positions[0]!.quantity).toBe(2);
+    expect(payload.positions[0]!.base_amount).toBe(15);
+    expect(payload.positions[0]!.charged_amount).toBe(30);
   });
 });

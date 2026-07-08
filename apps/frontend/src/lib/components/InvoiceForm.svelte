@@ -16,6 +16,8 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import {
+    isNonScheduleCategory,
+    roundCents,
     type BenefitCategory,
     type InvoicePositionInput,
     type InvoiceWithPositions,
@@ -105,14 +107,22 @@
   let totalAmount = $state<number>(untrack(() => initialData?.total_amount ?? 0));
 
   function rowFromPosition(p: InvoiceWithPositions['positions'][number]): ReviewPositionRow {
+    const quantity = p.quantity ?? 1;
+    // Non-fee-schedule positions are edited as Anzahl × Basis. Older Auslagenersatz
+    // rows were stored with base_amount = 0 (only charged_amount was kept); backfill a
+    // sensible Basis so the recomputed Gesamtbetrag doesn't collapse to 0 on edit.
+    const base_amount =
+      isNonScheduleCategory(p.goae_category) && !p.base_amount && p.charged_amount > 0
+        ? roundCents(p.charged_amount / quantity)
+        : p.base_amount;
     return {
       goae_number: p.goae_number,
       goae_category: p.goae_category ?? null,
-      quantity: p.quantity ?? 1,
+      quantity,
       treatment_date: p.treatment_date ?? '',
       description: p.description ?? '',
       multiplier: p.multiplier,
-      base_amount: p.base_amount,
+      base_amount,
       charged_amount: p.charged_amount,
       is_valid: p.is_valid ?? null,
       flag_reason: p.flag_reason ?? null,
@@ -155,7 +165,9 @@
       category: (p.benefit_category ?? 'sonstiges') as BenefitCategory,
       chargedAmount: p.charged_amount,
       treatmentDate: p.treatment_date || invoiceDate,
-      isAuslagenersatz: p.goae_category === 'Auslagenersatz',
+      // Auslagenersatz and Arznei-/Hilfsmittel are provisionally reimbursed at 100 %,
+      // outside the tariff pipeline (corrected later by the insurer's refund_amount).
+      isFullyReimbursed: isNonScheduleCategory(p.goae_category),
     }));
     const result = computeErstattung({
       positions: erstattungPositions,
@@ -189,19 +201,21 @@
     }
     const eligibleAmounts = computeEligibleAmounts();
     const positionInputs: InvoicePositionInput[] = positions.map((p, i) => {
-      // Auslagenersatz has no Ziffer/Steigerungsfaktor/Basis (§10 GOÄ) — the fields
-      // stay hidden but keep their last values while editing, so a category change
-      // can be undone; only clear them once the position is actually saved.
-      const isAuslagenersatz = p.goae_category === 'Auslagenersatz';
+      // Non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
+      // Ziffer/Steigerungsfaktor: clear the Ziffer and fix the Faktor at 1. The
+      // Basis (Einzelpreis) is kept — the amount is Anzahl × Basis. The Ziffer field
+      // stays hidden but keeps its last value while editing so a category change can
+      // be undone; it's only cleared once the position is actually saved.
+      const nonSchedule = isNonScheduleCategory(p.goae_category);
       return {
-        goae_number: isAuslagenersatz ? '' : p.goae_number,
+        goae_number: nonSchedule ? '' : p.goae_number,
         goae_category: p.goae_category,
         quantity: p.quantity,
         // Positions without a date fall back to the invoice date (§3.2 Issue #139).
         treatment_date: p.treatment_date || invoiceDate,
         description: p.description.trim() || null,
-        multiplier: isAuslagenersatz ? 1 : p.multiplier,
-        base_amount: isAuslagenersatz ? 0 : p.base_amount,
+        multiplier: nonSchedule ? 1 : p.multiplier,
+        base_amount: p.base_amount,
         charged_amount: p.charged_amount,
         eligible_amount: eligibleAmounts[i] ?? null,
         is_valid: p.is_valid,

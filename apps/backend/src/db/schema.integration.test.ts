@@ -219,6 +219,6 @@ describe('seed', () => {
     seed(handle);
     seed(handle);
     expect(db.select().from(persons).all()).toHaveLength(2);
-    expect(db.select().from(invoicePositions).all()).toHaveLength(4);
+    expect(db.select().from(invoicePositions).all()).toHaveLength(5);
   });
 });

@@ -510,7 +510,7 @@ describe('InvoiceReview — edit mode', () => {
     await waitFor(() => expect(loadFeeTable).toHaveBeenCalledWith('GOÄ'));
   });
 
-  it('hides Ziffer/Faktor/Basis for Auslagenersatz', async () => {
+  it('hides Ziffer/Faktor but keeps Basis and a read-only Gesamtbetrag for Auslagenersatz', async () => {
     const user = userEvent.setup();
     render(InvoiceReviewTestHarness, {
       props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
@@ -519,6 +519,8 @@ describe('InvoiceReview — edit mode', () => {
     expect(screen.getByRole('textbox', { name: 'Ziffer' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Faktor' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Basis (€)' })).toBeInTheDocument();
+    // GOÄ rows have a directly-editable "Betrag (€)".
+    expect(screen.getByRole('spinbutton', { name: 'Betrag (€)' })).toBeInTheDocument();
 
     const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
     await user.click(categoryTrigger);
@@ -531,7 +533,43 @@ describe('InvoiceReview — edit mode', () => {
 
     expect(screen.queryByRole('textbox', { name: 'Ziffer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'Faktor' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'Basis (€)' })).not.toBeInTheDocument();
+    // Basis stays visible (amount = Anzahl × Basis); the total is now a read-only Gesamtbetrag.
+    expect(screen.getByRole('spinbutton', { name: 'Basis (€)' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Anz.' })).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Betrag (€)' })).not.toBeInTheDocument();
+    const gesamt = screen.getByRole('spinbutton', { name: 'Gesamtbetrag (€)' });
+    expect(gesamt).toHaveAttribute('readonly');
+  });
+
+  it('offers "Arznei-/Hilfsmittel" and computes Gesamtbetrag = Anzahl × Basis', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    vi.mocked(lookupPosition).mockClear();
+
+    const categoryTrigger = document.getElementById('pos-0-kategorie') as HTMLElement;
+    await user.click(categoryTrigger);
+    const arzneiOption = document.querySelector(
+      '[data-value="Arznei-/Hilfsmittel"]',
+    ) as HTMLElement;
+    expect(arzneiOption).toBeInTheDocument();
+    await user.click(arzneiOption);
+    await waitFor(() => expect(categoryTrigger).toHaveTextContent('Arznei-/Hilfsmittel'));
+    await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
+
+    // No Ziffer to look up for a non-fee-schedule category.
+    await waitPastDebounce();
+    expect(lookupPosition).not.toHaveBeenCalled();
+
+    // Gesamtbetrag is read-only and recomputed from Anzahl × Basis.
+    const basis = screen.getByRole('spinbutton', { name: 'Basis (€)' });
+    const gesamt = screen.getByRole('spinbutton', { name: 'Gesamtbetrag (€)' });
+    expect(gesamt).toHaveAttribute('readonly');
+    await user.clear(basis);
+    await user.type(basis, '15');
+    // SAMPLE_POSITION.quantity is 2 → 2 × 15 = 30.
+    await waitFor(() => expect(gesamt).toHaveValue(30));
   });
 });

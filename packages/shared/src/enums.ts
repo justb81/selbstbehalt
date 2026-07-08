@@ -41,13 +41,44 @@ export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
 
 /**
  * Fee-schedule a position is billed under (`invoice_positions.goae_category`).
- * `Auslagenersatz` is not a real fee schedule but §10 GOÄ expense reimbursement
- * (typically Porto-/Versandkosten) — always reimbursed at 100 % of `charged_amount`,
- * with no Ziffer/Steigerungsfaktor validation against a fee table.
+ *
+ * `GOÄ`/`GOZ`/`GOT` are real fee schedules (Ziffer + Steigerungsfaktor). The
+ * remaining values are **non-fee-schedule** categories (see
+ * {@link nonScheduleGoaeCategoryValues}): they carry no Ziffer/Steigerungsfaktor,
+ * their amount is `quantity × base_amount` (Anzahl × Basis), and they are
+ * reimbursed at 100 % of `charged_amount` outside the tariff pipeline:
+ * - `Auslagenersatz` — §10 GOÄ expense reimbursement (typically Porto-/Versandkosten).
+ * - `Arznei-/Hilfsmittel` — per-Rezept medication/aids receipts (Apotheke/Sanitätshaus):
+ *   Bezeichnung, Menge, Einzelpreis. Provisional 100 % handling, later corrected by the
+ *   insurer's actual `refund_amount` (§5.1 documents the future per-tariff-category option).
  */
-export const goaeCategoryValues = ['GOÄ', 'GOZ', 'GOT', 'Auslagenersatz'] as const;
+export const goaeCategoryValues = [
+  'GOÄ',
+  'GOZ',
+  'GOT',
+  'Auslagenersatz',
+  'Arznei-/Hilfsmittel',
+] as const;
 export const goaeCategorySchema = z.enum(goaeCategoryValues);
 export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
+
+/**
+ * The non-fee-schedule position categories: no Ziffer/Steigerungsfaktor, amount is
+ * `quantity × base_amount`, reimbursed at 100 % outside the tariff pipeline. See
+ * {@link goaeCategoryValues} and design §3.2/§5.1.
+ */
+export const nonScheduleGoaeCategoryValues = ['Auslagenersatz', 'Arznei-/Hilfsmittel'] as const;
+export type NonScheduleGoaeCategory = (typeof nonScheduleGoaeCategoryValues)[number];
+
+/**
+ * Whether `cat` is a non-fee-schedule category (Auslagenersatz or Arznei-/Hilfsmittel):
+ * billed as `quantity × base_amount`, no Ziffer/Steigerungsfaktor, 100 % reimbursement.
+ */
+export function isNonScheduleCategory(
+  cat: GoaeCategory | null | undefined,
+): cat is NonScheduleGoaeCategory {
+  return cat === 'Auslagenersatz' || cat === 'Arznei-/Hilfsmittel';
+}
 
 /** Channel an invoice was submitted through (`submissions.submitted_via`). */
 export const submissionChannelValues = ['app', 'post', 'email'] as const;

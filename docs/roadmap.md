@@ -106,9 +106,9 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #37 | Optionaler LLM-Handschrift-Fallback (Opt-in) | #26 | ⬜ |
 | #38 | n8n-Einreichungs-E-Mails | #12 | ⬜ |
 | #39 | Native Android-App via Tauri *(aus Repo-Beschreibung; mit Maintainer abstimmen)* | #19, #27 | ⬜ |
-| #82 | Datenmodell: Rezept-Belege (Hilfsmittel/Arznei-/Heilmittel) erfassbar | #8, #10, #65, #66 | ⬜ |
-| #83 | Invoices-API: Rezept-Belege persistieren & validieren | #82, #12 | ⬜ |
-| #84 | Beleg-Erfassungs-UI: Rezepte (Hilfsmittel/Arznei-/Heilmittel) | #82, #83, #22 | ⬜ |
+| #82 | Datenmodell: Positionskategorie „Arznei-/Hilfsmittel" (Anzahl × Basis) | #8, #10, #66 | ✅ |
+| #83 | Invoices-API: „Arznei-/Hilfsmittel"-Positionen (über geteiltes Schema) | #82, #12 | ✅ |
+| #84 | Beleg-Erfassungs-UI: Positionskategorie „Arznei-/Hilfsmittel" | #82, #83, #22 | ✅ |
 | #85 | Beleg-OCR/-Parser für Apotheken-/Hilfsmittel-Belege (PZN/HMV) | #26, #82 | ⬜ |
 
 ## Abhängigkeits-Graph (Auszug)
@@ -154,11 +154,15 @@ Paralleler Domänen-Strang: `#15 → #16`, `#17 → #18` und `#65 → #66`, die 
 
 > **Hinweis:** Die Pro-Rechnungs-Günstigerprüfung aus #18/#22 wird durch das **Günstigerprüfung-Redesign** (Epic #146, #139–#143) abgelöst — Entscheidung pro versicherter Person × Leistungsjahr. Siehe den eigenen Abschnitt oben.
 
-### Erweiterung: Rezept-Belege (Hilfsmittel, Arznei- & Heilmittel)
+### Erweiterung: Rezept-Belege (Arznei-/Hilfsmittel)
 
-Über GOÄ-Arztrechnungen hinaus sollen per Rezept eingereichte Hilfsmittel, Arznei- und Heilmittel
-erfassbar sein. Diese folgen nicht der GOÄ (kein Steigerungsfaktor), sondern *Menge × Einzelpreis*
-mit optionaler PZN/Hilfsmittelnummer. Die Erstattungs-Engine (#66) ist bereits generisch über
-`BenefitCategory`; die Arbeit liegt im Datenmodell (#82), der API (#83), der Erfassungs-UI (#84) und
-optional der Beleg-OCR (#85). Der gesamte Strang ist als **Phase 4 (Erweiterung)** eingeordnet —
-bewusst nach dem GOÄ-MVP, da er über die im Design-Dokument dokumentierte MVP-Scope hinausgeht.
+Über GOÄ-Arztrechnungen hinaus lassen sich per Rezept eingereichte Arznei-/Hilfsmittel erfassen.
+Umgesetzt als **schlanke** Positionskategorie `Arznei-/Hilfsmittel` nach Vorbild des §10
+Auslagenersatz (#82/#83/#84): pro Position Bezeichnung, Anzahl, Basis (Einzelpreis) und Gesamtbetrag
+= Anzahl × Basis — ohne Ziffer/Steigerungsfaktor, ohne PZN/HMV und ohne eigene DB-Migration
+(`goae_category` ist eine reine Text-Spalte). Die Erstattung läuft zunächst pauschal zu 100 % wie
+Auslagenersatz und wird über die reale `refund_amount` des Versicherers korrigiert; eine spätere
+Führung über eine echte `BenefitCategory` (z.B. `hilfsmittel`) durch die generische Erstattungs-Engine
+(#66) ist im Design als Option hinterlegt. Die Beleg-OCR für Apotheken-/Hilfsmittel-Belege (#85,
+PZN/HMV) bleibt offen. Der Strang ist als **Phase 4 (Erweiterung)** eingeordnet — bewusst nach dem
+GOÄ-MVP, da er über die im Design-Dokument dokumentierte MVP-Scope hinausgeht.
