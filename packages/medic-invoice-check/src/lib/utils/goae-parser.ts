@@ -303,7 +303,7 @@ const DATE_RE = /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/;
 const LABELLED_DATE_RE =
   /(?:Rechnungsdatum|Rechnungs-?datum|Datum|vom)\D{0,12}(\d{1,2}\.\d{1,2}\.\d{2,4})/i;
 const INVOICE_NO_RE =
-  /(?:Rechnungs-?\s?(?:nummer|nr)|Rechnung\s+Nr|Beleg-?nr|Re-?Nr)\.?\s*(?::\s*)?([A-Za-z0-9][A-Za-z0-9\-/.]*)/i;
+  /(?:Rechnungs-?\s?(?:nummer|nr)|Rechnung\s+Nr|Beleg-?nr|Re-?Nr)\.?\s*(?::\s*)?([A-Za-z0-9][A-Za-z0-9\-/.]*)/gi;
 const PROVIDER_RE =
   /\b(?:Dr\.?\s?med\.?|Dr\.|Prof\.|Praxis(?:gemeinschaft)?|Gemeinschaftspraxis|MVZ|Zahnarzt|Zahnärztin|Tierarzt|Tierärztin|Tierklinik|Klinik|Klinikum)\b/i;
 
@@ -313,6 +313,22 @@ function toIso(day: string, month: string, year: string): string {
   const d = day.padStart(2, '0');
   const m = month.padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Billing services (e.g. DZR) print instructional boilerplate like "bitte
+ * unbedingt Rechnungs-Nr. angeben." before the real number, so the first
+ * label match isn't reliable — scan every match and take the first whose
+ * candidate contains a digit, then strip a trailing sentence period (#252).
+ */
+function extractInvoiceNumber(text: string): string | null {
+  for (const match of text.matchAll(INVOICE_NO_RE)) {
+    const candidate = match[1];
+    if (candidate && /\d/.test(candidate)) {
+      return candidate.replace(/\.$/, '');
+    }
+  }
+  return null;
 }
 
 /** Extracts the header fields (date, number, provider) from invoice text. */
@@ -329,8 +345,7 @@ export function extractInvoiceFields(text: string): {
       ? toIso(dateMatch[1], dateMatch[2], dateMatch[3])
       : null;
 
-  const noMatch = INVOICE_NO_RE.exec(text);
-  const invoiceNumber = noMatch?.[1] ?? null;
+  const invoiceNumber = extractInvoiceNumber(text);
 
   const lines = text
     .split(/\r?\n/)

@@ -9,6 +9,15 @@ vi.mock('../ocr', () => ({
   toReviewPositions: vi.fn(() => []),
 }));
 
+// OCRScanner imports the recognition pipeline from this module directly (not
+// via the '../ocr' barrel above), so a scan can be driven end-to-end in tests.
+vi.mock('../ocr/scan-ocr', () => ({
+  loadAllInvoiceImages: vi.fn(async () => [
+    { data: new Uint8ClampedArray(4), width: 1, height: 1, colorSpace: 'srgb' },
+  ]),
+  recognizeInvoiceImage: vi.fn(async () => []),
+}));
+
 vi.mock('../data/fee-tables', () => ({
   loadFeeTable: vi.fn(async () => ({ entries: [] })),
   FEE_SCHEDULE_IDS: ['GOÄ', 'GOZ', 'GOT'],
@@ -17,6 +26,7 @@ vi.mock('../data/fee-tables', () => ({
 
 vi.mock('../utils/goae-parser', () => ({
   buildIndex: vi.fn(() => new Map()),
+  detectProviderType: vi.fn(() => 'arzt'),
   isAuslagenersatzDescription: vi.fn(() => false),
   lookupPosition: vi.fn(() => ({ isValid: true, flags: [], feeSchedule: 'GOÄ' })),
   normalizeZiffer: vi.fn((z: string) => z),
@@ -28,8 +38,16 @@ vi.mock('../utils/goae-parser', () => ({
 
 import InvoiceReviewTestHarness from './InvoiceReviewTestHarness.svelte';
 import type { ReviewPositionRow } from './invoice-review-types';
-import { buildIndex, lookupPosition, parseInvoice, validatePositions } from '../utils/goae-parser';
+import {
+  buildIndex,
+  detectProviderType,
+  lookupPosition,
+  parseInvoice,
+  validatePositions,
+} from '../utils/goae-parser';
 import { loadFeeTable } from '../data/fee-tables';
+import { toReviewPositions } from '../ocr';
+import type { ReviewPosition } from '../ocr';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -108,6 +126,49 @@ describe('InvoiceReview — create mode', () => {
   it('shows the "empty positions" hint initially', () => {
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
     expect(screen.getByText(/Noch keine Positionen/)).toBeInTheDocument();
+  });
+
+  it("keeps each position's own detected schedule after a scan, instead of overwriting it with the invoice's primary schedule (issue #249)", async () => {
+    // A Kieferorthopäde invoice (primary schedule GOZ) with one GOZ position and
+    // one Ä-prefixed GOÄ position, exactly as `toReviewPositions` would report them.
+    vi.mocked(detectProviderType).mockReturnValueOnce('kieferorthopaede');
+    vi.mocked(toReviewPositions).mockReturnValueOnce([
+      {
+        goaeNumber: '6070',
+        goaeCategory: 'GOZ',
+        quantity: 1,
+        treatmentDate: '2026-04-13',
+        description: 'Einstellung der Kiefer, mittlerer Umfang',
+        multiplier: 3.5,
+        baseAmount: 14.62,
+        chargedAmount: 51.18,
+        isValid: true,
+        flagReason: null,
+        confidence: 1,
+      },
+      {
+        goaeNumber: 'Ä1',
+        goaeCategory: 'GOÄ',
+        quantity: 1,
+        treatmentDate: '2026-04-13',
+        description: 'Beratung, auch telefonisch',
+        multiplier: 2.3,
+        baseAmount: 4.66,
+        chargedAmount: 10.72,
+        isValid: true,
+        flagReason: null,
+        confidence: 1,
+      },
+    ] satisfies ReviewPosition[]);
+
+    render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
+    const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
+    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+
+    await waitFor(() =>
+      expect(document.getElementById('pos-0-kategorie')).toHaveTextContent('GOZ'),
+    );
+    expect(document.getElementById('pos-1-kategorie')).toHaveTextContent('GOÄ');
   });
 
   it('adds a position row when "Position hinzufügen" is clicked', async () => {

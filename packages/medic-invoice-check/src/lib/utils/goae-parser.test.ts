@@ -209,6 +209,25 @@ describe('extractInvoiceFields', () => {
   it('returns null provider for empty text', () => {
     expect(extractInvoiceFields('').providerName).toBeNull();
   });
+
+  it('skips boilerplate before the label and takes the real number (#252)', () => {
+    const dzrText = [
+      'Praxis Dr. med. Anna Beispiel',
+      'Bei Zahlung und Schriftverkehr bitte unbedingt Rechnungs-Nr. angeben.',
+      'Rechnungsnummer: 375135/07',
+    ].join('\n');
+    expect(extractInvoiceFields(dzrText).invoiceNumber).toBe('375135/07');
+  });
+
+  it('returns null when no candidate contains a digit', () => {
+    const text = 'Bei Zahlung und Schriftverkehr bitte unbedingt Rechnungs-Nr. angeben.';
+    expect(extractInvoiceFields(text).invoiceNumber).toBeNull();
+  });
+
+  it('strips a trailing sentence period from the captured number', () => {
+    const text = 'Rechnungsnummer: 375135/07.';
+    expect(extractInvoiceFields(text).invoiceNumber).toBe('375135/07');
+  });
 });
 
 describe('detectProviderType (issues #183/#224)', () => {

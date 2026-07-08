@@ -6,7 +6,7 @@ import { personCreateSchema, personUpdateSchema } from './person.js';
 import { contractCreateSchema } from './contract.js';
 import { insuredPersonCreateSchema, breStructureSchema } from './insured-person.js';
 import { invoiceCreateSchema, invoiceSchema } from './invoice.js';
-import { invoicePositionCreateSchema } from './invoice-position.js';
+import { invoicePositionCreateSchema, invoicePositionSchema } from './invoice-position.js';
 import { submissionCreateSchema } from './submission.js';
 import { brePeriodCreateSchema } from './bre-period.js';
 
@@ -237,6 +237,52 @@ describe('invoicePositionCreateSchema', () => {
     expect(
       invoicePositionCreateSchema.safeParse({ ...base, goae_category: 'sonstiges' }).success,
     ).toBe(false);
+  });
+});
+
+describe('invoicePositionSchema (persisted read)', () => {
+  const persisted = {
+    id: UUID,
+    invoice_id: UUID,
+    goae_number: '0340',
+    treatment_date: '2026-06-01',
+    multiplier: 2.3,
+    base_amount: 20.11,
+    charged_amount: 46.25,
+  };
+
+  it('reads back a valid GOÄ position', () => {
+    expect(invoicePositionSchema.safeParse(persisted).success).toBe(true);
+  });
+
+  // Reading must not enforce the write-time Anzahl × Basis invariant: pre-#248
+  // Auslagenersatz rows were persisted with base_amount = 0 and a non-zero
+  // charged_amount. The read schema has to deserialize them (migration 0005
+  // backfills the Basis), otherwise the whole invoice is unreadable.
+  it('accepts a legacy Auslagenersatz row where charged_amount ≠ Anzahl × Basis', () => {
+    const result = invoicePositionSchema.safeParse({
+      ...persisted,
+      goae_number: '',
+      goae_category: 'Auslagenersatz',
+      base_amount: 0,
+      charged_amount: 5,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // Migration 0005 backfills base = ROUND(charged / quantity, 2); a non-evenly-divisible
+  // amount (quantity 3, charged 10 → base 3.33, 3 × 3.33 = 9.99) leaves a 1-cent residual
+  // the read schema must still tolerate (the write schema would reject it — by design).
+  it('accepts a backfilled non-divisible row (quantity 3, base 3.33, charged 10)', () => {
+    const result = invoicePositionSchema.safeParse({
+      ...persisted,
+      goae_number: '',
+      goae_category: 'Arznei-/Hilfsmittel',
+      quantity: 3,
+      base_amount: 3.33,
+      charged_amount: 10,
+    });
+    expect(result.success).toBe(true);
   });
 });
 
