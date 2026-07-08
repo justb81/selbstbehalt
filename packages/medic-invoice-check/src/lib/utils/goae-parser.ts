@@ -797,7 +797,12 @@ export function isBelegSectionMarker(line: string): boolean {
  * The §-sign is optional (OCR frequently drops it). Returns the EUR amount and the
  * descriptive text preceding it, or `null` when the line is not such a summary.
  */
-const MATERIAL_LABOR_SUMMARY_RE = /Auslagen\s+nach\s+§?\s*9\s*GOZ\b[^\d]*?(\d[\d.]*,\d{2})/i;
+// The optional §-sign carries its own trailing whitespace inside the group
+// (`(?:§\s*)?`) rather than sitting between two independent `\s`-quantifiers —
+// otherwise `\s+…\s*9` could split one run of spaces two ways and backtrack
+// polynomially on a long space run (CodeQL ReDoS). `[^\d]` excludes digits, so it
+// never overlaps the amount capture. Every whitespace run is now bounded by a literal.
+const MATERIAL_LABOR_SUMMARY_RE = /Auslagen\s+nach\s+(?:§\s*)?9\s*GOZ\b[^\d]*?(\d[\d.]*,\d{2})/i;
 
 export function matchMaterialLaborSummary(
   line: string,
