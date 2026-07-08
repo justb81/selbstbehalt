@@ -11,9 +11,11 @@ import { roundCents } from '../utils/money.js';
  * nested inside their parent invoice (`POST /api/invoices`): the FK comes from
  * the freshly inserted invoice, so a body-level `invoice_id` would be redundant.
  *
- * The exported schemas below layer {@link refineNonScheduleAmount} on top; this
+ * The write-side schemas below layer {@link refineNonScheduleAmount} on top; this
  * raw object is kept separate so `.extend()`/`.partial()` stay available (a
- * refined schema is a ZodEffects and can no longer be extended).
+ * refined schema is a ZodEffects and can no longer be extended). The persisted
+ * read schema ({@link invoicePositionSchema}) deliberately omits that refinement —
+ * see the note there.
  */
 const invoicePositionFields = z
   .object({
@@ -96,12 +98,24 @@ export const invoicePositionCreateSchema = invoicePositionFields
   .superRefine(refineNonScheduleAmount);
 
 /**
- * A persisted invoice line. Note this table carries no `created_at` — its only
- * server-assigned field is `id`.
+ * A persisted invoice line, as read back from the server. Note this table carries
+ * no `created_at` — its only server-assigned field is `id`.
+ *
+ * Unlike the write-side schemas this does **not** enforce {@link refineNonScheduleAmount}:
+ * `charged_amount == Anzahl × Basis` is a write-time invariant, and a response schema
+ * must faithfully deserialize whatever is already persisted. Positions created before the
+ * non-fee-schedule model (#248) stored `base_amount = 0` alongside a non-zero
+ * `charged_amount`, and an old SQLite backup restored via `/api/import/db` (rows copied
+ * verbatim, no migration re-run) can still carry such rows. Enforcing the invariant here
+ * would reject the whole invoice on read — surfacing as "Antwort des Servers entsprach
+ * nicht dem erwarteten Schema" — instead of at most flagging one line. Migration 0005
+ * backfills the legacy rows; keeping the read schema permissive means reads stay robust
+ * even where it has not run (imports, manual edits).
  */
-export const invoicePositionSchema = invoicePositionFields
-  .extend({ invoice_id: uuid, id: uuid })
-  .superRefine(refineNonScheduleAmount);
+export const invoicePositionSchema = invoicePositionFields.extend({
+  invoice_id: uuid,
+  id: uuid,
+});
 
 export const invoicePositionUpdateSchema = invoicePositionFields
   .partial()
