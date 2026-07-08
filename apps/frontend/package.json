@@ -1,6 +1,6 @@
 {
   "name": "@selbstbehalt/frontend",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "description": "SvelteKit PWA for selbstbehalt (PKV Manager).",
   "license": "Apache-2.0",

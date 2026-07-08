@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.7.1](https://github.com/justb81/selbstbehalt/compare/v1.7.0...v1.7.1) (2026-07-08)
+
+### Bug Fixes
+
+- **frontend:** show invoice Person tabs for every insured person ([#244](https://github.com/justb81/selbstbehalt/issues/244)) ([636d3d5](https://github.com/justb81/selbstbehalt/commit/636d3d50872acc2119b71880f5a573e17a0afffb))
+
 ## [1.7.0](https://github.com/justb81/selbstbehalt/compare/v1.6.0...v1.7.0) (2026-07-07)
 
 ### Features
