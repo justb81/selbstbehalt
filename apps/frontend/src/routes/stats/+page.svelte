@@ -14,10 +14,14 @@
     formatEur,
     type BREHistory,
     type InsuredPerson,
+    type PositionYearRollup,
     type YearStats,
   } from '@selbstbehalt/shared';
+  import { settings } from '$lib/stores/settings';
+  import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
   import CostsRefundsChart from '$lib/components/CostsRefundsChart.svelte';
   import BreProgressionChart from '$lib/components/BreProgressionChart.svelte';
+  import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
@@ -46,6 +50,8 @@
   let loadError = $state<string | null>(null);
   let hasInvoiceYears = $state(false);
   let personOptions = $state<PersonOption[]>([]);
+  let insuredPersons = $state<InsuredPerson[]>([]);
+  let positionRollups = $state<PositionYearRollup[]>([]);
   let availableYears = $state<number[]>([currentYear]);
 
   let selectedYear = $state(currentYear);
@@ -87,13 +93,21 @@
         contracts.map(async (contract) => {
           const persons = await api.insured.list(contract.id);
           return persons.map((person: InsuredPerson) => ({
-            id: person.id,
+            person,
             label: `${contract.insurer_name} · ${person.tariff_name ?? person.kvnr ?? 'Tarif'}`,
           }));
         }),
       );
-      personOptions = personLists.flat();
+      const flat = personLists.flat();
+      insuredPersons = flat.map((entry) => entry.person);
+      personOptions = flat.map((entry) => ({ id: entry.person.id, label: entry.label }));
       selectedPersonId = personOptions[0]?.id ?? '';
+
+      // Positions roll-up per person (design §5.2.1, #239) for the Selbstbehalt radar.
+      const rollups = await Promise.all(
+        insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
+      );
+      positionRollups = rollups.filter((r): r is PositionYearRollup => r !== null);
     } catch (e) {
       loadError = e instanceof ApiError ? e.message : 'Daten konnten nicht geladen werden.';
     } finally {
@@ -129,6 +143,34 @@
       breLoading = false;
     }
   }
+
+  // Forward-looking Selbstbehalt/Einreich-Ampel per person for the current Leistungsjahr
+  // (issue #234) — always the current year, independent of the retrospective year selector.
+  const personRadars = $derived(
+    insuredPersons.map((ip) => {
+      const row = positionRollups
+        .find((r) => r.insured_person_id === ip.id)
+        ?.years.find((y) => y.year === currentYear);
+      return {
+        ip,
+        label:
+          personOptions.find((o) => o.id === ip.id)?.label ??
+          ip.tariff_name ??
+          ip.kvnr ??
+          'Versicherte Person',
+        radar: computeSelbstbehaltRadar({
+          year: currentYear,
+          R_Y: row ? row.eligible_amount + row.refund_amount : 0,
+          alreadyReimbursed: row?.refund_amount ?? 0,
+          selbstbehalt: ip.self_retention,
+          breStructure: ip.bre_structure ?? null,
+          monthlyPremium: ip.monthly_premium,
+          discountRate: $settings.discountRate,
+          claimFreeProbability: $settings.claimFreeProbability,
+        }),
+      };
+    }),
+  );
 
   onMount(loadBase);
   $effect(() => {
@@ -224,6 +266,20 @@
         </CardContent>
       </Card>
     </div>
+
+    <!-- Selbstbehalt-Ausschöpfung & Einreich-Ampel — laufendes Leistungsjahr (issue #234) -->
+    {#if personRadars.length > 0}
+      <section class="space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Selbstbehalt-Ausschöpfung {currentYear}
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {#each personRadars as { ip, label, radar } (ip.id)}
+            <SelbstbehaltRadar {radar} {label} href={resolve('/insured/[id]', { id: ip.id })} />
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     <!-- Kosten vs. Erstattungen -->
     <Card>
