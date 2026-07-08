@@ -392,6 +392,12 @@ describe('InvoiceReview — edit mode', () => {
     expect(document.querySelector('[data-value="GOÄ"]')).toBeInTheDocument();
     expect(document.querySelector('[data-value="GOZ"]')).toBeInTheDocument();
     expect(document.querySelector('[data-value="GOT"]')).not.toBeInTheDocument();
+
+    // Close the listbox instead of leaving it open: bits-ui's body scroll-lock
+    // clears `pointer-events: none` on a real (non-fake) 24ms timer, so a
+    // subsequent test's click can otherwise flake if it fires just before it.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
   });
 
   it('still displays and keeps a legacy "GOT" row instead of blanking it', async () => {
@@ -412,6 +418,12 @@ describe('InvoiceReview — edit mode', () => {
     expect(document.querySelector('[data-value="GOT"]')).toBeInTheDocument();
     expect(document.querySelector('[data-value="GOÄ"]')).toBeInTheDocument();
     expect(document.querySelector('[data-value="GOZ"]')).toBeInTheDocument();
+
+    // Close the listbox instead of leaving it open: bits-ui's body scroll-lock
+    // clears `pointer-events: none` on a real (non-fake) 24ms timer, so a
+    // subsequent test's click can otherwise flake if it fires just before it.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
   });
 
   it('shows "Positionen neu einlesen" when reparseOcrRaw is provided', () => {
