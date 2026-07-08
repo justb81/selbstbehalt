@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/justb81/selbstbehalt/compare/v1.7.1...v1.8.0) (2026-07-08)
+
+
+### Features
+
+* add "Arznei-/Hilfsmittel" position category (Anzahl × Basis) ([#248](https://github.com/justb81/selbstbehalt/issues/248)) ([3b2318c](https://github.com/justb81/selbstbehalt/commit/3b2318ca6c2ca3cc273499387bd0e770f15864fa)), closes [#82](https://github.com/justb81/selbstbehalt/issues/82) [#83](https://github.com/justb81/selbstbehalt/issues/83) [#84](https://github.com/justb81/selbstbehalt/issues/84)
+* **frontend:** Selbstbehalt-Ausschöpfung & Einreich-Schwellen-Radar ([#234](https://github.com/justb81/selbstbehalt/issues/234)) ([#246](https://github.com/justb81/selbstbehalt/issues/246)) ([4c92c05](https://github.com/justb81/selbstbehalt/commit/4c92c05f967c5650274f1cbf5f2f076ff174551d))
+
 ## [1.7.1](https://github.com/justb81/selbstbehalt/compare/v1.7.0...v1.7.1) (2026-07-08)
 
 ### Bug Fixes
