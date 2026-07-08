@@ -91,6 +91,59 @@ describe('POST /api/invoices', () => {
     expect(body.status).toBe('neu');
   });
 
+  it('round-trips a mixed invoice with a GOÄ and an Arznei-/Hilfsmittel position', async () => {
+    const { res, body } = await createInvoice({
+      ...baseInvoice(),
+      positions: [
+        {
+          goae_number: '0001',
+          goae_category: 'GOÄ',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+        },
+        {
+          // Non-fee-schedule: no Ziffer, amount = Anzahl × Basis (2 × 24.95).
+          goae_number: '',
+          goae_category: 'Arznei-/Hilfsmittel',
+          treatment_date: '2026-06-01',
+          quantity: 2,
+          multiplier: 1,
+          base_amount: 24.95,
+          charged_amount: 49.9,
+        },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(body.positions).toHaveLength(2);
+    const arznei = body.positions.find(
+      (p: { goae_category: string }) => p.goae_category === 'Arznei-/Hilfsmittel',
+    );
+    expect(arznei.quantity).toBe(2);
+    expect(arznei.base_amount).toBe(24.95);
+    expect(arznei.charged_amount).toBe(49.9);
+  });
+
+  it('rejects an Arznei-/Hilfsmittel position whose Gesamtbetrag ≠ Anzahl × Basis with 400', async () => {
+    const res = await json('POST', '/api/invoices', {
+      ...baseInvoice(),
+      positions: [
+        {
+          goae_number: '',
+          goae_category: 'Arznei-/Hilfsmittel',
+          treatment_date: '2026-06-01',
+          quantity: 2,
+          multiplier: 1,
+          base_amount: 24.95,
+          charged_amount: 40.0, // should be 49.90
+        },
+      ],
+    });
+    expect(res.status).toBe(400);
+    expect(handle.db.select().from(invoicePositions).all()).toHaveLength(0);
+  });
+
   it('rolls back the invoice when a position is invalid (atomicity)', async () => {
     const res = await json('POST', '/api/invoices', {
       ...baseInvoice(),

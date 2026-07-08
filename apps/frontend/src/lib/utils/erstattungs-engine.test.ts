@@ -324,11 +324,13 @@ describe('computeErstattung — grouping & totals', () => {
   });
 });
 
-describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed at 100 %', () => {
-  it('skips tiers/limits/Beihilfe entirely for an auslagenersatz position', () => {
+describe('computeErstattung — flat-reimbursed positions are always reimbursed at 100 %', () => {
+  // isFullyReimbursed covers §10 GOÄ Auslagenersatz and per-Rezept Arznei-/Hilfsmittel;
+  // the engine only sees the boolean flag (goae_category → flag mapping is InvoiceForm's job).
+  it('skips tiers/limits/Beihilfe entirely for a fully-reimbursed position', () => {
     const result = computeErstattung(
       input({
-        positions: [{ category: 'ambulant', chargedAmount: 2.8, isAuslagenersatz: true }],
+        positions: [{ category: 'ambulant', chargedAmount: 2.8, isFullyReimbursed: true }],
         // Tariff rule would otherwise cap ambulant heavily — irrelevant here.
         benefits: {
           benefits: [
@@ -338,7 +340,7 @@ describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed 
       }),
     );
     expect(result.eligibleAmount).toBe(2.8);
-    expect(result.auslagenersatzAmount).toBe(2.8);
+    expect(result.fullyReimbursedAmount).toBe(2.8);
     expect(result.byPosition[0]?.eligible_amount).toBe(2.8);
     // No BenefitCategory pipeline ran for it.
     expect(result.byCategory).toHaveLength(0);
@@ -347,28 +349,29 @@ describe('computeErstattung — Auslagenersatz (§10 GOÄ) is always reimbursed 
   it('is reimbursed even within the Wartezeit and with no tariff rule at all', () => {
     const result = computeErstattung(
       input({
-        positions: [{ category: 'sonstiges', chargedAmount: 1.5, isAuslagenersatz: true }],
+        positions: [{ category: 'sonstiges', chargedAmount: 1.5, isFullyReimbursed: true }],
         benefits: { benefits: [] },
         invoiceDate: '2024-01-15', // inside any waiting period from coverageStart
       }),
     );
     expect(result.eligibleAmount).toBe(1.5);
-    expect(result.auslagenersatzAmount).toBe(1.5);
+    expect(result.fullyReimbursedAmount).toBe(1.5);
   });
 
-  it('mixes with regular positions: only the auslagenersatz share bypasses the pipeline', () => {
+  it('mixes with regular positions: only the flat-reimbursed share bypasses the pipeline', () => {
     const result = computeErstattung(
       input({
         positions: [
           { category: 'ambulant', chargedAmount: 100 },
-          { category: 'ambulant', chargedAmount: 2.8, isAuslagenersatz: true },
+          // e.g. an Arznei-/Hilfsmittel or Auslagenersatz line.
+          { category: 'ambulant', chargedAmount: 2.8, isFullyReimbursed: true },
         ],
         benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 80 }] }] },
       }),
     );
-    // 100 × 80 % (regular) + 2.8 × 100 % (Auslagenersatz)
+    // 100 × 80 % (regular) + 2.8 × 100 % (flat-reimbursed)
     expect(result.eligibleAmount).toBe(82.8);
-    expect(result.auslagenersatzAmount).toBe(2.8);
+    expect(result.fullyReimbursedAmount).toBe(2.8);
     expect(result.byPosition[0]?.eligible_amount).toBe(80);
     expect(result.byPosition[1]?.eligible_amount).toBe(2.8);
   });

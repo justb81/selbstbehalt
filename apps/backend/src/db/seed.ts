@@ -119,8 +119,9 @@ export function seed(handle: DbHandle): void {
     .run();
 
   // ── Invoice 1: geprüft, nicht eingereicht ──────────────────────────────────
-  // GOÄ-Rechnung mit einer regelkonformen und einer überschreitenden Position.
-  // eligible_amount = 10.72 (nur Position 1), self_paid_amount = 81.11 (Σ charged)
+  // Gemischte Rechnung: zwei GOÄ-Positionen (eine regelkonform, eine überschreitend)
+  // plus eine Arznei-/Hilfsmittel-Position (Anzahl × Basis, pauschal 100 % erstattet).
+  // eligible_amount = 10.72 + 49.90 = 60.62; self_paid_amount = 131.01 (Σ charged)
   const invoice1 = db
     .insert(invoices)
     .values({
@@ -129,9 +130,9 @@ export function seed(handle: DbHandle): void {
       invoiceNumber: 'R-2026-0042',
       providerName: 'Dr. med. Müller',
       providerType: 'arzt',
-      totalAmount: 81.11,
-      eligibleAmount: 10.72,
-      selfPaidAmount: 81.11,
+      totalAmount: 131.01,
+      eligibleAmount: 60.62,
+      selfPaidAmount: 131.01,
       status: 'geprüft',
     })
     .returning()
@@ -163,6 +164,20 @@ export function seed(handle: DbHandle): void {
         eligibleAmount: null, // nicht erstattungsfähig (Steigerungsfaktor überschritten)
         isValid: false,
         flagReason: 'Steigerungsfaktor 3.5 überschreitet Regelgrenze 2.3 (§5 GOÄ)',
+      },
+      {
+        // Arznei-/Hilfsmittel per Rezept: keine Ziffer, Faktor fix 1, Betrag = Anzahl × Basis.
+        invoiceId: invoice1.id,
+        goaeNumber: '',
+        goaeCategory: 'Arznei-/Hilfsmittel',
+        description: 'Orthopädische Einlagen (Sanitätshaus)',
+        quantity: 2,
+        multiplier: 1,
+        baseAmount: 24.95,
+        chargedAmount: 49.9,
+        treatmentDate: '2026-06-01',
+        eligibleAmount: 49.9, // pauschal 100 % (§5.1)
+        isValid: true,
       },
     ])
     .run();

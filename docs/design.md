@@ -289,11 +289,11 @@ id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
-goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz'
-description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup
+goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz' | 'Arznei-/Hilfsmittel'
+description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup (bzw. Bezeichnung bei Rezept-Belegen)
 quantity         INTEGER DEFAULT 1  -- Anzahl
-multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3
-base_amount      REAL NOT NULL      -- 1-facher Betrag laut GOÄ
+multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3 (bei Nicht-GO-Kategorien fix 1)
+base_amount      REAL NOT NULL      -- 1-facher Betrag laut GOÄ (bzw. Einzelpreis/Basis bei Nicht-GO-Kategorien)
 charged_amount   REAL NOT NULL      -- In Rechnung gestellter Betrag
 eligible_amount  REAL               -- Geschätzt erstattungsfähig (Erstattungs-Engine, §5.1)
 refund_amount    REAL               -- Tatsächlich erstattet (erfasst bei Status 'erstattet'); 0 = abgelehnt
@@ -301,15 +301,28 @@ is_valid         BOOLEAN            -- Verstößt gegen keine GOÄ/GOZ/GOT-Regel
 flag_reason      TEXT               -- Begründung bei Auffälligkeit
 ```
 
-`goae_category` trägt neben den drei Gebührenordnungen zusätzlich den Wert
-**`Auslagenersatz`** für §10 GOÄ — typischerweise Porto-/Versandkosten, die zum tatsächlichen
-Betrag statt zu einem GOÄ-Satz abgerechnet werden. Der GOÄ-Parser erkennt Auslagenersatz-
-Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und setzt die
-Kategorie beim Einlesen automatisch; sie bleibt in der UI jederzeit manuell auf einen der anderen
-Werte umstellbar. Positionen mit `goae_category = 'Auslagenersatz'` durchlaufen keine
-Ziffer-/Steigerungsfaktor-Prüfung gegen ein Gebührenverzeichnis (`is_valid = true` ohne Lookup) und
-werden in der Erstattungs-Engine **stets zu 100 % von `charged_amount`** erstattet — unabhängig von
-Tarifstufen, Wartezeit, Beihilfe-Quote oder Summengrenzen (§5.1).
+`goae_category` trägt neben den drei Gebührenordnungen zwei **Nicht-Gebührenordnungs-Kategorien**:
+
+- **`Auslagenersatz`** für §10 GOÄ — typischerweise Porto-/Versandkosten, die zum tatsächlichen
+  Betrag statt zu einem GOÄ-Satz abgerechnet werden. Der GOÄ-Parser erkennt Auslagenersatz-
+  Schlüsselwörter (Porto, Versand, Verpackung, Postgebühr, …) in der Beschreibung und setzt die
+  Kategorie beim Einlesen automatisch; sie bleibt in der UI jederzeit manuell umstellbar.
+- **`Arznei-/Hilfsmittel`** für per Rezept eingereichte Belege (Apotheke/Sanitätshaus): erfasst mit
+  Bezeichnung, Menge und Einzelpreis — ohne Ziffer/Steigerungsfaktor. Wird ausschließlich manuell
+  gewählt (keine OCR-Schlüsselwort-Erkennung).
+
+Beide Nicht-GO-Kategorien haben **keine Ziffer/keinen Steigerungsfaktor**; ihr Betrag ist
+`quantity × base_amount` (Anzahl × Basis, `multiplier` fix 1), was das geteilte Zod-Schema auf Cent
+genau prüft. Sie durchlaufen keine Ziffer-/Steigerungsfaktor-Prüfung gegen ein Gebührenverzeichnis
+(`is_valid = true` ohne Lookup) und werden in der Erstattungs-Engine **zunächst zu 100 % von
+`charged_amount`** erstattet — unabhängig von Tarifstufen, Wartezeit, Beihilfe-Quote oder
+Summengrenzen (§5.1).
+
+> **Ausblick:** Für `Arznei-/Hilfsmittel` ist die 100 %-Behandlung bewusst vorläufig — die reale
+> Erstattung wird über die vom Versicherer zurückgemeldete `refund_amount` korrigiert. Als spätere
+> Option kann die Kategorie stattdessen über eine echte Tarif-Kategorie (`BenefitCategory`, z.B.
+> `hilfsmittel`) durch die generische Erstattungs-Engine (§5.1) laufen und so Tarif-Staffeln/-Limits
+> berücksichtigen; das bestehende `included_benefits`-Modell ist bereits darauf ausgelegt.
 
 #### `invoice_status_events`
 
@@ -440,13 +453,14 @@ arbeitet in vier Schritten:
    geprüft — **die Grenzen kommen ausschließlich aus den Daten, nicht
    hartkodiert**. `fixedFactor`-Einträge werden gegen ihren festen
    Gebührensatz geprüft. Ergebnis: `isValid` + `flags` (mit `flag_reason`).
-   Auslagenersatz nach §10 GOÄ (Porto/Versand etc.) hat keine Ziffer, gegen
-   die dieser Schritt prüfen könnte: der exportierte reine Helfer
-   `isAuslagenersatzDescription` (Schlüsselwort-Erkennung in der
-   Beschreibung) wird stattdessen vom Aufrufer (Review-UI, `scan-flow.ts`)
-   genutzt, um `goae_category` auf `'Auslagenersatz'` zu setzen und die
-   Position so komplett vom Tabellen-Lookup auszunehmen — `lookupPosition`
-   selbst kennt diesen Wert nicht (s. §5.1 zur Erstattung).
+   Die Nicht-GO-Kategorien (`Auslagenersatz`, `Arznei-/Hilfsmittel`) haben keine
+   Ziffer, gegen die dieser Schritt prüfen könnte, und werden über
+   `isNonScheduleCategory(goae_category)` komplett vom Tabellen-Lookup
+   ausgenommen — `lookupPosition` selbst kennt diese Werte nicht (s. §5.1 zur
+   Erstattung). Für §10 `Auslagenersatz` setzt der exportierte reine Helfer
+   `isAuslagenersatzDescription` (Schlüsselwort-Erkennung in der Beschreibung)
+   die Kategorie beim Einlesen zusätzlich automatisch; `Arznei-/Hilfsmittel`
+   wird ausschließlich manuell in der UI gewählt.
 4. **Validierung über die ganze Rechnung** gegen das Abhängigkeitsmodell:
    `excludes`/`mutualExclusion` (symmetrisch normalisierte Inkompatibilitäts-
    Paare), `requires`, `componentOf`, `maxFrequency`, `maxAmount`,
@@ -501,7 +515,7 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 interface ErstattungPosition {
   category: BenefitCategory;        // benefitCategory aus dem GOÄ-Parser (+ ggf. Kontext-Override)
   chargedAmount: number;            // in Rechnung gestellter Betrag der Position
-  isAuslagenersatz?: boolean;       // goae_category === 'Auslagenersatz' (§10 GOÄ); überspringt die Pipeline unten komplett
+  isFullyReimbursed?: boolean;      // isNonScheduleCategory(goae_category) (Auslagenersatz/Arznei-/Hilfsmittel); überspringt die Pipeline unten komplett
 }
 
 interface ErstattungInput {
@@ -552,13 +566,21 @@ das Rechnungsdatum.
 Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
 die Günstigerprüfung (§5.2/§5.3) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
 
-**Auslagenersatz nach §10 GOÄ** (`goae_category === 'Auslagenersatz'` → `isAuslagenersatz: true`,
-typischerweise Porto-/Versandkosten): diese Positionen überspringen die fünfstufige Pipeline oben
-vollständig und werden **stets zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit,
-Schwellen-Staffel, Beihilfe-Quote oder Summengrenzen. Sie fließen in `auslagenersatzAmount` (separat
-von `byCategory`) und summieren sich mit in `eligibleAmount` ein. `goae_category` wird beim Einlesen
-automatisch aus der Positionsbeschreibung erkannt (§4.3, `isAuslagenersatzDescription`) und bleibt in
-der UI über das bestehende Kat.-Dropdown manuell setzbar.
+**Pauschal erstattete Nicht-GO-Positionen** (`isNonScheduleCategory(goae_category)` →
+`isFullyReimbursed: true`) überspringen die fünfstufige Pipeline oben vollständig und werden
+**zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit, Schwellen-Staffel,
+Beihilfe-Quote oder Summengrenzen. Sie fließen in `fullyReimbursedAmount` (separat von `byCategory`)
+und summieren sich mit in `eligibleAmount` ein. Das betrifft:
+
+- **`Auslagenersatz`** nach §10 GOÄ (typischerweise Porto-/Versandkosten); beim Einlesen automatisch
+  aus der Positionsbeschreibung erkannt (§4.3, `isAuslagenersatzDescription`), in der UI manuell
+  umstellbar.
+- **`Arznei-/Hilfsmittel`** (per-Rezept-Belege, Anzahl × Basis); ausschließlich manuell gewählt.
+
+> **Ausblick:** Die 100 %-Behandlung von `Arznei-/Hilfsmittel` ist vorläufig und wird über die reale
+> `refund_amount` des Versicherers korrigiert. Als spätere Option lässt sich die Kategorie über eine
+> echte `BenefitCategory` (z.B. `hilfsmittel`) durch die obige generische Pipeline führen, um
+> Tarif-Staffeln/-Limits zu berücksichtigen — das `included_benefits`-Modell trägt das bereits.
 
 ### 5.2 Entscheidungslogik
 
