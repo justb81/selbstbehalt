@@ -4,6 +4,11 @@
 // a fresh in-memory database, then exercises the full entity chain (insert +
 // read-back), JSON columns, defaults, and foreign-key cascade behaviour.
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import type { GoaeCategory } from '@selbstbehalt/shared';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createDb, type DbHandle } from './client.js';
@@ -220,5 +225,125 @@ describe('seed', () => {
     seed(handle);
     expect(db.select().from(persons).all()).toHaveLength(2);
     expect(db.select().from(invoicePositions).all()).toHaveLength(5);
+  });
+});
+
+describe('migration 0005 — non-fee-schedule base_amount backfill', () => {
+  // Exercise the checked-in migration SQL directly against a legacy-shaped row. The
+  // full chain already ran in beforeEach, so we re-apply the statement to a freshly
+  // inserted row: that also proves it is idempotent.
+  const backfillSql = readFileSync(
+    fileURLToPath(new URL('./migrations/0005_position_basis_backfill.sql', import.meta.url)),
+    'utf8',
+  );
+
+  /** Insert an invoice + one position with raw column values, bypassing the write-side schema. */
+  function insertPosition(cols: {
+    goaeCategory: GoaeCategory | null;
+    quantity: number;
+    baseAmount: number;
+    chargedAmount: number;
+  }): string {
+    const { db } = handle;
+    const person = db.insert(persons).values({ name: 'Legacy' }).returning().get();
+    const contract = db
+      .insert(contracts)
+      .values({
+        policyholderId: person.id,
+        insurerName: 'X',
+        type: 'vollversicherung',
+        startDate: '2024-01-01',
+      })
+      .returning()
+      .get();
+    const insured = db
+      .insert(insuredPersons)
+      .values({ contractId: contract.id, personId: person.id, monthlyPremium: 100 })
+      .returning()
+      .get();
+    const invoice = db
+      .insert(invoices)
+      .values({
+        insuredPersonId: insured.id,
+        invoiceDate: '2025-01-15',
+        providerName: 'Y',
+        totalAmount: cols.chargedAmount,
+      })
+      .returning()
+      .get();
+    return db
+      .insert(invoicePositions)
+      .values({
+        invoiceId: invoice.id,
+        goaeNumber: '',
+        goaeCategory: cols.goaeCategory,
+        quantity: cols.quantity,
+        treatmentDate: '2025-01-15',
+        multiplier: 1,
+        baseAmount: cols.baseAmount,
+        chargedAmount: cols.chargedAmount,
+      })
+      .returning()
+      .get().id;
+  }
+
+  const readBase = (id: string) =>
+    handle.db.select().from(invoicePositions).where(eq(invoicePositions.id, id)).get()?.baseAmount;
+
+  it('reconstructs base_amount = charged_amount for a legacy Auslagenersatz row (quantity 1)', () => {
+    const id = insertPosition({
+      goaeCategory: 'Auslagenersatz',
+      quantity: 1,
+      baseAmount: 0,
+      chargedAmount: 5,
+    });
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(5);
+  });
+
+  it('divides by quantity for a multi-unit Arznei-/Hilfsmittel row', () => {
+    const id = insertPosition({
+      goaeCategory: 'Arznei-/Hilfsmittel',
+      quantity: 4,
+      baseAmount: 0,
+      chargedAmount: 50,
+    });
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(12.5);
+  });
+
+  it('converges (does not drift) for a non-evenly-divisible amount — the accepted residual', () => {
+    // quantity 3 / charged 10.00 has no exact 2-decimal per-unit Basis: base = 3.33 and
+    // 3 × 3.33 = 9.99 ≠ 10.00, so the row stays a (read-tolerated) invariant violator.
+    // The backfill must rewrite it to the same 3.33 on every run rather than drift.
+    const id = insertPosition({
+      goaeCategory: 'Auslagenersatz',
+      quantity: 3,
+      baseAmount: 0,
+      chargedAmount: 10,
+    });
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(3.33);
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(id)).toBe(3.33);
+  });
+
+  it('leaves GOÄ positions and already-consistent rows untouched, and is idempotent', () => {
+    const goae = insertPosition({
+      goaeCategory: 'GOÄ',
+      quantity: 1,
+      baseAmount: 20.11,
+      chargedAmount: 46.25,
+    });
+    const consistent = insertPosition({
+      goaeCategory: 'Auslagenersatz',
+      quantity: 2,
+      baseAmount: 3,
+      chargedAmount: 6,
+    });
+    handle.sqlite.exec(backfillSql);
+    handle.sqlite.exec(backfillSql);
+    expect(readBase(goae)).toBe(20.11);
+    expect(readBase(consistent)).toBe(3);
   });
 });
