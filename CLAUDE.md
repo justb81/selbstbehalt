@@ -97,7 +97,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 
 ## Backend REST surface (planned)
 
-`/api/persons`, `/api/contracts`, `/api/contracts/:id/insured` + `/api/insured/:id`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:insuredPersonId`, and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
+`/api/persons`, `/api/contracts`, `/api/contracts/:id/insured` + `/api/insured/:id`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:insuredPersonId`, the positions roll-up per Leistungsjahr `/api/stats/positions/:insuredPersonId` (#239 — `R_Y = eligible_amount + refund_amount`, `alreadyReimbursed = refund_amount`; feeds the Günstigerprüfung KPIs), and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
 
 ## Conventions
 
@@ -106,6 +106,18 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
 - Keep the GOÄ/GOZ lookup tables as static, versioned JSON, regenerated reproducibly from the official source XML under `data/input/`. They are maintained exclusively by the maintainer (@justb81); errors can be reported as issues, and external PRs (code, data, or otherwise) are welcome but must be reviewed and merged by the maintainer.
+
+## Working notes (verified gotchas)
+
+Hard-won specifics that save a round-trip next time:
+
+- **Günstigerprüfung engine seam** (`apps/frontend/src/lib/utils/guenstiger-pruefung.ts`): reuse the engine, never re-implement the decision rule (§5.2 — "gemeinsame Quelle, keine Doppelrechnung"). `calculateGCP(...).breakdown.lostBREValue_NPV` is the *actual* NPV — **`0` below the Selbstbehalt or when the streak is already broken**. For the *potential* NPV (e.g. an `S + NPV` submit threshold drawn while still under S) call the exported `calculateBRELadderNPV(...)`. Get `R_Y` per Leistungsjahr from `aggregateByYear(invoices)` (client-side; needs invoices *with positions*) or the `/api/stats/positions/:id` roll-up. The everyday Ampel/KPI lives in `utils/selbstbehalt-radar.ts` + `components/SelbstbehaltRadar.svelte`; the retrospective verdict in `components/GCPCard.svelte` (consumed on `/insured/[id]`).
+- **Determinism**: domain utils take an injectable `asOf` (`DateInput`) — no hidden `Date.now()`. Use `toCalendarDate` / `currentLeistungsjahr` and thread `asOf` through in tests.
+- **Coverage gate**: `src/lib/utils/**` must stay ≥ 90 % (statements/branches/functions/lines) — co-locate a `.test.ts` for every new util. Run `pnpm --filter @selbstbehalt/frontend test:coverage`.
+- **a11y is enforced**: `apps/frontend/e2e/a11y.spec.ts` runs axe on `/`, `/stats`, `/insured/[id]`, `/invoices*`, `/contracts*`, `/persons*`, `/settings`. Any `role="progressbar"` needs an `aria-label` (else axe `aria-progressbar-name`). When a page starts calling a new endpoint, add a matching read-mock to `apps/frontend/e2e/fixtures.ts` (`mockBackend`) or the a11y/responsive specs go stale.
+- **Links to pre-resolved hrefs**: put `<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->` directly above a **single-line** `<a {href} …>` (rule `svelte/no-navigation-without-resolve`). Keep the tag on one line — extract a long class list to a `const` so Prettier can't wrap it past the directive.
+- **Commits**: commitlint enforces Conventional Commits with a **lowercase, non-sentence-case subject** (`feat(frontend): add …`, not `feat: Add …`). Husky runs `eslint --fix` + `prettier --write` on staged files at commit time.
+- **e2e in this sandbox**: the pinned Playwright browser isn't installed; run specs with `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @selbstbehalt/frontend exec playwright test <spec> --project=chromium`.
 
 ## Repository hygiene & change policy
 

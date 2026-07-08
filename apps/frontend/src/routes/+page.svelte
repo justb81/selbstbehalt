@@ -7,8 +7,17 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { api } from '$lib/api';
-  import { formatDate, formatEur, type InsuredPerson, type Invoice } from '@selbstbehalt/shared';
+  import {
+    formatDate,
+    formatEur,
+    type InsuredPerson,
+    type Invoice,
+    type PositionYearRollup,
+  } from '@selbstbehalt/shared';
+  import { settings } from '$lib/stores/settings';
+  import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
   import BRETracker from '$lib/components/BRETracker.svelte';
+  import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -19,6 +28,7 @@
   // ---- State ----
   let invoices = $state<Invoice[]>([]);
   let insuredPersons = $state<InsuredPerson[]>([]);
+  let positionRollups = $state<PositionYearRollup[]>([]);
   let contractCount = $state(0);
   let totalAmount = $state(0);
   let eligibleAmount = $state(0);
@@ -53,6 +63,12 @@
         contracts.map((c) => api.insured.list(c.id).catch(() => [])),
       );
       insuredPersons = personLists.flat();
+
+      // Positions roll-up per person (design §5.2.1, #239) for the Selbstbehalt radar.
+      const rollups = await Promise.all(
+        insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
+      );
+      positionRollups = rollups.filter((r): r is PositionYearRollup => r !== null);
     } catch {
       hasError = true;
     } finally {
@@ -61,6 +77,28 @@
   }
 
   onMount(load);
+
+  // Forward-looking Selbstbehalt/Einreich-Ampel per person for the current year (#234).
+  const personRadars = $derived(
+    insuredPersons.map((ip) => {
+      const row = positionRollups
+        .find((r) => r.insured_person_id === ip.id)
+        ?.years.find((y) => y.year === year);
+      return {
+        ip,
+        radar: computeSelbstbehaltRadar({
+          year,
+          R_Y: row ? row.eligible_amount + row.refund_amount : 0,
+          alreadyReimbursed: row?.refund_amount ?? 0,
+          selbstbehalt: ip.self_retention,
+          breStructure: ip.bre_structure ?? null,
+          monthlyPremium: ip.monthly_premium,
+          discountRate: $settings.discountRate,
+          claimFreeProbability: $settings.claimFreeProbability,
+        }),
+      };
+    }),
+  );
 </script>
 
 <svelte:head><title>Dashboard · selbstbehalt</title></svelte:head>
@@ -166,6 +204,25 @@
               + {openInvoices.length - 5} weitere →
             </a>
           {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Selbstbehalt-Ausschöpfung & Einreich-Ampel (issue #234) -->
+    {#if personRadars.length > 0}
+      <div class="space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Selbstbehalt-Ausschöpfung {year}
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {#each personRadars as { ip, radar } (ip.id)}
+            <SelbstbehaltRadar
+              {radar}
+              compact
+              label={ip.tariff_name ?? ip.kvnr ?? 'Versicherte Person'}
+              href={resolve('/insured/[id]', { id: ip.id })}
+            />
+          {/each}
         </div>
       </div>
     {/if}

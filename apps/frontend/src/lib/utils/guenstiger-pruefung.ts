@@ -333,6 +333,93 @@ function buildExplanation(
 }
 
 // ---------------------------------------------------------------------------
+// BRE ladder NPV
+// ---------------------------------------------------------------------------
+
+/** Inputs for {@link calculateBRELadderNPV}. */
+export interface GCP_LadderNPVInput {
+  /** Service year (Leistungsjahr Y) the forfeited BRE stream is discounted to. */
+  year: number;
+  /** The insured person's BRE ladder (`insured_persons.bre_structure`). */
+  breStructure: BREStructure;
+  /** Monthly premium in EUR — the base of the projected refund. */
+  monthlyPremium: number;
+  /** Annual discount rate i. Defaults to {@link DEFAULT_DISCOUNT_RATE}. */
+  discountRate?: number;
+  /** Probability p of remaining claim-free in a future year. Defaults to {@link DEFAULT_CLAIM_FREE_PROBABILITY}. */
+  claimFreeProbability?: number;
+  /** BRE payout month (1–12). Defaults to {@link DEFAULT_PAYOUT_MONTH} (July). */
+  payoutMonth?: number;
+  /**
+   * Reference day for streak calculation and discounting. Defaults to today;
+   * inject an explicit value in tests for deterministic results.
+   */
+  asOf?: DateInput;
+}
+
+/**
+ * Present value of the BRE stream forfeited by breaking the streak in year Y —
+ * the full multi-year NPV(ΔBRE) sum (design §5.2.4, issues #140 + #141):
+ *
+ *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
+ *
+ * This is the **potential** loss: it does **not** gate on whether the year's
+ * reimbursable sum actually crosses the Selbstbehalt. {@link calculateGCP} charges
+ * it only when submitting would truly break the streak (`R_Y > S` and not already
+ * broken); the Selbstbehalt radar (issue #234) calls it directly to place the
+ * `S + NPV` submit threshold even while the year is still under S. Both share this
+ * one implementation of the ladder math (no double computation).
+ *
+ * @throws RangeError if `discountRate ≤ −1`, `claimFreeProbability` outside [0, 1],
+ *   or `payoutMonth` outside [1, 12].
+ */
+export function calculateBRELadderNPV(input: GCP_LadderNPVInput): {
+  npv: number;
+  ladderTerms: GCP_LadderTerm[];
+} {
+  const {
+    year,
+    breStructure,
+    monthlyPremium,
+    discountRate = DEFAULT_DISCOUNT_RATE,
+    claimFreeProbability = DEFAULT_CLAIM_FREE_PROBABILITY,
+    payoutMonth = DEFAULT_PAYOUT_MONTH,
+    asOf = new Date(),
+  } = input;
+
+  if (!(discountRate > -1)) {
+    throw new RangeError(`Diskontrate muss größer als -1 sein, war ${discountRate}`);
+  }
+  if (!(claimFreeProbability >= 0 && claimFreeProbability <= 1)) {
+    throw new RangeError(
+      `Leistungsfreiwahrscheinlichkeit muss zwischen 0 und 1 liegen, war ${claimFreeProbability}`,
+    );
+  }
+  if (!(payoutMonth >= 1 && payoutMonth <= 12)) {
+    throw new RangeError(`Auszahlungsmonat muss zwischen 1 und 12 liegen, war ${payoutMonth}`);
+  }
+
+  const currentStreakYears = getCurrentStreakYears(breStructure, asOf);
+  const nMax = maxStreakLevel(breStructure);
+
+  const ladderTerms: GCP_LadderTerm[] = [];
+  for (let j = 0; j < nMax; j++) {
+    const gross = roundCents(
+      breAtStreak(breStructure, monthlyPremium, Math.min(currentStreakYears + 1 + j, nMax)) -
+        breAtStreak(breStructure, monthlyPremium, Math.min(j, nMax)),
+    );
+    if (gross === 0) break; // both paths have reached nMax — no further gain
+    const probability = roundCents(Math.pow(claimFreeProbability, j));
+    const tau = monthsToPayout(year, j, payoutMonth, asOf);
+    const discounted = roundCents((gross * probability) / Math.pow(1 + discountRate / 12, tau));
+    ladderTerms.push({ j, gross, probability, monthsToPayout: tau, discounted });
+  }
+  const npv = roundCents(ladderTerms.reduce((sum, term) => sum + term.discounted, 0));
+
+  return { npv, ladderTerms };
+}
+
+// ---------------------------------------------------------------------------
 // Engine
 // ---------------------------------------------------------------------------
 
@@ -379,7 +466,6 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
 
   const refundAfterDeductible = roundCents(Math.max(0, erstattungsBetrag - selbstbehalt));
   const currentStreakYears = getCurrentStreakYears(breStructure, asOf);
-  const nMax = maxStreakLevel(breStructure);
 
   // The streak is already, irrevocably gone only once the *realised* reimbursements
   // for the year exceed the Selbstbehalt — a smaller refund keeps the year
@@ -390,25 +476,25 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
   // is inconsequential: the insurer pays nothing and the streak is preserved.
   const crossesDeductible = refundAfterDeductible > 0;
 
-  const ladderTerms: GCP_LadderTerm[] = [];
+  let ladderTerms: GCP_LadderTerm[] = [];
   let lostBREValue_NPV = 0;
 
   if (crossesDeductible && !alreadyBroken) {
     // Only here is a BRE loss actually at stake: submitting would cross the
-    // deductible and break an intact streak. Full multi-year NPV sum
-    // (design §5.2.4, issues #140 + #141).
-    for (let j = 0; j < nMax; j++) {
-      const gross = roundCents(
-        breAtStreak(breStructure, monthlyPremium, Math.min(currentStreakYears + 1 + j, nMax)) -
-          breAtStreak(breStructure, monthlyPremium, Math.min(j, nMax)),
-      );
-      if (gross === 0) break; // both paths have reached nMax — no further gain
-      const probability = roundCents(Math.pow(claimFreeProbability, j));
-      const tau = monthsToPayout(year, j, payoutMonth, asOf);
-      const discounted = roundCents((gross * probability) / Math.pow(1 + discountRate / 12, tau));
-      ladderTerms.push({ j, gross, probability, monthsToPayout: tau, discounted });
-    }
-    lostBREValue_NPV = roundCents(ladderTerms.reduce((sum, t) => sum + t.discounted, 0));
+    // deductible and break an intact streak. Delegate to the shared ladder-NPV
+    // helper so the verdict and the Selbstbehalt radar (issue #234) share one
+    // implementation of the multi-year sum (design §5.2.4, issues #140 + #141).
+    const ladder = calculateBRELadderNPV({
+      year,
+      breStructure,
+      monthlyPremium,
+      discountRate,
+      claimFreeProbability,
+      payoutMonth,
+      asOf,
+    });
+    lostBREValue_NPV = ladder.npv;
+    ladderTerms = ladder.ladderTerms;
   }
 
   const netBenefitOfSubmitting = roundCents(refundAfterDeductible - lostBREValue_NPV);

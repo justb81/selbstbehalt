@@ -19,7 +19,9 @@
   } from '@selbstbehalt/shared';
   import { settings } from '$lib/stores/settings';
   import { aggregateByYear, calculateGCP, type GCP_Result } from '$lib/utils/guenstiger-pruefung';
+  import { computeSelbstbehaltRadar, currentLeistungsjahr } from '$lib/utils/selbstbehalt-radar';
   import BRETracker from '$lib/components/BRETracker.svelte';
+  import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
   import GCPCard from '$lib/components/GCPCard.svelte';
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
@@ -75,20 +77,40 @@
     gcp: GCP_Result | null;
   }
 
+  // Positions rolled up per Leistungsjahr (design §5.2.1) — the single source shared
+  // by the per-year verdicts and the current-year radar (no double aggregation).
+  const aggregates = $derived(
+    insuredPerson
+      ? aggregateByYear(invoices.map((inv) => ({ status: inv.status, positions: inv.positions })))
+      : [],
+  );
+
+  // Forward-looking Selbstbehalt/Einreich-Ampel for the current Leistungsjahr (#234).
+  const currentRadar = $derived.by(() => {
+    if (!insuredPerson) return null;
+    const year = currentLeistungsjahr();
+    const agg = aggregates.find((a) => a.year === year);
+    return computeSelbstbehaltRadar({
+      year,
+      R_Y: agg?.R_Y ?? 0,
+      alreadyReimbursed: agg?.alreadyReimbursed ?? 0,
+      selbstbehalt: insuredPerson.self_retention,
+      breStructure: insuredPerson.bre_structure ?? null,
+      monthlyPremium: insuredPerson.monthly_premium,
+      discountRate: $settings.discountRate,
+      claimFreeProbability: $settings.claimFreeProbability,
+    });
+  });
+
   const yearVerdicts = $derived.by(() => {
-    if (!insuredPerson || invoices.length === 0) return [];
-    const aggregates = aggregateByYear(
-      invoices.map((inv) => ({
-        status: inv.status,
-        positions: inv.positions,
-      })),
-    ).sort((a, b) => b.year - a.year); // most recent first
+    if (!insuredPerson || aggregates.length === 0) return [];
+    const sorted = [...aggregates].sort((a, b) => b.year - a.year); // most recent first
 
     // The streak is broken only once realised reimbursements exceed the deductible.
     const selbstbehalt = insuredPerson.self_retention;
 
     if (!insuredPerson.bre_structure) {
-      return aggregates.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => ({
+      return sorted.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => ({
         year,
         R_Y,
         alreadyBroken: alreadyReimbursed > selbstbehalt,
@@ -96,7 +118,7 @@
       }));
     }
 
-    return aggregates.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => {
+    return sorted.map(({ year, R_Y, alreadyReimbursed }): YearVerdict => {
       const alreadyBroken = alreadyReimbursed > selbstbehalt;
       try {
         const gcp = calculateGCP({
@@ -185,6 +207,18 @@
     </section>
 
     <Separator />
+
+    <!-- Selbstbehalt-Ausschöpfung & Einreich-Ampel für das laufende Leistungsjahr (issue #234) -->
+    {#if currentRadar}
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Selbstbehalt-Ausschöpfung {currentRadar.year}
+        </h2>
+        <SelbstbehaltRadar radar={currentRadar} compact />
+      </section>
+
+      <Separator />
+    {/if}
 
     <!-- Günstigerprüfung verdicts per service year -->
     {#if yearVerdicts.length > 0}
