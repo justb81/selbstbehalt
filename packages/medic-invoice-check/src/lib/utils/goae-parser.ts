@@ -421,16 +421,24 @@ const ZIFFER_RE = new RegExp(
 const NEXT_ZIFFER_RE = /^\s*([ÄAZ]\s*)?(\d{1,5}[a-zA-Z]?)\b/;
 
 /**
- * Whether `ziffer` is a plausible bare FDI tooth number: 11–48 (bleibende
- * Zähne) or 51–85 (Milchzähne). Used by the Tabellen-Lookahead to decide
- * whether a bare numeric token (no hyphen/comma to strip on its own, e.g.
- * "16" in "16 0065 …") is worth checking against the next token before
- * accepting it as the Ziffer (issue #250).
+ * Whether `ziffer` is a plausible bare FDI tooth number, per the real
+ * quadrant-based scheme: permanent teeth `11–18`/`21–28`/`31–38`/`41–48`
+ * (quadrant digit 1–4, tooth digit 1–8), deciduous teeth
+ * `51–55`/`61–65`/`71–75`/`81–85` (quadrant digit 5–8, tooth digit 1–5) — a
+ * contiguous `11–48`/`51–85` range check would also accept non-existent
+ * numbers like `20`/`30`/`60`/`70`/`80`, several of which are real GOÄ
+ * Ziffern (PR #256 review). Used by the Tabellen-Lookahead to decide whether
+ * a bare numeric token (no hyphen/comma to strip on its own, e.g. "16" in
+ * "16 0065 …") is worth checking against the next token before accepting it
+ * as the Ziffer (issue #250).
  */
 function isPlausibleFdiTooth(ziffer: string): boolean {
   if (!/^\d{2}$/.test(ziffer)) return false;
-  const n = Number(ziffer);
-  return (n >= 11 && n <= 48) || (n >= 51 && n <= 85);
+  const quadrant = Number(ziffer[0]);
+  const tooth = Number(ziffer[1]);
+  if (quadrant >= 1 && quadrant <= 4) return tooth >= 1 && tooth <= 8;
+  if (quadrant >= 5 && quadrant <= 8) return tooth >= 1 && tooth <= 5;
+  return false;
 }
 
 /**
@@ -531,14 +539,26 @@ export function parsePositionLine(
   else if (prefixLetter === 'Z') detectedSchedule = 'GOZ';
 
   if (zm && ziffer && isKnownZiffer && isPlausibleFdiTooth(ziffer)) {
-    const nm = NEXT_ZIFFER_RE.exec(stripped.slice(matchLength));
+    const rest = stripped.slice(matchLength);
+    const nm = NEXT_ZIFFER_RE.exec(rest);
     const nextZiffer = nm?.[2];
     if (nm && nextZiffer) {
+      // A bare quantity/factor integer (1–2 digits) can also resolve as a
+      // known Ziffer (e.g. GOÄ "2", "11") on a line whose Leistungslegende
+      // OCR dropped — a real billing number printed after a Zahnangabe runs
+      // at least three digits (GOZ prints them zero-padded to four, e.g.
+      // "0065"/"2030"), and one glued straight onto a decimal separator
+      // ("1,8" truncated to "1") is the head of a Faktor/Betrag, not a
+      // Ziffer. Excluding both keeps the lookahead from misfiring on a
+      // description-less line (PR #256 review).
+      const nextDigits = nextZiffer.replace(/[a-zA-Z]$/, '');
+      const looksLikeScheduleCode =
+        nextDigits.length >= 3 && !/^[.,]\d/.test(rest.slice(nm[0].length));
       const nextPrefixLetter = nm[1]?.trim();
       let nextSchedule = detectedSchedule;
       if (nextPrefixLetter === 'Ä' || nextPrefixLetter === 'A') nextSchedule = 'GOÄ';
       else if (nextPrefixLetter === 'Z') nextSchedule = 'GOZ';
-      if (isKnownZiffer(nextZiffer, nextSchedule)) {
+      if (looksLikeScheduleCode && isKnownZiffer(nextZiffer, nextSchedule)) {
         toothLabel = [toothLabel, ziffer].filter(Boolean).join(' ');
         ziffer = nextZiffer;
         detectedSchedule = nextSchedule;

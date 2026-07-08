@@ -416,6 +416,37 @@ describe('parsePositionLine / extractPositions', () => {
     expect(p).toMatchObject({ ziffer: '11', multiplier: 2.3, chargedAmount: 5.36 });
   });
 
+  // --- Regression: description-less lines must not misfire the lookahead
+  // (PR #256 review) ---
+
+  it('does not reclassify a real Ziffer whose units digit is not a valid FDI tooth', () => {
+    // "30" (quadrant 3, tooth digit 0) is not a real FDI tooth number, but a
+    // contiguous 11-48 range check would have accepted it — and it is a real
+    // GOÄ Ziffer (homöopathische Erstanamnese). A quantity-first layout with
+    // no Leistungslegende between the Ziffer and the numbers must not lose it.
+    const p = parsePositionLine('30 2 2,3 45,00', knownZifferIn(goaeTable));
+    expect(p).toMatchObject({ ziffer: '30', quantity: 2, multiplier: 2.3, chargedAmount: 45.0 });
+  });
+
+  it('does not reclassify a real Ziffer when the next token is a bare 1-2 digit factor', () => {
+    // "11" is a plausible FDI tooth number AND a real GOÄ Ziffer. On a
+    // description-less line, the very next token ("5,00" truncated to "5")
+    // is really the Faktor, not a schedule code — too short to be one, so the
+    // lookahead must not treat "11" as a Zahnangabe.
+    const p = parsePositionLine('11 5,00 1 11,66', knownZifferIn(goaeTable));
+    expect(p).toMatchObject({ ziffer: '11', quantity: 1, multiplier: 5.0, chargedAmount: 11.66 });
+  });
+
+  it('never treats a quadrant-9 number as a plausible FDI tooth', () => {
+    // FDI quadrants only go up to 8 — "99" must never enter the lookahead,
+    // even though it precedes a known GOZ Ziffer.
+    const p = parsePositionLine(
+      '99 0065 Optisch-elektronische Abformung 2,3000 4 41,40',
+      knownZifferIn(gozTable),
+    );
+    expect(p).toMatchObject({ ziffer: '99' });
+  });
+
   it('joins an orphaned bare-number amount onto the preceding line', () => {
     const text = [
       '07.05.24 Ä1 Beratung, auch mittels Fernsprecher 2,3000 1',
