@@ -12,6 +12,7 @@ import type {
 } from '../data/fee-schedule';
 import realGoae from '../data/goae.json';
 import realGot from '../data/got.json';
+import realGoz from '../data/goz.json';
 import {
   buildIndex,
   detectProviderType,
@@ -31,6 +32,7 @@ import {
 
 const goaeTable = realGoae as unknown as FeeScheduleTable;
 const gotTable = realGot as unknown as FeeScheduleTable;
+const gozTable = realGoz as unknown as FeeScheduleTable;
 
 // ---------------------------------------------------------------------------
 // Synthetic-table builders — let each constraint type be exercised in isolation
@@ -88,6 +90,17 @@ function makeTable(
  */
 function look(raw: RawPosition, table: FeeScheduleTable): ParsedPosition {
   return lookupPosition(raw, table, buildIndex(table));
+}
+
+/**
+ * Builds the `isKnownZiffer` callback {@link parsePositionLine}'s
+ * Tabellen-Lookahead expects, backed by a single table's index — a
+ * convenience for tests that don't need the multi-schedule resolution
+ * {@link parseInvoice} does.
+ */
+function knownZifferIn(table: FeeScheduleTable) {
+  const index = buildIndex(table);
+  return (ziffer: string) => index.has(normalizeZiffer(ziffer));
 }
 
 /** Build a ParsedPosition straight from raw values (skips text extraction). */
@@ -330,6 +343,77 @@ describe('parsePositionLine / extractPositions', () => {
   it('strips a date AND an OK/UK prefix before the Ziffer', () => {
     const p = parsePositionLine('25.01.24 OK 6050 Beschreibung 3,5000 1 59,05');
     expect(p).toMatchObject({ ziffer: '6050', multiplier: 3.5, quantity: 1, chargedAmount: 59.05 });
+  });
+
+  // --- FDI-Zahnangaben in der Region-Spalte (issue #250) ---
+
+  it('strips a hyphenated FDI tooth range before the Ziffer', () => {
+    const p = parsePositionLine(
+      '16-26, 0065 Optisch-elektronische Abformung (je Kieferhälfte, Diagnose- 2,3000 4 41,40',
+    );
+    expect(p).toMatchObject({ ziffer: '0065', multiplier: 2.3, quantity: 4, chargedAmount: 41.4 });
+  });
+
+  it('strips two combined FDI tooth ranges before the Ziffer (single line)', () => {
+    const p = parsePositionLine('16-26, 36-46 0065 Optisch-elektronische Abformung 2,3000 4 41,40');
+    expect(p).toMatchObject({ ziffer: '0065', multiplier: 2.3, quantity: 4, chargedAmount: 41.4 });
+  });
+
+  it('strips a comma-separated FDI tooth list before the Ziffer', () => {
+    const p = parsePositionLine('16,17 2030 Zuschlag bei Kofferdam 1,0000 1 5,00');
+    expect(p).toMatchObject({ ziffer: '2030', multiplier: 1.0, quantity: 1, chargedAmount: 5.0 });
+  });
+
+  it('reassembles the reproduction example across its wrapped continuation line', () => {
+    // The exact multi-line reproduction from issue #250: the wrapped "36-46 …"
+    // continuation must not be read as its own position (Ziffer "36") and
+    // instead gets re-attached by the existing continuation-join.
+    const text = [
+      '16-26, 0065 Optisch-elektronische Abformung (je Kieferhälfte, Diagnose- 2,3000 4 41,40',
+      '36-46 und Labormodelle)',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(1);
+    expect(positions[0]).toMatchObject({
+      ziffer: '0065',
+      multiplier: 2.3,
+      quantity: 4,
+      chargedAmount: 41.4,
+    });
+  });
+
+  it('leaves a bare OK/UK region prefix unaffected by tooth-token stripping', () => {
+    const p = parsePositionLine('OK 6050 Starke Einengung 3,5000 1 59,05');
+    expect(p).toMatchObject({ ziffer: '6050', multiplier: 3.5, quantity: 1, chargedAmount: 59.05 });
+  });
+
+  it('reinterprets a bare FDI tooth number as a Zahnangabe via the table lookahead', () => {
+    // "16" alone has no separator to strip on its own — only the lookahead
+    // (checking that the *next* token "0065" resolves in the GOZ table)
+    // decides it is a tooth number here, not the Ziffer.
+    const p = parsePositionLine(
+      '16 0065 Optisch-elektronische Abformung 2,3000 4 41,40',
+      knownZifferIn(gozTable),
+    );
+    expect(p).toMatchObject({ ziffer: '0065', multiplier: 2.3, quantity: 4, chargedAmount: 41.4 });
+  });
+
+  it('does not apply the lookahead without an isKnownZiffer callback', () => {
+    const p = parsePositionLine('16 0065 Optisch-elektronische Abformung 2,3000 4 41,40');
+    expect(p).toMatchObject({ ziffer: '16' });
+  });
+
+  it('keeps a real GOÄ Ziffer at line start even with the lookahead active', () => {
+    // "11" (Digitaluntersuchung des Mastdarms …) is a real GOÄ Ziffer that
+    // also looks like a plausible FDI tooth number — the lookahead must not
+    // fire just because it's in range; it only overrides when the *next*
+    // token itself resolves in the table, and here the next token is
+    // descriptive text, not a number.
+    const p = parsePositionLine(
+      '11 Digitaluntersuchung des Mastdarms 2,3 5,36',
+      knownZifferIn(goaeTable),
+    );
+    expect(p).toMatchObject({ ziffer: '11', multiplier: 2.3, chargedAmount: 5.36 });
   });
 
   it('joins an orphaned bare-number amount onto the preceding line', () => {
@@ -1077,6 +1161,29 @@ describe('parseInvoice — end to end on a synthetic table', () => {
 
   it('reports the cross-number excludes violation', () => {
     expect(invoice.violations.some((v) => v.type === 'excludes')).toBe(true);
+  });
+});
+
+describe('parseInvoice — FDI tooth-region Tabellen-Lookahead wiring (issue #250)', () => {
+  it('resolves a bare tooth number followed by a known GOZ Ziffer end-to-end', () => {
+    const text = [
+      'Zahnarztpraxis Dr. med. Test',
+      'Rechnungsnummer: R-2',
+      'Rechnungsdatum: 27.06.2026',
+      '16 0065 Optisch-elektronische Abformung 2,3000 4 41,40',
+    ].join('\n');
+
+    const invoice = parseInvoice(text, gozTable);
+
+    expect(invoice.positions).toHaveLength(1);
+    expect(invoice.positions[0]).toMatchObject({
+      ziffer: '0065',
+      normalizedZiffer: '65',
+      known: true,
+      multiplier: 2.3,
+      quantity: 4,
+      chargedAmount: 41.4,
+    });
   });
 });
 
