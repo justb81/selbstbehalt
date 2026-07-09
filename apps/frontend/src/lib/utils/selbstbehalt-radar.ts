@@ -104,6 +104,25 @@ export function currentLeistungsjahr(asOf: DateInput = new Date()): number {
 }
 
 /**
+ * Sort priority for {@link SBRadarState} — lower sorts first. Surfaces the most
+ * actionable person first on the dashboard (issue #261): "Einreichen lohnt" must
+ * not sit below two cards where submitting is currently inconsequential.
+ * `unter_sb` and `bereits_gebrochen` tie at the lowest priority — one has nothing
+ * yet to submit, the other has nothing left to lose, so neither needs attention.
+ */
+const STATE_PRIORITY: Record<SBRadarState, number> = {
+  ueber_schwelle: 0,
+  sb_erreicht_unter_schwelle: 1,
+  unter_sb: 2,
+  bereits_gebrochen: 2,
+};
+
+/** Sort priority for {@link SBRadarState} (lower = more actionable, sorts first). */
+export function ampelPriority(state: SBRadarState): number {
+  return STATE_PRIORITY[state];
+}
+
+/**
  * Compute the Selbstbehalt/Günstigerprüfung radar for one insured person and one
  * (current) Leistungsjahr. See {@link SBRadar} for the returned figures.
  */

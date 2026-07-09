@@ -2,7 +2,9 @@
 <!--
   BRETracker (docs/design.md §6.2, issue #21): shows the BRE ladder progress for
   one insured person — current streak, projected refund and the next milestone.
-  In compact mode an optional href turns the card into a navigation link.
+  In compact mode an optional href turns the card into a navigation link. `bare`
+  renders just the streak/progress body with no card wrapper or name header — for
+  composing into `PersonStatusCard` (issue #261).
 -->
 <script lang="ts">
   import {
@@ -18,10 +20,12 @@
   let {
     insuredPerson,
     compact = false,
+    bare = false,
     href = undefined,
   }: {
     insuredPerson: InsuredPerson;
     compact?: boolean;
+    bare?: boolean;
     href?: string;
   } = $props();
 
@@ -36,6 +40,23 @@
     return Math.min(100, Math.round((streakYears / target) * 100));
   });
 
+  // Short milestone hint for the compact/bare progress bar (issue #261) — the
+  // full variant already spells this out in its own line below the bar.
+  const nextLevelHint = $derived(
+    !bre
+      ? undefined
+      : nextLevel
+        ? `Nächste Stufe in ${nextLevel.yearsRemaining} Jahr${nextLevel.yearsRemaining === 1 ? '' : 'en'}`
+        : 'Höchste Stufe erreicht',
+  );
+  // Accessible name for the progress bar — role="progressbar" needs one (axe
+  // aria-progressbar-name); aria-valuetext alone does not count as a name.
+  const progressAriaLabel = $derived(
+    nextLevel
+      ? `BRE-Staffel: ${streakYears} von ${nextLevel.level.claim_free_years} Jahren leistungsfrei`
+      : 'BRE-Staffel: höchste Stufe erreicht',
+  );
+
   const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
 
   const cardClass = $derived(
@@ -46,6 +67,37 @@
     ),
   );
 </script>
+
+{#snippet progressBar()}
+  <Progress
+    value={progressPct()}
+    max={100}
+    aria-label={progressAriaLabel}
+    title={nextLevelHint}
+    aria-valuenow={streakYears}
+    aria-valuemin={0}
+    aria-valuemax={nextLevel ? nextLevel.level.claim_free_years : streakYears}
+  />
+{/snippet}
+
+{#snippet bareInner()}
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <span class="text-sm font-medium text-primary">
+      {streakYears} Jahr{streakYears === 1 ? '' : 'e'} leistungsfrei
+    </span>
+    {#if projectedBRE > 0}
+      <span class="text-sm font-medium text-green-600 dark:text-green-400">
+        BRE: {formatEur(projectedBRE)}
+      </span>
+    {/if}
+  </div>
+  {#if bre}
+    {@render progressBar()}
+    <span class="text-xs text-muted-foreground">{nextLevelHint}</span>
+  {:else}
+    <p class="m-0 text-sm text-muted-foreground italic">Keine BRE-Staffel konfiguriert.</p>
+  {/if}
+{/snippet}
 
 {#snippet inner()}
   <div class="flex justify-between items-center gap-2 flex-wrap">
@@ -60,13 +112,7 @@
   </div>
 
   {#if bre}
-    <Progress
-      value={progressPct()}
-      max={100}
-      aria-valuenow={streakYears}
-      aria-valuemin={0}
-      aria-valuemax={nextLevel ? nextLevel.level.claim_free_years : streakYears}
-    />
+    {@render progressBar()}
 
     {#if !compact}
       <div class="flex flex-col gap-1 text-sm text-muted-foreground">
@@ -95,17 +141,22 @@
           >
         {/if}
       </div>
-    {:else if projectedBRE > 0}
-      <span class="text-sm font-medium text-green-600 dark:text-green-400"
-        >{formatEur(projectedBRE)}</span
-      >
+    {:else}
+      {#if projectedBRE > 0}
+        <span class="text-sm font-medium text-green-600 dark:text-green-400">
+          BRE: {formatEur(projectedBRE)}
+        </span>
+      {/if}
+      <span class="text-[11px] text-muted-foreground">{nextLevelHint}</span>
     {/if}
   {:else}
     <p class="m-0 text-sm text-muted-foreground italic">Keine BRE-Staffel konfiguriert.</p>
   {/if}
 {/snippet}
 
-{#if href && compact}
+{#if bare}
+  {@render bareInner()}
+{:else if href && compact}
   <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- href is pre-resolved by caller -->
   <a {href} class={cardClass}>
     {@render inner()}

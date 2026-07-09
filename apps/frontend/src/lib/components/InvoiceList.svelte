@@ -59,6 +59,7 @@
     persons = [],
     insuredPersons = [],
     newInvoiceHref,
+    initialStatus = undefined,
   }: {
     invoices: Invoice[];
     /** All persons — enables the Person filter tabs when the list spans ≥2 of them. */
@@ -67,6 +68,8 @@
     insuredPersons?: InsuredPerson[];
     /** When set, the empty state offers a button to create the first invoice. */
     newInvoiceHref?: string;
+    /** Preselects the Status filter (e.g. from a `?status=` deep link, issue #261). */
+    initialStatus?: InvoiceStatus;
   } = $props();
 
   const STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -88,7 +91,10 @@
   const ALL = 'all';
 
   let personFilter = $state<string>(ALL);
-  let statusFilter = $state<InvoiceStatus | typeof ALL>(ALL);
+  // Deliberately a one-time seed, not a live binding — initialStatus is a deep-link
+  // default; the Status select below owns the filter once the user touches it.
+  // svelte-ignore state_referenced_locally
+  let statusFilter = $state<InvoiceStatus | typeof ALL>(initialStatus ?? ALL);
   let providerTypeFilter = $state<ProviderType | typeof ALL>(ALL);
   let searchQuery = $state('');
 

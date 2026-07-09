@@ -132,4 +132,19 @@ describe('InvoiceList', () => {
       '/invoices/new',
     );
   });
+
+  it('preselects the Status filter from initialStatus when it matches (dashboard deep link)', () => {
+    render(InvoiceList, {
+      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialStatus: 'neu' },
+    });
+    expect(screen.getByRole('link', { name: 'Dr. Arzt' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Zahnarzt Weber' })).toBeInTheDocument();
+  });
+
+  it('filters out all rows when initialStatus does not match any invoice', () => {
+    render(InvoiceList, {
+      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialStatus: 'eingereicht' },
+    });
+    expect(screen.getByText('Keine Rechnungen entsprechen dem Filter.')).toBeInTheDocument();
+  });
 });
