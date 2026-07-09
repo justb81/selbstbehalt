@@ -1,6 +1,6 @@
 {
   "name": "selbstbehalt",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Self-hostable, privacy-first manager for German private health insurance (PKV).",
   "license": "Apache-2.0",

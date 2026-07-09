@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.1](https://github.com/justb81/selbstbehalt/compare/v1.8.0...v1.8.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **invoices:** read legacy Auslagenersatz positions without schema error ([#253](https://github.com/justb81/selbstbehalt/issues/253)) ([6015511](https://github.com/justb81/selbstbehalt/commit/6015511a81bb1dd681718663bef335268862dcf3))
+* **medic-invoice-check:** don't parse FDI-Zahnangaben as GOÄ/GOZ-Ziffer ([#256](https://github.com/justb81/selbstbehalt/issues/256)) ([519a870](https://github.com/justb81/selbstbehalt/commit/519a870643ae0ae774eee5f40e8281290ba98a78))
+* **medic-invoice-check:** harden §9-GOZ summary detection and restore NUL pair separator ([#260](https://github.com/justb81/selbstbehalt/issues/260)) ([d53e7e4](https://github.com/justb81/selbstbehalt/commit/d53e7e4b1651005d12b111e5aa2c5b35549fb453))
+* **medic-invoice-check:** keep per-position GOÄ/GOZ category after a scan ([#255](https://github.com/justb81/selbstbehalt/issues/255)) ([877125f](https://github.com/justb81/selbstbehalt/commit/877125fe6fb263c995e092c8d35c8c8eca65793f)), closes [#249](https://github.com/justb81/selbstbehalt/issues/249)
+* **ocr:** skip boilerplate before invoice-number label ([#254](https://github.com/justb81/selbstbehalt/issues/254)) ([bc6a64c](https://github.com/justb81/selbstbehalt/commit/bc6a64c4cad3241bd5a06a330e4def75523dc457)), closes [#252](https://github.com/justb81/selbstbehalt/issues/252)
+* parse §9-GOZ practice-lab expenses as one Material-/Laborkosten position ([#258](https://github.com/justb81/selbstbehalt/issues/258)) ([4d38b8a](https://github.com/justb81/selbstbehalt/commit/4d38b8af6b07b35ddc477c62a03a77a345b52aaf))
+
 ## [1.8.0](https://github.com/justb81/selbstbehalt/compare/v1.7.1...v1.8.0) (2026-07-08)
 
 ### Features
