@@ -26,6 +26,7 @@
     type InsuredPerson,
     type Person,
   } from '@selbstbehalt/shared';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import BRETracker from '$lib/components/BRETracker.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
@@ -99,6 +100,11 @@
   }
 
   onMount(load);
+
+  // Feed the real insurer name into the global breadcrumb once it has loaded.
+  $effect(() => {
+    if (contract) setBreadcrumbEntity(contractId, contract.insurer_name);
+  });
 
   // ---- Contract edit ----
   let editingContract = $state(false);

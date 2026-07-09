@@ -16,6 +16,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import type { InsuredPerson, InvoiceWithPositions } from '@selbstbehalt/shared';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
@@ -62,6 +63,11 @@
   }
 
   onMount(load);
+
+  // The object crumb (link to the invoice) shows the real provider name.
+  $effect(() => {
+    if (invoice) setBreadcrumbEntity(invoiceId, invoice.provider_name);
+  });
 
   const isEditable = $derived(invoice ? EDITABLE_STATUSES.has(invoice.status) : false);
 

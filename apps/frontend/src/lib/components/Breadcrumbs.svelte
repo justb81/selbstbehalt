@@ -1,29 +1,39 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  Global, route-based breadcrumb trail (issue #133): a single component rendered
+  once in the AppShell, above every page's h1. Pattern: `Bereich › Objekt ›
+  Aktion`, one separator (the shadcn chevron). Top-level pages (dashboard,
+  section lists, /stats, /settings) show no trail — the top-bar brand + nav
+  already anchor those. The object crumb shows the real entity name via the
+  breadcrumbEntity store (a detail page sets it once its data loads); a generic
+  fallback covers the brief window before that.
+-->
 <script lang="ts">
   import { base } from '$app/paths';
   import { page } from '$app/state';
+  import { breadcrumbEntity, type BreadcrumbEntity } from '$lib/stores/breadcrumb';
   import * as Breadcrumb from '$lib/components/ui/breadcrumb';
 
   type Crumb = { label: string; href?: string };
 
-  // Route segment metadata for building human-readable breadcrumb trails.
-  const sectionMeta: Record<string, { label: string; entityLabel: string; newLabel: string }> = {
-    invoices: { label: 'Rechnungen', entityLabel: 'Rechnung', newLabel: 'Neue Rechnung' },
-    contracts: { label: 'Verträge', entityLabel: 'Vertrag', newLabel: 'Neuer Vertrag' },
-    persons: { label: 'Personen', entityLabel: 'Person', newLabel: 'Neue Person' },
-    insured: { label: 'Versicherte', entityLabel: 'Versicherte Person', newLabel: '' },
-    stats: { label: 'Auswertung', entityLabel: '', newLabel: '' },
-    settings: { label: 'Einstellungen', entityLabel: '', newLabel: '' },
+  // Route segment metadata for building human-readable breadcrumb trails. Only
+  // sections with sub-routes need an entry; single-segment sections (stats,
+  // settings) never render a trail so they are intentionally omitted.
+  const sectionMeta: Record<string, { label: string; entityFallback: string; newLabel: string }> = {
+    invoices: { label: 'Rechnungen', entityFallback: 'Rechnung', newLabel: 'Neue Rechnung' },
+    contracts: { label: 'Verträge', entityFallback: 'Vertrag', newLabel: 'Neuer Vertrag' },
+    persons: { label: 'Personen', entityFallback: 'Person', newLabel: 'Neue Person' },
+    insured: { label: 'Versicherte', entityFallback: 'Versicherte Person', newLabel: 'Neu' },
   };
 
   const actionLabels: Record<string, string> = {
     edit: 'Bearbeiten',
-    submit: 'Einreichen',
+    submit: 'Einreichung',
   };
 
-  function buildCrumbs(pathname: string): Crumb[] {
+  function buildCrumbs(pathname: string, entity: BreadcrumbEntity | null): Crumb[] {
     const parts = pathname.split('/').filter(Boolean);
-    if (parts.length < 2) return []; // root or top-level section — no breadcrumbs
+    if (parts.length < 2) return []; // dashboard, section lists, /stats, /settings — no trail
 
     const section = parts[0]!;
     const id = parts[1]!;
@@ -35,20 +45,25 @@
     const crumbs: Crumb[] = [{ label: meta.label, href: `/${section}` }];
 
     if (id === 'new') {
-      crumbs.push({ label: meta.newLabel || 'Neu' });
-    } else if (id === 'scan') {
-      crumbs.push({ label: 'Scan' });
-    } else if (action !== undefined) {
-      crumbs.push({ label: meta.entityLabel || 'Detail', href: `/${section}/${id}` });
+      crumbs.push({ label: meta.newLabel });
+      return crumbs;
+    }
+
+    // The real object name once the detail page has loaded it (keyed by the
+    // [id] segment so a previous page's label can't leak in); generic until then.
+    const objectLabel = entity && entity.id === id ? entity.label : meta.entityFallback;
+
+    if (action !== undefined) {
+      crumbs.push({ label: objectLabel, href: `/${section}/${id}` });
       crumbs.push({ label: actionLabels[action] ?? action });
     } else {
-      crumbs.push({ label: meta.entityLabel || 'Detail' });
+      crumbs.push({ label: objectLabel });
     }
 
     return crumbs;
   }
 
-  const crumbs = $derived(buildCrumbs(page.url.pathname));
+  const crumbs = $derived(buildCrumbs(page.url.pathname, $breadcrumbEntity));
 </script>
 
 {#if crumbs.length > 0}

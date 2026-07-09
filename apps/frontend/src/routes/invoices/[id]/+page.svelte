@@ -20,6 +20,7 @@
   } from '@selbstbehalt/shared';
   import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
   import { refundStatus } from '$lib/utils/position-refund';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
   import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
@@ -78,6 +79,11 @@
   }
 
   onMount(load);
+
+  // Feed the real provider name into the global breadcrumb once it has loaded.
+  $effect(() => {
+    if (invoice) setBreadcrumbEntity(invoiceId, invoice.provider_name);
+  });
 
   // ---------------------------------------------------------------------------
   // Contribution of this invoice's positions per service year
