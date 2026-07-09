@@ -120,8 +120,7 @@ test.describe('axe: core flows', () => {
     await expectNoViolations(page);
 
     await page.goto(`/persons/${PERSON_ID}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Personendetail' })).toBeVisible();
-    await expect(page.getByText(PERSON.name)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: PERSON.name })).toBeVisible();
     await expectNoViolations(page);
   });
 
