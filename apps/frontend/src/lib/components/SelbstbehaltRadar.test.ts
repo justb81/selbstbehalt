@@ -110,4 +110,47 @@ describe('SelbstbehaltRadar — compact variant', () => {
     render(SelbstbehaltRadar, { props: { radar: radar({ year: 2024 }), compact: true } });
     expect(screen.getByText('Selbstbehalt 2024')).toBeInTheDocument();
   });
+
+  it('shows a micro-legend explaining the markers', () => {
+    render(SelbstbehaltRadar, {
+      props: { radar: radar({ selbstbehalt: 500, gcpThreshold: 1250 }), compact: true },
+    });
+    expect(screen.getByText(/Selbstbehalt 500,00/)).toBeInTheDocument();
+    expect(screen.getByText(/Einreichen ab 1\.250,00/)).toBeInTheDocument();
+  });
+
+  it('omits the threshold legend line when there is no separate threshold marker', () => {
+    render(SelbstbehaltRadar, {
+      props: {
+        radar: radar({ selbstbehalt: 500, gcpThreshold: 500, npvThreshold: 0 }),
+        compact: true,
+      },
+    });
+    expect(screen.queryByText(/Einreichen ab/)).not.toBeInTheDocument();
+  });
+});
+
+describe('SelbstbehaltRadar — bare variant', () => {
+  it('renders the compact body without a card or link wrapper', () => {
+    render(SelbstbehaltRadar, { props: { radar: radar(), label: 'Max Müller', bare: true } });
+    expect(screen.getByText('Max Müller')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('ignores href/compact when bare is set', () => {
+    render(SelbstbehaltRadar, {
+      props: { radar: radar(), bare: true, compact: true, href: '/insured/abc' },
+    });
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('shows a chevron affordance only when requested', () => {
+    const { unmount } = render(SelbstbehaltRadar, { props: { radar: radar(), bare: true } });
+    expect(document.querySelector('svg')).not.toBeInTheDocument();
+    unmount();
+
+    render(SelbstbehaltRadar, { props: { radar: radar(), bare: true, chevron: true } });
+    expect(document.querySelector('svg')).toBeInTheDocument();
+  });
 });

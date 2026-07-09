@@ -8,6 +8,8 @@
 
   `compact` renders a slim variant for the dashboard / insured detail; an optional
   `href` turns the compact card into a link to the full Günstigerprüfung verdict.
+  `bare` renders just that compact body with no card/link wrapper, for composing
+  into `PersonStatusCard` (issue #261).
 -->
 <script lang="ts">
   import { formatEur } from '@selbstbehalt/shared';
@@ -15,17 +17,28 @@
   import { cn } from '$lib/utils';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 
   let {
     radar,
     label = undefined,
     compact = false,
+    bare = false,
+    chevron = false,
     href = undefined,
   }: {
     radar: SBRadar;
     /** Optional heading (e.g. the insured person's name/tariff). */
     label?: string;
     compact?: boolean;
+    /**
+     * Renders only the header/thermometer/status body, without a card or link
+     * wrapper — for embedding inside a combined card (`PersonStatusCard`, issue
+     * #261). Takes precedence over `compact`/`href`.
+     */
+    bare?: boolean;
+    /** Shows a chevron next to the Ampel badge — a visible hint that an ancestor card is a link. */
+    chevron?: boolean;
     /**
      * Link to the full Günstigerprüfung verdict. When compact, wraps the whole card
      * in the link; in the full variant it renders as a footer link.
@@ -127,18 +140,36 @@
   </span>
 {/snippet}
 
-{#if compact}
-  {#snippet compactInner()}
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <span class="text-foreground text-sm font-semibold">
-        {label ?? `Selbstbehalt ${radar.year}`}
-      </span>
+{#snippet compactInner()}
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <span class="text-foreground text-sm font-semibold">
+      {label ?? `Selbstbehalt ${radar.year}`}
+    </span>
+    <span class="flex items-center gap-1.5">
       <Badge variant="outline" class={STATE_BADGE[radar.state]}>{STATE_LABEL[radar.state]}</Badge>
-    </div>
-    {@render thermometer('h-2')}
-    <span class="text-muted-foreground text-xs">{statusText}</span>
-  {/snippet}
+      {#if chevron}
+        <ChevronRightIcon
+          class="text-muted-foreground group-hover:text-primary size-4 shrink-0 transition-colors"
+          aria-hidden="true"
+        />
+      {/if}
+    </span>
+  </div>
+  {@render thermometer('h-2')}
+  <!-- Compact markers have no room for the full legend — a minimal one-line
+       explanation still beats an undocumented dash/dashed marker (issue #261). -->
+  <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+    {@render legendDot('bg-foreground/70', `Selbstbehalt ${formatEur(radar.selbstbehalt)}`)}
+    {#if showThresholdMarker}
+      {@render legendDot('bg-primary', `Einreichen ab ${formatEur(radar.gcpThreshold)}`)}
+    {/if}
+  </div>
+  <span class="text-muted-foreground text-xs">{statusText}</span>
+{/snippet}
 
+{#if bare}
+  {@render compactInner()}
+{:else if compact}
   {#if href}
     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- href is pre-resolved by caller -->
     <a {href} class={compactLinkClass}>
