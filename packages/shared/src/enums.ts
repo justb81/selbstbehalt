@@ -44,13 +44,21 @@ export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
  *
  * `GOÄ`/`GOZ`/`GOT` are real fee schedules (Ziffer + Steigerungsfaktor). The
  * remaining values are **non-fee-schedule** categories (see
- * {@link nonScheduleGoaeCategoryValues}): they carry no Ziffer/Steigerungsfaktor,
- * their amount is `quantity × base_amount` (Anzahl × Basis), and they are
- * reimbursed at 100 % of `charged_amount` outside the tariff pipeline:
- * - `Auslagenersatz` — §10 GOÄ expense reimbursement (typically Porto-/Versandkosten).
+ * {@link nonScheduleGoaeCategoryValues}): they carry no Ziffer/Steigerungsfaktor
+ * and their amount is `quantity × base_amount` (Anzahl × Basis):
+ * - `Auslagenersatz` — §10 GOÄ expense reimbursement (Porto-/Versandkosten **and**
+ *   Materialkosten).
  * - `Arznei-/Hilfsmittel` — per-Rezept medication/aids receipts (Apotheke/Sanitätshaus):
- *   Bezeichnung, Menge, Einzelpreis. Provisional 100 % handling, later corrected by the
- *   insurer's actual `refund_amount` (§5.1 documents the future per-tariff-category option).
+ *   Bezeichnung, Menge, Einzelpreis.
+ * - `Material-/Laborkosten` — §9 GOZ practice-lab expenses billed as a single
+ *   summary line on dental/orthodontic invoices (the itemised BEB/BEL breakdown
+ *   is only in the attached Eigenlabor-/Materialbeleg).
+ *
+ * Only `Arznei-/Hilfsmittel` is reimbursed at a flat 100 % of `charged_amount`
+ * ({@link isFlatReimbursedCategory}) — provisional, later corrected by the insurer's
+ * actual `refund_amount`. `Auslagenersatz` and `Material-/Laborkosten` run through
+ * the normal §5.1 tariff pipeline with a benefit_category derived from the invoice's
+ * honorar positions (see design §5.1).
  */
 export const goaeCategoryValues = [
   'GOÄ',
@@ -58,26 +66,55 @@ export const goaeCategoryValues = [
   'GOT',
   'Auslagenersatz',
   'Arznei-/Hilfsmittel',
+  'Material-/Laborkosten',
 ] as const;
 export const goaeCategorySchema = z.enum(goaeCategoryValues);
 export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
 
 /**
  * The non-fee-schedule position categories: no Ziffer/Steigerungsfaktor, amount is
- * `quantity × base_amount`, reimbursed at 100 % outside the tariff pipeline. See
- * {@link goaeCategoryValues} and design §3.2/§5.1.
+ * `quantity × base_amount` (Anzahl × Basis). This governs the **amount arithmetic**
+ * and the review UI (hidden Ziffer/Faktor fields, Betrag = Anzahl × Basis) only — it
+ * does **not** imply flat 100 % reimbursement. Only `Arznei-/Hilfsmittel` is reimbursed
+ * flat ({@link isFlatReimbursedCategory}); `Auslagenersatz` (§10 GOÄ) and
+ * `Material-/Laborkosten` (§9 GOZ) run through the §5.1 tariff pipeline with a derived
+ * benefit_category. See {@link goaeCategoryValues} and design §3.2/§5.1.
  */
-export const nonScheduleGoaeCategoryValues = ['Auslagenersatz', 'Arznei-/Hilfsmittel'] as const;
+export const nonScheduleGoaeCategoryValues = [
+  'Auslagenersatz',
+  'Arznei-/Hilfsmittel',
+  'Material-/Laborkosten',
+] as const;
 export type NonScheduleGoaeCategory = (typeof nonScheduleGoaeCategoryValues)[number];
 
 /**
- * Whether `cat` is a non-fee-schedule category (Auslagenersatz or Arznei-/Hilfsmittel):
- * billed as `quantity × base_amount`, no Ziffer/Steigerungsfaktor, 100 % reimbursement.
+ * Whether `cat` is a non-fee-schedule category (Auslagenersatz, Arznei-/Hilfsmittel
+ * or Material-/Laborkosten): billed as `quantity × base_amount`, no
+ * Ziffer/Steigerungsfaktor. Governs amount arithmetic and the review UI — **not**
+ * whether the reimbursement is flat 100 % (that is {@link isFlatReimbursedCategory}).
  */
 export function isNonScheduleCategory(
   cat: GoaeCategory | null | undefined,
 ): cat is NonScheduleGoaeCategory {
-  return cat === 'Auslagenersatz' || cat === 'Arznei-/Hilfsmittel';
+  return (
+    cat === 'Auslagenersatz' || cat === 'Arznei-/Hilfsmittel' || cat === 'Material-/Laborkosten'
+  );
+}
+
+/**
+ * Whether `cat` is reimbursed at a flat 100 % of `charged_amount`, bypassing the
+ * §5.1 tariff pipeline entirely (Wartezeit, Schwellen-Staffel, Beihilfe-Quote,
+ * Summengrenzen, Aufbaujahres-Staffel). Only `Arznei-/Hilfsmittel` (per-Rezept
+ * medication/aids, #248) — provisional, later corrected by the insurer's actual
+ * `refund_amount`.
+ *
+ * Distinct from {@link isNonScheduleCategory}, the broader "Anzahl × Basis, no
+ * Ziffer/Faktor" arithmetic/UI concern: `Auslagenersatz` and `Material-/Laborkosten`
+ * are non-schedule but **not** flat — they run the tariff pipeline with a
+ * benefit_category derived from the invoice's honorar positions.
+ */
+export function isFlatReimbursedCategory(cat: GoaeCategory | null | undefined): boolean {
+  return cat === 'Arznei-/Hilfsmittel';
 }
 
 /** Channel an invoice was submitted through (`submissions.submitted_via`). */

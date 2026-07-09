@@ -325,8 +325,9 @@ describe('computeErstattung — grouping & totals', () => {
 });
 
 describe('computeErstattung — flat-reimbursed positions are always reimbursed at 100 %', () => {
-  // isFullyReimbursed covers §10 GOÄ Auslagenersatz and per-Rezept Arznei-/Hilfsmittel;
-  // the engine only sees the boolean flag (goae_category → flag mapping is InvoiceForm's job).
+  // isFullyReimbursed covers only per-Rezept Arznei-/Hilfsmittel (#251); Auslagenersatz
+  // and Material-/Laborkosten instead run the pipeline under a derived benefit_category.
+  // The engine only sees the boolean flag (goae_category → flag mapping is InvoiceForm's job).
   it('skips tiers/limits/Beihilfe entirely for a fully-reimbursed position', () => {
     const result = computeErstattung(
       input({
@@ -363,7 +364,7 @@ describe('computeErstattung — flat-reimbursed positions are always reimbursed 
       input({
         positions: [
           { category: 'ambulant', chargedAmount: 100 },
-          // e.g. an Arznei-/Hilfsmittel or Auslagenersatz line.
+          // e.g. an Arznei-/Hilfsmittel line.
           { category: 'ambulant', chargedAmount: 2.8, isFullyReimbursed: true },
         ],
         benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 80 }] }] },
@@ -374,5 +375,26 @@ describe('computeErstattung — flat-reimbursed positions are always reimbursed 
     expect(result.fullyReimbursedAmount).toBe(2.8);
     expect(result.byPosition[0]?.eligible_amount).toBe(80);
     expect(result.byPosition[1]?.eligible_amount).toBe(2.8);
+  });
+
+  it('runs an Auslagen/Material position through the tariff pipeline when NOT flat (#251)', () => {
+    // §9-GOZ Material-/Laborkosten with a derived kieferorthopaedie category and no
+    // isFullyReimbursed flag: the KFO tier/limit/Wartezeit pipeline applies, so it is
+    // NOT reimbursed at 100 %.
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'kieferorthopaedie', chargedAmount: 1001.91 }],
+        benefits: KFO_BENEFITS,
+        invoiceDate: '2030-06-01',
+        patientAge: 10,
+      }),
+    );
+    // 500 × 100 % + 501.91 × 70 % = 851.34 (nicht 1001.91 pauschal)
+    expect(result.eligibleAmount).toBe(851.34);
+    expect(result.fullyReimbursedAmount).toBe(0);
+    expect(result.byCategory[0]).toMatchObject({
+      category: 'kieferorthopaedie',
+      cappedBy: 'tier',
+    });
   });
 });

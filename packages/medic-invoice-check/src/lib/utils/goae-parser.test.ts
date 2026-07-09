@@ -19,7 +19,9 @@ import {
   extractInvoiceFields,
   extractPositions,
   isAuslagenersatzDescription,
+  isBelegSectionMarker,
   lookupPosition,
+  matchMaterialLaborSummary,
   normalizeZiffer,
   parseGermanNumber,
   parseInvoice,
@@ -706,6 +708,103 @@ describe('parsePositionLine / extractPositions', () => {
       multiplier: 2.3,
       quantity: 1,
       chargedAmount: 10.72,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §9-GOZ Praxislabor summary + Eigenlabor-/Materialbeleg section (issue #251)
+// ---------------------------------------------------------------------------
+
+describe('Material-/Laborkosten & Eigenlabor-/Materialbeleg (issue #251)', () => {
+  it('matches the §9-GOZ summary line and reads its amount + description', () => {
+    expect(
+      matchMaterialLaborSummary('Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91'),
+    ).toEqual({ amount: 1001.91, description: 'Auslagen nach §9 GOZ gemäß Praxislaborbeleg' });
+  });
+
+  it('matches spelling variants (no §, no colon, other Beleg wording)', () => {
+    expect(
+      matchMaterialLaborSummary('Auslagen nach 9 GOZ gemäß beiliegendem Beleg 104,50'),
+    ).toMatchObject({ amount: 104.5 });
+    expect(matchMaterialLaborSummary('Auslagen nach § 9 GOZ 250,00')?.amount).toBe(250);
+  });
+
+  it('returns null for lines that are not a §9-GOZ summary', () => {
+    expect(matchMaterialLaborSummary('Auslagen nach §10 GOÄ (Porto) 1,00 3,50')).toBeNull();
+    expect(matchMaterialLaborSummary('0009 2 Modell aus Kunststoff 19,25 38,50')).toBeNull();
+  });
+
+  it('recognises Eigenlabor-/Materialbeleg section markers, but not the §9 summary line', () => {
+    expect(isBelegSectionMarker('EIGENLABOR- UND MATERIALBELEG')).toBe(true);
+    expect(isBelegSectionMarker('Anlage zu Rg.-Nr. 2026-042')).toBe(true);
+    expect(isBelegSectionMarker('Dieser Beleg dient nur Ihrer Information')).toBe(true);
+    expect(isBelegSectionMarker('nur zur Information')).toBe(true);
+    expect(isBelegSectionMarker('6080 Einstellung der Kiefer 2,3000 1 38,81')).toBe(false);
+    // The §9 summary line mentions "Praxislaborbeleg" but is handled as a summary,
+    // not treated as the start of the informational section.
+    expect(
+      matchMaterialLaborSummary('Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91'),
+    ).not.toBeNull();
+  });
+
+  it('turns the §9-GOZ summary line into exactly one Material-/Laborkosten Sammelposition', () => {
+    const text = [
+      '6080 Einstellung der Kiefer 2,3000 1 38,81',
+      'Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions).toHaveLength(2);
+    expect(positions[1]).toMatchObject({
+      ziffer: '',
+      quantity: 1,
+      multiplier: 1,
+      chargedAmount: 1001.91,
+      nonScheduleCategory: 'Material-/Laborkosten',
+    });
+  });
+
+  it('extracts no positions from an attached Eigenlabor-/Materialbeleg', () => {
+    const text = [
+      '6080 Einstellung der Kiefer 2,3000 1 38,81',
+      'Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91',
+      '',
+      'EIGENLABOR- UND MATERIALBELEG',
+      'Anlage zu Rg.-Nr. 2026-042 — Dieser Beleg dient nur Ihrer Information',
+      '13.04.26 0009 2 Modell aus Kunststoff 19,25 38,50',
+      '0304 10 Zahn radieren (alle Halteklammern; je Zahn) 5,28 52,80',
+      '7343 2 Doppelplatten-Führungssporn 54,20 108,40',
+    ].join('\n');
+    const positions = extractPositions(text);
+    // 1 honorar position + 1 Material-/Laborkosten summary — no BEB/BEL pseudo-positions.
+    expect(positions).toHaveLength(2);
+    expect(positions.map((p) => p.nonScheduleCategory ?? p.ziffer)).toEqual([
+      '6080',
+      'Material-/Laborkosten',
+    ]);
+  });
+
+  it('lookupPosition passes a Material-/Laborkosten Sammelposition through as valid, Anzahl × Basis', () => {
+    const table = makeTable([]);
+    const parsed = look(
+      {
+        ziffer: '',
+        quantity: 1,
+        multiplier: 1,
+        chargedAmount: 1001.91,
+        raw: 'Auslagen nach §9 GOZ …: 1.001,91',
+        nonScheduleCategory: 'Material-/Laborkosten',
+      },
+      table,
+    );
+    expect(parsed).toMatchObject({
+      isValid: true,
+      known: false,
+      chargedAmount: 1001.91,
+      baseAmount: 1001.91,
+      benefitCategory: null,
+      nonScheduleCategory: 'Material-/Laborkosten',
+      flags: [],
     });
   });
 });
