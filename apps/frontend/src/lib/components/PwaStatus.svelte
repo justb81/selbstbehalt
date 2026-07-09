@@ -12,6 +12,7 @@
     initInstallPrompt,
     promptInstall,
     dismissInstall,
+    resetInstallDismissal,
   } from '$lib/pwa/install.js';
   import { initPwa } from '$lib/pwa/register.js';
 
@@ -33,6 +34,10 @@
 
   $effect(() => {
     if ($needRefresh) {
+      // A new app update is available — let a "Nicht jetzt" from an earlier
+      // version ask again instead of staying silenced for the rest of the
+      // session (see $lib/pwa/install.ts).
+      resetInstallDismissal();
       toast('Eine neue Version ist verfügbar.', {
         id: 'pwa-update',
         duration: Infinity,

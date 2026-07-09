@@ -95,3 +95,33 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
     });
   }
 }
+
+// Same Node.js v26 vs. jsdom conflict as above, for sessionStorage (used by
+// lib/pwa/install.ts to remember an install-prompt dismissal for the session).
+{
+  const ssDesc = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  if (ssDesc?.get && typeof sessionStorage === 'undefined') {
+    const store: Record<string, string> = {};
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => {
+          store[key] = String(value);
+        },
+        removeItem: (key: string) => {
+          delete store[key];
+        },
+        clear: () => {
+          for (const key of Object.keys(store)) delete store[key];
+        },
+        get length() {
+          return Object.keys(store).length;
+        },
+        key: (index: number) => Object.keys(store)[index] ?? null,
+      } satisfies Storage,
+    });
+  }
+}
