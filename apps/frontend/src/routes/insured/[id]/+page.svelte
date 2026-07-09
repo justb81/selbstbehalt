@@ -29,7 +29,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Separator } from '$lib/components/ui/separator';
-  import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
 
   const insuredId = $derived(page.params.id as string);
 
@@ -65,6 +65,16 @@
   }
 
   onMount(load);
+
+  // Feed the real tariff name into the global breadcrumb once it has loaded.
+  $effect(() => {
+    if (insuredPerson) {
+      setBreadcrumbEntity(
+        insuredId,
+        insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person',
+      );
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Günstigerprüfung per Leistungsjahr (aggregated over all invoices)
@@ -154,20 +164,9 @@
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if insuredPerson}
     <!-- Header -->
-    <div class="space-y-1">
-      <div class="flex items-center gap-2 text-sm text-muted-foreground">
-        {#if contract}
-          <a href={resolve('/contracts/[id]', { id: contract.id })} class="hover:underline">
-            {contract.insurer_name}
-          </a>
-          <ArrowRightIcon class="size-3.5 shrink-0" />
-        {/if}
-        <span>Versicherte Person</span>
-      </div>
-      <h1 class="text-2xl font-bold tracking-tight">
-        {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
-      </h1>
-    </div>
+    <h1 class="text-2xl font-bold tracking-tight">
+      {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
+    </h1>
 
     <!-- Key facts -->
     <div class="flex flex-wrap gap-3 text-sm">
@@ -179,6 +178,17 @@
         <Badge variant="outline"
           >Selbstbehalt: {formatEur(insuredPerson.self_retention)} / Jahr</Badge
         >
+      {/if}
+      {#if contract}
+        <span class="text-muted-foreground">
+          Versicherer:
+          <a
+            href={resolve('/contracts/[id]', { id: contract.id })}
+            class="font-medium text-foreground hover:text-primary hover:underline"
+          >
+            {contract.insurer_name}
+          </a>
+        </span>
       {/if}
       {#if policyholder}
         <span class="text-muted-foreground">

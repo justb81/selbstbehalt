@@ -11,6 +11,7 @@
   import { api, ApiError } from '$lib/api';
   import type { Person } from '$lib/api/resources';
   import { formatDate } from '@selbstbehalt/shared';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -48,6 +49,11 @@
   }
 
   onMount(load);
+
+  // Feed the real person name into the global breadcrumb once it has loaded.
+  $effect(() => {
+    if (person) setBreadcrumbEntity(personId, person.name);
+  });
 
   // ---- Edit ----
   let editing = $state(false);
@@ -115,7 +121,7 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-  <h1 class="text-2xl font-bold tracking-tight">Personendetail</h1>
+  <h1 class="text-2xl font-bold tracking-tight">{person?.name ?? 'Personendetail'}</h1>
 
   {#if loading}
     <LoadingState label="Person wird geladen …" />

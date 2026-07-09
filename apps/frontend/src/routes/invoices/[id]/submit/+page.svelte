@@ -22,6 +22,7 @@
     type InvoiceWithPositions,
     type SubmissionChannel,
   } from '@selbstbehalt/shared';
+  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -71,6 +72,11 @@
   }
 
   onMount(loadInvoice);
+
+  // The object crumb (link to the invoice) shows the real provider name.
+  $effect(() => {
+    if (invoice) setBreadcrumbEntity(invoiceId, invoice.provider_name);
+  });
 
   let saving = $state(false);
   let formError = $state<string | null>(null);
