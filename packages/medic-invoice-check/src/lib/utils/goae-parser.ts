@@ -793,29 +793,41 @@ export function isBelegSectionMarker(line: string): boolean {
 /**
  * The §9-GOZ practice-lab expense summary line the main invoice prints as a single
  * total (e.g. `Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91`). Spellings
- * vary ("gemäß Praxislaborbeleg", "gemäß beiliegendem Beleg", with/without a colon).
- * The §-sign is optional (OCR frequently drops it). Returns the EUR amount and the
- * descriptive text preceding it, or `null` when the line is not such a summary.
+ * vary ("nach"/"gemäß"/"gem.", optional "Abs. n", "gemäß Praxislaborbeleg",
+ * "gemäß beiliegendem Beleg", with/without a colon). The §-sign is optional (OCR
+ * frequently drops it). The amount is the **last** EUR amount on the line, so a
+ * Belegnummer between "GOZ" and the total (`… gemäß Beleg Nr. 2026-042: 1.001,91`)
+ * doesn't break the match. Returns that amount and the descriptive text preceding
+ * it, or `null` when the line is not such a summary.
  */
 // The optional §-sign carries its own trailing whitespace inside the group
 // (`(?:§\s*)?`) rather than sitting between two independent `\s`-quantifiers —
 // otherwise `\s+…\s*9` could split one run of spaces two ways and backtrack
-// polynomially on a long space run (CodeQL ReDoS). `[^\d]` excludes digits, so it
-// never overlaps the amount capture. Every whitespace run is now bounded by a literal.
-const MATERIAL_LABOR_SUMMARY_RE = /Auslagen\s+nach\s+(?:§\s*)?9\s*GOZ\b[^\d]*?(\d[\d.]*,\d{2})/i;
+// polynomially on a long space run (CodeQL ReDoS). Same shape for the optional
+// `Abs. n`: every whitespace run is bounded by a literal (`Abs`, a digit, `GOZ`),
+// so the regex stays linear. The amount is found by a separate global scan, not
+// by an unbounded gap inside this regex.
+const MATERIAL_LABOR_SUMMARY_RE =
+  /Auslagen\s+(?:nach|gemäß|gem\.)\s+(?:§\s*)?9\s*(?:Abs\.\s*\d+\s*)?GOZ\b/i;
+
+/** All EUR amounts on a line ("104,50", "1.001,91"); used to pick the last one. */
+const EUR_AMOUNT_RE = /\d[\d.]*,\d{2}/g;
 
 export function matchMaterialLaborSummary(
   line: string,
 ): { amount: number; description: string } | null {
   const m = MATERIAL_LABOR_SUMMARY_RE.exec(line);
-  if (!m || !m[1]) return null;
-  const amount = parseGermanNumber(m[1]);
+  if (!m) return null;
+  // Last amount after the "Auslagen … GOZ" prefix — earlier digit runs (a
+  // Belegnummer, an "Abs. 1") must not be mistaken for the total.
+  const rest = line.slice(m.index + m[0].length);
+  let last: RegExpMatchArray | null = null;
+  for (const am of rest.matchAll(EUR_AMOUNT_RE)) last = am;
+  if (!last) return null;
+  const amount = parseGermanNumber(last[0]);
   if (Number.isNaN(amount)) return null;
   const description =
-    m[0]
-      .slice(0, m[0].length - m[1].length)
-      .replace(/[:\s]+$/, '')
-      .trim() || 'Auslagen nach §9 GOZ';
+    (m[0] + rest.slice(0, last.index)).replace(/[:\s]+$/, '').trim() || 'Auslagen nach §9 GOZ';
   return { amount, description };
 }
 
@@ -843,6 +855,17 @@ export function extractPositions(text: string, isKnownZiffer?: ZifferKnownCheck)
   // summary line, which also mentions "Praxislaborbeleg"). Done on the raw lines
   // so the marker isn't first merged into a preceding position by the
   // continuation joiner and thereby hidden from this check.
+  //
+  // Deliberate v1 tradeoff (#259): truncation always runs to end of document —
+  // there is no switch-back detection, because Beleg lines are line-locally
+  // indistinguishable from Honorar lines (BEB/BEL numbers collide with the GOZ
+  // Nummernraum, an Einzelpreis reads like a Faktor), so any resumption
+  // heuristic would risk re-importing BEB/BEL pseudo-positions, which is worse
+  // than over-cutting. Known failure mode: a generic marker such as "nur zur
+  // Information" in a mid-invoice footer/hint text silently drops every
+  // following Honorar position. Acceptable for single-invoice scans; revisit
+  // (switch-back detection or a "n Zeilen verworfen" parser hint) if
+  // multi-document scans land.
   const rawLines = text.split(/\r?\n/);
   const cutAt = rawLines.findIndex(
     (l) => isBelegSectionMarker(l) && matchMaterialLaborSummary(l) === null,
@@ -858,17 +881,28 @@ export function extractPositions(text: string, isKnownZiffer?: ZifferKnownCheck)
     // (Anzahl 1 × Basis = Betrag), checked before the bare-date/position parsing.
     const summary = matchMaterialLaborSummary(trimmed);
     if (summary) {
-      positions.push({
-        ziffer: '',
-        quantity: 1,
-        multiplier: 1,
-        chargedAmount: summary.amount,
-        raw: trimmed,
-        ocrDescription: summary.description,
-        treatmentDate: currentDate,
-        detectedSchedule: null,
-        nonScheduleCategory: 'Material-/Laborkosten',
-      });
+      // OCR sometimes delivers the summary line twice (repeated Zwischensummen
+      // block, Seitenübertrag); a second position with the same amount would
+      // double the Material-/Laborkosten, so only the first occurrence is
+      // kept. A second summary with a *different* amount is a distinct expense
+      // block (e.g. Eigen- + Fremdlabor) and stays.
+      const isDuplicate = positions.some(
+        (p) =>
+          p.nonScheduleCategory === 'Material-/Laborkosten' && p.chargedAmount === summary.amount,
+      );
+      if (!isDuplicate) {
+        positions.push({
+          ziffer: '',
+          quantity: 1,
+          multiplier: 1,
+          chargedAmount: summary.amount,
+          raw: trimmed,
+          ocrDescription: summary.description,
+          treatmentDate: currentDate,
+          detectedSchedule: null,
+          nonScheduleCategory: 'Material-/Laborkosten',
+        });
+      }
       continue;
     }
 
@@ -1080,7 +1114,11 @@ export function validateInvoice(
   const present = new Set(indicesByZiffer.keys());
 
   // --- Incompatibility: excludes + mutualExclusion → symmetric pair set ---
-  const PAIR_SEP = ' ';
+  // NUL as separator: no Ziffer can ever contain it (unlike a space, which a
+  // future table entry could plausibly carry), so `key.split(PAIR_SEP)` is
+  // guaranteed to recover exactly the two Ziffern. Written as an escape
+  // sequence — a raw NUL byte would make grep/diff treat this file as binary.
+  const PAIR_SEP = '\0';
   const conflictRule = new Map<string, { sourceText: string; ruleId?: string }>();
   const addPair = (a: string, b: string, rule: { sourceText: string; ruleId?: string }): void => {
     if (a === b) return;
