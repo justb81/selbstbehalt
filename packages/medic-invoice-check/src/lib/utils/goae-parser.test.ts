@@ -730,6 +730,26 @@ describe('Material-/Laborkosten & Eigenlabor-/Materialbeleg (issue #251)', () =>
     expect(matchMaterialLaborSummary('Auslagen nach § 9 GOZ 250,00')?.amount).toBe(250);
   });
 
+  it('matches "gemäß"/"gem." and an "Abs. n" between § 9 and GOZ (issue #259)', () => {
+    expect(
+      matchMaterialLaborSummary('Auslagen gemäß § 9 GOZ lt. beiliegendem Beleg 104,50'),
+    ).toMatchObject({ amount: 104.5 });
+    expect(matchMaterialLaborSummary('Auslagen gem. §9 GOZ: 55,00')?.amount).toBe(55);
+    expect(matchMaterialLaborSummary('Auslagen nach § 9 Abs. 1 GOZ 250,00')).toEqual({
+      amount: 250,
+      description: 'Auslagen nach § 9 Abs. 1 GOZ',
+    });
+  });
+
+  it('takes the last amount of the line, so a Belegnummer after "GOZ" does not break the match (issue #259)', () => {
+    expect(
+      matchMaterialLaborSummary('Auslagen nach §9 GOZ gemäß Beleg Nr. 2026-042: 1.001,91'),
+    ).toEqual({
+      amount: 1001.91,
+      description: 'Auslagen nach §9 GOZ gemäß Beleg Nr. 2026-042',
+    });
+  });
+
   it('returns null for lines that are not a §9-GOZ summary', () => {
     expect(matchMaterialLaborSummary('Auslagen nach §10 GOÄ (Porto) 1,00 3,50')).toBeNull();
     expect(matchMaterialLaborSummary('0009 2 Modell aus Kunststoff 19,25 38,50')).toBeNull();
@@ -762,6 +782,41 @@ describe('Material-/Laborkosten & Eigenlabor-/Materialbeleg (issue #251)', () =>
       chargedAmount: 1001.91,
       nonScheduleCategory: 'Material-/Laborkosten',
     });
+  });
+
+  it('does not treat a summary line with a Belegnummer as a section marker — following positions survive (issue #259)', () => {
+    const text = [
+      '6080 Einstellung der Kiefer 2,3000 1 38,81',
+      // "Praxislaborbeleg" is a section-marker word — only the (now matching)
+      // summary detection keeps this line from truncating everything below it.
+      'Auslagen nach §9 GOZ gemäß Praxislaborbeleg Nr. 2026-042: 1.001,91',
+      '6100 Eingliederung eines Klebebrackets 2,3000 1 12,64',
+    ].join('\n');
+    const positions = extractPositions(text);
+    expect(positions.map((p) => p.nonScheduleCategory ?? p.ziffer)).toEqual([
+      '6080',
+      'Material-/Laborkosten',
+      '6100',
+    ]);
+    expect(positions[1]?.chargedAmount).toBe(1001.91);
+  });
+
+  it('keeps only the first of two identical §9 summary lines (Seitenübertrag) but both of two distinct ones (issue #259)', () => {
+    const duplicated = [
+      '6080 Einstellung der Kiefer 2,3000 1 38,81',
+      'Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91',
+      '6100 Eingliederung eines Klebebrackets 2,3000 1 12,64',
+      'Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91',
+    ].join('\n');
+    expect(
+      extractPositions(duplicated).filter((p) => p.nonScheduleCategory === 'Material-/Laborkosten'),
+    ).toHaveLength(1);
+
+    const distinct = [
+      'Auslagen nach §9 GOZ (Eigenlabor) 104,50',
+      'Auslagen nach §9 GOZ (Fremdlabor) 250,00',
+    ].join('\n');
+    expect(extractPositions(distinct).map((p) => p.chargedAmount)).toEqual([104.5, 250]);
   });
 
   it('extracts no positions from an attached Eigenlabor-/Materialbeleg', () => {
