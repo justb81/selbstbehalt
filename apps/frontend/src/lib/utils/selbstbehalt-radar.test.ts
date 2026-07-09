@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import { calculateBRELadderNPV } from './guenstiger-pruefung.js';
 import {
+  ampelPriority,
   computeSelbstbehaltRadar,
   currentLeistungsjahr,
   type SBRadarInput,
+  type SBRadarState,
 } from './selbstbehalt-radar.js';
 
 // ---------------------------------------------------------------------------
@@ -199,5 +201,41 @@ describe('computeSelbstbehaltRadar — edge cases', () => {
     const a = computeSelbstbehaltRadar(radarInput());
     const b = computeSelbstbehaltRadar(radarInput());
     expect(a).toEqual(b);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ampelPriority (dashboard sort order, issue #261)
+// ---------------------------------------------------------------------------
+
+describe('ampelPriority', () => {
+  it('ranks ueber_schwelle first (most actionable)', () => {
+    expect(ampelPriority('ueber_schwelle')).toBeLessThan(
+      ampelPriority('sb_erreicht_unter_schwelle'),
+    );
+  });
+
+  it('ranks sb_erreicht_unter_schwelle above the consequence-free states', () => {
+    expect(ampelPriority('sb_erreicht_unter_schwelle')).toBeLessThan(ampelPriority('unter_sb'));
+    expect(ampelPriority('sb_erreicht_unter_schwelle')).toBeLessThan(
+      ampelPriority('bereits_gebrochen'),
+    );
+  });
+
+  it('ties unter_sb and bereits_gebrochen at the lowest priority', () => {
+    expect(ampelPriority('unter_sb')).toBe(ampelPriority('bereits_gebrochen'));
+  });
+
+  it('sorts a mixed list with ueber_schwelle first', () => {
+    const states: SBRadarState[] = [
+      'unter_sb',
+      'bereits_gebrochen',
+      'ueber_schwelle',
+      'sb_erreicht_unter_schwelle',
+    ];
+    const sorted = [...states].sort((a, b) => ampelPriority(a) - ampelPriority(b));
+    expect(sorted[0]).toBe('ueber_schwelle');
+    expect(sorted[1]).toBe('sb_erreicht_unter_schwelle');
+    expect(sorted.slice(2)).toEqual(expect.arrayContaining(['unter_sb', 'bereits_gebrochen']));
   });
 });

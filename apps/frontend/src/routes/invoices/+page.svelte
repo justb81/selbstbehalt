@@ -6,8 +6,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
-  import type { InsuredPerson, Invoice, Person } from '@selbstbehalt/shared';
+  import {
+    invoiceStatusValues,
+    type InsuredPerson,
+    type Invoice,
+    type InvoiceStatus,
+    type Person,
+  } from '@selbstbehalt/shared';
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
@@ -18,6 +25,13 @@
   let insuredPersons = $state<InsuredPerson[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+
+  // Deep-link filter, e.g. the dashboard's "Ausstehende Einreichungen" tile
+  // linking to `?status=eingereicht` (issue #261).
+  const initialStatus = $derived.by(() => {
+    const raw = page.url.searchParams.get('status');
+    return invoiceStatusValues.includes(raw as InvoiceStatus) ? (raw as InvoiceStatus) : undefined;
+  });
 
   async function load() {
     loading = true;
@@ -57,6 +71,12 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else}
-    <InvoiceList {invoices} {persons} {insuredPersons} newInvoiceHref={resolve('/invoices/new')} />
+    <InvoiceList
+      {invoices}
+      {persons}
+      {insuredPersons}
+      {initialStatus}
+      newInvoiceHref={resolve('/invoices/new')}
+    />
   {/if}
 </div>
