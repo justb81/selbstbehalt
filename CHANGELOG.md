@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/justb81/selbstbehalt/compare/v1.8.1...v1.8.2) (2026-07-09)
+
+### Bug Fixes
+
+- **frontend:** remember install-toast dismissal for the session ([#263](https://github.com/justb81/selbstbehalt/issues/263)) ([2d387b2](https://github.com/justb81/selbstbehalt/commit/2d387b2a911c34f0751f216d49ecc0052fd37448))
+- **frontend:** unify breadcrumb navigation across all pages ([#264](https://github.com/justb81/selbstbehalt/issues/264)) ([009b60b](https://github.com/justb81/selbstbehalt/commit/009b60b01478dbcc6a2479f51435e7d050dbeeca))
+
 ## [1.8.1](https://github.com/justb81/selbstbehalt/compare/v1.8.0...v1.8.1) (2026-07-09)
 
 ### Bug Fixes
