@@ -36,7 +36,12 @@
     tabindex="-1"
     class="pt-14 flex-1 w-full max-w-screen-xl mx-auto px-4 py-5 bg-background focus:outline-none"
   >
-    <Breadcrumbs />
+    <!-- Same container grid as every page's content wrapper so the breadcrumb
+         is flush-left with the page's h1 (not offset by the page's own
+         max-w-5xl + px-4). -->
+    <div class="container mx-auto max-w-5xl px-4">
+      <Breadcrumbs />
+    </div>
     {@render children()}
   </main>
 

@@ -67,7 +67,9 @@
 </script>
 
 {#if crumbs.length > 0}
-  <Breadcrumb.Root class="mb-4">
+  <!-- Sits inside the page-grid wrapper (AppShell); the page container's own
+       top padding provides the gap to the h1, so no bottom margin here. -->
+  <Breadcrumb.Root class="pt-1">
     <Breadcrumb.List>
       {#each crumbs as crumb, i (i)}
         <Breadcrumb.Item>
