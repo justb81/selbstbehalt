@@ -810,8 +810,13 @@ export function isBelegSectionMarker(line: string): boolean {
 const MATERIAL_LABOR_SUMMARY_RE =
   /Auslagen\s+(?:nach|gemäß|gem\.)\s+(?:§\s*)?9\s*(?:Abs\.\s*\d+\s*)?GOZ\b/i;
 
-/** All EUR amounts on a line ("104,50", "1.001,91"); used to pick the last one. */
-const EUR_AMOUNT_RE = /\d[\d.]*,\d{2}/g;
+/**
+ * All EUR amounts on a line ("104,50", "1.001,91"); used to pick the last one.
+ * The lookbehind forbids a match from starting inside a longer digit run, so a
+ * comma-less run ("9000…0") is scanned once instead of once per digit — without
+ * it the global scan is quadratic on such input (CodeQL js/polynomial-redos).
+ */
+const EUR_AMOUNT_RE = /(?<![\d.,])\d[\d.]*,\d{2}/g;
 
 export function matchMaterialLaborSummary(
   line: string,
@@ -826,8 +831,13 @@ export function matchMaterialLaborSummary(
   if (!last) return null;
   const amount = parseGermanNumber(last[0]);
   if (Number.isNaN(amount)) return null;
-  const description =
-    (m[0] + rest.slice(0, last.index)).replace(/[:\s]+$/, '').trim() || 'Auslagen nach §9 GOZ';
+  // Strip trailing ":"/whitespace with a char loop, not `/[:\s]+$/` — an
+  // end-anchored quantifier re-scans the trailing run once per start position
+  // on adversarial input (CodeQL js/polynomial-redos); the loop is linear.
+  const rawDescription = m[0] + rest.slice(0, last.index);
+  let end = rawDescription.length;
+  while (end > 0 && /[:\s]/.test(rawDescription[end - 1]!)) end--;
+  const description = rawDescription.slice(0, end).trim() || 'Auslagen nach §9 GOZ';
   return { amount, description };
 }
 
