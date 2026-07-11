@@ -28,7 +28,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.21.0",
+    "@lucide/svelte": "^1.23.0",
     "@selbstbehalt/shared": "workspace:*",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",

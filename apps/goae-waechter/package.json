@@ -20,7 +20,7 @@
     "test:e2e": "vite build && playwright test"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.21.0",
+    "@lucide/svelte": "^1.23.0",
     "@selbstbehalt/medic-invoice-check": "workspace:*",
     "@selbstbehalt/shared": "workspace:*",
     "bits-ui": "^2.18.1",
