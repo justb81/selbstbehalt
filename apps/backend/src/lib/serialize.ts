@@ -16,6 +16,7 @@ import type {
   InvoiceCreate,
   InvoicePosition,
   InvoicePositionInput,
+  InvoiceStatus,
   InvoiceStatusEvent,
   InvoiceUpdate,
   Person,
@@ -170,7 +171,12 @@ export function toInsuredPersonUpdate(input: InsuredPersonUpdate): Partial<Insur
 
 // ── Invoices ───────────────────────────────────────────────────────────────
 
-export function serializeInvoice(row: InvoiceRow): Invoice {
+/**
+ * The lifecycle `status` is server-derived from the event log, so it is supplied
+ * separately — either from `deriveInvoiceStatus` (single-invoice reads) or the
+ * `invoice_current_status` view (list/stats). It is never a column on the row.
+ */
+export function serializeInvoice(row: InvoiceRow, status: InvoiceStatus): Invoice {
   return {
     id: row.id,
     created_at: row.createdAt,
@@ -182,7 +188,7 @@ export function serializeInvoice(row: InvoiceRow): Invoice {
     total_amount: row.totalAmount,
     eligible_amount: row.eligibleAmount,
     self_paid_amount: row.selfPaidAmount,
-    status: row.status,
+    status,
     file_path: row.filePath,
     ocr_raw: row.ocrRaw,
     notes: row.notes,
@@ -197,7 +203,6 @@ export function toInvoiceInsert(input: InvoiceCreate): InvoiceInsert {
     providerName: input.provider_name,
     providerType: input.provider_type,
     totalAmount: input.total_amount,
-    status: input.status,
     filePath: input.file_path,
     ocrRaw: input.ocr_raw,
     notes: input.notes,
@@ -212,7 +217,6 @@ export function toInvoiceUpdate(input: InvoiceUpdate): Partial<InvoiceInsert> {
   if (input.provider_name !== undefined) u.providerName = input.provider_name;
   if (input.provider_type !== undefined) u.providerType = input.provider_type;
   if (input.total_amount !== undefined) u.totalAmount = input.total_amount;
-  if (input.status !== undefined) u.status = input.status;
   if (input.file_path !== undefined) u.filePath = input.file_path;
   if (input.ocr_raw !== undefined) u.ocrRaw = input.ocr_raw;
   if (input.notes !== undefined) u.notes = input.notes;
@@ -271,6 +275,7 @@ export function serializeStatusEvent(row: StatusEventRow): InvoiceStatusEvent {
   return {
     id: row.id,
     invoice_id: row.invoiceId,
+    track: row.track,
     status: row.status,
     changed_at: row.changedAt,
     note: row.note,
@@ -279,10 +284,12 @@ export function serializeStatusEvent(row: StatusEventRow): InvoiceStatusEvent {
 
 export function toStatusEventInsert(
   invoiceId: string,
+  track: InvoiceStatusEvent['track'],
   status: InvoiceStatusEvent['status'],
   note?: string | null,
+  changedAt?: string,
 ): StatusEventInsert {
-  return { invoiceId, status, note: note ?? null };
+  return { invoiceId, track, status, note: note ?? null, ...(changedAt ? { changedAt } : {}) };
 }
 
 // ── Submissions ────────────────────────────────────────────────────────────

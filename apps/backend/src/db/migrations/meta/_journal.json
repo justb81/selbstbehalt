@@ -50,6 +50,13 @@
       "when": 1782930000000,
       "tag": "0006_position_benefit_category",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1782940000000,
+      "tag": "0007_two_track_status",
+      "breakpoints": true
     }
   ]
 }

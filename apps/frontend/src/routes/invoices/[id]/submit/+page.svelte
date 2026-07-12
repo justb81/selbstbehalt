@@ -44,7 +44,11 @@
   let loadError = $state<string | null>(null);
 
   const mode = $derived(
-    invoice?.status === 'bezahlt' ? 'create' : invoice?.status === 'eingereicht' ? 'edit' : null,
+    invoice?.status.submission === 'eingereicht'
+      ? 'edit'
+      : invoice?.status.review === 'geprüft' && invoice?.status.submission === 'nicht_eingereicht'
+        ? 'create'
+        : null,
   );
 
   // ---- Form state ----
@@ -58,7 +62,7 @@
     loadError = null;
     try {
       invoice = await api.invoices.get(invoiceId);
-      if (invoice.status === 'eingereicht') {
+      if (invoice.status.submission === 'eingereicht') {
         const submission = await api.invoices.getSubmission(invoiceId);
         submittedAt = submission.submitted_at ? submission.submitted_at.slice(0, 16) : nowIso;
         submittedVia = submission.submitted_via ?? 'app';
@@ -128,8 +132,8 @@
     <Card>
       <CardContent class="pt-4 space-y-3">
         <p class="text-sm text-muted-foreground">
-          Diese Rechnung hat den Status <strong class="text-foreground">{invoice.status}</strong> und
-          kann derzeit nicht (mehr) eingereicht werden.
+          Diese Rechnung kann derzeit nicht (mehr) eingereicht werden — sie ist entweder noch nicht
+          geprüft oder bereits erstattet.
         </p>
         <Button variant="outline" href={resolve('/invoices/[id]', { id: invoice.id })}>
           Zur Rechnung

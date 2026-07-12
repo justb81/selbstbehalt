@@ -21,7 +21,7 @@ function invoice(overrides: Partial<Invoice> & Pick<Invoice, 'id' | 'insured_per
     total_amount: 100,
     self_paid_amount: 0,
     eligible_amount: null,
-    status: 'neu',
+    status: { review: 'neu', payment: 'offen', submission: 'nicht_eingereicht', paid_on: null },
     file_path: null,
     ocr_raw: null,
     notes: null,
@@ -133,17 +133,17 @@ describe('InvoiceList', () => {
     );
   });
 
-  it('preselects the Status filter from initialStatus when it matches (dashboard deep link)', () => {
+  it('preselects the submission filter from initialSubmission when it matches (dashboard deep link)', () => {
     render(InvoiceList, {
-      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialStatus: 'neu' },
+      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialSubmission: 'nicht_eingereicht' },
     });
     expect(screen.getByRole('link', { name: 'Dr. Arzt' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Zahnarzt Weber' })).toBeInTheDocument();
   });
 
-  it('filters out all rows when initialStatus does not match any invoice', () => {
+  it('filters out all rows when initialSubmission does not match any invoice', () => {
     render(InvoiceList, {
-      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialStatus: 'eingereicht' },
+      props: { invoices: [INVOICE_ALICE, INVOICE_BOB], initialSubmission: 'eingereicht' },
     });
     expect(screen.getByText('Keine Rechnungen entsprechen dem Filter.')).toBeInTheDocument();
   });

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import { invoiceStatusValues, goaeCategoryValues } from '../enums.js';
+import {
+  goaeCategoryValues,
+  paymentStatusValues,
+  reviewStatusValues,
+  submissionStatusValues,
+} from '../enums.js';
 import { personCreateSchema, personUpdateSchema } from './person.js';
 import { contractCreateSchema } from './contract.js';
 import { insuredPersonCreateSchema, breStructureSchema } from './insured-person.js';
@@ -14,7 +19,9 @@ const UUID = '3f9a8c2e-1d4b-4c6a-9e2f-7b1c0d5e6a7f';
 
 describe('enums', () => {
   it('expose the values from §3.2', () => {
-    expect(invoiceStatusValues).toContain('bezahlt');
+    expect(reviewStatusValues).toContain('geprüft');
+    expect(paymentStatusValues).toContain('bezahlt');
+    expect(submissionStatusValues).toContain('eingereicht');
     expect(goaeCategoryValues).toContain('GOÄ');
     expect(goaeCategoryValues).toContain('Auslagenersatz');
     expect(goaeCategoryValues).toContain('Arznei-/Hilfsmittel');
@@ -145,12 +152,13 @@ describe('invoiceCreateSchema', () => {
     expect(invoiceCreateSchema.safeParse(base).success).toBe(true);
   });
 
-  it('rejects an unknown status', () => {
-    expect(invoiceCreateSchema.safeParse({ ...base, status: 'unterwegs' }).success).toBe(false);
+  it('rejects a client-set status (lifecycle is server-derived)', () => {
+    expect(invoiceCreateSchema.safeParse({ ...base, status: 'neu' }).success).toBe(false);
   });
 
-  it('read schema requires server-managed fields', () => {
+  it('read schema requires server-managed fields and the derived status object', () => {
     expect(invoiceSchema.safeParse(base).success).toBe(false);
+    // A plain status string is no longer valid — status is the derived multivalue object.
     expect(
       invoiceSchema.safeParse({
         ...base,
@@ -158,6 +166,20 @@ describe('invoiceCreateSchema', () => {
         created_at: '2026-06-01T10:00:00Z',
         self_paid_amount: 0,
         status: 'neu',
+      }).success,
+    ).toBe(false);
+    expect(
+      invoiceSchema.safeParse({
+        ...base,
+        id: UUID,
+        created_at: '2026-06-01T10:00:00Z',
+        self_paid_amount: 0,
+        status: {
+          review: 'neu',
+          payment: 'offen',
+          submission: 'nicht_eingereicht',
+          paid_on: null,
+        },
       }).success,
     ).toBe(true);
   });

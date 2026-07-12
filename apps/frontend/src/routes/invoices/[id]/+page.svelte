@@ -98,7 +98,7 @@
   }
 
   const contributions = $derived.by((): YearContribution[] => {
-    if (!invoice || !insuredPerson || invoice.status === 'neu') return [];
+    if (!invoice || !insuredPerson || invoice.status.review === 'neu') return [];
 
     // Aggregate R_Y over all invoices of this person.
     const allAggregates = new Map(
@@ -113,7 +113,9 @@
       if (!pos.treatment_date) continue;
       const year = parseInt(pos.treatment_date.substring(0, 4), 10);
       const amount =
-        invoice.status === 'erstattet' ? (pos.refund_amount ?? 0) : (pos.eligible_amount ?? 0);
+        invoice.status.submission === 'erstattet'
+          ? (pos.refund_amount ?? 0)
+          : (pos.eligible_amount ?? 0);
       byYear.set(year, (byYear.get(year) ?? 0) + amount);
     }
 
@@ -173,10 +175,11 @@
       <div class="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
         <span>{formatDate(invoice.invoice_date)}</span>
         {#if invoice.invoice_number}<span>Nr. {invoice.invoice_number}</span>{/if}
-        <InvoiceBadge status={invoice.status} />
+        <InvoiceBadge status={invoice.status.payment} />
+        <InvoiceBadge status={invoice.status.submission} />
       </div>
       <div class="flex gap-2 flex-wrap items-start">
-        {#if invoice.status === 'neu' || invoice.status === 'geprüft'}
+        {#if invoice.status.payment === 'offen' && invoice.status.submission === 'nicht_eingereicht'}
           <Button
             variant="outline"
             size="sm"
@@ -291,7 +294,7 @@
         insuredPersonId={insuredPerson.id}
         insuredLabel={insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
       />
-    {:else if invoice.status === 'neu'}
+    {:else if invoice.status.review === 'neu'}
       <div
         class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
       >

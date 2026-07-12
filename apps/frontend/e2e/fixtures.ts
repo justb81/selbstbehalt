@@ -92,7 +92,7 @@ export const INVOICE_LIST_ITEM = {
   provider_name: 'Praxis Dr. med. Mustermann',
   provider_type: null,
   total_amount: 58,
-  status: 'neu',
+  status: { review: 'neu', payment: 'offen', submission: 'nicht_eingereicht', paid_on: null },
   file_path: null,
   ocr_raw: null,
   notes: null,
@@ -147,6 +147,10 @@ export async function mockBackend(
   });
   await page.route('**/api/invoices/*', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: INVOICE }) : route.fallback(),
+  );
+  // The invoice detail page's status-flow loads the event log on mount.
+  await page.route('**/api/invoices/*/events', (route) =>
+    route.request().method() === 'GET' ? route.fulfill({ json: [] }) : route.fallback(),
   );
   await page.route('**/api/stats/year/*', (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

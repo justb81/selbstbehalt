@@ -75,7 +75,8 @@ export const DEFAULT_PAYOUT_MONTH = 7;
 
 /** Minimal invoice shape needed by {@link aggregateByYear}. */
 export interface GCP_InvoiceData {
-  status: InvoiceStatus;
+  /** Derived lifecycle state; only the review and submission tracks matter here. */
+  status: Pick<InvoiceStatus, 'review' | 'submission'>;
   positions: Array<{
     treatment_date: string;
     eligible_amount?: number | null;
@@ -88,8 +89,8 @@ export interface GCP_YearAggregate {
   /** Service year (Leistungsjahr Y). */
   year: number;
   /**
-   * Relevant amount R_Y for year Y (design §5.2.1): actual refund for `erstattet`
-   * invoices, `eligible_amount` estimate for `geprüft`/`bezahlt`/`eingereicht`.
+   * Relevant amount R_Y for year Y (design §5.2.1): actual refund for reimbursed
+   * (`submission = erstattet`) invoices, `eligible_amount` estimate otherwise.
    */
   R_Y: number;
   /**
@@ -105,9 +106,10 @@ export interface GCP_YearAggregate {
  * Aggregate invoice positions by service year (Leistungsjahr = `treatment_date` year).
  *
  * Rules (design §5.2.1):
- * - Skips invoices with status `neu`.
- * - `erstattet` invoices contribute `refund_amount` per position (actual outflow).
- * - `geprüft` / `bezahlt` / `eingereicht` contribute `eligible_amount` (estimate).
+ * - Skips unreviewed invoices (`review = neu`).
+ * - Reimbursed invoices (`submission = erstattet`) contribute `refund_amount` per
+ *   position (actual outflow); all other reviewed invoices contribute
+ *   `eligible_amount` (estimate). The payment track is irrelevant here.
  * - `alreadyReimbursed` sums `refund_amount` over `erstattet` positions per year;
  *   the caller compares it against the Selbstbehalt to decide whether the streak
  *   is already broken — a small refund that stays under S does *not* break it.
@@ -116,13 +118,13 @@ export function aggregateByYear(invoices: GCP_InvoiceData[]): GCP_YearAggregate[
   const byYear = new Map<number, { R_Y: number; alreadyReimbursed: number }>();
 
   for (const invoice of invoices) {
-    if (invoice.status === 'neu') continue;
+    if (invoice.status.review === 'neu') continue;
 
     for (const position of invoice.positions) {
       const year = parseInt(position.treatment_date.substring(0, 4), 10);
       const entry = byYear.get(year) ?? { R_Y: 0, alreadyReimbursed: 0 };
 
-      if (invoice.status === 'erstattet') {
+      if (invoice.status.submission === 'erstattet') {
         const refund = position.refund_amount ?? 0;
         entry.R_Y += refund;
         entry.alreadyReimbursed += refund;

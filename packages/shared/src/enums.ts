@@ -24,20 +24,58 @@ export const providerTypeSchema = z.enum(providerTypeValues);
 export type ProviderType = z.infer<typeof providerTypeSchema>;
 
 /**
- * Lifecycle status of an invoice (`invoices.status`).
- * Allowed transitions: neu↔geprüft → bezahlt → eingereicht → erstattet.
- * Rejection (Ablehnung) is modelled as erstattet with refund_amount = 0 per position.
- * Self-pay (Selbstzahlung) leaves the invoice in bezahlt without proceeding to eingereicht.
+ * The invoice lifecycle is modelled as **three independent tracks** rather than one
+ * linear status, because paying the doctor and submitting to the insurer run in
+ * parallel (the reimbursement often arrives before the invoice is paid). The current
+ * state per track is **derived** from the append-only `invoice_status_events` log
+ * (latest event per track, see `deriveInvoiceStatus`); these tuples are only the
+ * value *vocabulary* — there is no denormalised status column on `invoices`.
+ *
+ * - **`review`** — Anlage/Prüfung gate. In the Günstigerprüfung only `neu` is ignored.
+ * - **`payment`** — Bezahlung an den Arzt. Independent of submission; the payment date
+ *   is the `changed_at` of the `bezahlt` event. "Selbst zahlen" = `bezahlt` payment with
+ *   the submission track left at `nicht_eingereicht`.
+ * - **`submission`** — Einreichung/Erstattung beim Versicherer. Rejection (Ablehnung) is
+ *   `erstattet` with `refund_amount = 0` per position.
+ *
+ * `payment` and `submission` may only leave their ground state once `review = 'geprüft'`.
  */
-export const invoiceStatusValues = [
-  'neu',
-  'geprüft',
-  'bezahlt',
-  'eingereicht',
-  'erstattet',
+export const reviewStatusValues = ['neu', 'geprüft'] as const;
+export const reviewStatusSchema = z.enum(reviewStatusValues);
+export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
+
+export const paymentStatusValues = ['offen', 'bezahlt'] as const;
+export const paymentStatusSchema = z.enum(paymentStatusValues);
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+export const submissionStatusValues = ['nicht_eingereicht', 'eingereicht', 'erstattet'] as const;
+export const submissionStatusSchema = z.enum(submissionStatusValues);
+export type SubmissionStatus = z.infer<typeof submissionStatusSchema>;
+
+/** The three lifecycle tracks (`invoice_status_events.track`). */
+export const statusTrackValues = ['review', 'payment', 'submission'] as const;
+export const statusTrackSchema = z.enum(statusTrackValues);
+export type StatusTrack = z.infer<typeof statusTrackSchema>;
+
+/**
+ * Any value that can appear as an `invoice_status_events.status` (across all tracks).
+ * All seven values are globally unique, so a single flat label/variant lookup drives
+ * the badges without needing the track discriminator.
+ */
+export const invoiceStatusEventValueValues = [
+  ...reviewStatusValues,
+  ...paymentStatusValues,
+  ...submissionStatusValues,
 ] as const;
-export const invoiceStatusSchema = z.enum(invoiceStatusValues);
-export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
+export const invoiceStatusEventValueSchema = z.enum(invoiceStatusEventValueValues);
+export type InvoiceStatusEventValue = z.infer<typeof invoiceStatusEventValueSchema>;
+
+/** Maps an event value to the track it belongs to (all values are globally unique). */
+export function trackForStatusValue(value: InvoiceStatusEventValue): StatusTrack {
+  if (value === 'neu' || value === 'geprüft') return 'review';
+  if (value === 'offen' || value === 'bezahlt') return 'payment';
+  return 'submission';
+}
 
 /**
  * Fee-schedule a position is billed under (`invoice_positions.goae_category`).

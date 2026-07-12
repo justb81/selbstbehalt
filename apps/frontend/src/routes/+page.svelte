@@ -38,14 +38,19 @@
   let loading = $state(true);
   let hasError = $state(false);
 
+  // "Offen" = neither track has progressed yet (not paid and not submitted).
   const openInvoices = $derived(
-    invoices.filter((i) => i.status === 'neu' || i.status === 'geprüft'),
+    invoices.filter(
+      (i) => i.status.payment === 'offen' && i.status.submission === 'nicht_eingereicht',
+    ),
   );
-  const pendingSubmissions = $derived(invoices.filter((i) => i.status === 'eingereicht'));
+  const pendingSubmissions = $derived(
+    invoices.filter((i) => i.status.submission === 'eingereicht'),
+  );
   const year = new Date().getFullYear();
   // resolve() has no query-string support; appended here once so the "Anzeigen
   // →" link below can stay a plain, single-line <a>.
-  const pendingSubmissionsHref = `${resolve('/invoices')}?status=eingereicht`;
+  const pendingSubmissionsHref = `${resolve('/invoices')}?submission=eingereicht`;
   // Shared KPI-tile footer-link style, kept as a const so each <a> stays on one
   // line — the eslint-disable for the pre-resolved href must sit directly above it.
   const tileLinkClass = 'text-sm text-primary hover:underline font-medium';
@@ -252,7 +257,7 @@
                 <span class="text-muted-foreground sm:order-1"
                   >{formatDate(invoice.invoice_date)}</span
                 >
-                <span class="sm:order-4"><InvoiceBadge status={invoice.status} /></span>
+                <span class="sm:order-4"><InvoiceBadge status={invoice.status.submission} /></span>
               </span>
               <span class="flex items-center justify-between gap-2 sm:contents">
                 <span class="min-w-0 sm:order-2">

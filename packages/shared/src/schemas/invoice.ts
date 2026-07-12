@@ -2,7 +2,8 @@
 import { z } from 'zod';
 
 import { auditFields, isoDate, money, uuid } from '../common.js';
-import { invoiceStatusSchema, providerTypeSchema } from '../enums.js';
+import { paymentStatusSchema, providerTypeSchema, reviewStatusSchema } from '../enums.js';
+import { invoiceStatusSchema } from '../utils/derive-invoice-status.js';
 import { invoicePositionInputSchema, invoicePositionSchema } from './invoice-position.js';
 
 /**
@@ -19,8 +20,8 @@ export const invoiceCreateSchema = z
     provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),
     provider_type: providerTypeSchema.nullish(),
     total_amount: money,
-    // NOT NULL DEFAULT 'neu' — omittable on create.
-    status: invoiceStatusSchema.optional(),
+    // Lifecycle state is derived from the status-event log, never set on create:
+    // a new invoice always starts in every track's ground state.
     file_path: z.string().nullish(),
     ocr_raw: z.string().nullish(),
     notes: z.string().nullish(),
@@ -46,7 +47,7 @@ export const invoiceSchema = invoiceCreateSchema.extend({
   eligible_amount: money.nullish(),
   // Server-computed: Σ charged_amount − Σ coalesce(refund_amount, 0).
   self_paid_amount: money,
-  // Always present when read back (DB defaults applied).
+  // Server-derived from the status-event log (latest event per track); read-only.
   status: invoiceStatusSchema,
 });
 
@@ -63,23 +64,35 @@ export const invoiceUpdatePayloadSchema = invoiceUpdateSchema.extend({
 });
 
 /**
- * `POST /api/invoices/:id/status` body: explicit status transition with optional note.
- * Allowed transitions: neu↔geprüft, geprüft→bezahlt, bezahlt→eingereicht, eingereicht→erstattet.
+ * `POST /api/invoices/:id/review` body: toggles the review track (`neu ↔ geprüft`).
+ * `geprüft → neu` is only allowed while both other tracks are still in their ground state.
  */
-export const invoiceStatusChangeSchema = z
+export const invoiceReviewChangeSchema = z
   .object({
-    status: invoiceStatusSchema,
+    status: reviewStatusSchema,
+    note: z.string().nullish(),
+  })
+  .strict();
+
+/**
+ * `POST /api/invoices/:id/payment` body: toggles the payment track (`offen ↔ bezahlt`),
+ * independent of submission. `offen → bezahlt` requires `review = 'geprüft'`. `paid_on`
+ * becomes the event's `changed_at` (Zahlungsdatum), defaulting to today when omitted.
+ */
+export const invoicePaymentChangeSchema = z
+  .object({
+    status: paymentStatusSchema,
+    paid_on: isoDate.nullish(),
     note: z.string().nullish(),
   })
   .strict();
 
 /**
  * `PUT /api/invoices/:id/refund` body: per-position refund amounts.
- * From status `eingereicht`, sets invoice status → erstattet and writes
- * refund_amount per position. From status `erstattet`, corrects the
- * already-recorded amounts in place without changing the status (issue #230
- * "Bearbeiten"). refund_amount = 0 represents a rejection (Ablehnung) for
- * that position.
+ * From `submission = 'eingereicht'`, advances the submission track → `erstattet` and
+ * writes refund_amount per position. From `erstattet`, corrects the already-recorded
+ * amounts in place without a track change (issue #230 "Bearbeiten"). refund_amount = 0
+ * represents a rejection (Ablehnung) for that position.
  */
 export const invoiceRefundPayloadSchema = z
   .object({
@@ -90,11 +103,12 @@ export const invoiceRefundPayloadSchema = z
   .strict();
 
 /**
- * `POST /api/invoices/:id/revert` body (issue #230 "Löschen"): undoes the
- * invoice's last status transition, moving it back to the predecessor status
- * (bezahlt→geprüft, eingereicht→bezahlt, erstattet→eingereicht) and discarding
- * the data that step captured — the `submissions` row for eingereicht, or the
- * per-position `refund_amount`/`refund_date` for erstattet.
+ * `POST /api/invoices/:id/submission/revert` body (issue #230 "Löschen"): steps the
+ * submission track back one level (`erstattet → eingereicht`, `eingereicht →
+ * nicht_eingereicht`) by appending a ground-state event, and discards the data that
+ * step captured — the per-position `refund_amount`/`refund_date` for `erstattet`, or
+ * the `submissions` row for `eingereicht`. (Reverting a payment is just
+ * `POST /api/invoices/:id/payment {status:'offen'}`.)
  */
 export const invoiceRevertSchema = z
   .object({
@@ -108,6 +122,7 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type InvoiceWithPositions = z.infer<typeof invoiceWithPositionsSchema>;
 export type InvoiceUpdate = z.infer<typeof invoiceUpdateSchema>;
 export type InvoiceUpdatePayload = z.infer<typeof invoiceUpdatePayloadSchema>;
-export type InvoiceStatusChange = z.infer<typeof invoiceStatusChangeSchema>;
+export type InvoiceReviewChange = z.infer<typeof invoiceReviewChangeSchema>;
+export type InvoicePaymentChange = z.infer<typeof invoicePaymentChangeSchema>;
 export type InvoiceRefundPayload = z.infer<typeof invoiceRefundPayloadSchema>;
 export type InvoiceRevert = z.infer<typeof invoiceRevertSchema>;
