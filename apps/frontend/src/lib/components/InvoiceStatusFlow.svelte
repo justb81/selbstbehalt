@@ -2,7 +2,8 @@
 <!--
   InvoiceStatusFlow (docs/design.md §6.2, issue #142; step-back issue #230):
   Shows the current invoice status, the allowed transitions as action buttons,
-  the per-position refund-entry form (for the eingereicht → erstattet step),
+  the refund-entry form for the eingereicht → erstattet step (per Leistungsbereich
+  by default — as the insurer's Leistungsabrechnung reports it — or per position),
   the "letzter Schritt" undo/edit controls, and the full status-event audit
   trail.
 -->
@@ -13,15 +14,20 @@
   import { api, ApiError } from '$lib/api';
   import {
     formatEur,
+    roundCents,
+    type BenefitCategory,
     type InvoiceWithPositions,
     type InvoiceStatusEvent,
     type InvoiceStatus,
   } from '@selbstbehalt/shared';
+  import { BENEFIT_CATEGORY_LABEL, benefitCategoryForPosition } from '$lib/utils/benefit-category';
+  import { distributeRefundByCategory } from '$lib/utils/refund-distribution';
   import InvoiceBadge from './InvoiceBadge.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
+  import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
   import {
@@ -181,6 +187,13 @@
 
   // ---- Refund capture (eingereicht → erstattet, or its "Bearbeiten") -------
 
+  // Two entry modes for the same per-position refund store: the insurer's
+  // Leistungsabrechnung usually reports one amount per Leistungsbereich, so
+  // "je Kategorie" (default) captures a single amount per category and distributes
+  // it across that category's positions; "je Position" keeps the granular per-line
+  // entry for itemised statements.
+  type RefundEntryMode = 'category' | 'position';
+
   type RefundRow = {
     id: string;
     goae_number: string;
@@ -190,13 +203,67 @@
     refund_amount: number;
   };
 
+  type CategoryRefundRow = {
+    category: BenefitCategory;
+    label: string;
+    charged_amount: number;
+    eligible_amount: number | null;
+    refund_amount: number;
+  };
+
   let showRefundForm = $state(false);
   let refundFormMode = $state<'create' | 'edit'>('create');
+  let refundEntryMode = $state<RefundEntryMode>('category');
   let refundRows = $state<RefundRow[]>([]);
+  let categoryRows = $state<CategoryRefundRow[]>([]);
   let refundDate = $state('');
   let refundNote = $state('');
   let refunding = $state(false);
   let refundError = $state<string | null>(null);
+
+  /** Default refund for one position: the stored amount when editing, else the estimate. */
+  function defaultPositionRefund(
+    p: InvoiceWithPositions['positions'][number],
+    mode: 'create' | 'edit',
+  ): number {
+    return mode === 'edit'
+      ? (p.refund_amount ?? p.eligible_amount ?? p.charged_amount)
+      : (p.eligible_amount ?? p.charged_amount);
+  }
+
+  /** Groups the invoice's positions by benefit category into the per-category rows. */
+  function buildCategoryRows(mode: 'create' | 'edit'): CategoryRefundRow[] {
+    type Acc = { charged: number; eligible: number; hasEligible: boolean; refund: number };
+    const order: BenefitCategory[] = [];
+    // Plain object accumulator (not a Map) — SvelteMap would be reactive overkill for
+    // this transient grouping, and a mutated built-in Map trips svelte/prefer-svelte-reactivity.
+    const acc: Partial<Record<BenefitCategory, Acc>> = {};
+    for (const p of invoice.positions) {
+      const category = benefitCategoryForPosition(p, invoice.provider_type);
+      let entry = acc[category];
+      if (!entry) {
+        entry = { charged: 0, eligible: 0, hasEligible: false, refund: 0 };
+        acc[category] = entry;
+        order.push(category);
+      }
+      entry.charged += p.charged_amount;
+      if (p.eligible_amount != null) {
+        entry.eligible += p.eligible_amount;
+        entry.hasEligible = true;
+      }
+      entry.refund += defaultPositionRefund(p, mode);
+    }
+    return order.map((category) => {
+      const entry = acc[category]!;
+      return {
+        category,
+        label: BENEFIT_CATEGORY_LABEL[category],
+        charged_amount: roundCents(entry.charged),
+        eligible_amount: entry.hasEligible ? roundCents(entry.eligible) : null,
+        refund_amount: roundCents(entry.refund),
+      };
+    });
+  }
 
   async function openRefundForm(mode: 'create' | 'edit') {
     refundFormMode = mode;
@@ -206,11 +273,9 @@
       description: p.description ?? null,
       charged_amount: p.charged_amount,
       eligible_amount: p.eligible_amount ?? null,
-      refund_amount:
-        mode === 'edit'
-          ? (p.refund_amount ?? p.eligible_amount ?? p.charged_amount)
-          : (p.eligible_amount ?? p.charged_amount),
+      refund_amount: defaultPositionRefund(p, mode),
     }));
+    categoryRows = buildCategoryRows(mode);
     refundDate = new Date().toISOString().slice(0, 10);
     refundNote = mode === 'edit' ? (events.find((e) => e.status === 'erstattet')?.note ?? '') : '';
     refundError = null;
@@ -226,12 +291,32 @@
     }
   }
 
+  /** The per-position refund payload for the current entry mode. */
+  function refundPositionsPayload(): { id: string; refund_amount: number }[] {
+    if (refundEntryMode === 'position') {
+      return refundRows.map((r) => ({ id: r.id, refund_amount: r.refund_amount }));
+    }
+    const amountByCategory = new Map<BenefitCategory, number>(
+      categoryRows.map((r) => [r.category, Number(r.refund_amount) || 0]),
+    );
+    const distributed = distributeRefundByCategory(
+      invoice.positions.map((p) => ({
+        id: p.id,
+        category: benefitCategoryForPosition(p, invoice.provider_type),
+        eligible_amount: p.eligible_amount,
+        charged_amount: p.charged_amount,
+      })),
+      amountByCategory,
+    );
+    return invoice.positions.map((p) => ({ id: p.id, refund_amount: distributed.get(p.id) ?? 0 }));
+  }
+
   async function submitRefund() {
     refunding = true;
     refundError = null;
     try {
       await api.invoices.refund(invoice.id, {
-        positions: refundRows.map((r) => ({ id: r.id, refund_amount: r.refund_amount })),
+        positions: refundPositionsPayload(),
         refund_date: refundDate || null,
         note: refundNote.trim() || null,
       });
@@ -351,16 +436,65 @@
     <!-- Refund capture form (eingereicht → erstattet, or its "Bearbeiten") -->
     {#if showRefundForm}
       <div class="rounded-md border border-border bg-muted/20 p-4 space-y-4">
-        <p class="text-sm font-medium">
-          {refundFormMode === 'edit'
-            ? 'Erstattungsbeträge korrigieren'
-            : 'Erstattungsbeträge je Position erfassen'}
-        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm font-medium">
+            {refundFormMode === 'edit'
+              ? 'Erstattungsbeträge korrigieren'
+              : 'Erstattungsbeträge erfassen'}
+          </p>
+          <Tabs bind:value={refundEntryMode}>
+            <TabsList>
+              <TabsTrigger value="category">Je Kategorie</TabsTrigger>
+              <TabsTrigger value="position">Je Position</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         <p class="text-xs text-muted-foreground">
-          Betrag 0 = abgelehnt. Vorbefüllt mit dem erstattungsfähigen Betrag je Position.
+          {refundEntryMode === 'category'
+            ? 'Betrag je Kategorie laut Leistungsabrechnung; wird auf die Positionen verteilt. 0 = abgelehnt.'
+            : 'Betrag je Position. 0 = abgelehnt. Vorbefüllt mit dem erstattungsfähigen Betrag.'}
         </p>
 
-        {#if invoice.positions.length > 0}
+        {#if invoice.positions.length === 0}
+          <p class="text-sm text-muted-foreground">Keine Positionen vorhanden.</p>
+        {:else if refundEntryMode === 'category'}
+          <div class="overflow-x-auto rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kategorie</TableHead>
+                  <TableHead class="text-right">Betrag (€)</TableHead>
+                  <TableHead class="w-32 text-right">Erstattet (€)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {#each categoryRows as row (row.category)}
+                  <TableRow>
+                    <TableCell class="text-sm">{row.label}</TableCell>
+                    <TableCell class="text-right tabular-nums text-sm align-top">
+                      {formatEur(row.charged_amount)}
+                      {#if row.eligible_amount != null}
+                        <br /><span class="text-xs text-muted-foreground">
+                          erstattungsfähig: {formatEur(row.eligible_amount)}
+                        </span>
+                      {/if}
+                    </TableCell>
+                    <TableCell class="p-2 text-right align-top">
+                      <Input
+                        type="number"
+                        bind:value={row.refund_amount}
+                        min="0"
+                        step="0.01"
+                        class="w-28 text-right"
+                        aria-label="Erstattungsbetrag für Kategorie {row.label}"
+                      />
+                    </TableCell>
+                  </TableRow>
+                {/each}
+              </TableBody>
+            </Table>
+          </div>
+        {:else}
           <div class="overflow-x-auto rounded-md border border-border">
             <Table>
               <TableHeader>
@@ -401,8 +535,6 @@
               </TableBody>
             </Table>
           </div>
-        {:else}
-          <p class="text-sm text-muted-foreground">Keine Positionen vorhanden.</p>
         {/if}
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 import { money, uuid } from '../common.js';
-import { goaeCategorySchema, isNonScheduleCategory } from '../enums.js';
+import { benefitCategorySchema, goaeCategorySchema, isNonScheduleCategory } from '../enums.js';
 import { roundCents } from '../utils/money.js';
 
 /**
@@ -27,6 +27,15 @@ const invoicePositionFields = z
      * see {@link goaeCategoryValues}.
      */
     goae_category: goaeCategorySchema.nullish(),
+    /**
+     * Tarif-Leistungsbereich, unter dem die Position erstattet wird (`ambulant`,
+     * `zahnbehandlung`, `kieferorthopaedie`, … — siehe {@link benefitCategoryValues}).
+     * Wird beim Speichern aus der Gebühren-Tabelle bzw. der Auslagen-Herleitung
+     * aufgelöst (voller Rechnungskontext, `InvoiceForm`) und persistiert, damit die
+     * Erstattungs-Erfassung je Kategorie und spätere Auswertungen ohne erneuten
+     * Tabellen-Lookup gruppieren können. Nullable = Alt-Position vor #-Feature.
+     */
+    benefit_category: benefitCategorySchema.nullish(),
     /** Anzahl (quantity); omitted when not stated on the invoice line (backend defaults to 1). */
     quantity: z.number().int().positive('Anzahl muss mindestens 1 sein').optional(),
     /**

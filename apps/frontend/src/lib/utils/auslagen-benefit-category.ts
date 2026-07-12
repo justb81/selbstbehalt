@@ -33,9 +33,10 @@ export interface AuslagenDerivationPosition {
 /**
  * Fallback mapping when no honorar position determines the category: the invoice's
  * provider type. `sonstiges` (and anything unmapped) falls through to the final
- * `sonstiges` benefit category.
+ * `sonstiges` benefit category. Also reused by {@link benefitCategoryForPosition} to
+ * bucket persisted positions that predate the stored `benefit_category`.
  */
-const PROVIDER_TYPE_BENEFIT: Partial<Record<ProviderType, BenefitCategory>> = {
+export const PROVIDER_TYPE_BENEFIT: Partial<Record<ProviderType, BenefitCategory>> = {
   kieferorthopaede: 'kieferorthopaedie',
   zahnarzt: 'zahnbehandlung',
   arzt: 'ambulant',

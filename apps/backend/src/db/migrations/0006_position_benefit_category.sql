@@ -1,0 +1,13 @@
+-- Migration 0006: add invoice_positions.benefit_category.
+--
+-- The tariff Leistungsbereich (ambulant, zahnbehandlung, kieferorthopaedie, …) a
+-- position is reimbursed under was previously derived transiently in the frontend
+-- (InvoiceForm) from the fee-table lookup / Auslagen honorar dominance and never
+-- persisted. Recording the refund per category (one amount per Leistungsbereich, as
+-- the insurer's Leistungsabrechnung reports it) and the planned reimbursement
+-- analytics both need the resolved category on the persisted position, without
+-- re-loading the fee tables on the invoice detail page.
+--
+-- Nullable: legacy rows stay NULL and are grouped via a provider-type fallback in the
+-- refund UI; every newly saved position carries the resolved value.
+ALTER TABLE `invoice_positions` ADD COLUMN `benefit_category` TEXT;

@@ -138,7 +138,7 @@ describe('InvoiceStatusFlow', () => {
     expect(await screen.findByRole('button', { name: 'Erstattung erfassen' })).toBeInTheDocument();
   });
 
-  it('opens the refund form when "Erstattung erfassen" is clicked', async () => {
+  it('opens the refund form (category mode by default) when "Erstattung erfassen" is clicked', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
       props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
@@ -146,11 +146,13 @@ describe('InvoiceStatusFlow', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
 
-    expect(await screen.findByText('Erstattungsbeträge je Position erfassen')).toBeInTheDocument();
+    expect(await screen.findByText('Erstattungsbeträge erfassen')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Je Kategorie' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Je Position' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Erstattung speichern' })).toBeInTheDocument();
   });
 
-  it('pre-fills refund_amount with eligible_amount in the refund form', async () => {
+  it('pre-fills the category amount with the category eligible sum in category mode', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
       props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
@@ -158,29 +160,71 @@ describe('InvoiceStatusFlow', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
 
-    const input = await screen.findByLabelText(/Erstattungsbetrag für Position 1/);
+    // The single GOÄ/arzt position maps to the "Ambulant" benefit category.
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
     expect((input as HTMLInputElement).value).toBe('8.5');
   });
 
-  it('calls the refund API when the refund form is submitted', async () => {
+  it('distributes the category amount onto positions when submitting in category mode', async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
-    render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged },
-    });
+    // Two positions in the same (ambulant) category so the entered amount is split.
+    const invoice: InvoiceWithPositions = {
+      ...BASE_INVOICE,
+      status: 'eingereicht',
+      positions: [
+        { ...BASE_INVOICE.positions[0]!, id: 'pos-1', eligible_amount: 30, charged_amount: 40 },
+        {
+          ...BASE_INVOICE.positions[0]!,
+          id: 'pos-2',
+          goae_number: '5',
+          eligible_amount: 10,
+          charged_amount: 20,
+        },
+      ],
+    };
+    render(InvoiceStatusFlow, { props: { invoice, onChanged } });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
+    await user.clear(input);
+    await user.type(input, '20');
     await user.click(screen.getByRole('button', { name: 'Erstattung speichern' }));
 
     await waitFor(() =>
+      // 20 € split 30:10 → 15 € / 5 €.
       expect(api.invoices.refund).toHaveBeenCalledWith(
         'inv-1',
         expect.objectContaining({
-          positions: [{ id: 'pos-1', refund_amount: 8.5 }],
+          positions: [
+            { id: 'pos-1', refund_amount: 15 },
+            { id: 'pos-2', refund_amount: 5 },
+          ],
         }),
       ),
     );
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('switches to per-position entry and submits per-position amounts', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
+    await user.click(screen.getByRole('tab', { name: 'Je Position' }));
+
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Position 1/);
+    expect((input as HTMLInputElement).value).toBe('8.5');
+
+    await user.click(screen.getByRole('button', { name: 'Erstattung speichern' }));
+    await waitFor(() =>
+      expect(api.invoices.refund).toHaveBeenCalledWith(
+        'inv-1',
+        expect.objectContaining({ positions: [{ id: 'pos-1', refund_amount: 8.5 }] }),
+      ),
+    );
   });
 
   it('closes the refund form when Abbrechen is clicked', async () => {
@@ -190,11 +234,11 @@ describe('InvoiceStatusFlow', () => {
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
-    expect(screen.getByText('Erstattungsbeträge je Position erfassen')).toBeInTheDocument();
+    expect(screen.getByText('Erstattungsbeträge erfassen')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
 
-    expect(screen.queryByText('Erstattungsbeträge je Position erfassen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Erstattungsbeträge erfassen')).not.toBeInTheDocument();
   });
 
   it('shows no transition buttons for status erstattet', async () => {
@@ -329,7 +373,8 @@ describe('Letzter Schritt (issue #230)', () => {
     await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
 
     expect(await screen.findByText('Erstattungsbeträge korrigieren')).toBeInTheDocument();
-    const input = await screen.findByLabelText(/Erstattungsbetrag für Position 1/);
+    // Category mode is the default; the single position's stored refund sums into its category.
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
     expect((input as HTMLInputElement).value).toBe('7.25');
     expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeInTheDocument();
   });
