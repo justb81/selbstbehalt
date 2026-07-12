@@ -254,7 +254,6 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
     provider_name: state.providerName,
     provider_type: state.providerType,
     total_amount: totalAmount,
-    status: 'neu',
     ocr_raw: state.ocrRaw ?? null,
     positions,
   });
