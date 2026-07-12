@@ -43,6 +43,13 @@
       "when": 1782920000000,
       "tag": "0005_position_basis_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1782930000000,
+      "tag": "0006_position_benefit_category",
+      "breakpoints": true
     }
   ]
 }

@@ -31,10 +31,8 @@
     type ScanResult,
   } from '@selbstbehalt/medic-invoice-check';
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
-  import {
-    deriveAuslagenBenefitCategory,
-    type AuslagenDerivationPosition,
-  } from '$lib/utils/auslagen-benefit-category';
+  import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
+  import { resolveBenefitCategory } from '$lib/utils/benefit-category';
   import { Button } from '$lib/components/ui/button';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
@@ -162,38 +160,28 @@
   // ---------------------------------------------------------------------------
 
   /**
-   * Benefit category fed to the Erstattungs-Engine for one position. Fee-schedule
-   * positions use their looked-up `benefit_category`. The Auslagen Sammelpositionen
-   * (§9-GOZ Material-/Laborkosten, §10-GOÄ Auslagenersatz) have no lookup, so their
-   * category is derived transiently from the invoice's honorar positions (issue
-   * #251) — amount-weighted dominance within the same Gebührenordnung, falling back
-   * to the provider type.
+   * The tariff benefit category resolved and persisted for each position — via the
+   * shared {@link resolveBenefitCategory} helper (fee-table lookup, or Auslagen honorar
+   * dominance for the Sammelpositionen, issue #251). Also fed to the Erstattungs-Engine
+   * and stored on the position so the per-category refund entry can group without a
+   * fee-table re-lookup.
    */
-  function benefitCategoryFor(
-    p: ReviewPositionRow,
-    honorarPositions: AuslagenDerivationPosition[],
-  ): BenefitCategory {
-    if (p.goae_category === 'Material-/Laborkosten') {
-      return deriveAuslagenBenefitCategory(honorarPositions, 'GOZ', providerType);
-    }
-    if (p.goae_category === 'Auslagenersatz') {
-      return deriveAuslagenBenefitCategory(honorarPositions, 'GOÄ', providerType);
-    }
-    return (p.benefit_category ?? 'sonstiges') as BenefitCategory;
-  }
-
-  function computeEligibleAmounts(): (number | null)[] {
-    const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
-    if (!(insuredPerson?.included_benefits && insuredPerson.start_date)) {
-      return positions.map(() => null);
-    }
+  function resolvedBenefitCategories(): BenefitCategory[] {
     const honorarPositions: AuslagenDerivationPosition[] = positions.map((p) => ({
       goaeCategory: p.goae_category,
       benefitCategory: p.benefit_category,
       chargedAmount: p.charged_amount,
     }));
-    const erstattungPositions: ErstattungPosition[] = positions.map((p) => ({
-      category: benefitCategoryFor(p, honorarPositions),
+    return positions.map((p) => resolveBenefitCategory(p, honorarPositions, providerType));
+  }
+
+  function computeEligibleAmounts(categories: BenefitCategory[]): (number | null)[] {
+    const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
+    if (!(insuredPerson?.included_benefits && insuredPerson.start_date)) {
+      return positions.map(() => null);
+    }
+    const erstattungPositions: ErstattungPosition[] = positions.map((p, i) => ({
+      category: categories[i]!,
       chargedAmount: p.charged_amount,
       treatmentDate: p.treatment_date || invoiceDate,
       // Only Arznei-/Hilfsmittel is reimbursed flat at 100 %, outside the tariff
@@ -232,7 +220,8 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
-    const eligibleAmounts = computeEligibleAmounts();
+    const benefitCategories = resolvedBenefitCategories();
+    const eligibleAmounts = computeEligibleAmounts(benefitCategories);
     const positionInputs: InvoicePositionInput[] = positions.map((p, i) => {
       // Non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
       // Ziffer/Steigerungsfaktor: clear the Ziffer and fix the Faktor at 1. The
@@ -243,6 +232,7 @@
       return {
         goae_number: nonSchedule ? '' : p.goae_number,
         goae_category: p.goae_category,
+        benefit_category: benefitCategories[i]!,
         quantity: p.quantity,
         // Positions without a date fall back to the invoice date (§3.2 Issue #139).
         treatment_date: p.treatment_date || invoiceDate,

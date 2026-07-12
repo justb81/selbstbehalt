@@ -13,6 +13,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  BenefitCategory,
   BREStructure,
   ContractType,
   GoaeCategory,
@@ -116,6 +117,12 @@ export const invoicePositions = sqliteTable('invoice_positions', {
     .references(() => invoices.id, { onDelete: 'cascade' }),
   goaeNumber: text('goae_number').notNull(),
   goaeCategory: text('goae_category').$type<GoaeCategory>(),
+  /**
+   * Tarif-Leistungsbereich für die Erstattung (nullable = Alt-Position vor der
+   * Kategorie-Erstattung). Beim Speichern aus der Gebühren-Tabelle / Auslagen-
+   * Herleitung aufgelöst; gruppiert die Erstattungs-Erfassung je Kategorie.
+   */
+  benefitCategory: text('benefit_category').$type<BenefitCategory>(),
   /** Anzahl (quantity); defaults to 1. */
   quantity: integer('quantity').notNull().default(1),
   /** Leistungsdatum (ISO YYYY-MM-DD); Pflichtfeld ab Migration 0004. */

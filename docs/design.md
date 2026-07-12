@@ -265,8 +265,14 @@ neu ↔ geprüft → bezahlt → eingereicht → erstattet
   bleibt und nie eingereicht wird.
 - **`eingereicht`** — bei der PKV eingereicht.
 - **`erstattet`** — von der PKV bearbeitet; der **tatsächliche Erstattungsbetrag wird je Position**
-  erfasst (`positions.refund_amount`). **„Abgelehnt"** ist *kein* eigener Status, sondern
-  `erstattet` mit `refund_amount = 0`.
+  gespeichert (`positions.refund_amount`). **„Abgelehnt"** ist *kein* eigener Status, sondern
+  `erstattet` mit `refund_amount = 0`. Da die PKV-Leistungsabrechnung meist **einen Betrag je
+  Leistungsbereich** (Zahnbehandlung, ambulant, Kieferorthopädie, …) statt je Zeile ausweist, erfasst
+  die UI die Erstattung standardmäßig **je Kategorie** (gruppiert über `positions.benefit_category`)
+  und verteilt jeden Kategoriebetrag proportional (Gewicht `eligible_amount`, ersatzweise
+  `charged_amount`) auf die Positionen dieser Kategorie zurück; ein Umschalter erlaubt die genaue
+  Erfassung je Position. Beide Wege schreiben dieselbe `positions.refund_amount` — das für BRE/
+  Selbstbehalt maßgebliche Leistungsjahr am `treatment_date` der Position bleibt erhalten.
 - Jeder Statuswechsel wird mit Zeitstempel in `invoice_status_events` protokolliert (s. u.).
 - **Schritt zurück (Issue #230):** Die Schritte `bezahlt`, `eingereicht` und `erstattet` lassen sich
   über `POST /api/invoices/:id/revert` je einen Schritt zurücknehmen (→ `geprüft`/`bezahlt`/
@@ -290,6 +296,7 @@ invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
 goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz' | 'Arznei-/Hilfsmittel' | 'Material-/Laborkosten'
+benefit_category TEXT               -- Tarif-Leistungsbereich (ambulant, zahnbehandlung, kieferorthopaedie, …); beim Speichern aufgelöst, gruppiert die Erstattungs-Erfassung je Kategorie
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup (bzw. Bezeichnung bei Rezept-Belegen)
 quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3 (bei Nicht-GO-Kategorien fix 1)
