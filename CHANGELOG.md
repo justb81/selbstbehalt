@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.0](https://github.com/justb81/selbstbehalt/compare/v1.9.0...v1.10.0) (2026-07-12)
+
+### Features
+
+- **invoices:** rechnungs-workflow als zwei parallele tracks ([#276](https://github.com/justb81/selbstbehalt/issues/276)) ([433d2ad](https://github.com/justb81/selbstbehalt/commit/433d2ad8ee7cf0d04b9942c25e71561d01a3c7ce))
+
 ## [1.9.0](https://github.com/justb81/selbstbehalt/compare/v1.8.2...v1.9.0) (2026-07-12)
 
 ### Features
