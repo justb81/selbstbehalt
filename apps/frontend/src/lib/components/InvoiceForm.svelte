@@ -152,7 +152,7 @@
   // Edit-mode re-parse source: the review shows "Positionen neu einlesen" only
   // when there is stored raw OCR and the invoice is still 'neu'.
   const reparseOcrRaw = $derived(
-    mode === 'edit' && initialData?.ocr_raw && initialData?.status === 'neu'
+    mode === 'edit' && initialData?.ocr_raw && initialData?.status.review === 'neu'
       ? initialData.ocr_raw
       : null,
   );

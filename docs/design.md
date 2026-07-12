@@ -245,42 +245,51 @@ provider_type     TEXT                 -- 'arzt' | 'zahnarzt' | 'krankenhaus' | 
 total_amount      REAL NOT NULL        -- Rechnungsbetrag brutto in EUR (erfasster Kopfbetrag)
 eligible_amount   REAL                 -- ABGELEITET: Σ positions.eligible_amount (read-only)
 self_paid_amount  REAL DEFAULT 0       -- ABGELEITET: selbst getragener Anteil aus den Positionen (read-only)
-status            TEXT DEFAULT 'neu'   -- 'neu' | 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet'
+-- KEINE status-Spalte: der Lebenszyklus wird aus invoice_status_events abgeleitet (s. u.)
 file_path         TEXT                 -- Pfad zur gespeicherten PDF/Bild-Datei (optional)
 ocr_raw           TEXT                 -- Roh-OCR-Text (für Debugging)
 notes             TEXT
 created_at        DATETIME
 ```
 
-**Status-Workflow (Zustandsmaschine):**
+**Status-Workflow — drei unabhängige Tracks:**
+
+Der Lebenszyklus wird nicht als *ein* linearer Status geführt, sondern als **drei unabhängige
+Tracks**, weil Bezahlung an den Arzt und Einreichung beim Versicherer real **parallel** laufen (die
+Erstattung trifft meist *vor* der Zahlung ein). Der aktuelle Zustand je Track wird aus dem
+Event-Log `invoice_status_events` **abgeleitet** (jüngstes Event je Track, `deriveInvoiceStatus` /
+View `invoice_current_status`) — es gibt **keine** denormalisierte `status`-Spalte.
 
 ```
-neu ↔ geprüft → bezahlt → eingereicht → erstattet
+review:      neu ↔ geprüft            (Anlage/Prüfung)
+payment:     offen ↔ bezahlt          (Bezahlung an den Arzt)
+submission:  nicht_eingereicht → eingereicht → erstattet
 ```
 
-- **`neu`/`geprüft`** — bearbeitbar; in der Günstigerprüfung wird **nur `neu` ignoriert**.
-- **`bezahlt`** — die Rechnung wurde beglichen; eine Einreichungsentscheidung ist damit *noch nicht*
-  getroffen. **Ab `bezahlt` ist die Rechnung gesperrt** (nicht mehr editierbar).
-- **„Selbst zahlen"** ist *kein* eigener Status, sondern eine Rechnung, die auf `bezahlt` stehen
-  bleibt und nie eingereicht wird.
-- **`eingereicht`** — bei der PKV eingereicht.
-- **`erstattet`** — von der PKV bearbeitet; der **tatsächliche Erstattungsbetrag wird je Position**
-  gespeichert (`positions.refund_amount`). **„Abgelehnt"** ist *kein* eigener Status, sondern
-  `erstattet` mit `refund_amount = 0`. Da die PKV-Leistungsabrechnung meist **einen Betrag je
-  Leistungsbereich** (Zahnbehandlung, ambulant, Kieferorthopädie, …) statt je Zeile ausweist, erfasst
-  die UI die Erstattung standardmäßig **je Kategorie** (gruppiert über `positions.benefit_category`)
-  und verteilt jeden Kategoriebetrag proportional (Gewicht `eligible_amount`, ersatzweise
-  `charged_amount`) auf die Positionen dieser Kategorie zurück; ein Umschalter erlaubt die genaue
-  Erfassung je Position. Beide Wege schreiben dieselbe `positions.refund_amount` — das für BRE/
-  Selbstbehalt maßgebliche Leistungsjahr am `treatment_date` der Position bleibt erhalten.
-- Jeder Statuswechsel wird mit Zeitstempel in `invoice_status_events` protokolliert (s. u.).
-- **Schritt zurück (Issue #230):** Die Schritte `bezahlt`, `eingereicht` und `erstattet` lassen sich
-  über `POST /api/invoices/:id/revert` je einen Schritt zurücknehmen (→ `geprüft`/`bezahlt`/
-  `eingereicht`); dabei werden die dort erfassten Zusatzdaten verworfen — die `submissions`-Zeile
-  bzw. die per-Position erfassten `refund_amount`/`refund_date`. Alternativ lassen sich die zuletzt
-  erfassten Werte **ohne Statuswechsel** korrigieren: `PUT /api/invoices/:id/submission` für die
-  Einreichung (nur im Status `eingereicht`), erneutes `PUT /api/invoices/:id/refund` für die
-  Erstattung (auch im Status `erstattet`).
+- **`review`** — `neu`/`geprüft`; in der Günstigerprüfung wird **nur `review = neu` ignoriert**.
+  `payment` und `submission` verlassen ihren Grundzustand erst, wenn `review = geprüft`.
+- **`payment`** — `offen`/`bezahlt`. Das **Zahlungsdatum** ist der `changed_at`-Zeitstempel des
+  `bezahlt`-Events (kein eigenes Feld). **Ab `bezahlt` oder sobald eingereicht ist die Rechnung
+  gesperrt** (nicht mehr editierbar).
+- **`submission`** — `nicht_eingereicht`/`eingereicht`/`erstattet`. **„Selbst zahlen"** ist kein
+  eigener Status, sondern `payment = bezahlt` bei `submission = nicht_eingereicht`. Bei `erstattet`
+  wird der **tatsächliche Erstattungsbetrag je Position** gespeichert (`positions.refund_amount`);
+  **„Abgelehnt"** ist `erstattet` mit `refund_amount = 0`. Da die PKV-Leistungsabrechnung meist
+  **einen Betrag je Leistungsbereich** ausweist, erfasst die UI die Erstattung standardmäßig **je
+  Kategorie** (gruppiert über `positions.benefit_category`) und verteilt jeden Kategoriebetrag
+  proportional (Gewicht `eligible_amount`, ersatzweise `charged_amount`) zurück; ein Umschalter
+  erlaubt die Erfassung je Position. Das für BRE/Selbstbehalt maßgebliche Leistungsjahr am
+  `treatment_date` der Position bleibt erhalten.
+- Jeder Track-Wechsel wird mit Track + Zeitstempel in `invoice_status_events` protokolliert (s. u.).
+- **Endpunkte:** `POST /api/invoices/:id/review` und `.../payment` schalten den jeweiligen Track;
+  `POST .../submit` (nur bei `review = geprüft`, `submission = nicht_eingereicht`) legt die
+  Einreichung an; `PUT .../refund` erfasst die Erstattung.
+- **Schritt zurück (Issue #230):** Eine Zahlung nimmt `POST /api/invoices/:id/payment {status:'offen'}`
+  zurück. `POST /api/invoices/:id/submission/revert` setzt den Submission-Track je einen Schritt
+  zurück (`erstattet → eingereicht`, `eingereicht → nicht_eingereicht`) und verwirft die dort
+  erfassten Zusatzdaten (per-Position `refund_amount`/`refund_date` bzw. die `submissions`-Zeile).
+  Alternativ korrigieren `PUT .../submission` (im `eingereicht`) und erneutes `PUT .../refund` (auch
+  im `erstattet`) die zuletzt erfassten Werte **ohne** Track-Wechsel.
 
 #### `invoice_positions`
 
@@ -344,16 +353,23 @@ Für die **Erstattung** unterscheiden sie sich jedoch (`isFlatReimbursedCategory
 
 #### `invoice_status_events`
 
-Protokolliert jeden Statuswechsel einer Rechnung mit Zeitstempel — eine eigene Tabelle (statt
-fixer `*_at`-Spalten), damit sich der Workflow künftig ohne Schema-Bruch erweitern lässt.
+**Quelle der Wahrheit** für den Lebenszyklus: eine append-only-Tabelle, aus der der aktuelle
+Zustand je Track abgeleitet wird (jüngstes Event je Track). Jeder Track-Wechsel — inklusive eines
+Reverts zurück in den Grundzustand — schreibt eine Zeile.
 
 ```sql
 id               TEXT PRIMARY KEY
 invoice_id       TEXT REFERENCES invoices(id)
-status           TEXT NOT NULL        -- der neue Status ('neu' | 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet')
-changed_at       DATETIME NOT NULL    -- Zeitpunkt des Wechsels
+track            TEXT NOT NULL        -- 'review' | 'payment' | 'submission'
+status           TEXT NOT NULL        -- neuer Wert des Tracks (z.B. 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet' | 'offen' | 'nicht_eingereicht' | 'neu')
+changed_at       DATETIME NOT NULL    -- Zeitpunkt des Wechsels; beim payment-Event zugleich das Zahlungsdatum
 note             TEXT                 -- optionale Notiz
 ```
+
+Der aktuelle Zustand wird **nach Einfüge-Reihenfolge** (rowid), nicht nach `changed_at` abgeleitet:
+ein payment-Event trägt in `changed_at` das benutzerangegebene Zahlungsdatum (evtl. rück-/vordatiert),
+das die Reihenfolge der Transitionen nicht bestimmen darf. Die View `invoice_current_status` liefert
+je Rechnung `review`/`payment`/`submission`/`paid_on` als abfragbare Spalten (für Liste/Statistik).
 
 #### `submissions`
 
@@ -648,14 +664,14 @@ Drei Eigenschaften der PKV erzwingen das:
    kann sich auf mehrere Leistungsjahre verteilen.
 
 Die Aggregation läuft daher über **Positionen, gruppiert nach Leistungsjahr `Y`**, je versicherter
-Person, über alle Rechnungen außer im Status `neu`. Der pro Jahr maßgebliche Betrag `R_Y` ist
-statusabhängig:
+Person, über alle Rechnungen außer im Prüfstatus `review = neu`. Der pro Jahr maßgebliche Betrag
+`R_Y` hängt vom Submission-Track ab (der Payment-Track ist irrelevant):
 
-| Rechnungsstatus | Beitrag der Position zu `R_Y` |
+| Submission-Track | Beitrag der Position zu `R_Y` |
 |---|---|
 | `erstattet` | `refund_amount` (tatsächliche Erstattung; `0` = abgelehnt) |
-| `geprüft` / `bezahlt` / `eingereicht` | `eligible_amount` (Schätzung der Erstattungs-Engine §5.1) |
-| `neu` | — (ignoriert) |
+| `nicht_eingereicht` / `eingereicht` | `eligible_amount` (Schätzung der Erstattungs-Engine §5.1) |
+| `review = neu` | — (ignoriert) |
 
 #### 5.2.2 Variablen
 
@@ -960,18 +976,20 @@ DELETE /api/insured/:id               → Versicherte Person entfernen
 
 GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params)
 POST   /api/invoices                  → Neue Rechnung speichern
-GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + Status-Events
-PUT    /api/invoices/:id              → Rechnung aktualisieren (nur Status 'neu'/'geprüft'; ab 'bezahlt' gesperrt)
+GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + abgeleitetem Status
+PUT    /api/invoices/:id              → Rechnung aktualisieren (gesperrt sobald bezahlt oder eingereicht)
 DELETE /api/invoices/:id              → Rechnung löschen
 
-POST   /api/invoices/:id/status       → Statuswechsel (schreibt invoice_status_events mit Zeitstempel)
-POST   /api/invoices/:id/submit       → Einreichung erfassen (→ Status 'eingereicht')
+POST   /api/invoices/:id/review       → Prüf-Track schalten (neu ↔ geprüft)
+POST   /api/invoices/:id/payment      → Zahlungs-Track schalten (offen ↔ bezahlt; changed_at = Zahlungsdatum)
+POST   /api/invoices/:id/submit       → Einreichung erfassen (→ submission 'eingereicht'; erfordert 'geprüft')
 GET    /api/invoices/:id/submission   → Aktuelle Einreichung lesen
-PUT    /api/invoices/:id/submission   → Einreichung korrigieren (Status bleibt 'eingereicht')
-PUT    /api/invoices/:id/refund       → Erstattung je Position erfassen (→ Status 'erstattet') oder,
-                                         bei bereits 'erstattet', korrigieren (Status bleibt gleich)
-POST   /api/invoices/:id/revert       → Letzten Schritt zurücknehmen (bezahlt/eingereicht/erstattet
-                                         → Vorgängerstatus, verwirft dessen Zusatzdaten, Issue #230)
+PUT    /api/invoices/:id/submission   → Einreichung korrigieren (submission bleibt 'eingereicht')
+PUT    /api/invoices/:id/refund       → Erstattung je Position erfassen (→ submission 'erstattet') oder,
+                                         bei bereits 'erstattet', korrigieren (Track bleibt gleich)
+POST   /api/invoices/:id/submission/revert → Submission-Track einen Schritt zurücknehmen
+                                         (erstattet→eingereicht→nicht_eingereicht), verwirft dessen Zusatzdaten (#230)
+GET    /api/invoices/:id/events       → Status-Event-Log (Quelle der Wahrheit für den Lebenszyklus)
 
 GET    /api/stats/year/:year          → Jahresauswertung
 GET    /api/stats/bre/:insuredPersonId → BRE-Verlauf einer versicherten Person

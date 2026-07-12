@@ -56,7 +56,7 @@ function invoiceItem(over: {
   return {
     invoice_date: '2026-03-15',
     invoice_number: 'R-001',
-    status: 'neu',
+    status: { review: 'neu', payment: 'offen', submission: 'nicht_eingereicht', paid_on: null },
     file_path: null,
     ocr_raw: null,
     notes: null,

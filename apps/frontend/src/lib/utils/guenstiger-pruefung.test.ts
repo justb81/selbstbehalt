@@ -18,6 +18,22 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
+ * Maps an old-linear status name to the derived {review, submission} tracks that
+ * aggregateByYear reads. `neu` → unreviewed (skipped); `erstattet` → reimbursed
+ * (refund); everything else → reviewed-but-not-reimbursed (estimate). Payment is
+ * irrelevant to the aggregation, so it is omitted.
+ */
+function st(
+  s: 'neu' | 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet',
+): GCP_InvoiceData['status'] {
+  return {
+    review: s === 'neu' ? 'neu' : 'geprüft',
+    submission:
+      s === 'erstattet' ? 'erstattet' : s === 'eingereicht' ? 'eingereicht' : 'nicht_eingereicht',
+  };
+}
+
+/**
  * Three-tier ladder: 1/2/3 claim-free years → 1/2/3 months' premium at 100%.
  * With monthlyPremium=100: B(1)=100, B(2)=200, B(3)=300.
  */
@@ -63,7 +79,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('ignores neu invoices entirely', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'neu',
+        status: st('neu'),
         positions: [{ treatment_date: '2024-03-15', eligible_amount: 500 }],
       },
     ];
@@ -73,7 +89,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('aggregates eligible_amount for geprüft invoices', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'geprüft',
+        status: st('geprüft'),
         positions: [
           { treatment_date: '2024-03-01', eligible_amount: 100 },
           { treatment_date: '2024-08-15', eligible_amount: 150 },
@@ -88,7 +104,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('aggregates eligible_amount for bezahlt invoices', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'bezahlt',
+        status: st('bezahlt'),
         positions: [{ treatment_date: '2024-06-01', eligible_amount: 200 }],
       },
     ];
@@ -99,7 +115,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('aggregates eligible_amount for eingereicht invoices', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'eingereicht',
+        status: st('eingereicht'),
         positions: [{ treatment_date: '2024-01-20', eligible_amount: 80 }],
       },
     ];
@@ -110,7 +126,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('uses refund_amount for erstattet invoices, not eligible_amount', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [{ treatment_date: '2024-05-01', eligible_amount: 200, refund_amount: 180 }],
       },
     ];
@@ -122,7 +138,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('accumulates alreadyReimbursed from an erstattet position with refund_amount > 0', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [{ treatment_date: '2024-04-01', eligible_amount: 100, refund_amount: 50 }],
       },
     ];
@@ -134,7 +150,7 @@ describe('aggregateByYear — basic grouping', () => {
   it('records zero alreadyReimbursed when erstattet has refund_amount = 0 (rejected)', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [{ treatment_date: '2024-04-01', eligible_amount: 100, refund_amount: 0 }],
       },
     ];
@@ -148,11 +164,11 @@ describe('aggregateByYear — multiple invoices, one year', () => {
   it('sums amounts across multiple invoices in the same year', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'geprüft',
+        status: st('geprüft'),
         positions: [{ treatment_date: '2024-02-10', eligible_amount: 300 }],
       },
       {
-        status: 'bezahlt',
+        status: st('bezahlt'),
         positions: [{ treatment_date: '2024-09-05', eligible_amount: 220 }],
       },
     ];
@@ -163,11 +179,11 @@ describe('aggregateByYear — multiple invoices, one year', () => {
   it('accumulates realised reimbursement from the erstattet invoices of a year', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'bezahlt',
+        status: st('bezahlt'),
         positions: [{ treatment_date: '2024-03-01', eligible_amount: 400 }],
       },
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [{ treatment_date: '2024-07-01', eligible_amount: 200, refund_amount: 200 }],
       },
     ];
@@ -182,7 +198,7 @@ describe('aggregateByYear — invoice spanning two service years (Sammelrechnung
   it('splits positions into their respective treatment years', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'geprüft',
+        status: st('geprüft'),
         positions: [
           { treatment_date: '2023-12-20', eligible_amount: 150 }, // year 2023
           { treatment_date: '2024-01-10', eligible_amount: 250 }, // year 2024
@@ -198,7 +214,7 @@ describe('aggregateByYear — invoice spanning two service years (Sammelrechnung
   it('alreadyReimbursed is year-scoped: one year does not affect another', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [
           { treatment_date: '2023-11-01', eligible_amount: 100, refund_amount: 100 }, // 2023
           { treatment_date: '2024-02-01', eligible_amount: 80, refund_amount: 0 }, // 2024, rejected
@@ -215,7 +231,7 @@ describe('aggregateByYear — treats null/undefined amounts as zero', () => {
   it('treats missing eligible_amount as 0', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'geprüft',
+        status: st('geprüft'),
         positions: [{ treatment_date: '2024-06-01' }],
       },
     ];
@@ -226,7 +242,7 @@ describe('aggregateByYear — treats null/undefined amounts as zero', () => {
   it('treats null refund_amount as 0 (no realised reimbursement)', () => {
     const invoices: GCP_InvoiceData[] = [
       {
-        status: 'erstattet',
+        status: st('erstattet'),
         positions: [{ treatment_date: '2024-06-01', eligible_amount: 100, refund_amount: null }],
       },
     ];

@@ -185,32 +185,40 @@ describe('insured-person mapping', () => {
 });
 
 describe('invoice mapping', () => {
-  it('serializes a fully populated row', () => {
-    const result = serializeInvoice({
-      id: ID,
-      insuredPersonId: ID,
-      invoiceDate: '2026-06-01',
-      invoiceNumber: 'R-1',
-      providerName: 'Dr. Müller',
-      providerType: 'arzt',
-      totalAmount: 85,
-      eligibleAmount: 62.5,
-      selfPaidAmount: 0,
-      status: 'neu',
-      filePath: null,
-      ocrRaw: null,
-      notes: 'x',
-      createdAt: NOW,
-    });
+  it('serializes a fully populated row with the derived status object', () => {
+    const status = {
+      review: 'geprüft' as const,
+      payment: 'bezahlt' as const,
+      submission: 'nicht_eingereicht' as const,
+      paid_on: '2026-07-01',
+    };
+    const result = serializeInvoice(
+      {
+        id: ID,
+        insuredPersonId: ID,
+        invoiceDate: '2026-06-01',
+        invoiceNumber: 'R-1',
+        providerName: 'Dr. Müller',
+        providerType: 'arzt',
+        totalAmount: 85,
+        eligibleAmount: 62.5,
+        selfPaidAmount: 0,
+        filePath: null,
+        ocrRaw: null,
+        notes: 'x',
+        createdAt: NOW,
+      },
+      status,
+    );
     expect(result).toMatchObject({
       insured_person_id: ID,
       provider_name: 'Dr. Müller',
       eligible_amount: 62.5,
-      status: 'neu',
+      status,
     });
   });
 
-  it('maps a create payload to insert values', () => {
+  it('maps a create payload to insert values (no status column)', () => {
     const insert = toInvoiceInsert({
       insured_person_id: ID,
       invoice_date: '2026-06-01',
@@ -218,7 +226,7 @@ describe('invoice mapping', () => {
       total_amount: 85,
     });
     expect(insert).toMatchObject({ insuredPersonId: ID, totalAmount: 85 });
-    expect(insert.status).toBeUndefined();
+    expect('status' in insert).toBe(false);
   });
 
   it('maps every field on a full update', () => {
@@ -229,13 +237,11 @@ describe('invoice mapping', () => {
       provider_name: 'Dr. B',
       provider_type: 'zahnarzt',
       total_amount: 100,
-      status: 'geprüft',
       file_path: '/x',
       ocr_raw: 'raw',
       notes: 'n',
     });
-    expect(Object.keys(update)).toHaveLength(10);
-    expect(update.status).toBe('geprüft');
+    expect(Object.keys(update)).toHaveLength(9);
   });
 
   it('produces an empty patch for an empty update', () => {

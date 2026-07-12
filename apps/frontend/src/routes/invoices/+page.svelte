@@ -9,11 +9,13 @@
   import { page } from '$app/state';
   import { api } from '$lib/api';
   import {
-    invoiceStatusValues,
+    paymentStatusValues,
+    submissionStatusValues,
     type InsuredPerson,
     type Invoice,
-    type InvoiceStatus,
+    type PaymentStatus,
     type Person,
+    type SubmissionStatus,
   } from '@selbstbehalt/shared';
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
@@ -26,11 +28,17 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
-  // Deep-link filter, e.g. the dashboard's "Ausstehende Einreichungen" tile
-  // linking to `?status=eingereicht` (issue #261).
-  const initialStatus = $derived.by(() => {
-    const raw = page.url.searchParams.get('status');
-    return invoiceStatusValues.includes(raw as InvoiceStatus) ? (raw as InvoiceStatus) : undefined;
+  // Deep-link filters, e.g. the dashboard's "Ausstehende Einreichungen" tile
+  // linking to `?submission=eingereicht` (issue #261), or `?payment=offen`.
+  const initialSubmission = $derived.by(() => {
+    const raw = page.url.searchParams.get('submission');
+    return submissionStatusValues.includes(raw as SubmissionStatus)
+      ? (raw as SubmissionStatus)
+      : undefined;
+  });
+  const initialPayment = $derived.by(() => {
+    const raw = page.url.searchParams.get('payment');
+    return paymentStatusValues.includes(raw as PaymentStatus) ? (raw as PaymentStatus) : undefined;
   });
 
   async function load() {
@@ -75,7 +83,8 @@
       {invoices}
       {persons}
       {insuredPersons}
-      {initialStatus}
+      {initialPayment}
+      {initialSubmission}
       newInvoiceHref={resolve('/invoices/new')}
     />
   {/if}

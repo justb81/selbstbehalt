@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   InvoiceStatusFlow (docs/design.md §6.2, issue #142; step-back issue #230):
-  Shows the current invoice status, the allowed transitions as action buttons,
-  the refund-entry form for the eingereicht → erstattet step (per Leistungsbereich
-  by default — as the insurer's Leistungsabrechnung reports it — or per position),
-  the "letzter Schritt" undo/edit controls, and the full status-event audit
-  trail.
+  Presents the invoice lifecycle as three INDEPENDENT tracks — Prüfung, Bezahlung
+  (an den Arzt) and Einreichung/Erstattung (beim Versicherer) — each with its own
+  actions. Payment and submission run in parallel and both unlock once the invoice
+  is geprüft. Includes the per-Leistungsbereich/per-position refund-entry form, the
+  submission-scoped undo/edit controls, and the full status-event audit trail.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -14,12 +14,15 @@
   import { api, ApiError } from '$lib/api';
   import {
     BENEFIT_CATEGORY_LABELS,
+    formatDate,
     formatEur,
     roundCents,
     type BenefitCategory,
     type InvoiceWithPositions,
     type InvoiceStatusEvent,
-    type InvoiceStatus,
+    type PaymentStatus,
+    type ReviewStatus,
+    type StatusTrack,
   } from '@selbstbehalt/shared';
   import { benefitCategoryForPosition } from '$lib/utils/benefit-category';
   import { distributeRefundByCategory } from '$lib/utils/refund-distribution';
@@ -58,11 +61,20 @@
     onChanged: () => void;
   } = $props();
 
+  const status = $derived(invoice.status);
+  const isGeprueft = $derived(status.review === 'geprüft');
+
   // ---- Status event history ------------------------------------------------
 
   let events = $state<InvoiceStatusEvent[]>([]);
   let eventsLoading = $state(false);
   let eventsError = $state<string | null>(null);
+
+  const TRACK_LABELS: Record<StatusTrack, string> = {
+    review: 'Prüfung',
+    payment: 'Zahlung',
+    submission: 'Einreichung',
+  };
 
   async function loadEvents() {
     eventsLoading = true;
@@ -81,45 +93,16 @@
 
   onMount(loadEvents);
 
-  // ---- Transition logic ----------------------------------------------------
-
-  const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
-    neu: ['geprüft'],
-    geprüft: ['neu', 'bezahlt'],
-    bezahlt: ['eingereicht'],
-    eingereicht: ['erstattet'],
-    erstattet: [],
-  };
-
-  const BUTTON_LABEL: Record<string, string> = {
-    'neu→geprüft': 'Als geprüft markieren',
-    'geprüft→neu': 'Zurück zu Neu',
-    'geprüft→bezahlt': 'Als bezahlt markieren',
-    'bezahlt→eingereicht': 'Einreichen …',
-    'eingereicht→erstattet': 'Erstattung erfassen',
-  };
-
-  const BUTTON_VARIANT: Record<string, 'default' | 'outline' | 'secondary'> = {
-    'geprüft→neu': 'outline',
-    'bezahlt→eingereicht': 'default',
-  };
+  // ---- Review / payment track actions --------------------------------------
 
   let actioning = $state(false);
   let actionError = $state<string | null>(null);
 
-  async function doTransition(to: InvoiceStatus) {
-    actionError = null;
-    if (to === 'eingereicht') {
-      await goto(resolve('/invoices/[id]/submit', { id: invoice.id }));
-      return;
-    }
-    if (to === 'erstattet') {
-      openRefundForm('create');
-      return;
-    }
+  async function runReview(to: ReviewStatus) {
     actioning = true;
+    actionError = null;
     try {
-      await api.invoices.changeStatus(invoice.id, { status: to });
+      await api.invoices.changeReview(invoice.id, { status: to });
       await loadEvents();
       onChanged();
     } catch (e) {
@@ -130,49 +113,52 @@
     }
   }
 
-  // ---- Letzter Schritt: rückgängig machen / bearbeiten (issue #230) --------
-  //
-  // "Löschen" reverts the invoice to the status before its last transition,
-  // discarding the data that step captured (the submission, or the refund
-  // amounts). "Bearbeiten" instead reopens that step's input mask pre-filled
-  // with the current values, so they can be corrected without changing status.
+  let showPayForm = $state(false);
+  let payDate = $state('');
 
-  const PREVIOUS_STATUS: Partial<Record<InvoiceStatus, InvoiceStatus>> = {
-    bezahlt: 'geprüft',
-    eingereicht: 'bezahlt',
-    erstattet: 'eingereicht',
-  };
+  function openPayForm() {
+    payDate = new Date().toISOString().slice(0, 10);
+    actionError = null;
+    showPayForm = true;
+  }
 
-  const REVERT_WARNING: Partial<Record<InvoiceStatus, string>> = {
-    bezahlt: 'Der Status wird auf „Geprüft" zurückgesetzt.',
+  async function runPayment(to: PaymentStatus, paidOn?: string) {
+    actioning = true;
+    actionError = null;
+    try {
+      await api.invoices.changePayment(invoice.id, {
+        status: to,
+        ...(to === 'bezahlt' ? { paid_on: paidOn || null } : {}),
+      });
+      showPayForm = false;
+      await loadEvents();
+      onChanged();
+    } catch (e) {
+      actionError =
+        e instanceof ApiError || e instanceof Error ? e.message : 'Statuswechsel fehlgeschlagen.';
+    } finally {
+      actioning = false;
+    }
+  }
+
+  // ---- Submission track: step back / edit (issue #230) ---------------------
+
+  const REVERT_WARNING: Record<'eingereicht' | 'erstattet', string> = {
     eingereicht:
-      'Der Status wird auf „Bezahlt" zurückgesetzt und die erfasste Einreichung wird gelöscht.',
+      'Die erfasste Einreichung wird gelöscht; der Status wird auf „Nicht eingereicht" zurückgesetzt.',
     erstattet:
-      'Der Status wird auf „Eingereicht" zurückgesetzt und die erfassten Erstattungsbeträge werden gelöscht.',
+      'Die erfassten Erstattungsbeträge werden gelöscht; der Status wird auf „Eingereicht" zurückgesetzt.',
   };
-
-  const previousStatus = $derived(PREVIOUS_STATUS[invoice.status]);
-  const canEditLastStep = $derived(
-    invoice.status === 'eingereicht' || invoice.status === 'erstattet',
-  );
 
   let confirmRevert = $state(false);
   let reverting = $state(false);
   let revertError = $state<string | null>(null);
 
-  function editLastStep() {
-    if (invoice.status === 'eingereicht') {
-      void goto(resolve('/invoices/[id]/submit', { id: invoice.id }));
-    } else if (invoice.status === 'erstattet') {
-      openRefundForm('edit');
-    }
-  }
-
-  async function revertLastStep() {
+  async function revertSubmission() {
     reverting = true;
     revertError = null;
     try {
-      await api.invoices.revert(invoice.id, {});
+      await api.invoices.revertSubmission(invoice.id, {});
       confirmRevert = false;
       await loadEvents();
       onChanged();
@@ -184,6 +170,10 @@
     } finally {
       reverting = false;
     }
+  }
+
+  function goToSubmit() {
+    void goto(resolve('/invoices/[id]/submit', { id: invoice.id }));
   }
 
   // ---- Refund capture (eingereicht → erstattet, or its "Bearbeiten") -------
@@ -342,33 +332,130 @@
     return t ? `${d} ${t}` : d;
   }
 
-  const transitions = $derived(ALLOWED_TRANSITIONS[invoice.status] ?? []);
+  const busy = $derived(actioning || refunding || reverting);
 </script>
 
 <Card>
   <CardHeader class="pb-3">
-    <div class="flex flex-wrap items-center gap-3">
-      <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</p>
-      <InvoiceBadge status={invoice.status} />
-    </div>
+    <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Workflow</p>
   </CardHeader>
   <CardContent class="space-y-4">
-    <!-- Transition action buttons -->
-    {#if transitions.length > 0}
-      <div class="flex flex-wrap gap-2">
-        {#each transitions as to (to)}
-          {@const key = `${invoice.status}→${to}`}
-          <Button
-            variant={BUTTON_VARIANT[key] ?? 'default'}
-            size="sm"
-            onclick={() => doTransition(to)}
-            disabled={actioning || refunding}
-          >
-            {BUTTON_LABEL[key] ?? to}
-          </Button>
-        {/each}
+    <!-- Track 1: Prüfung ---------------------------------------------------- -->
+    <div class="rounded-md border border-border p-3 space-y-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm font-medium">Prüfung</span>
+        <InvoiceBadge status={status.review} />
       </div>
-    {/if}
+      <div class="flex flex-wrap gap-2">
+        {#if status.review === 'neu'}
+          <Button size="sm" onclick={() => runReview('geprüft')} disabled={busy}>
+            Als geprüft markieren
+          </Button>
+        {:else}
+          <Button
+            variant="outline"
+            size="sm"
+            onclick={() => runReview('neu')}
+            disabled={busy ||
+              status.payment !== 'offen' ||
+              status.submission !== 'nicht_eingereicht'}
+          >
+            Prüfung zurücknehmen
+          </Button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Track 2: Bezahlung an den Arzt -------------------------------------- -->
+    <div class="rounded-md border border-border p-3 space-y-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm font-medium">Bezahlung an den Arzt</span>
+        <InvoiceBadge status={status.payment} />
+        {#if status.paid_on}
+          <span class="text-xs text-muted-foreground">am {formatDate(status.paid_on)}</span>
+        {/if}
+      </div>
+      {#if !isGeprueft}
+        <p class="text-xs text-muted-foreground">Erst nach der Prüfung möglich.</p>
+      {:else if status.payment === 'offen'}
+        {#if showPayForm}
+          <div class="flex flex-wrap items-end gap-2">
+            <div class="space-y-1.5">
+              <Label for="pay-date">Zahlungsdatum</Label>
+              <Input id="pay-date" type="date" bind:value={payDate} class="w-44" />
+            </div>
+            <Button size="sm" onclick={() => runPayment('bezahlt', payDate)} disabled={busy}>
+              Speichern
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onclick={() => (showPayForm = false)}
+              disabled={busy}
+            >
+              Abbrechen
+            </Button>
+          </div>
+        {:else}
+          <Button size="sm" onclick={openPayForm} disabled={busy}>Als bezahlt markieren</Button>
+        {/if}
+      {:else}
+        <Button variant="outline" size="sm" onclick={() => runPayment('offen')} disabled={busy}>
+          Zahlung zurücknehmen
+        </Button>
+      {/if}
+    </div>
+
+    <!-- Track 3: Einreichung / Erstattung ----------------------------------- -->
+    <div class="rounded-md border border-border p-3 space-y-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm font-medium">Einreichung / Erstattung</span>
+        <InvoiceBadge status={status.submission} />
+      </div>
+      {#if !isGeprueft}
+        <p class="text-xs text-muted-foreground">Erst nach der Prüfung möglich.</p>
+      {:else if status.submission === 'nicht_eingereicht'}
+        <Button size="sm" onclick={goToSubmit} disabled={busy}>Einreichen …</Button>
+      {:else if status.submission === 'eingereicht'}
+        <div class="flex flex-wrap gap-2">
+          <Button size="sm" onclick={() => openRefundForm('create')} disabled={busy}>
+            Erstattung erfassen
+          </Button>
+          <Button variant="outline" size="sm" onclick={goToSubmit} disabled={busy}>
+            Einreichung bearbeiten
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-destructive text-destructive hover:bg-destructive/10"
+            onclick={() => (confirmRevert = true)}
+            disabled={busy}
+          >
+            Einreichung löschen
+          </Button>
+        </div>
+      {:else}
+        <div class="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onclick={() => openRefundForm('edit')}
+            disabled={busy}
+          >
+            Erstattung bearbeiten
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-destructive text-destructive hover:bg-destructive/10"
+            onclick={() => (confirmRevert = true)}
+            disabled={busy}
+          >
+            Erstattung löschen
+          </Button>
+        </div>
+      {/if}
+    </div>
 
     {#if actionError}
       <Alert variant="destructive">
@@ -376,37 +463,7 @@
       </Alert>
     {/if}
 
-    <!-- Letzter Schritt: rückgängig machen / bearbeiten (issue #230) -->
-    {#if previousStatus}
-      <div class="rounded-md border border-border bg-muted/10 p-3 space-y-2">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Letzter Schritt
-        </p>
-        <div class="flex flex-wrap gap-2">
-          {#if canEditLastStep}
-            <Button
-              variant="outline"
-              size="sm"
-              onclick={editLastStep}
-              disabled={actioning || refunding || reverting}
-            >
-              Bearbeiten
-            </Button>
-          {/if}
-          <Button
-            variant="outline"
-            size="sm"
-            class="border-destructive text-destructive hover:bg-destructive/10"
-            onclick={() => (confirmRevert = true)}
-            disabled={actioning || refunding || reverting}
-          >
-            Löschen
-          </Button>
-        </div>
-      </div>
-    {/if}
-
-    <!-- Revert confirmation -->
+    <!-- Submission revert confirmation -->
     <AlertDialogRoot
       bind:open={confirmRevert}
       onOpenChange={(open) => {
@@ -415,9 +472,11 @@
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Letzten Schritt löschen?</AlertDialogTitle>
+          <AlertDialogTitle>Schritt löschen?</AlertDialogTitle>
           <AlertDialogDescription>
-            {REVERT_WARNING[invoice.status] ?? 'Der letzte Schritt wird rückgängig gemacht.'}
+            {status.submission === 'erstattet'
+              ? REVERT_WARNING.erstattet
+              : REVERT_WARNING.eingereicht}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {#if revertError}
@@ -427,7 +486,7 @@
         {/if}
         <AlertDialogFooter>
           <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onclick={revertLastStep} disabled={reverting}>
+          <AlertDialogAction variant="destructive" onclick={revertSubmission} disabled={reverting}>
             {reverting ? 'Wird gelöscht …' : 'Ja, löschen'}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -593,6 +652,7 @@
               <span class="shrink-0 tabular-nums text-xs text-muted-foreground">
                 {formatTimestamp(ev.changed_at)}
               </span>
+              <span class="shrink-0 text-xs text-muted-foreground">{TRACK_LABELS[ev.track]}</span>
               <InvoiceBadge status={ev.status} />
               {#if ev.note}
                 <span class="truncate text-xs text-muted-foreground">{ev.note}</span>

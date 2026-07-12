@@ -1,13 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Rechnungsbearbeitung (issue #119): edit a saved invoice's header fields and
-  positions, and re-validate positions against the Gebührenordnung. Only
-  invoices with status 'neu' or 'geprüft' are editable (before any formal
-  submission to the insurer). "Selbst zahlen" is not a separate status — it is
-  an invoice that stays at 'bezahlt' and is never submitted; a 'bezahlt'
-  invoice's header fields can no longer be edited, but its last step can be
-  undone or corrected via the "Letzter Schritt" controls on the invoice detail
-  page (issue #230).
+  positions, and re-validate positions against the Gebührenordnung. Editing is
+  locked once money has moved — i.e. as soon as the invoice is paid
+  (`payment = bezahlt`) or submitted (`submission ≠ nicht_eingereicht`). Those
+  steps can still be undone or corrected via the track controls on the invoice
+  detail page (issue #230).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -23,8 +21,6 @@
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
-
-  const EDITABLE_STATUSES = new Set(['neu', 'geprüft']);
 
   const invoiceId = $derived(page.params.id as string);
 
@@ -69,7 +65,12 @@
     if (invoice) setBreadcrumbEntity(invoiceId, invoice.provider_name);
   });
 
-  const isEditable = $derived(invoice ? EDITABLE_STATUSES.has(invoice.status) : false);
+  // Editing is locked once money has moved: paid or already submitted.
+  const isEditable = $derived(
+    invoice
+      ? invoice.status.payment === 'offen' && invoice.status.submission === 'nicht_eingereicht'
+      : false,
+  );
 
   let saving = $state(false);
   let formError = $state<string | null>(null);
@@ -119,8 +120,7 @@
     <Card>
       <CardContent class="pt-4 space-y-3">
         <p class="text-sm text-muted-foreground">
-          Diese Rechnung hat den Status <strong class="text-foreground">{invoice.status}</strong> und
-          kann nicht mehr bearbeitet werden.
+          Diese Rechnung ist bereits bezahlt oder eingereicht und kann nicht mehr bearbeitet werden.
         </p>
         <Button variant="outline" href={resolve('/invoices/[id]', { id: invoice.id })}>
           Zur Rechnung

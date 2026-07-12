@@ -18,11 +18,23 @@ import type {
   ContractType,
   GoaeCategory,
   IncludedBenefits,
-  InvoiceStatus,
+  InvoiceStatusEventValue,
+  PaymentStatus,
   ProviderType,
+  ReviewStatus,
+  StatusTrack,
   SubmissionChannel,
+  SubmissionStatus,
 } from '@selbstbehalt/shared';
-import { integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  index,
+  integer,
+  real,
+  sqliteTable,
+  sqliteView,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 /** A UUID TEXT primary key with an app-side default. */
 const uuidPk = () =>
@@ -103,7 +115,8 @@ export const invoices = sqliteTable('invoices', {
   eligibleAmount: real('eligible_amount'),
   // Server-computed: Σ charged_amount − Σ coalesce(refund_amount, 0).
   selfPaidAmount: real('self_paid_amount').notNull().default(0),
-  status: text('status').$type<InvoiceStatus>().notNull().default('neu'),
+  // No denormalised status column: the lifecycle state is derived from
+  // invoice_status_events (see invoiceCurrentStatus view / deriveInvoiceStatus).
   filePath: text('file_path'),
   ocrRaw: text('ocr_raw'),
   notes: text('notes'),
@@ -140,20 +153,47 @@ export const invoicePositions = sqliteTable('invoice_positions', {
 });
 
 /**
- * Immutable audit trail of invoice status transitions. Every call to
- * POST /api/invoices/:id/status, /submit, or /refund appends a row here.
+ * Immutable audit trail and **single source of truth** for the invoice lifecycle.
+ * Every track transition (review, payment, submit, refund, or a revert back to a
+ * ground state) appends a row here; the current per-track state is derived as the
+ * latest event per track (see `invoiceCurrentStatus` / `deriveInvoiceStatus`).
  */
-export const invoiceStatusEvents = sqliteTable('invoice_status_events', {
-  id: uuidPk(),
-  invoiceId: text('invoice_id')
-    .notNull()
-    .references(() => invoices.id, { onDelete: 'cascade' }),
-  status: text('status').$type<InvoiceStatus>().notNull(),
-  changedAt: text('changed_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-  note: text('note'),
-});
+export const invoiceStatusEvents = sqliteTable(
+  'invoice_status_events',
+  {
+    id: uuidPk(),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    track: text('track').$type<StatusTrack>().notNull(),
+    status: text('status').$type<InvoiceStatusEventValue>().notNull(),
+    changedAt: text('changed_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    note: text('note'),
+  },
+  (table) => [
+    index('invoice_status_events_invoice_track_idx').on(
+      table.invoiceId,
+      table.track,
+      table.changedAt,
+    ),
+  ],
+);
+
+/**
+ * Derived current lifecycle state per invoice — the latest event value of each of the
+ * three tracks, falling back to the track's ground state when it has no event yet.
+ * Created via migration 0007; `.existing()` tells Drizzle not to manage its DDL. Lets
+ * list/stats queries filter on the current state as if it were a column.
+ */
+export const invoiceCurrentStatus = sqliteView('invoice_current_status', {
+  invoiceId: text('invoice_id').notNull(),
+  review: text('review').$type<ReviewStatus>().notNull(),
+  payment: text('payment').$type<PaymentStatus>().notNull(),
+  submission: text('submission').$type<SubmissionStatus>().notNull(),
+  paidOn: text('paid_on'),
+}).existing();
 
 export const submissions = sqliteTable('submissions', {
   id: uuidPk(),

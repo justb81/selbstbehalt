@@ -19,6 +19,7 @@ export * from './schemas/submission.js';
 export * from './schemas/bre-period.js';
 export * from './utils/benefit-category.js';
 export * from './utils/bre.js';
+export * from './utils/derive-invoice-status.js';
 export * from './utils/included-benefits.js';
 export * from './utils/money.js';
 export * from './utils/date.js';

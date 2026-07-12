@@ -8,7 +8,9 @@ describe('InvoiceBadge', () => {
   it.each([
     ['neu', 'Neu'],
     ['geprüft', 'Geprüft'],
+    ['offen', 'Offen'],
     ['bezahlt', 'Bezahlt'],
+    ['nicht_eingereicht', 'Nicht eingereicht'],
     ['eingereicht', 'Eingereicht'],
     ['erstattet', 'Erstattet'],
   ] as const)('renders the German label for status "%s"', (status, label) => {

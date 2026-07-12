@@ -2,15 +2,16 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { InvoiceWithPositions, InvoiceStatusEvent } from '@selbstbehalt/shared';
+import type { InvoiceStatus, InvoiceWithPositions, InvoiceStatusEvent } from '@selbstbehalt/shared';
 
 vi.mock('$lib/api', () => ({
   api: {
     invoices: {
       events: vi.fn().mockResolvedValue([]),
-      changeStatus: vi.fn().mockResolvedValue({}),
+      changeReview: vi.fn().mockResolvedValue({}),
+      changePayment: vi.fn().mockResolvedValue({}),
       refund: vi.fn().mockResolvedValue({}),
-      revert: vi.fn().mockResolvedValue({}),
+      revertSubmission: vi.fn().mockResolvedValue({}),
       getSubmission: vi.fn().mockRejectedValue(new Error('not found')),
     },
   },
@@ -32,6 +33,13 @@ import InvoiceStatusFlow from './InvoiceStatusFlow.svelte';
 import { api } from '$lib/api';
 import { goto } from '$app/navigation';
 
+const GROUND: InvoiceStatus = {
+  review: 'neu',
+  payment: 'offen',
+  submission: 'nicht_eingereicht',
+  paid_on: null,
+};
+
 const BASE_INVOICE: InvoiceWithPositions = {
   id: 'inv-1',
   insured_person_id: 'ip-1',
@@ -42,7 +50,7 @@ const BASE_INVOICE: InvoiceWithPositions = {
   total_amount: 100.0,
   eligible_amount: 80.0,
   self_paid_amount: 0,
-  status: 'neu',
+  status: GROUND,
   notes: null,
   ocr_raw: null,
   created_at: '2025-03-15T10:00:00Z',
@@ -66,20 +74,23 @@ const BASE_INVOICE: InvoiceWithPositions = {
   ],
 };
 
-describe('InvoiceStatusFlow', () => {
-  it('renders the current status badge', async () => {
+/** Build a test invoice with a partial derived-status override. */
+function inv(
+  status: Partial<InvoiceStatus> = {},
+  over: Partial<InvoiceWithPositions> = {},
+): InvoiceWithPositions {
+  return { ...BASE_INVOICE, status: { ...GROUND, ...status }, ...over };
+}
+
+describe('InvoiceStatusFlow — Prüfung track', () => {
+  it('renders the three track badges', async () => {
     render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
     expect(await screen.findByText('Neu')).toBeInTheDocument();
+    expect(screen.getByText('Offen')).toBeInTheDocument();
+    expect(screen.getByText('Nicht eingereicht')).toBeInTheDocument();
   });
 
-  it('shows "Als geprüft markieren" for status neu', async () => {
-    render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
-    expect(
-      await screen.findByRole('button', { name: 'Als geprüft markieren' }),
-    ).toBeInTheDocument();
-  });
-
-  it('calls changeStatus and onChanged when "Als geprüft markieren" is clicked', async () => {
+  it('marks the invoice geprüft', async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
     render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged } });
@@ -87,43 +98,79 @@ describe('InvoiceStatusFlow', () => {
     await user.click(await screen.findByRole('button', { name: 'Als geprüft markieren' }));
 
     await waitFor(() =>
-      expect(api.invoices.changeStatus).toHaveBeenCalledWith('inv-1', { status: 'geprüft' }),
+      expect(api.invoices.changeReview).toHaveBeenCalledWith('inv-1', { status: 'geprüft' }),
     );
     expect(onChanged).toHaveBeenCalled();
   });
 
-  it('shows "Zurück zu Neu" and "Als bezahlt markieren" for status geprüft', async () => {
-    render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'geprüft' }, onChanged: vi.fn() },
-    });
-    expect(await screen.findByRole('button', { name: 'Zurück zu Neu' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Als bezahlt markieren' })).toBeInTheDocument();
-  });
-
-  it('calls changeStatus with neu when "Zurück zu Neu" is clicked', async () => {
+  it('takes the review back to neu when nothing else has progressed', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'geprüft' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft' }), onChanged: vi.fn() },
     });
 
-    await user.click(await screen.findByRole('button', { name: 'Zurück zu Neu' }));
+    await user.click(await screen.findByRole('button', { name: 'Prüfung zurücknehmen' }));
 
     await waitFor(() =>
-      expect(api.invoices.changeStatus).toHaveBeenCalledWith('inv-1', { status: 'neu' }),
+      expect(api.invoices.changeReview).toHaveBeenCalledWith('inv-1', { status: 'neu' }),
     );
   });
 
-  it('shows "Einreichen …" for status bezahlt', async () => {
+  it('disables "Prüfung zurücknehmen" once the invoice is paid', async () => {
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', payment: 'bezahlt' }), onChanged: vi.fn() },
     });
-    expect(await screen.findByRole('button', { name: 'Einreichen …' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Prüfung zurücknehmen' })).toBeDisabled();
+  });
+});
+
+describe('InvoiceStatusFlow — Bezahlung track', () => {
+  it('is gated behind the review step', async () => {
+    render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
+    await screen.findByText('Neu');
+    expect(screen.queryByRole('button', { name: 'Als bezahlt markieren' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Erst nach der Prüfung möglich.').length).toBeGreaterThan(0);
   });
 
-  it('navigates to submit page when "Einreichen …" is clicked', async () => {
+  it('records a payment with its date once geprüft', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft' }), onChanged: vi.fn() },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Als bezahlt markieren' }));
+    await user.click(await screen.findByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() =>
+      expect(api.invoices.changePayment).toHaveBeenCalledWith(
+        'inv-1',
+        expect.objectContaining({ status: 'bezahlt' }),
+      ),
+    );
+  });
+
+  it('reverts a payment', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv({ review: 'geprüft', payment: 'bezahlt', paid_on: '2026-07-01' }),
+        onChanged: vi.fn(),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Zahlung zurücknehmen' }));
+
+    await waitFor(() =>
+      expect(api.invoices.changePayment).toHaveBeenCalledWith('inv-1', { status: 'offen' }),
+    );
+  });
+});
+
+describe('InvoiceStatusFlow — Einreichung / Erstattung track', () => {
+  it('navigates to the submit page from "Einreichen …"', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: { invoice: inv({ review: 'geprüft' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Einreichen …' }));
@@ -131,17 +178,19 @@ describe('InvoiceStatusFlow', () => {
     await waitFor(() => expect(goto).toHaveBeenCalledWith('/invoices/inv-1/submit'));
   });
 
-  it('shows "Erstattung erfassen" for status eingereicht', async () => {
+  it('can submit before the invoice is paid (parallel tracks)', async () => {
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft' }), onChanged: vi.fn() },
     });
-    expect(await screen.findByRole('button', { name: 'Erstattung erfassen' })).toBeInTheDocument();
+    // Payment still offen, yet "Einreichen …" is available.
+    expect(await screen.findByRole('button', { name: 'Einreichen …' })).toBeInTheDocument();
+    expect(screen.getByText('Offen')).toBeInTheDocument();
   });
 
-  it('opens the refund form (category mode by default) when "Erstattung erfassen" is clicked', async () => {
+  it('opens the refund form (category mode) from "Erstattung erfassen"', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
@@ -155,12 +204,11 @@ describe('InvoiceStatusFlow', () => {
   it('pre-fills the category amount with the category eligible sum in category mode', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
 
-    // The single GOÄ/arzt position maps to the "Ambulant" benefit category.
     const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
     expect((input as HTMLInputElement).value).toBe('8.5');
   });
@@ -168,21 +216,21 @@ describe('InvoiceStatusFlow', () => {
   it('distributes the category amount onto positions when submitting in category mode', async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
-    // Two positions in the same (ambulant) category so the entered amount is split.
-    const invoice: InvoiceWithPositions = {
-      ...BASE_INVOICE,
-      status: 'eingereicht',
-      positions: [
-        { ...BASE_INVOICE.positions[0]!, id: 'pos-1', eligible_amount: 30, charged_amount: 40 },
-        {
-          ...BASE_INVOICE.positions[0]!,
-          id: 'pos-2',
-          goae_number: '5',
-          eligible_amount: 10,
-          charged_amount: 20,
-        },
-      ],
-    };
+    const invoice = inv(
+      { review: 'geprüft', submission: 'eingereicht' },
+      {
+        positions: [
+          { ...BASE_INVOICE.positions[0]!, id: 'pos-1', eligible_amount: 30, charged_amount: 40 },
+          {
+            ...BASE_INVOICE.positions[0]!,
+            id: 'pos-2',
+            goae_number: '5',
+            eligible_amount: 10,
+            charged_amount: 20,
+          },
+        ],
+      },
+    );
     render(InvoiceStatusFlow, { props: { invoice, onChanged } });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
@@ -192,7 +240,6 @@ describe('InvoiceStatusFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Erstattung speichern' }));
 
     await waitFor(() =>
-      // 20 € split 30:10 → 15 € / 5 €.
       expect(api.invoices.refund).toHaveBeenCalledWith(
         'inv-1',
         expect.objectContaining({
@@ -209,7 +256,7 @@ describe('InvoiceStatusFlow', () => {
   it('switches to per-position entry and submits per-position amounts', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
@@ -230,7 +277,7 @@ describe('InvoiceStatusFlow', () => {
   it('closes the refund form when Abbrechen is clicked', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
@@ -241,21 +288,63 @@ describe('InvoiceStatusFlow', () => {
     expect(screen.queryByText('Erstattungsbeträge erfassen')).not.toBeInTheDocument();
   });
 
-  it('shows no transition buttons for status erstattet', async () => {
+  it('shows edit/delete but no "Erstattung erfassen" for an already-reimbursed invoice', async () => {
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'erstattet' }, onChanged: vi.fn() },
+      props: {
+        invoice: inv(
+          { review: 'geprüft', submission: 'erstattet' },
+          { positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }] },
+        ),
+        onChanged: vi.fn(),
+      },
     });
     await waitFor(() => expect(screen.getByText('Erstattet')).toBeInTheDocument());
-    expect(
-      screen.queryByRole('button', { name: /markieren|erfassen|einreichen/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Erstattung bearbeiten' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Erstattung erfassen' })).not.toBeInTheDocument();
   });
 
-  it('loads and displays status event history', async () => {
+  it('deletes the submission when confirmed', async () => {
+    const user = userEvent.setup();
+    const onChanged = vi.fn();
+    render(InvoiceStatusFlow, {
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Einreichung löschen' }));
+    await user.click(await screen.findByRole('button', { name: 'Ja, löschen' }));
+
+    await waitFor(() => expect(api.invoices.revertSubmission).toHaveBeenCalledWith('inv-1', {}));
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('opens the refund form pre-filled for editing from "Erstattung bearbeiten"', async () => {
+    const user = userEvent.setup();
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv(
+          { review: 'geprüft', submission: 'erstattet' },
+          { positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }] },
+        ),
+        onChanged: vi.fn(),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Erstattung bearbeiten' }));
+
+    expect(await screen.findByText('Erstattungsbeträge korrigieren')).toBeInTheDocument();
+    const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
+    expect((input as HTMLInputElement).value).toBe('7.25');
+    expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeInTheDocument();
+  });
+});
+
+describe('InvoiceStatusFlow — history & errors', () => {
+  it('loads and displays status event history with track labels', async () => {
     const events: InvoiceStatusEvent[] = [
       {
         id: 'ev-1',
         invoice_id: 'inv-1',
+        track: 'review',
         status: 'neu',
         changed_at: '2025-03-15T10:00:00Z',
         note: null,
@@ -263,6 +352,7 @@ describe('InvoiceStatusFlow', () => {
       {
         id: 'ev-2',
         invoice_id: 'inv-1',
+        track: 'review',
         status: 'geprüft',
         changed_at: '2025-03-16T09:00:00Z',
         note: 'Belege geprüft',
@@ -276,8 +366,8 @@ describe('InvoiceStatusFlow', () => {
     expect(screen.getByText('Belege geprüft')).toBeInTheDocument();
   });
 
-  it('shows an error alert when a status change fails', async () => {
-    vi.mocked(api.invoices.changeStatus).mockRejectedValueOnce(new Error('Netzwerkfehler'));
+  it('shows an error alert when a review change fails', async () => {
+    vi.mocked(api.invoices.changeReview).mockRejectedValueOnce(new Error('Netzwerkfehler'));
     const user = userEvent.setup();
 
     render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
@@ -292,7 +382,7 @@ describe('InvoiceStatusFlow', () => {
     const user = userEvent.setup();
 
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
     await user.click(await screen.findByRole('button', { name: 'Erstattung erfassen' }));
@@ -305,7 +395,7 @@ describe('InvoiceStatusFlow', () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
       props: {
-        invoice: { ...BASE_INVOICE, status: 'eingereicht', positions: [] },
+        invoice: inv({ review: 'geprüft', submission: 'eingereicht' }, { positions: [] }),
         onChanged: vi.fn(),
       },
     });
@@ -314,79 +404,15 @@ describe('InvoiceStatusFlow', () => {
 
     expect(await screen.findByText('Keine Positionen vorhanden.')).toBeInTheDocument();
   });
-});
 
-describe('Letzter Schritt (issue #230)', () => {
-  it('shows no "Letzter Schritt" section for status neu', async () => {
-    render(InvoiceStatusFlow, { props: { invoice: BASE_INVOICE, onChanged: vi.fn() } });
-    await screen.findByText('Neu');
-    expect(screen.queryByText('Letzter Schritt')).not.toBeInTheDocument();
-  });
-
-  it('shows only "Löschen" (no "Bearbeiten") for status bezahlt', async () => {
-    render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
-    });
-    expect(await screen.findByText('Letzter Schritt')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
-  });
-
-  it('reverts the invoice when "Löschen" is confirmed', async () => {
-    const user = userEvent.setup();
-    const onChanged = vi.fn();
-    render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Löschen' }));
-    await user.click(await screen.findByRole('button', { name: 'Ja, löschen' }));
-
-    await waitFor(() => expect(api.invoices.revert).toHaveBeenCalledWith('inv-1', {}));
-    expect(onChanged).toHaveBeenCalled();
-  });
-
-  it('shows "Bearbeiten" for status eingereicht and navigates to the submit page', async () => {
+  it('shows an error alert when the submission revert fails', async () => {
+    vi.mocked(api.invoices.revertSubmission).mockRejectedValueOnce(new Error('Revert-Fehler'));
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'eingereicht' }, onChanged: vi.fn() },
+      props: { invoice: inv({ review: 'geprüft', submission: 'eingereicht' }), onChanged: vi.fn() },
     });
 
-    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-
-    await waitFor(() => expect(goto).toHaveBeenCalledWith('/invoices/inv-1/submit'));
-  });
-
-  it('opens the refund form pre-filled for editing when "Bearbeiten" is clicked for status erstattet', async () => {
-    const user = userEvent.setup();
-    render(InvoiceStatusFlow, {
-      props: {
-        invoice: {
-          ...BASE_INVOICE,
-          status: 'erstattet',
-          positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }],
-        },
-        onChanged: vi.fn(),
-      },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-
-    expect(await screen.findByText('Erstattungsbeträge korrigieren')).toBeInTheDocument();
-    // Category mode is the default; the single position's stored refund sums into its category.
-    const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
-    expect((input as HTMLInputElement).value).toBe('7.25');
-    expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeInTheDocument();
-  });
-
-  it('shows an error alert when revert fails', async () => {
-    vi.mocked(api.invoices.revert).mockRejectedValueOnce(new Error('Revert-Fehler'));
-    const user = userEvent.setup();
-    render(InvoiceStatusFlow, {
-      props: { invoice: { ...BASE_INVOICE, status: 'bezahlt' }, onChanged: vi.fn() },
-    });
-
-    await user.click(await screen.findByRole('button', { name: 'Löschen' }));
+    await user.click(await screen.findByRole('button', { name: 'Einreichung löschen' }));
     await user.click(await screen.findByRole('button', { name: 'Ja, löschen' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Revert-Fehler');

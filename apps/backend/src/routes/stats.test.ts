@@ -15,10 +15,31 @@ import {
   contracts,
   insuredPersons,
   invoicePositions,
+  invoiceStatusEvents,
   invoices,
   persons,
   submissions,
 } from '../db/schema.js';
+
+/**
+ * Insert the status events that derive to the given (old linear) lifecycle status,
+ * so the `invoice_current_status` view the stats endpoints read reflects it.
+ */
+function setStatus(
+  db: DbHandle['db'],
+  invoiceId: string,
+  status: 'geprüft' | 'bezahlt' | 'eingereicht' | 'erstattet',
+) {
+  const events: (typeof invoiceStatusEvents.$inferInsert)[] = [
+    { invoiceId, track: 'review', status: 'geprüft' },
+  ];
+  if (status === 'bezahlt' || status === 'eingereicht' || status === 'erstattet')
+    events.push({ invoiceId, track: 'payment', status: 'bezahlt' });
+  if (status === 'eingereicht' || status === 'erstattet')
+    events.push({ invoiceId, track: 'submission', status: 'eingereicht' });
+  if (status === 'erstattet') events.push({ invoiceId, track: 'submission', status: 'erstattet' });
+  db.insert(invoiceStatusEvents).values(events).run();
+}
 
 let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
@@ -68,10 +89,10 @@ beforeEach(() => {
       totalAmount: 100,
       eligibleAmount: 80,
       selfPaidAmount: 20,
-      status: 'erstattet',
     })
     .returning()
     .get();
+  setStatus(db, inv2025a.id, 'erstattet');
   db.insert(invoices)
     .values({
       insuredPersonId,
@@ -91,10 +112,10 @@ beforeEach(() => {
       totalAmount: 300,
       eligibleAmount: 250,
       selfPaidAmount: 50,
-      status: 'erstattet',
     })
     .returning()
     .get();
+  setStatus(db, inv2026c.id, 'erstattet');
   db.insert(invoices)
     .values({
       insuredPersonId,
@@ -281,10 +302,10 @@ describe('GET /api/stats/positions/:insuredPersonId', () => {
         invoiceDate: '2026-05-01',
         providerName: 'Dr. E',
         totalAmount: 50,
-        status: 'geprüft',
       })
       .returning()
       .get();
+    setStatus(db, invGepruft.id, 'geprüft');
     db.insert(invoicePositions)
       .values({
         invoiceId: invGepruft.id,
@@ -420,10 +441,10 @@ describe('GET /api/stats/reductions', () => {
         providerName: 'Dr. Kürzung',
         providerType: 'arzt',
         totalAmount: 180,
-        status: 'erstattet',
       })
       .returning()
       .get();
+    setStatus(db, invA.id, 'erstattet');
     db.insert(invoicePositions)
       .values([
         {
@@ -468,10 +489,10 @@ describe('GET /api/stats/reductions', () => {
         providerName: 'Dr. Andere',
         providerType: 'zahnarzt',
         totalAmount: 200,
-        status: 'erstattet',
       })
       .returning()
       .get();
+    setStatus(db, invB.id, 'erstattet');
     db.insert(invoicePositions)
       .values({
         invoiceId: invB.id,
@@ -494,10 +515,10 @@ describe('GET /api/stats/reductions', () => {
         providerName: 'Dr. Kürzung',
         providerType: 'arzt',
         totalAmount: 40,
-        status: 'geprüft',
       })
       .returning()
       .get();
+    setStatus(db, invGepruft.id, 'geprüft');
     db.insert(invoicePositions)
       .values({
         invoiceId: invGepruft.id,
@@ -602,7 +623,6 @@ describe('GET /api/stats/validations', () => {
         invoiceDate: '2026-05-01',
         providerName: 'Dr. Prüf',
         totalAmount: 0,
-        status: 'geprüft',
       })
       .returning()
       .get();

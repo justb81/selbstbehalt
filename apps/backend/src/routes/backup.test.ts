@@ -82,7 +82,9 @@ function seedChain(handle: DbHandle, insurer: string): string {
     })
     .returning()
     .get().id;
-  db.insert(invoiceStatusEvents).values({ invoiceId, status: 'neu', note: 'angelegt' }).run();
+  db.insert(invoiceStatusEvents)
+    .values({ invoiceId, track: 'review', status: 'neu', note: 'angelegt' })
+    .run();
   return contractId;
 }
 

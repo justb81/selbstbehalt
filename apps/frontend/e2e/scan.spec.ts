@@ -72,7 +72,7 @@ async function mockApi(page: Page): Promise<{ getPostedInvoice: () => unknown }>
         provider_type: body.provider_type ?? null,
         total_amount: body.total_amount,
         self_paid_amount: 0,
-        status: 'neu',
+        status: { review: 'neu', payment: 'offen', submission: 'nicht_eingereicht', paid_on: null },
         created_at: NOW,
         positions: [],
       },

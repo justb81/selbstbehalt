@@ -133,7 +133,6 @@ export function seed(handle: DbHandle): void {
       totalAmount: 131.01,
       eligibleAmount: 60.62,
       selfPaidAmount: 131.01,
-      status: 'geprüft',
     })
     .returning()
     .get();
@@ -184,8 +183,13 @@ export function seed(handle: DbHandle): void {
 
   db.insert(invoiceStatusEvents)
     .values([
-      { invoiceId: invoice1.id, status: 'neu' },
-      { invoiceId: invoice1.id, status: 'geprüft', note: 'GOÄ-Prüfung abgeschlossen' },
+      { invoiceId: invoice1.id, track: 'review', status: 'neu' },
+      {
+        invoiceId: invoice1.id,
+        track: 'review',
+        status: 'geprüft',
+        note: 'GOÄ-Prüfung abgeschlossen',
+      },
     ])
     .run();
 
@@ -205,7 +209,6 @@ export function seed(handle: DbHandle): void {
       totalAmount: 620.0,
       eligibleAmount: 536.92,
       selfPaidAmount: 182.28,
-      status: 'erstattet',
     })
     .returning()
     .get();
@@ -253,11 +256,27 @@ export function seed(handle: DbHandle): void {
 
   db.insert(invoiceStatusEvents)
     .values([
-      { invoiceId: invoice2.id, status: 'neu' },
-      { invoiceId: invoice2.id, status: 'geprüft' },
-      { invoiceId: invoice2.id, status: 'bezahlt', note: 'Eigenanteil überwiesen' },
-      { invoiceId: invoice2.id, status: 'eingereicht', note: 'Per App eingereicht' },
-      { invoiceId: invoice2.id, status: 'erstattet', note: 'Erstattung eingegangen am 05.12.2025' },
+      { invoiceId: invoice2.id, track: 'review', status: 'neu' },
+      { invoiceId: invoice2.id, track: 'review', status: 'geprüft' },
+      {
+        invoiceId: invoice2.id,
+        track: 'payment',
+        status: 'bezahlt',
+        changedAt: '2025-11-25T00:00:00.000Z',
+        note: 'Eigenanteil überwiesen',
+      },
+      {
+        invoiceId: invoice2.id,
+        track: 'submission',
+        status: 'eingereicht',
+        note: 'Per App eingereicht',
+      },
+      {
+        invoiceId: invoice2.id,
+        track: 'submission',
+        status: 'erstattet',
+        note: 'Erstattung eingegangen am 05.12.2025',
+      },
     ])
     .run();
 

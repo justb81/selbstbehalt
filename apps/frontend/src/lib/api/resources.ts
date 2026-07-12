@@ -29,9 +29,10 @@ import {
   type InsuredPersonUpdate,
   type Invoice,
   type InvoiceCreatePayload,
+  type InvoicePaymentChange,
   type InvoiceRefundPayload,
+  type InvoiceReviewChange,
   type InvoiceRevert,
-  type InvoiceStatusChange,
   type InvoiceStatusEvent,
   type InvoiceUpdatePayload,
   type InvoiceWithPositions,
@@ -129,8 +130,14 @@ export function createResources(request: ApiRequester) {
         schema: invoiceWithPositionsSchema,
       }),
     remove: (invoiceId: string) => request(`/api/invoices/${id(invoiceId)}`, { method: 'DELETE' }),
-    changeStatus: (invoiceId: string, data: InvoiceStatusChange) =>
-      request(`/api/invoices/${id(invoiceId)}/status`, {
+    changeReview: (invoiceId: string, data: InvoiceReviewChange) =>
+      request(`/api/invoices/${id(invoiceId)}/review`, {
+        method: 'POST',
+        body: data,
+        schema: invoiceSchema,
+      }),
+    changePayment: (invoiceId: string, data: InvoicePaymentChange) =>
+      request(`/api/invoices/${id(invoiceId)}/payment`, {
         method: 'POST',
         body: data,
         schema: invoiceSchema,
@@ -155,8 +162,8 @@ export function createResources(request: ApiRequester) {
         body: data,
         schema: invoiceWithPositionsSchema,
       }),
-    revert: (invoiceId: string, data: InvoiceRevert) =>
-      request(`/api/invoices/${id(invoiceId)}/revert`, {
+    revertSubmission: (invoiceId: string, data: InvoiceRevert) =>
+      request(`/api/invoices/${id(invoiceId)}/submission/revert`, {
         method: 'POST',
         body: data,
         schema: invoiceWithPositionsSchema,
@@ -192,8 +199,9 @@ export type {
   ImportResult,
   InsuredPerson,
   Invoice,
+  InvoicePaymentChange,
   InvoiceRefundPayload,
-  InvoiceStatusChange,
+  InvoiceReviewChange,
   InvoiceStatusEvent,
   InvoiceWithPositions,
   Person,

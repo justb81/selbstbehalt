@@ -141,7 +141,9 @@ describe('DELETE /api/persons/:id (Art. 17 erasure cascade)', () => {
         chargedAmount: 10.72,
       })
       .run();
-    db.insert(invoiceStatusEvents).values({ invoiceId: invoiceA, status: 'neu' }).run();
+    db.insert(invoiceStatusEvents)
+      .values({ invoiceId: invoiceA, track: 'review', status: 'neu' })
+      .run();
     db.insert(submissions).values({ invoiceId: invoiceA, submittedVia: 'post' }).run();
     db.insert(brePeriods).values({ insuredPersonId: insuredAonB, year: 2026 }).run();
 

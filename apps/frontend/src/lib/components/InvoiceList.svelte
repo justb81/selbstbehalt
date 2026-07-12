@@ -23,13 +23,15 @@
   import {
     formatDate,
     formatEur,
-    invoiceStatusValues,
+    paymentStatusValues,
     providerTypeValues,
+    submissionStatusValues,
     type InsuredPerson,
     type Invoice,
-    type InvoiceStatus,
+    type PaymentStatus,
     type Person,
     type ProviderType,
+    type SubmissionStatus,
   } from '@selbstbehalt/shared';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -59,7 +61,8 @@
     persons = [],
     insuredPersons = [],
     newInvoiceHref,
-    initialStatus = undefined,
+    initialPayment = undefined,
+    initialSubmission = undefined,
   }: {
     invoices: Invoice[];
     /** All persons — enables the Person filter tabs when the list spans ≥2 of them. */
@@ -68,14 +71,18 @@
     insuredPersons?: InsuredPerson[];
     /** When set, the empty state offers a button to create the first invoice. */
     newInvoiceHref?: string;
-    /** Preselects the Status filter (e.g. from a `?status=` deep link, issue #261). */
-    initialStatus?: InvoiceStatus;
+    /** Preselects the Zahlung filter (e.g. from a `?payment=` deep link). */
+    initialPayment?: PaymentStatus;
+    /** Preselects the Einreichung filter (e.g. from a `?submission=` deep link, issue #261). */
+    initialSubmission?: SubmissionStatus;
   } = $props();
 
-  const STATUS_LABELS: Record<InvoiceStatus, string> = {
-    neu: 'Neu',
-    geprüft: 'Geprüft',
+  const PAYMENT_LABELS: Record<PaymentStatus, string> = {
+    offen: 'Offen',
     bezahlt: 'Bezahlt',
+  };
+  const SUBMISSION_LABELS: Record<SubmissionStatus, string> = {
+    nicht_eingereicht: 'Nicht eingereicht',
     eingereicht: 'Eingereicht',
     erstattet: 'Erstattet',
   };
@@ -91,10 +98,12 @@
   const ALL = 'all';
 
   let personFilter = $state<string>(ALL);
-  // Deliberately a one-time seed, not a live binding — initialStatus is a deep-link
-  // default; the Status select below owns the filter once the user touches it.
+  // Deliberately one-time seeds, not live bindings — the initial* props are deep-link
+  // defaults; the selects below own the filters once the user touches them.
   // svelte-ignore state_referenced_locally
-  let statusFilter = $state<InvoiceStatus | typeof ALL>(initialStatus ?? ALL);
+  let paymentFilter = $state<PaymentStatus | typeof ALL>(initialPayment ?? ALL);
+  // svelte-ignore state_referenced_locally
+  let submissionFilter = $state<SubmissionStatus | typeof ALL>(initialSubmission ?? ALL);
   let providerTypeFilter = $state<ProviderType | typeof ALL>(ALL);
   let searchQuery = $state('');
 
@@ -120,9 +129,13 @@
   });
   const showProviderTypeFilter = $derived(providerTypeOptions.length >= 2);
 
-  const statusItems = $derived([
+  const paymentItems = $derived([
     { value: ALL, label: 'Alle' },
-    ...invoiceStatusValues.map((s) => ({ value: s, label: STATUS_LABELS[s] })),
+    ...paymentStatusValues.map((s) => ({ value: s, label: PAYMENT_LABELS[s] })),
+  ]);
+  const submissionItems = $derived([
+    { value: ALL, label: 'Alle' },
+    ...submissionStatusValues.map((s) => ({ value: s, label: SUBMISSION_LABELS[s] })),
   ]);
   const providerTypeItems = $derived([
     { value: ALL, label: 'Alle' },
@@ -136,7 +149,8 @@
         if (showPersonFilter && personFilter !== ALL) {
           if (personIdByInsured.get(inv.insured_person_id) !== personFilter) return false;
         }
-        if (statusFilter !== ALL && inv.status !== statusFilter) return false;
+        if (paymentFilter !== ALL && inv.status.payment !== paymentFilter) return false;
+        if (submissionFilter !== ALL && inv.status.submission !== submissionFilter) return false;
         if (providerTypeFilter !== ALL && inv.provider_type !== providerTypeFilter) return false;
         if (q) {
           return (
@@ -175,18 +189,38 @@
 
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1.5">
-        <Label for="invoice-status-filter">Status</Label>
+        <Label for="invoice-payment-filter">Bezahlung</Label>
         <Select
           type="single"
-          value={statusFilter}
-          onValueChange={(v: string) => (statusFilter = (v as InvoiceStatus | typeof ALL) || ALL)}
-          items={statusItems}
+          value={paymentFilter}
+          onValueChange={(v: string) => (paymentFilter = (v as PaymentStatus | typeof ALL) || ALL)}
+          items={paymentItems}
         >
-          <SelectTrigger id="invoice-status-filter" class="w-44">
+          <SelectTrigger id="invoice-payment-filter" class="w-40">
             <SelectValue placeholder="Alle" />
           </SelectTrigger>
           <SelectContent>
-            {#each statusItems as item (item.value)}
+            {#each paymentItems as item (item.value)}
+              <SelectItem value={item.value} label={item.label} />
+            {/each}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <Label for="invoice-submission-filter">Einreichung</Label>
+        <Select
+          type="single"
+          value={submissionFilter}
+          onValueChange={(v: string) =>
+            (submissionFilter = (v as SubmissionStatus | typeof ALL) || ALL)}
+          items={submissionItems}
+        >
+          <SelectTrigger id="invoice-submission-filter" class="w-44">
+            <SelectValue placeholder="Alle" />
+          </SelectTrigger>
+          <SelectContent>
+            {#each submissionItems as item (item.value)}
               <SelectItem value={item.value} label={item.label} />
             {/each}
           </SelectContent>
@@ -269,7 +303,12 @@
                 <TableCell class="text-right font-medium tabular-nums">
                   {formatEur(invoice.total_amount)}
                 </TableCell>
-                <TableCell><InvoiceBadge status={invoice.status} /></TableCell>
+                <TableCell>
+                  <div class="flex flex-wrap gap-1">
+                    <InvoiceBadge status={invoice.status.payment} />
+                    <InvoiceBadge status={invoice.status.submission} />
+                  </div>
+                </TableCell>
               </TableRow>
             {/each}
           </TableBody>

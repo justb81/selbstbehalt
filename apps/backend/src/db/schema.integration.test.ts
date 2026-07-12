@@ -18,6 +18,7 @@ import {
   brePeriods,
   contracts,
   insuredPersons,
+  invoiceCurrentStatus,
   invoicePositions,
   invoiceStatusEvents,
   invoices,
@@ -99,9 +100,21 @@ describe('entity chain', () => {
       })
       .returning()
       .get();
-    // DEFAULTs from §3.2.
-    expect(invoice.status).toBe('neu');
+    // DEFAULT from §3.2.
     expect(invoice.selfPaidAmount).toBe(0);
+    // Lifecycle state is derived (no status column); the view falls back to the
+    // ground state of every track when the invoice has no events yet.
+    const current = db
+      .select()
+      .from(invoiceCurrentStatus)
+      .where(eq(invoiceCurrentStatus.invoiceId, invoice.id))
+      .get();
+    expect(current).toMatchObject({
+      review: 'neu',
+      payment: 'offen',
+      submission: 'nicht_eingereicht',
+      paidOn: null,
+    });
 
     const position = db
       .insert(invoicePositions)

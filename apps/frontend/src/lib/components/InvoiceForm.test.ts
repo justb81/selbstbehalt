@@ -31,7 +31,7 @@ const SAMPLE_INVOICE: InvoiceWithPositions = {
   total_amount: 100.0,
   eligible_amount: 80.0,
   notes: 'Test-Notiz',
-  status: 'neu',
+  status: { review: 'neu', payment: 'offen', submission: 'nicht_eingereicht', paid_on: null },
   self_paid_amount: 0,
   ocr_raw: null,
   created_at: '2025-03-15T10:00:00Z',

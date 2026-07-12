@@ -146,7 +146,8 @@ describe('toReviewPositions / toInvoicePayload', () => {
     const payload = toInvoicePayload(baseState());
     expect(payload.insured_person_id).toBe(VALID_UUID);
     expect(payload.provider_type).toBe('arzt');
-    expect(payload.status).toBe('neu');
+    // No status on the create payload — the lifecycle starts in every track's ground state.
+    expect('status' in payload).toBe(false);
     expect(payload.total_amount).toBeCloseTo(41.88);
     expect(payload.positions).toHaveLength(3);
     expect(payload.positions?.[0]?.goae_category).toBe('GOÄ');

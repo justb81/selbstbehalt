@@ -37,6 +37,7 @@ import type { Database } from '../db/client.js';
 import {
   brePeriods,
   insuredPersons,
+  invoiceCurrentStatus,
   invoicePositions,
   invoices,
   submissions,
@@ -183,19 +184,26 @@ export function createStatsRoute(db: Database) {
         .get();
       if (!insured) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
 
-      // §5.2.1 status rule: `erstattet` positions contribute `refund_amount`
-      // (actual), `geprüft`/`bezahlt`/`eingereicht` contribute `eligible_amount`
-      // (estimate), `neu` is excluded entirely — `charged_amount` sums the rest.
+      // §5.2.1 status rule: reimbursed (`submission = erstattet`) positions contribute
+      // `refund_amount` (actual), all other reviewed positions contribute
+      // `eligible_amount` (estimate); unreviewed (`review = neu`) invoices are excluded
+      // entirely — `charged_amount` sums the rest.
       const rows = db
         .select({
           year: TREATMENT_YEAR,
           charged: sql<number>`coalesce(sum(${invoicePositions.chargedAmount}), 0)`,
-          eligible: sql<number>`coalesce(sum(case when ${invoices.status} in ('geprüft', 'bezahlt', 'eingereicht') then ${invoicePositions.eligibleAmount} else 0 end), 0)`,
-          refund: sql<number>`coalesce(sum(case when ${invoices.status} = 'erstattet' then ${invoicePositions.refundAmount} else 0 end), 0)`,
+          eligible: sql<number>`coalesce(sum(case when ${invoiceCurrentStatus.submission} != 'erstattet' then ${invoicePositions.eligibleAmount} else 0 end), 0)`,
+          refund: sql<number>`coalesce(sum(case when ${invoiceCurrentStatus.submission} = 'erstattet' then ${invoicePositions.refundAmount} else 0 end), 0)`,
         })
         .from(invoicePositions)
         .innerJoin(invoices, eq(invoices.id, invoicePositions.invoiceId))
-        .where(and(eq(invoices.insuredPersonId, insuredPersonId), ne(invoices.status, 'neu')))
+        .innerJoin(invoiceCurrentStatus, eq(invoiceCurrentStatus.invoiceId, invoices.id))
+        .where(
+          and(
+            eq(invoices.insuredPersonId, insuredPersonId),
+            ne(invoiceCurrentStatus.review, 'neu'),
+          ),
+        )
         .groupBy(TREATMENT_YEAR)
         .orderBy(asc(TREATMENT_YEAR))
         .all();
@@ -235,8 +243,9 @@ export function createStatsRoute(db: Database) {
         })
         .from(invoicePositions)
         .innerJoin(invoices, eq(invoices.id, invoicePositions.invoiceId))
+        .innerJoin(invoiceCurrentStatus, eq(invoiceCurrentStatus.invoiceId, invoices.id))
         .innerJoin(insuredPersons, eq(insuredPersons.id, invoices.insuredPersonId))
-        .where(eq(invoices.status, 'erstattet'))
+        .where(eq(invoiceCurrentStatus.submission, 'erstattet'))
         .groupBy(groupColumn)
         .all();
 

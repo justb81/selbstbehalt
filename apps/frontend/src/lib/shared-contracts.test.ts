@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   contractCreateSchema,
-  invoiceStatusValues,
+  submissionStatusValues,
   type ContractCreate,
 } from '@selbstbehalt/shared';
 
@@ -28,6 +28,6 @@ describe('@selbstbehalt/shared consumed from the frontend', () => {
   });
 
   it('exposes the shared enum values', () => {
-    expect(invoiceStatusValues).toContain('eingereicht');
+    expect(submissionStatusValues).toContain('eingereicht');
   });
 });
