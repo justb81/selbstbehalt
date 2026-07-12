@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/justb81/selbstbehalt/compare/v1.8.2...v1.9.0) (2026-07-12)
+
+### Features
+
+- **frontend:** erstattung je kategorie erfassen ([#273](https://github.com/justb81/selbstbehalt/issues/273)) ([3c83f1f](https://github.com/justb81/selbstbehalt/commit/3c83f1f0d7da14115f4b995e0ddf347f06cf9d67))
+- **frontend:** leistungsbereich je position manuell korrigierbar ([#275](https://github.com/justb81/selbstbehalt/issues/275)) ([96dda22](https://github.com/justb81/selbstbehalt/commit/96dda22fcf31761844fe9f8d7a965a599f671a0f))
+
 ## [1.8.2](https://github.com/justb81/selbstbehalt/compare/v1.8.1...v1.8.2) (2026-07-09)
 
 ### Bug Fixes
