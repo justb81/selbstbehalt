@@ -13,6 +13,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
+    BENEFIT_CATEGORY_LABELS,
     formatEur,
     roundCents,
     type BenefitCategory,
@@ -20,7 +21,7 @@
     type InvoiceStatusEvent,
     type InvoiceStatus,
   } from '@selbstbehalt/shared';
-  import { BENEFIT_CATEGORY_LABEL, benefitCategoryForPosition } from '$lib/utils/benefit-category';
+  import { benefitCategoryForPosition } from '$lib/utils/benefit-category';
   import { distributeRefundByCategory } from '$lib/utils/refund-distribution';
   import InvoiceBadge from './InvoiceBadge.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -257,7 +258,7 @@
       const entry = acc[category]!;
       return {
         category,
-        label: BENEFIT_CATEGORY_LABEL[category],
+        label: BENEFIT_CATEGORY_LABELS[category],
         charged_amount: roundCents(entry.charged),
         eligible_amount: entry.hasEligible ? roundCents(entry.eligible) : null,
         refund_amount: roundCents(entry.refund),

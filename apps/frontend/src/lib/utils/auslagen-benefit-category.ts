@@ -11,7 +11,12 @@
  *
  * Pure and injection-free so it is unit-testable in isolation.
  */
-import type { BenefitCategory, GoaeCategory, ProviderType } from '@selbstbehalt/shared';
+import {
+  defaultBenefitCategoryForProvider,
+  type BenefitCategory,
+  type GoaeCategory,
+  type ProviderType,
+} from '@selbstbehalt/shared';
 
 /**
  * The fee schedule an Auslagen position belongs to: §9 → GOZ, §10 → GOÄ. GOT
@@ -29,19 +34,6 @@ export interface AuslagenDerivationPosition {
   /** Amount billed for this position in EUR. */
   chargedAmount: number;
 }
-
-/**
- * Fallback mapping when no honorar position determines the category: the invoice's
- * provider type. `sonstiges` (and anything unmapped) falls through to the final
- * `sonstiges` benefit category. Also reused by {@link benefitCategoryForPosition} to
- * bucket persisted positions that predate the stored `benefit_category`.
- */
-export const PROVIDER_TYPE_BENEFIT: Partial<Record<ProviderType, BenefitCategory>> = {
-  kieferorthopaede: 'kieferorthopaedie',
-  zahnarzt: 'zahnbehandlung',
-  arzt: 'ambulant',
-  krankenhaus: 'stationaer',
-};
 
 /**
  * The single benefit category with the strictly largest summed `chargedAmount`,
@@ -71,10 +63,10 @@ function dominantCategory(byCategory: Map<BenefitCategory, number>): BenefitCate
  *     Gebührenordnung (§9-GOZ → GOZ positions, §10-GOÄ → GOÄ positions). A clear
  *     winner (no tie) wins — so a KFO invoice whose GOZ honorar is mostly
  *     `kieferorthopaedie` carries its lab costs under the KFO rule.
- *  2. **Fallback** (no matching honorar positions, or a tie): the provider-type
- *     mapping (`kieferorthopaede`→`kieferorthopaedie`, `zahnarzt`→`zahnbehandlung`,
- *     `arzt`→`ambulant`, `krankenhaus`→`stationaer`).
- *  3. **Last resort**: `sonstiges`.
+ *  2. **Fallback** (no matching honorar positions, or a tie): the whole-invoice
+ *     default from the provider type ({@link defaultBenefitCategoryForProvider} —
+ *     `kieferorthopaede`→`kieferorthopaedie`, `zahnarzt`→`zahnbehandlung`,
+ *     `arzt`→`ambulant`, `krankenhaus`→`stationaer`, else `sonstiges`).
  */
 export function deriveAuslagenBenefitCategory(
   positions: AuslagenDerivationPosition[],
@@ -87,5 +79,5 @@ export function deriveAuslagenBenefitCategory(
       byCategory.set(p.benefitCategory, (byCategory.get(p.benefitCategory) ?? 0) + p.chargedAmount);
     }
   }
-  return dominantCategory(byCategory) ?? PROVIDER_TYPE_BENEFIT[providerType] ?? 'sonstiges';
+  return dominantCategory(byCategory) ?? defaultBenefitCategoryForProvider(providerType);
 }
