@@ -18,16 +18,23 @@
 
   It carries NO `eligible_amount`/Erstattungsspalte: reimbursement is
   tariff-dependent and computed by the consuming app around this component (see
-  apps/frontend InvoiceForm + erstattungs-engine.ts). `benefit_category` is set
-  per row from the fee-table lookup and surfaced (never rendered) so the parent
-  can run that computation without repeating the lookup.
+  apps/frontend InvoiceForm + erstattungs-engine.ts). `benefit_category` is seeded
+  per row from the fee-table lookup (falling back to the provider default) and
+  surfaced so the parent can run that computation without repeating the lookup.
+  With `showBenefitCategory`, a per-position Leistungsbereich picker lets the user
+  override it (pinned via `benefit_category_overridden`); the tariff-agnostic
+  GOÄ-Wächter demo leaves it off.
 
   All state the parent needs to save is exposed via `bind:` props.
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import {
+    BENEFIT_CATEGORY_LABELS,
+    benefitCategoryValues,
+    defaultBenefitCategoryForProvider,
     formatEur,
+    isFlatReimbursedCategory,
     isNonScheduleCategory,
     providerTypeValues,
     roundCents,
@@ -84,6 +91,13 @@
     reparseOcrRaw = null,
     /** A file handed in from the PWA share target (issue #158): opens the scanner and scans it. */
     sharedFile = null,
+    /**
+     * Show the per-position Leistungsbereich (tariff {@link BenefitCategory}) picker,
+     * seeded from the fee schedule / provider default and manually overridable. Off
+     * by default so the tariff-agnostic GOÄ-Wächter demo stays reduced; the main app
+     * turns it on to drive its reimbursement.
+     */
+    showBenefitCategory = false,
     invoiceDate = $bindable(''),
     invoiceNumber = $bindable(''),
     providerName = $bindable(''),
@@ -97,6 +111,7 @@
     disabled?: boolean;
     reparseOcrRaw?: string | null;
     sharedFile?: File | null;
+    showBenefitCategory?: boolean;
     invoiceDate?: string;
     invoiceNumber?: string;
     providerName?: string;
@@ -294,6 +309,36 @@
     recalcChargedAmount(i);
   }
 
+  // ---------------------------------------------------------------------------
+  // Per-position Leistungsbereich (benefit_category) override (shown only when
+  // `showBenefitCategory`). Picking a category pins it (benefit_category_overridden)
+  // so the auto-revalidation no longer re-seeds it from the fee table; "Automatisch"
+  // clears the pin and re-derives the schedule/provider default.
+  // ---------------------------------------------------------------------------
+
+  function setBenefitCategory(i: number, category: BenefitCategory) {
+    const pos = positions[i];
+    if (!pos) return;
+    pos.benefit_category = category;
+    pos.benefit_category_overridden = true;
+  }
+
+  async function resetBenefitCategory(i: number) {
+    const pos = positions[i];
+    if (!pos) return;
+    pos.benefit_category_overridden = false;
+    if (isNonScheduleCategory(pos.goae_category)) {
+      // Auslagen-Sammelpositionen have no fee-table lookup — derived by the parent app.
+      pos.benefit_category = null;
+      return;
+    }
+    const schedule = categoryToSchedule(pos.goae_category);
+    const table = await loadFeeTable(schedule);
+    const entry = buildIndex(table).get(normalizeZiffer(pos.goae_number));
+    pos.benefit_category =
+      entry?.benefitCategory ?? defaultBenefitCategoryForProvider(providerType);
+  }
+
   async function revalidatePositions() {
     if (positions.length === 0) return;
     revalidating = true;
@@ -362,7 +407,10 @@
               : ('Auslagenersatz' as GoaeCategory),
             is_valid: true,
             flag_reason: null,
-            benefit_category: null,
+            // Non-fee-schedule rows have no schedule-derivable category; leave it for
+            // the consuming app to derive (deriveAuslagenBenefitCategory) unless the
+            // user pinned one via the Leistungsbereich picker.
+            benefit_category: pos.benefit_category_overridden ? pos.benefit_category : null,
           };
         }
         const result = validated[i];
@@ -375,9 +423,14 @@
           base_amount: result.baseAmount ?? pos.base_amount,
           is_valid: result.isValid,
           flag_reason: result.flags.length > 0 ? result.flags.map((f) => f.reason).join(' ') : null,
-          // Surfaced (not rendered) so the parent app can compute the tariff-based
-          // reimbursement without repeating the fee-table lookup.
-          benefit_category: (result.benefitCategory ?? null) as BenefitCategory | null,
+          // Seed the Leistungsbereich from the fee table, falling back to the
+          // whole-invoice default from the provider type — unless the user pinned it
+          // via the picker (benefit_category_overridden), in which case it is kept.
+          // Drives the consuming app's tariff-based reimbursement.
+          benefit_category: pos.benefit_category_overridden
+            ? pos.benefit_category
+            : ((result.benefitCategory as BenefitCategory | null) ??
+              defaultBenefitCategoryForProvider(providerType)),
         };
       });
 
@@ -401,12 +454,13 @@
   /**
    * Fields that feed `revalidatePositions()`'s lookups: Kategorie (which fee
    * table/schedule applies), Ziffer (the lookup key), Faktor (checked against
-   * the §5 limit) and Anzahl (the maxFrequency/maxAmount sums scale with it).
-   * `null` when there are no positions. None of these fields are ever written by
-   * `revalidatePositions()` itself — it only writes
-   * description/base_amount/is_valid/flag_reason/benefit_category (and
-   * treatment_date when empty) — so re-running it can't change this key and
-   * retrigger itself. Deliberately a memoized string (not e.g. `positions`
+   * the §5 limit) and Anzahl (the maxFrequency/maxAmount sums scale with it),
+   * plus `providerType` (the whole-invoice default that seeds a non-overridden
+   * `benefit_category` when the fee table has none). `null` when there are no
+   * positions. None of these fields are ever written by `revalidatePositions()`
+   * itself — it only writes description/base_amount/is_valid/flag_reason/
+   * benefit_category (and treatment_date when empty) — so re-running it can't
+   * change this key and retrigger itself. Deliberately a memoized string (not e.g. `positions`
    * itself read directly in the effect below): each `revalidatePositions()` run
    * reassigns `positions` to new array references several times even when every
    * tracked field is unchanged, and `$effect` only skips re-running when the
@@ -416,9 +470,10 @@
   const revalidationKey = $derived(
     positions.length === 0
       ? null
-      : positions
-          .map((p) => `${p.goae_category ?? ''}|${p.goae_number}|${p.multiplier}|${p.quantity}`)
-          .join(';'),
+      : `${providerType}#` +
+          positions
+            .map((p) => `${p.goae_category ?? ''}|${p.goae_number}|${p.multiplier}|${p.quantity}`)
+            .join(';'),
   );
 
   let revalidateTimer: ReturnType<typeof setTimeout> | undefined;
@@ -778,6 +833,53 @@
                       </div>
                     {/if}
                   </div>
+                  {#if showBenefitCategory && !isFlatReimbursedCategory(pos.goae_category)}
+                    <div class="space-y-1.5">
+                      <Label for="pos-{i}-leistungsbereich">Leistungsbereich (Erstattung)</Label>
+                      <div class="flex items-center gap-1">
+                        <Select
+                          type="single"
+                          value={pos.benefit_category ?? ''}
+                          onValueChange={(v: string) => {
+                            if (v) setBenefitCategory(i, v as BenefitCategory);
+                          }}
+                          {disabled}
+                          items={benefitCategoryValues.map((c) => ({
+                            value: c,
+                            label: BENEFIT_CATEGORY_LABELS[c],
+                          }))}
+                        >
+                          <SelectTrigger class="w-full" id="pos-{i}-leistungsbereich">
+                            <SelectValue placeholder="automatisch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {#each benefitCategoryValues as c (c)}
+                              <SelectItem value={c} label={BENEFIT_CATEGORY_LABELS[c]} />
+                            {/each}
+                          </SelectContent>
+                        </Select>
+                        {#if pos.benefit_category_overridden}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            class="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Leistungsbereich automatisch bestimmen"
+                            aria-label="Leistungsbereich für Position {i + 1} automatisch bestimmen"
+                            {disabled}
+                            onclick={() => void resetBenefitCategory(i)}
+                          >
+                            <RefreshCcwIcon class="size-3.5" />
+                          </Button>
+                        {/if}
+                      </div>
+                      {#if !pos.benefit_category_overridden}
+                        <p class="text-xs text-muted-foreground">
+                          Automatisch aus dem Gebührenverzeichnis bzw. der Rechnungsart bestimmt.
+                        </p>
+                      {/if}
+                    </div>
+                  {/if}
                   <div class="space-y-1.5">
                     <Label for="pos-{i}-beschreibung">Beschreibung</Label>
                     <Textarea

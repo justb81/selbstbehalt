@@ -29,9 +29,21 @@ export type ReviewPositionRow = {
   /** OCR confidence carried per row (uncertainty markers survive reorder/removal). */
   confidence: number;
   /**
-   * Benefit area from the fee-table lookup (`FeeEntry.benefitCategory`); null for
-   * Auslagenersatz or an unknown Ziffer. Not rendered — exposed for the parent
-   * app's tariff-based reimbursement (`eligible_amount`) computation.
+   * Tarif-Leistungsbereich dieser Position, Quelle für die tarifbasierte
+   * Erstattung des aufrufenden Apps (`eligible_amount`). Standard aus dem
+   * Fee-Table-Lookup (`FeeEntry.benefitCategory`), sonst dem rechnungsweiten
+   * Default aus `providerType`; null nur, solange nichts abgeleitet werden
+   * konnte (z. B. Auslagen-Sammelpositionen, vom Aufrufer abgeleitet). Wird nur
+   * angezeigt/bearbeitet, wenn {@link InvoiceReview} mit `showBenefitCategory`
+   * läuft.
    */
   benefit_category: BenefitCategory | null;
+  /**
+   * True, sobald der Nutzer die {@link benefit_category} im
+   * Leistungsbereich-Picker manuell gesetzt hat (oder sie aus gespeicherten
+   * Daten übernommen wurde). Verhindert, dass die automatische Neuprüfung die
+   * Kategorie wieder aus dem Gebührenverzeichnis überschreibt. Rein transient
+   * (UI-State) — nicht Teil der gespeicherten Daten.
+   */
+  benefit_category_overridden?: boolean;
 };

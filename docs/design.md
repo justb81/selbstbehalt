@@ -296,7 +296,7 @@ invoice_id       TEXT REFERENCES invoices(id)
 treatment_date   DATE NOT NULL      -- Leistungsdatum; bestimmt das BRE-/Selbstbehalt-Jahr (§5.2)
 goae_number      TEXT NOT NULL      -- GOÄ-Ziffer, z.B. "0340"
 goae_category    TEXT               -- 'GOÄ' | 'GOZ' | 'GOT' | 'Auslagenersatz' | 'Arznei-/Hilfsmittel' | 'Material-/Laborkosten'
-benefit_category TEXT               -- Tarif-Leistungsbereich (ambulant, zahnbehandlung, kieferorthopaedie, …); beim Speichern aufgelöst, gruppiert die Erstattungs-Erfassung je Kategorie
+benefit_category TEXT               -- Tarif-Leistungsbereich (ambulant, zahnbehandlung, kieferorthopaedie, …); Default aus GebüV-Lookup bzw. provider_type, pro Position manuell korrigierbar (§5.1); gruppiert die Erstattungs-Erfassung je Kategorie
 description      TEXT               -- Leistungsbeschreibung aus GOÄ-Lookup (bzw. Bezeichnung bei Rezept-Belegen)
 quantity         INTEGER DEFAULT 1  -- Anzahl
 multiplier       REAL NOT NULL      -- Steigerungsfaktor, z.B. 2.3 (bei Nicht-GO-Kategorien fix 1)
@@ -561,9 +561,17 @@ interface ErstattungResult {
 }
 ```
 
-Die Positionen tragen ihre `benefitCategory` aus der Fee-Schedule-Tabelle (§4.4,
-`FeeEntry.benefitCategory`); der ambulant↔stationär-Fall und Nicht-GOÄ/GOZ-Bereiche
-werden vom Aufrufer aufgelöst. Berechnungsschritte je Kategorie-Gruppe:
+Die Positionen tragen ihre `benefitCategory` standardmäßig aus der Fee-Schedule-Tabelle
+(§4.4, `FeeEntry.benefitCategory`); fehlt dort eine (unbekannte Ziffer, Nicht-GOÄ/GOZ-Bereiche),
+greift der rechnungsweite Default aus `provider_type` (`defaultBenefitCategoryForProvider`:
+`zahnarzt`→`zahnbehandlung`, `kieferorthopaede`→`kieferorthopaedie`, `arzt`→`ambulant`,
+`krankenhaus`→`stationaer`). Im Review lässt sich der Leistungsbereich **pro Position manuell
+korrigieren** (`InvoiceReview` mit `showBenefitCategory`): z. B. eine beim Kieferorthopäden
+miterbrachte Zahnreinigung auf `zahnbehandlung`, während die übrigen Positionen
+`kieferorthopaedie` bleiben. Die gewählte `benefit_category` wird je Position persistiert
+(§3.2) und ist beim erneuten Bearbeiten angeheftet (nicht automatisch neu abgeleitet);
+`resolveBenefitCategory` bevorzugt daher stets einen gesetzten Wert. Berechnungsschritte
+je Kategorie-Gruppe:
 
 1. **Wartezeit prüfen** — liegt `invoiceDate` vor `coverageStart + waiting_period_months`,
    ist der Betrag nicht erstattungsfähig (`appliedPct = 0`, `cappedBy = 'waiting_period'`).

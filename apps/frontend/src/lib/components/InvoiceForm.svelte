@@ -130,7 +130,12 @@
       is_valid: p.is_valid ?? null,
       flag_reason: p.flag_reason ?? null,
       confidence: 1,
-      benefit_category: null,
+      // A stored benefit_category is authoritative (previously resolved or a manual
+      // override): carry it and pin it so the review's auto-revalidation keeps it
+      // instead of re-deriving from the fee table. Legacy rows without one (null)
+      // stay unpinned and are seeded on revalidation.
+      benefit_category: p.benefit_category ?? null,
+      benefit_category_overridden: p.benefit_category != null,
     };
   }
 
@@ -297,6 +302,7 @@
     {disabled}
     {sharedFile}
     {reparseOcrRaw}
+    showBenefitCategory
     bind:invoiceDate
     bind:invoiceNumber
     bind:providerName

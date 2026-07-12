@@ -2,30 +2,34 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AuslagenDerivationPosition } from './auslagen-benefit-category';
-import {
-  BENEFIT_CATEGORY_LABEL,
-  benefitCategoryForPosition,
-  resolveBenefitCategory,
-} from './benefit-category';
-
-describe('BENEFIT_CATEGORY_LABEL', () => {
-  it('has a German label for every benefit category', () => {
-    expect(BENEFIT_CATEGORY_LABEL.kieferorthopaedie).toBe('Kieferorthopädie');
-    expect(BENEFIT_CATEGORY_LABEL.stationaer).toBe('Stationär');
-    expect(BENEFIT_CATEGORY_LABEL.zahnersatz).toBe('Zahnersatz');
-  });
-});
+import { benefitCategoryForPosition, resolveBenefitCategory } from './benefit-category';
 
 describe('resolveBenefitCategory (save time)', () => {
-  it('uses the looked-up benefit_category for a fee-schedule position', () => {
+  it('uses an explicit benefit_category for a fee-schedule position', () => {
     expect(
       resolveBenefitCategory({ goae_category: 'GOÄ', benefit_category: 'ambulant' }, [], 'arzt'),
     ).toBe('ambulant');
   });
 
-  it('falls back to sonstiges when a fee-schedule position has no looked-up category', () => {
+  it('an explicit benefit_category (manual override) wins over the Auslagen derivation', () => {
+    const honorar: AuslagenDerivationPosition[] = [
+      { goaeCategory: 'GOZ', benefitCategory: 'kieferorthopaedie', chargedAmount: 300 },
+    ];
+    expect(
+      resolveBenefitCategory(
+        { goae_category: 'Material-/Laborkosten', benefit_category: 'zahnbehandlung' },
+        honorar,
+        'kieferorthopaede',
+      ),
+    ).toBe('zahnbehandlung');
+  });
+
+  it('falls back to the provider default when a fee-schedule position has no category', () => {
     expect(
       resolveBenefitCategory({ goae_category: 'GOZ', benefit_category: null }, [], 'zahnarzt'),
+    ).toBe('zahnbehandlung');
+    expect(
+      resolveBenefitCategory({ goae_category: 'GOÄ', benefit_category: null }, [], 'sonstiges'),
     ).toBe('sonstiges');
   });
 

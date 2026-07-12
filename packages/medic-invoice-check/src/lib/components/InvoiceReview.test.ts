@@ -646,3 +646,129 @@ describe('InvoiceReview — edit mode', () => {
     await waitFor(() => expect(gesamt).toHaveValue(30));
   });
 });
+
+describe('InvoiceReview — Leistungsbereich picker (benefit_category)', () => {
+  const LEISTUNGSBEREICH_LABEL = 'Leistungsbereich (Erstattung)';
+
+  it('is hidden by default (tariff-agnostic, e.g. GOÄ-Wächter demo)', async () => {
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
+    });
+    await waitFor(() => expect(lookupPosition).toHaveBeenCalledOnce());
+    expect(screen.queryByText(LEISTUNGSBEREICH_LABEL)).not.toBeInTheDocument();
+  });
+
+  it('seeds the picker from the fee table when enabled', async () => {
+    vi.mocked(lookupPosition).mockReturnValue({
+      isValid: true,
+      flags: [],
+      feeSchedule: 'GOÄ',
+      benefitCategory: 'zahnbehandlung',
+    } as never);
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        showBenefitCategory: true,
+        initialProviderType: 'kieferorthopaede',
+        initialPositions: [{ ...SAMPLE_POSITION }],
+      },
+    });
+    const trigger = document.getElementById('pos-0-leistungsbereich') as HTMLElement;
+    expect(trigger).toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveTextContent('Zahnbehandlung'));
+  });
+
+  it('falls back to the provider default when the fee table has no category', async () => {
+    // A prior test's mockReturnValue persists across clearAllMocks (it clears calls,
+    // not implementations), so set the no-benefitCategory return explicitly here.
+    vi.mocked(lookupPosition).mockReturnValue({
+      isValid: true,
+      flags: [],
+      feeSchedule: 'GOÄ',
+    } as never);
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        showBenefitCategory: true,
+        initialProviderType: 'kieferorthopaede',
+        initialPositions: [{ ...SAMPLE_POSITION }],
+      },
+    });
+    const trigger = document.getElementById('pos-0-leistungsbereich') as HTMLElement;
+    await waitFor(() => expect(trigger).toHaveTextContent('Kieferorthopädie'));
+  });
+
+  it('keeps a manual override across auto-revalidation', async () => {
+    // The fee-table lookup would say "ambulant", but the pinned override must win.
+    vi.mocked(lookupPosition).mockReturnValue({
+      isValid: true,
+      flags: [],
+      feeSchedule: 'GOÄ',
+      benefitCategory: 'ambulant',
+    } as never);
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        showBenefitCategory: true,
+        initialProviderType: 'arzt',
+        initialPositions: [
+          { ...SAMPLE_POSITION, benefit_category: 'zahnersatz', benefit_category_overridden: true },
+        ],
+      },
+    });
+    const trigger = document.getElementById('pos-0-leistungsbereich') as HTMLElement;
+    await waitFor(() => expect(trigger).toHaveTextContent('Zahnersatz'));
+
+    // Force another revalidation via a Faktor change — the override still holds.
+    const faktor = screen.getByRole('spinbutton', { name: 'Faktor' });
+    await user.clear(faktor);
+    await user.type(faktor, '1.8');
+    await waitPastDebounce();
+    expect(trigger).toHaveTextContent('Zahnersatz');
+  });
+
+  it('re-derives the automatic category when the override is reset', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        showBenefitCategory: true,
+        initialProviderType: 'arzt',
+        initialPositions: [
+          { ...SAMPLE_POSITION, benefit_category: 'zahnersatz', benefit_category_overridden: true },
+        ],
+      },
+    });
+    const trigger = document.getElementById('pos-0-leistungsbereich') as HTMLElement;
+    await waitFor(() => expect(trigger).toHaveTextContent('Zahnersatz'));
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Leistungsbereich für Position 1 automatisch bestimmen',
+      }),
+    );
+    // buildIndex is mocked empty → no fee entry → provider default (arzt → ambulant).
+    await waitFor(() => expect(trigger).toHaveTextContent('Ambulant'));
+    // Reset removes the pin, so the reset affordance disappears.
+    expect(
+      screen.queryByRole('button', {
+        name: 'Leistungsbereich für Position 1 automatisch bestimmen',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the picker for a flat Arznei-/Hilfsmittel position even when enabled', async () => {
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        showBenefitCategory: true,
+        initialPositions: [
+          { ...SAMPLE_POSITION, goae_category: 'Arznei-/Hilfsmittel', goae_number: '' },
+        ],
+      },
+    });
+    await waitPastDebounce();
+    expect(screen.queryByText(LEISTUNGSBEREICH_LABEL)).not.toBeInTheDocument();
+  });
+});

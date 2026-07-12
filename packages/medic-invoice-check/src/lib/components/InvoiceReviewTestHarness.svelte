@@ -19,6 +19,7 @@
     disabled = false,
     reparseOcrRaw = null,
     sharedFile = null,
+    showBenefitCategory = false,
     initialPositions = [],
     initialInvoiceDate = '',
     initialInvoiceNumber = '',
@@ -30,6 +31,7 @@
     disabled?: boolean;
     reparseOcrRaw?: string | null;
     sharedFile?: File | null;
+    showBenefitCategory?: boolean;
     initialPositions?: ReviewPositionRow[];
     initialInvoiceDate?: string;
     initialInvoiceNumber?: string;
@@ -54,6 +56,7 @@
   {disabled}
   {reparseOcrRaw}
   {sharedFile}
+  {showBenefitCategory}
   bind:invoiceDate
   bind:invoiceNumber
   bind:providerName
