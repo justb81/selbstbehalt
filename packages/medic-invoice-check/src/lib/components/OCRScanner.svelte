@@ -26,10 +26,10 @@
     CaptureError,
   } from '../ocr/capture';
   import { preprocess as defaultPreprocess } from '../ocr/preprocess';
-  import { loadAllInvoiceImages, recognizeInvoiceImage } from '../ocr/scan-ocr';
+  import { loadAllInvoicePages, recognizeInvoiceImage } from '../ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
-  import type { OcrProgress, OcrResult } from '../ocr/types';
+  import type { OcrProgress, OcrResult, ScanPage } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
@@ -41,7 +41,7 @@
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
-    fileToImages: (file: File) => Promise<ImageData[]>;
+    fileToPages: (file: File) => Promise<ScanPage[]>;
     preprocess: (image: ImageData) => ImageData;
     recognize: (
       image: ImageData,
@@ -70,7 +70,7 @@
   // `deps` is injected once (tests) and never changes; capturing the initial
   // value here is intentional, so silence the seed-once reactivity warning.
   // svelte-ignore state_referenced_locally
-  const fileToImages = deps.fileToImages ?? ((f: File) => loadAllInvoiceImages(f));
+  const fileToPages = deps.fileToPages ?? ((f: File) => loadAllInvoicePages(f));
   // svelte-ignore state_referenced_locally
   const preprocess =
     deps.preprocess ?? ((img: ImageData) => defaultPreprocess(img, { contrast: 1.2 }));
@@ -101,20 +101,27 @@
   }
 
   /**
-   * Preprocess → OCR → parse one or more frames, then surface the result.
-   * For multi-page PDFs each page is recognised in order and the results are
-   * concatenated before parsing, so the full document is treated as one invoice.
-   * Frames are discarded as soon as recognition finishes (Datenminimierung §8.2).
+   * Preprocess → OCR → parse one or more pages, then surface the result. A
+   * page already carrying text-layer lines (PDF, issue #278) skips
+   * preprocessing and OCR entirely; an image page still runs through both.
+   * For multi-page documents every page's lines are recognised/read in order
+   * and concatenated before parsing, so the full document is treated as one
+   * invoice. Frames are discarded as soon as recognition finishes
+   * (Datenminimierung §8.2).
    */
-  async function processImages(images: ImageData[]): Promise<void> {
+  async function processPages(pages: ScanPage[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
       const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
       const allResults: OcrResult[] = [];
-      for (const image of images) {
-        const prepared = preprocess(image);
+      for (const page of pages) {
+        if (page.kind === 'text') {
+          allResults.push(...page.lines);
+          continue;
+        }
+        const prepared = preprocess(page.image);
         const results = await recognize(prepared, (p) => (progress = p));
         allResults.push(...results);
       }
@@ -130,8 +137,8 @@
 
   async function handleFile(file: File): Promise<void> {
     try {
-      const images = await fileToImages(file);
-      await processImages(images);
+      const pages = await fileToPages(file);
+      await processPages(pages);
     } catch (err) {
       error = messageFor(err);
     }
@@ -212,7 +219,7 @@
     try {
       const image = await capturePhoto(activeStream, video);
       teardownCamera();
-      await processImages([image]);
+      await processPages([{ kind: 'image', image }]);
     } catch (err) {
       // Never leave the camera running on a failed capture.
       teardownCamera();

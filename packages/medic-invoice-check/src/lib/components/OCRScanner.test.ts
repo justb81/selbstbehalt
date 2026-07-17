@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { textToOcrResults } from '../ocr/scan-ocr';
 import type { ScanResult } from '../ocr/scan-flow';
+import type { ScanPage } from '../ocr/types';
 import OCRScanner from './OCRScanner.svelte';
 
 const SAMPLE = ['250  Blutentnahme  2,3  5,36', '75  Bericht  3,5  26,53'].join('\n');
@@ -13,9 +14,13 @@ function dummyImage(): ImageData {
   return { data: new Uint8ClampedArray(4), width: 1, height: 1, colorSpace: 'srgb' } as ImageData;
 }
 
+function imagePage(): ScanPage {
+  return { kind: 'image', image: dummyImage() };
+}
+
 function stubDeps(recognizeText = SAMPLE) {
   return {
-    fileToImages: vi.fn(async () => [dummyImage()]),
+    fileToPages: vi.fn(async () => [imagePage()]),
     preprocess: vi.fn((img: ImageData) => img),
     recognize: vi.fn(async () => textToOcrResults(recognizeText)),
   };
@@ -32,7 +37,7 @@ describe('OCRScanner', () => {
     await userEvent.upload(input, file);
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToImages).toHaveBeenCalledWith(file);
+    expect(deps.fileToPages).toHaveBeenCalledWith(file);
     expect(deps.preprocess).toHaveBeenCalled();
 
     const result = onScanned.mock.calls[0]?.[0] as ScanResult;
@@ -69,7 +74,7 @@ describe('OCRScanner', () => {
     await fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToImages).toHaveBeenCalledWith(file);
+    expect(deps.fileToPages).toHaveBeenCalledWith(file);
   });
 
   it('concatenates OCR results from a multi-page PDF into one parsed invoice', async () => {
@@ -77,7 +82,7 @@ describe('OCRScanner', () => {
     const page2 = ['75  Bericht  3,5  26,53'].join('\n');
     const onScanned = vi.fn<(r: ScanResult) => void>();
     const deps = {
-      fileToImages: vi.fn(async () => [dummyImage(), dummyImage()]),
+      fileToPages: vi.fn(async () => [imagePage(), imagePage()]),
       preprocess: vi.fn((img: ImageData) => img),
       // Each call returns OCR results for one page.
       recognize: vi
@@ -97,6 +102,35 @@ describe('OCRScanner', () => {
     // Both pages' positions must appear in the single result.
     expect(result.parsed.positions).toHaveLength(2);
     expect(deps.recognize).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips preprocessing/OCR for a PDF text-layer page, running it only for the scanned page (issue #278)', async () => {
+    const textLines = textToOcrResults(['250  Blutentnahme  2,3  5,36'].join('\n'));
+    const scannedPage = ['75  Bericht  3,5  26,53'].join('\n');
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const preprocess = vi.fn((img: ImageData) => img);
+    const recognize = vi.fn(async () => textToOcrResults(scannedPage));
+    const deps = {
+      fileToPages: vi.fn(async (): Promise<ScanPage[]> => [
+        { kind: 'text', lines: textLines },
+        imagePage(),
+      ]),
+      preprocess,
+      recognize,
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.upload(
+      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      new File(['x'], 'rechnung.pdf', { type: 'application/pdf' }),
+    );
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    // Only the image page went through preprocessing/OCR.
+    expect(preprocess).toHaveBeenCalledTimes(1);
+    expect(recognize).toHaveBeenCalledTimes(1);
+    const result = onScanned.mock.calls[0]?.[0] as ScanResult;
+    expect(result.parsed.positions).toHaveLength(2);
   });
 
   it('surfaces a recognition failure without emitting a result', async () => {
@@ -123,7 +157,7 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps, autoFile } });
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToImages).toHaveBeenCalledWith(autoFile);
+    expect(deps.fileToPages).toHaveBeenCalledWith(autoFile);
   });
 });
 
