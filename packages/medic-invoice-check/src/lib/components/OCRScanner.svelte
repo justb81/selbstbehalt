@@ -20,7 +20,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
 
   import {
-    captureVideoFrame as defaultCaptureVideoFrame,
+    capturePhoto as defaultCapturePhoto,
     requestCameraStream as defaultRequestCameraStream,
     stopStream as defaultStopStream,
     CaptureError,
@@ -35,6 +35,8 @@
   import { Progress } from './ui/progress';
   import { Alert, AlertDescription } from './ui/alert';
   import CameraIcon from '@lucide/svelte/icons/camera';
+  import FileIcon from '@lucide/svelte/icons/file';
+  import ScanIcon from '@lucide/svelte/icons/scan';
   import { cn } from '../utils';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
@@ -47,7 +49,7 @@
     ) => Promise<OcrResult[]>;
     requestCameraStream: () => Promise<MediaStream>;
     stopStream: (stream: MediaStream) => void;
-    captureVideoFrame: (video: HTMLVideoElement) => Promise<ImageData>;
+    capturePhoto: (stream: MediaStream, video: HTMLVideoElement) => Promise<ImageData>;
   }
 
   let {
@@ -79,8 +81,8 @@
   // svelte-ignore state_referenced_locally
   const stopStream = deps.stopStream ?? defaultStopStream;
   // svelte-ignore state_referenced_locally
-  const captureVideoFrame =
-    deps.captureVideoFrame ?? ((v: HTMLVideoElement) => defaultCaptureVideoFrame(v));
+  const capturePhoto =
+    deps.capturePhoto ?? ((s: MediaStream, v: HTMLVideoElement) => defaultCapturePhoto(s, v));
 
   type Phase = 'idle' | 'camera' | 'processing';
   let phase = $state<Phase>('idle');
@@ -212,9 +214,10 @@
   }
 
   async function capture(): Promise<void> {
-    if (!video) return;
+    if (!video || !stream) return;
+    const activeStream = stream;
     try {
-      const image = await captureVideoFrame(video);
+      const image = await capturePhoto(activeStream, video);
       teardownCamera();
       await processPages([{ kind: 'image', image }]);
     } catch (err) {
@@ -271,21 +274,11 @@
             isDragging ? 'bg-primary text-primary-foreground' : 'bg-accent text-primary',
           )}
         >
-          <CameraIcon class="size-5.5" />
+          <ScanIcon class="size-5.5" />
         </div>
         <p class="text-sm font-semibold">Rechnung hierher ziehen oder auswählen</p>
         <p class="text-muted-foreground -mt-1.5 text-xs">Foto, Bild oder PDF</p>
         <div class="flex flex-wrap justify-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onclick={(e: MouseEvent) => {
-              e.stopPropagation();
-              fileInput?.click();
-            }}
-          >
-            Datei wählen
-          </Button>
           <Button
             type="button"
             variant="default"
@@ -294,7 +287,19 @@
               void startCamera();
             }}
           >
-            Kamera öffnen
+            <CameraIcon class="mr-1.5 size-3.5" />
+            Rechnung fotografieren
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onclick={(e: MouseEvent) => {
+              e.stopPropagation();
+              fileInput?.click();
+            }}
+          >
+            <FileIcon class="mr-1.5 size-3.5" />
+            Datei/PDF wählen
           </Button>
         </div>
         <input

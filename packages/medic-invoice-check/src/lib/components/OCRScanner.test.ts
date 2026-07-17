@@ -160,3 +160,93 @@ describe('OCRScanner', () => {
     expect(deps.fileToPages).toHaveBeenCalledWith(autoFile);
   });
 });
+
+// One dedicated photo entry point ("Rechnung fotografieren") vs. one dedicated
+// file entry point ("Datei/PDF wählen", tested above) — issue #280.
+describe('OCRScanner camera capture (issue #280)', () => {
+  function stubCameraDeps(recognizeText = SAMPLE) {
+    const stream = { id: 'cam-stream' } as unknown as MediaStream;
+    return {
+      stream,
+      requestCameraStream: vi.fn(async () => stream),
+      stopStream: vi.fn(),
+      capturePhoto: vi.fn(async () => dummyImage()),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => textToOcrResults(recognizeText)),
+    };
+  }
+
+  it('opens the in-app camera preview via the dedicated photo entry point', async () => {
+    const onScanned = vi.fn();
+    const deps = stubCameraDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+    expect(screen.getByRole('button', { name: 'Aufnehmen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeInTheDocument();
+  });
+
+  it('captures a photo via the injected capturePhoto, releases the camera and emits the result', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = stubCameraDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(deps.capturePhoto).toHaveBeenCalledWith(deps.stream, expect.anything());
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+  });
+
+  it('releases the camera on cancel without scanning', async () => {
+    const onScanned = vi.fn();
+    const deps = stubCameraDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+    expect(deps.capturePhoto).not.toHaveBeenCalled();
+    expect(onScanned).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Rechnung fotografieren' })).toBeInTheDocument();
+  });
+
+  it('releases the camera when torn down mid-preview (LED must not stay on)', async () => {
+    const onScanned = vi.fn();
+    const deps = stubCameraDeps();
+    const { unmount } = render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+
+    unmount();
+
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+  });
+
+  it('releases the camera and surfaces an error when capturePhoto fails', async () => {
+    const onScanned = vi.fn();
+    const deps = stubCameraDeps();
+    deps.capturePhoto = vi.fn(async () => {
+      throw new Error('Kamerabild ist noch nicht bereit.');
+    });
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kamerabild ist noch nicht bereit.');
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+    expect(onScanned).not.toHaveBeenCalled();
+  });
+});
