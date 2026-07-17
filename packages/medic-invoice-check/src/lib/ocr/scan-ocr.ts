@@ -12,9 +12,9 @@
  * **Privacy:** the image is transferred into the worker and recognised
  * on-device; it never reaches the network (docs/design.md §1.3, §8).
  */
-import { fileToAllImageData } from './capture';
+import { fileToAllPages } from './capture';
 import { OcrClient } from './ocr-client';
-import type { OcrBackend, OcrEngineConfig, OcrProgress, OcrResult } from './types';
+import type { OcrBackend, OcrEngineConfig, OcrProgress, OcrResult, ScanPage } from './types';
 
 /** Recognises one preprocessed frame into text lines, reporting progress. */
 export type OcrRecognizer = (
@@ -22,13 +22,13 @@ export type OcrRecognizer = (
   onProgress?: (progress: OcrProgress) => void,
 ) => Promise<OcrResult[]>;
 
-/** Loads all pages of a user-selected file as {@link ImageData} frames. */
-export type MultiImageLoader = (file: File) => Promise<ImageData[]>;
+/** Loads all pages of a user-selected file as {@link ScanPage}s. */
+export type MultiPageLoader = (file: File) => Promise<ScanPage[]>;
 
 let client: OcrClient | null = null;
 let initPromise: Promise<OcrBackend> | null = null;
 let override: OcrRecognizer | null = null;
-let multiLoaderOverride: MultiImageLoader | null = null;
+let pageLoaderOverride: MultiPageLoader | null = null;
 let engineConfig: Partial<OcrEngineConfig> | undefined;
 
 /**
@@ -71,8 +71,8 @@ export function recognizeInvoiceImage(
 }
 
 /** Loads all invoice pages from a file via the active loader (override or default). */
-export function loadAllInvoiceImages(file: File): Promise<ImageData[]> {
-  return (multiLoaderOverride ?? fileToAllImageData)(file);
+export function loadAllInvoicePages(file: File): Promise<ScanPage[]> {
+  return (pageLoaderOverride ?? fileToAllPages)(file);
 }
 
 /** Overrides the recognizer (tests/E2E); pass `null` to restore the default. */
@@ -80,9 +80,9 @@ export function setOcrRecognizer(recognizer: OcrRecognizer | null): void {
   override = recognizer;
 }
 
-/** Overrides the file→images loader (tests/E2E); pass `null` to restore the default. */
-export function setAllImageLoader(loader: MultiImageLoader | null): void {
-  multiLoaderOverride = loader;
+/** Overrides the file→pages loader (tests/E2E); pass `null` to restore the default. */
+export function setPageLoader(loader: MultiPageLoader | null): void {
+  pageLoaderOverride = loader;
 }
 
 /** Tears down the shared client (e.g. when leaving the scan screen). */
@@ -110,7 +110,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   (
     window as unknown as { __selbstbehaltStubScan?: (text: string) => void }
   ).__selbstbehaltStubScan = (text: string) => {
-    setAllImageLoader(async () => [new ImageData(1, 1)]);
+    setPageLoader(async () => [{ kind: 'image', image: new ImageData(1, 1) }]);
     setOcrRecognizer(async () => textToOcrResults(text));
   };
 }

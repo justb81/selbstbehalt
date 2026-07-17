@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CaptureError,
   captureVideoFrame,
-  fileToAllImageData,
+  fileToAllPages,
   fileToImageData,
   requestCameraStream,
   stopStream,
@@ -146,23 +146,23 @@ describe('fileToImageData', () => {
   });
 });
 
-describe('fileToAllImageData', () => {
-  it('delegates a PDF to renderAllPdfPages and returns all pages', async () => {
-    const page1 = sentinel;
-    const page2 = { data: new Uint8ClampedArray(4), width: 2, height: 1 } as unknown as ImageData;
+describe('fileToAllPages', () => {
+  it('delegates a PDF to extractOrRenderAllPdfPages and returns all pages', async () => {
+    const page1 = { kind: 'text', lines: [] } as const;
+    const page2 = { kind: 'image', image: sentinel } as const;
     const file = new File([new Uint8Array([1])], 'invoice.pdf', { type: 'application/pdf' });
-    const renderAllPdfPages = vi.fn().mockResolvedValue([page1, page2]);
-    const results = await fileToAllImageData(file, { renderAllPdfPages });
+    const extractOrRenderAllPdfPages = vi.fn().mockResolvedValue([page1, page2]);
+    const results = await fileToAllPages(file, { extractOrRenderAllPdfPages });
     expect(results).toEqual([page1, page2]);
-    expect(renderAllPdfPages).toHaveBeenCalledWith(file);
+    expect(extractOrRenderAllPdfPages).toHaveBeenCalledWith(file);
   });
 
-  it('wraps a single image in a one-element array', async () => {
+  it('wraps a single image in a one-element image page array', async () => {
     const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' });
     const close = vi.fn();
     const decode = vi.fn().mockResolvedValue({ width: 1, height: 1, close });
     const toImageData = vi.fn().mockReturnValue(sentinel);
-    const results = await fileToAllImageData(file, { decode, toImageData });
-    expect(results).toEqual([sentinel]);
+    const results = await fileToAllPages(file, { decode, toImageData });
+    expect(results).toEqual([{ kind: 'image', image: sentinel }]);
   });
 });

@@ -12,8 +12,11 @@ vi.mock('../ocr', () => ({
 // OCRScanner imports the recognition pipeline from this module directly (not
 // via the '../ocr' barrel above), so a scan can be driven end-to-end in tests.
 vi.mock('../ocr/scan-ocr', () => ({
-  loadAllInvoiceImages: vi.fn(async () => [
-    { data: new Uint8ClampedArray(4), width: 1, height: 1, colorSpace: 'srgb' },
+  loadAllInvoicePages: vi.fn(async () => [
+    {
+      kind: 'image',
+      image: { data: new Uint8ClampedArray(4), width: 1, height: 1, colorSpace: 'srgb' },
+    },
   ]),
   recognizeInvoiceImage: vi.fn(async () => []),
 }));

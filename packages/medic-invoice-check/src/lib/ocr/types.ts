@@ -38,6 +38,14 @@ export interface OcrResult {
   confidence: number;
 }
 
+/**
+ * One page queued for the scan pipeline (issue #278): either lines already
+ * read from a PDF's text layer (no OCR needed, `confidence` fixed at `1`) or
+ * a rasterised frame still needing preprocessing + OCR. A multi-page PDF can
+ * mix both kinds — the decision is made per page.
+ */
+export type ScanPage = { kind: 'text'; lines: OcrResult[] } | { kind: 'image'; image: ImageData };
+
 /** Lifecycle phase reported through {@link OcrProgress}. */
 export type OcrPhase = 'init' | 'recognize';
 

@@ -405,7 +405,15 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 ```
 1. Nutzer fotografiert Rechnung (Kamera) oder wählt PDF/Bild
         ↓
-2. Bildvorverarbeitung (Canvas API):
+2a. PDF mit Textlayer (digital erzeugt, z. B. Praxissoftware/"als PDF drucken"):
+    `pdfjs` liest den Textlayer je Seite direkt aus (`getTextContent()`,
+    Issue #278) — kein Rasterisieren, kein OCR nötig. Eine
+    Qualitäts-/Brauchbarkeits-Heuristik (Zeichenzahl, Anteil druckbarer
+    Zeichen, Vorkommen von GOÄ/GOZ-Ziffern/EUR/Datumsmustern) entscheidet je
+    Seite; fällt sie durch (dünn, verrauscht/CID-Font-Müll, reines Scan-PDF),
+    läuft genau diese Seite über Pfad 2b/3.
+        ↓ (nur Seiten ohne brauchbaren Textlayer)
+2b. Bildvorverarbeitung (Canvas API):
    - Graustufen-Konvertierung
    - Kontrast-Verstärkung
    - Entzerrung (perspektivische Korrektur via Homographie, optional)
@@ -420,6 +428,12 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
         ↓
 5. Ergebnis-JSON → Review-Screen → bei Bestätigung: API POST
 ```
+
+Die Entscheidung Textlayer-vs-OCR fällt **pro Seite**, nicht pro Dokument — ein
+mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
+Pfade münden in derselben `OcrResult[]`-Form (Textlayer-Zeilen mit fixer
+`confidence: 1`), sodass Parser und Review-Screen die Quelle nicht
+unterscheiden müssen.
 
 ### 4.2 PP-OCRv5-Integration (`ppu-paddle-ocr`)
 
