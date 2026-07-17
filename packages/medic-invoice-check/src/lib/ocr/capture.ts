@@ -50,11 +50,25 @@ export interface CaptureDeps {
   renderPdfPage?: (file: Blob, pageNumber: number) => Promise<ImageData>;
   /** Renders all PDF pages to an array of {@link ImageData}s (defaults to {@link renderAllPdfPages}). */
   renderAllPdfPages?: (file: Blob) => Promise<ImageData[]>;
+  /**
+   * Takes a full-resolution still photo off a live camera track (defaults to
+   * `ImageCapture.takePhoto()`, issue #280).
+   */
+  takePhoto?: (track: MediaStreamTrack) => Promise<Blob>;
 }
 
-/** Default camera constraints: rear-facing video, no audio. */
+/**
+ * Default camera constraints: rear-facing video at a high still-image
+ * resolution. `ideal` only steers the browser's pick — it never fails the
+ * request when a device can't reach it — but without it many devices default
+ * to a 640×480/720p video mode far below a real camera photo (issue #280).
+ */
 export const REAR_CAMERA_CONSTRAINTS: MediaStreamConstraints = {
-  video: { facingMode: { ideal: 'environment' } },
+  video: {
+    facingMode: { ideal: 'environment' },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+  },
   audio: false,
 };
 
@@ -132,6 +146,49 @@ export async function captureVideoFrame(
   }
   const toImageData = deps.toImageData ?? defaultToImageData;
   return toImageData(video, width, height);
+}
+
+/** `ImageCapture` isn't in every target yet; look it up dynamically. */
+function defaultTakePhoto(track: MediaStreamTrack): Promise<Blob> {
+  const ImageCaptureCtor = (globalThis as { ImageCapture?: typeof ImageCapture }).ImageCapture;
+  if (!ImageCaptureCtor) {
+    return Promise.reject(new CaptureError('unsupported', 'ImageCapture wird nicht unterstützt.'));
+  }
+  return new ImageCaptureCtor(track).takePhoto();
+}
+
+/**
+ * Captures a full-resolution still photo from a live camera stream. Prefers
+ * `ImageCapture.takePhoto()`, which grabs a still image at the sensor's native
+ * resolution instead of a `<video>` frame, and so is markedly sharper on
+ * devices that support it. Falls back to {@link captureVideoFrame} when
+ * `ImageCapture` is unavailable or the still capture fails for any reason
+ * (issue #280) — the camera flow must never dead-end just because the richer
+ * API isn't there.
+ */
+export async function capturePhoto(
+  stream: MediaStream,
+  video: HTMLVideoElement,
+  deps: CaptureDeps = {},
+): Promise<ImageData> {
+  const track = stream.getVideoTracks()[0];
+  if (track) {
+    try {
+      const takePhoto = deps.takePhoto ?? defaultTakePhoto;
+      const blob = await takePhoto(track);
+      const decode = deps.decode ?? defaultDecode;
+      const toImageData = deps.toImageData ?? defaultToImageData;
+      const bitmap = await decode(blob);
+      try {
+        return await toImageData(bitmap, bitmap.width, bitmap.height);
+      } finally {
+        bitmap.close?.();
+      }
+    } catch {
+      // Fall through to the video-frame grab below.
+    }
+  }
+  return captureVideoFrame(video, deps);
 }
 
 /**

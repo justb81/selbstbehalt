@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CaptureError,
+  capturePhoto,
   captureVideoFrame,
   fileToAllImageData,
   fileToImageData,
+  REAR_CAMERA_CONSTRAINTS,
   requestCameraStream,
   stopStream,
 } from './capture';
@@ -26,6 +28,19 @@ function setNavigator(value: unknown): void {
 }
 
 const sentinel = { data: new Uint8ClampedArray(4), width: 1, height: 1 } as unknown as ImageData;
+
+describe('REAR_CAMERA_CONSTRAINTS', () => {
+  it('requests a high-resolution rear-facing stream (issue #280)', () => {
+    expect(REAR_CAMERA_CONSTRAINTS).toEqual({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
+  });
+});
 
 describe('requestCameraStream', () => {
   it('throws unsupported when getUserMedia is missing', async () => {
@@ -93,6 +108,68 @@ describe('captureVideoFrame', () => {
     const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
     const toImageData = vi.fn().mockReturnValue(sentinel);
     await expect(captureVideoFrame(video, { toImageData })).resolves.toBe(sentinel);
+    expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
+  });
+});
+
+describe('capturePhoto', () => {
+  it('prefers ImageCapture.takePhoto for a full-resolution still (issue #280)', async () => {
+    const track = { id: 'vid' } as unknown as MediaStreamTrack;
+    const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
+    const blob = { size: 1 } as Blob;
+    const close = vi.fn();
+    const takePhoto = vi.fn().mockResolvedValue(blob);
+    const decode = vi.fn().mockResolvedValue({ width: 10, height: 8, close });
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await expect(capturePhoto(stream, video, { takePhoto, decode, toImageData })).resolves.toBe(
+      sentinel,
+    );
+
+    expect(takePhoto).toHaveBeenCalledWith(track);
+    expect(decode).toHaveBeenCalledWith(blob);
+    expect(toImageData).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 10, height: 8 }),
+      10,
+      8,
+    );
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('falls back to captureVideoFrame when the stream has no video track', async () => {
+    const stream = { getVideoTracks: () => [] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
+    const takePhoto = vi.fn();
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await expect(capturePhoto(stream, video, { takePhoto, toImageData })).resolves.toBe(sentinel);
+
+    expect(takePhoto).not.toHaveBeenCalled();
+    expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
+  });
+
+  it('falls back to captureVideoFrame when takePhoto rejects', async () => {
+    const track = {} as unknown as MediaStreamTrack;
+    const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
+    const takePhoto = vi.fn().mockRejectedValue(new Error('still capture unsupported'));
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await expect(capturePhoto(stream, video, { takePhoto, toImageData })).resolves.toBe(sentinel);
+
+    expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
+  });
+
+  it('falls back to captureVideoFrame when ImageCapture is unavailable in this environment', async () => {
+    const track = {} as unknown as MediaStreamTrack;
+    const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    // No `takePhoto` dep injected, and jsdom has no global `ImageCapture`.
+    await expect(capturePhoto(stream, video, { toImageData })).resolves.toBe(sentinel);
+
     expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
   });
 });

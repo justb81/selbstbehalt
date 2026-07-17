@@ -20,6 +20,7 @@ export {
   requestCameraStream,
   stopStream,
   captureVideoFrame,
+  capturePhoto,
   fileToImageData,
   fileToAllImageData,
   CaptureError,
