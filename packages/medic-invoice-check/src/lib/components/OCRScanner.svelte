@@ -37,6 +37,7 @@
   import CameraIcon from '@lucide/svelte/icons/camera';
   import FileIcon from '@lucide/svelte/icons/file';
   import ScanIcon from '@lucide/svelte/icons/scan';
+  import XIcon from '@lucide/svelte/icons/x';
   import { cn } from '../utils';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
@@ -242,16 +243,37 @@
       {/if}
     </div>
   {:else if phase === 'camera'}
-    <div class="flex flex-col gap-3">
+    <!-- Fullscreen overlay (issue: the small inline preview made the round
+    bottom-nav "Erfassen" FAB look like the shutter, causing mistaps). Covers
+    the fixed header/bottom nav (both z-50) so the shutter below is the only
+    round control on screen. -->
+    <div class="fixed inset-0 z-[60] flex flex-col bg-black">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onclick={cancelCamera}
+        class="absolute top-3 right-3 z-10 text-white hover:bg-white/10 hover:text-white"
+      >
+        <XIcon class="size-5" />
+        <span class="sr-only">Abbrechen</span>
+      </Button>
       <video
         bind:this={video}
         playsinline
         aria-label="Kameravorschau"
-        class="w-full max-h-[60vh] rounded-xl bg-black"
+        class="min-h-0 w-full flex-1 object-cover"
       ></video>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="default" onclick={capture}>Aufnehmen</Button>
-        <Button type="button" variant="outline" onclick={cancelCamera}>Abbrechen</Button>
+      <div class="flex items-center justify-center py-6">
+        <Button
+          type="button"
+          variant="ghost"
+          onclick={capture}
+          aria-label="Aufnehmen"
+          class="size-16 shrink-0 rounded-full border-4 border-white bg-white/10 p-0 hover:bg-white/20"
+        >
+          <span class="size-12 rounded-full bg-white"></span>
+        </Button>
       </div>
     </div>
   {:else}
