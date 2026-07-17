@@ -2,11 +2,10 @@
 
 ## [1.11.0](https://github.com/justb81/selbstbehalt/compare/v1.10.0...v1.11.0) (2026-07-17)
 
-
 ### Features
 
-* **medic-invoice-check:** unify camera entry point and raise capture resolution ([#282](https://github.com/justb81/selbstbehalt/issues/282)) ([874e5ea](https://github.com/justb81/selbstbehalt/commit/874e5ea818ea2c5f58f27fa0ab3b82fb90e42e4e)), closes [#280](https://github.com/justb81/selbstbehalt/issues/280)
-* **ocr:** pdf-textlayer direkt auslesen statt rasterisieren+ocr ([#278](https://github.com/justb81/selbstbehalt/issues/278)) ([#283](https://github.com/justb81/selbstbehalt/issues/283)) ([a26a48f](https://github.com/justb81/selbstbehalt/commit/a26a48f250bdf9066888a2d93f1a19a12b4b634f))
+- **medic-invoice-check:** unify camera entry point and raise capture resolution ([#282](https://github.com/justb81/selbstbehalt/issues/282)) ([874e5ea](https://github.com/justb81/selbstbehalt/commit/874e5ea818ea2c5f58f27fa0ab3b82fb90e42e4e)), closes [#280](https://github.com/justb81/selbstbehalt/issues/280)
+- **ocr:** pdf-textlayer direkt auslesen statt rasterisieren+ocr ([#278](https://github.com/justb81/selbstbehalt/issues/278)) ([#283](https://github.com/justb81/selbstbehalt/issues/283)) ([a26a48f](https://github.com/justb81/selbstbehalt/commit/a26a48f250bdf9066888a2d93f1a19a12b4b634f))
 
 ## [1.10.0](https://github.com/justb81/selbstbehalt/compare/v1.9.0...v1.10.0) (2026-07-12)
 
