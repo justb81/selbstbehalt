@@ -3,18 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   disposeScanOcr,
-  loadAllInvoiceImages,
+  loadAllInvoicePages,
   recognizeInvoiceImage,
-  setAllImageLoader,
+  setPageLoader,
   setOcrRecognizer,
   textToOcrResults,
-  type MultiImageLoader,
+  type MultiPageLoader,
   type OcrRecognizer,
 } from './scan-ocr';
 
 afterEach(() => {
   setOcrRecognizer(null);
-  setAllImageLoader(null);
+  setPageLoader(null);
 });
 
 function dummyImage(): ImageData {
@@ -35,23 +35,23 @@ describe('disposeScanOcr', () => {
   });
 });
 
-describe('loadAllInvoiceImages', () => {
+describe('loadAllInvoicePages', () => {
   it('routes through an injected loader override', async () => {
-    const loader: MultiImageLoader = vi.fn(async () => []);
-    setAllImageLoader(loader);
+    const loader: MultiPageLoader = vi.fn(async () => []);
+    setPageLoader(loader);
     const file = new File([], 'test.pdf');
-    const result = await loadAllInvoiceImages(file);
+    const result = await loadAllInvoicePages(file);
     expect(loader).toHaveBeenCalledWith(file);
     expect(result).toEqual([]);
   });
 });
 
-describe('setAllImageLoader', () => {
+describe('setPageLoader', () => {
   it('restores the default loader when cleared', () => {
-    const loader: MultiImageLoader = vi.fn(async () => []);
-    setAllImageLoader(loader);
-    setAllImageLoader(null);
-    expect(() => setAllImageLoader(null)).not.toThrow();
+    const loader: MultiPageLoader = vi.fn(async () => []);
+    setPageLoader(loader);
+    setPageLoader(null);
+    expect(() => setPageLoader(null)).not.toThrow();
   });
 });
 

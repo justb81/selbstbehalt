@@ -12,9 +12,10 @@
  * injectable, keeping the control flow unit-testable without a real DOM.
  */
 import {
-  renderAllPdfPages as defaultRenderAllPdfPages,
+  extractOrRenderAllPdfPages as defaultExtractOrRenderAllPdfPages,
   renderPdfPage as defaultRenderPdfPage,
 } from './pdf';
+import type { ScanPage } from './types';
 
 /** Stable reasons a capture can fail. */
 export type CaptureErrorCode =
@@ -48,8 +49,11 @@ export interface CaptureDeps {
   decode?: (blob: Blob) => Promise<ImageBitmap>;
   /** Renders a single PDF page to {@link ImageData} (defaults to {@link renderPdfPage}). */
   renderPdfPage?: (file: Blob, pageNumber: number) => Promise<ImageData>;
-  /** Renders all PDF pages to an array of {@link ImageData}s (defaults to {@link renderAllPdfPages}). */
-  renderAllPdfPages?: (file: Blob) => Promise<ImageData[]>;
+  /**
+   * Reads every PDF page, preferring each page's text layer and falling back
+   * to rasterisation per page (defaults to {@link extractOrRenderAllPdfPages}).
+   */
+  extractOrRenderAllPdfPages?: (file: Blob) => Promise<ScanPage[]>;
 }
 
 /** Default camera constraints: rear-facing video, no audio. */
@@ -135,18 +139,21 @@ export async function captureVideoFrame(
 }
 
 /**
- * Loads every page of a user-selected file as {@link ImageData}s: PDFs produce
- * one entry per page, images produce a single-element array. This is the
- * multi-page counterpart of {@link fileToImageData} — prefer it when the full
- * document must be scanned (e.g. a two-page invoice).
+ * Loads every page of a user-selected file as {@link ScanPage}s: a PDF page
+ * carries its text-layer lines when usable and only falls back to a
+ * rasterised image per page otherwise (issue #278 — see
+ * {@link extractOrRenderAllPdfPages}); a plain image file produces a single
+ * `{ kind: 'image' }` entry. This is the multi-page counterpart of
+ * {@link fileToImageData} — prefer it when the full document must be scanned
+ * (e.g. a two-page invoice).
  */
-export async function fileToAllImageData(file: File, deps: CaptureDeps = {}): Promise<ImageData[]> {
+export async function fileToAllPages(file: File, deps: CaptureDeps = {}): Promise<ScanPage[]> {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   if (isPdf) {
-    const renderAll = deps.renderAllPdfPages ?? defaultRenderAllPdfPages;
-    return renderAll(file);
+    const extractOrRenderAll = deps.extractOrRenderAllPdfPages ?? defaultExtractOrRenderAllPdfPages;
+    return extractOrRenderAll(file);
   }
-  return [await fileToImageData(file, {}, deps)];
+  return [{ kind: 'image', image: await fileToImageData(file, {}, deps) }];
 }
 
 /**
