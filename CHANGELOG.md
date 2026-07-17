@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/justb81/selbstbehalt/compare/v1.11.0...v1.11.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **medic-invoice-check:** make camera preview fullscreen on capture ([#285](https://github.com/justb81/selbstbehalt/issues/285)) ([8bb0351](https://github.com/justb81/selbstbehalt/commit/8bb0351c07fe4c3a13618843973e454a38ab0d8f))
+
 ## [1.11.0](https://github.com/justb81/selbstbehalt/compare/v1.10.0...v1.11.0) (2026-07-17)
 
 ### Features
