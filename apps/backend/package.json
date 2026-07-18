@@ -1,6 +1,6 @@
 {
   "name": "@selbstbehalt/backend",
-  "version": "1.11.1",
+  "version": "1.11.2",
   "private": true,
   "description": "Hono REST API + SQLite (Drizzle) backend for selbstbehalt (PKV Manager).",
   "license": "Apache-2.0",
