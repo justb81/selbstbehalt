@@ -327,7 +327,7 @@
   // ---- Helpers --------------------------------------------------------------
 
   function formatTimestamp(iso: string): string {
-    const d = iso.slice(0, 10).split('-').reverse().join('.');
+    const d = formatDate(iso);
     const t = iso.slice(11, 16);
     return t ? `${d} ${t}` : d;
   }
