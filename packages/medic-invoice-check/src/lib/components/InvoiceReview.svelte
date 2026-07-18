@@ -189,6 +189,7 @@
   function removePosition(i: number) {
     positions = positions.filter((_, idx) => idx !== i);
     open = open.filter((_, idx) => idx !== i);
+    recalcTotal();
   }
 
   // ---------------------------------------------------------------------------
