@@ -2,10 +2,9 @@
 
 ## [1.11.2](https://github.com/justb81/selbstbehalt/compare/v1.11.1...v1.11.2) (2026-07-18)
 
-
 ### Bug Fixes
 
-* **medic-invoice-check:** recalc total when a position is removed ([#298](https://github.com/justb81/selbstbehalt/issues/298)) ([ac2ba52](https://github.com/justb81/selbstbehalt/commit/ac2ba52159383b1777effa696a5b9f3202755582)), closes [#287](https://github.com/justb81/selbstbehalt/issues/287)
+- **medic-invoice-check:** recalc total when a position is removed ([#298](https://github.com/justb81/selbstbehalt/issues/298)) ([ac2ba52](https://github.com/justb81/selbstbehalt/commit/ac2ba52159383b1777effa696a5b9f3202755582)), closes [#287](https://github.com/justb81/selbstbehalt/issues/287)
 
 ## [1.11.1](https://github.com/justb81/selbstbehalt/compare/v1.11.0...v1.11.1) (2026-07-17)
 
