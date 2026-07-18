@@ -58,7 +58,7 @@ jobs:
 
       - name: Set up Node
         if: steps.release-please.outputs.pr
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: '24'
           cache: pnpm
