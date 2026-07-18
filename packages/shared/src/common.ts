@@ -24,11 +24,7 @@ export const money = z
 /** A calendar date without time, formatted `YYYY-MM-DD` (SQLite `DATE`). */
 export const isoDate = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Datum muss im Format JJJJ-MM-TT vorliegen')
-  .refine((value) => {
-    const date = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-  }, 'Datum ist kein gültiger Kalendertag');
+  .date('Datum muss ein gültiges Kalenderdatum im Format JJJJ-MM-TT sein');
 
 /** A timestamp formatted as an ISO-8601 datetime string (SQLite `DATETIME`). */
 export const isoDateTime = z
