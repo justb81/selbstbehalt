@@ -571,6 +571,25 @@ describe('InvoiceReview — edit mode', () => {
     await waitFor(() => expect(totalInput).toHaveValue(15));
   });
 
+  it('recalculates Rechnungsbetrag when a position is removed (issue #287)', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        initialPositions: [{ ...SAMPLE_POSITION }, { ...SAMPLE_POSITION }],
+        initialTotalAmount: 21.46,
+      },
+    });
+
+    const totalInput = screen.getByRole('spinbutton', { name: /Rechnungsbetrag/i });
+    expect(totalInput).toHaveValue(21.46);
+
+    await user.click(screen.getByRole('button', { name: 'Position 1 entfernen' }));
+
+    // Only one position (charged_amount 10.73) remains.
+    await waitFor(() => expect(totalInput).toHaveValue(10.73));
+  });
+
   it('looks up the fee table when Ziffer changes, to recalculate Basis', async () => {
     const user = userEvent.setup();
     vi.mocked(loadFeeTable).mockClear();
