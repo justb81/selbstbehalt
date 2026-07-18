@@ -3,6 +3,15 @@ packages:
   # Shared code (Zod schemas & types) lives here, e.g. packages/shared.
   - 'packages/*'
 
+overrides:
+  # onnxruntime-node (an unused, non-built peer of ppu-paddle-ocr — see allowBuilds
+  # below) transitively pulls in adm-zip <0.6.0, which `pnpm audit` flags as high
+  # (GHSA-xcpc-8h2w-3j85: a crafted ZIP triggers a 4 GB allocation). adm-zip is only
+  # used by onnxruntime-node's native-binary extraction, which never runs here (its
+  # build is disabled and the app uses onnxruntime-web), so forcing the patched line
+  # is safe and clears the advisory.
+  adm-zip@<0.6.0: '>=0.6.0'
+
 allowBuilds:
   esbuild: true
   better-sqlite3: true
