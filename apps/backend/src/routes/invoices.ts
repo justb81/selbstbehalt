@@ -27,6 +27,7 @@ import {
   invoiceReviewChangeSchema,
   invoiceRevertSchema,
   invoiceUpdatePayloadSchema,
+  isoDate,
   paymentStatusValues,
   reviewStatusValues,
   submissionInputSchema,
@@ -66,15 +67,13 @@ import {
 } from '../lib/serialize.js';
 import { parseJsonBody, parseQuery } from '../lib/validation.js';
 
-const isoDateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Datum muss JJJJ-MM-TT sein');
-
 const listQuerySchema = z.object({
   insured_person_id: uuid.optional(),
   review: z.enum(reviewStatusValues).optional(),
   payment: z.enum(paymentStatusValues).optional(),
   submission: z.enum(submissionStatusValues).optional(),
-  from: isoDateOnly.optional(),
-  to: isoDateOnly.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
   q: z.string().min(1).optional(),
 });
 
