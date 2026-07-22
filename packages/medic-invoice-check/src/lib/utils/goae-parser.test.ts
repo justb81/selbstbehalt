@@ -109,7 +109,12 @@ function knownZifferIn(table: FeeScheduleTable) {
 function pos(
   ziffer: string,
   table: FeeScheduleTable,
-  overrides: { multiplier?: number; quantity?: number; durationMinutes?: number } = {},
+  overrides: {
+    multiplier?: number;
+    quantity?: number;
+    durationMinutes?: number;
+    treatmentDate?: string | null;
+  } = {},
 ): ParsedPosition {
   const p = look(
     {
@@ -122,6 +127,7 @@ function pos(
     table,
   );
   if (overrides.durationMinutes != null) p.durationMinutes = overrides.durationMinutes;
+  if (overrides.treatmentDate !== undefined) p.treatmentDate = overrides.treatmentDate;
   return p;
 }
 
@@ -1062,6 +1068,52 @@ describe('validateInvoice — excludes (symmetric)', () => {
     const b: Constraint = { type: 'excludes', ziffern: ['4'], sourceText: 'B' };
     const table = makeTable([entry('4', { constraints: [a] }), entry('30', { constraints: [b] })]);
     expect(validateInvoice([pos('4', table), pos('30', table)], table)).toHaveLength(1);
+  });
+
+  it('does not flag an excludes pair billed on different treatment days', () => {
+    const table = makeTable([entry('4', { constraints: [ex] }), entry('30')]);
+    const v = validateInvoice(
+      [
+        pos('4', table, { treatmentDate: '2026-06-15' }),
+        pos('30', table, { treatmentDate: '2026-06-19' }),
+      ],
+      table,
+    );
+    expect(v).toHaveLength(0);
+  });
+
+  it('flags an excludes pair billed on the same treatment day', () => {
+    const table = makeTable([entry('4', { constraints: [ex] }), entry('30')]);
+    const v = validateInvoice(
+      [
+        pos('4', table, { treatmentDate: '2026-06-15' }),
+        pos('30', table, { treatmentDate: '2026-06-15' }),
+      ],
+      table,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]?.ziffern.sort()).toEqual(['30', '4']);
+  });
+
+  it('flags only the same-day positions when one Ziffer also appears on another day', () => {
+    const table = makeTable([entry('4', { constraints: [ex] }), entry('30')]);
+    const positions = [
+      pos('4', table, { treatmentDate: '2026-06-15' }), // idx 0
+      pos('30', table, { treatmentDate: '2026-06-15' }), // idx 1
+      pos('30', table, { treatmentDate: '2026-06-19' }), // idx 2 — different day
+    ];
+    const v = validateInvoice(positions, table);
+    expect(v).toHaveLength(1);
+    expect(v[0]?.positionIndices).toEqual([0, 1]);
+  });
+
+  it('flags conservatively when a position has no treatment date', () => {
+    const table = makeTable([entry('4', { constraints: [ex] }), entry('30')]);
+    const v = validateInvoice(
+      [pos('4', table, { treatmentDate: null }), pos('30', table, { treatmentDate: '2026-06-19' })],
+      table,
+    );
+    expect(v).toHaveLength(1);
   });
 });
 

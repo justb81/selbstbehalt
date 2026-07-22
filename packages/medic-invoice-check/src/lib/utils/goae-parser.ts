@@ -1160,13 +1160,40 @@ export function validateInvoice(
       }
     }
   }
+  // "Nicht nebeneinander berechnungsfähig" bezieht sich auf dieselbe
+  // Behandlungssitzung/denselben Behandlungstag: ein Paar wird nur geflaggt,
+  // wenn beide Ziffern am selben treatmentDate auftreten. Positionen ohne Datum
+  // gelten konservativ als potenziell tagesgleich (kein "Nebeneinander"
+  // ausschließbar), sodass ohne Datumsangabe weiterhin geflaggt wird.
+  const dateInfo = (ziffer: string): { byDate: Map<string, number[]>; hasUnknown: boolean } => {
+    const byDate = new Map<string, number[]>();
+    let hasUnknown = false;
+    for (const i of indicesByZiffer.get(ziffer) ?? []) {
+      const d = positions[i]?.treatmentDate ?? null;
+      if (d === null) {
+        hasUnknown = true;
+      } else {
+        const g = byDate.get(d) ?? [];
+        g.push(i);
+        byDate.set(d, g);
+      }
+    }
+    return { byDate, hasUnknown };
+  };
+
   for (const [key, rule] of conflictRule) {
     const [a, b] = key.split(PAIR_SEP);
     if (a === undefined || b === undefined) continue;
-    const positionIndices = [
-      ...(indicesByZiffer.get(a) ?? []),
-      ...(indicesByZiffer.get(b) ?? []),
-    ].sort((x, y) => x - y);
+    const ia = dateInfo(a);
+    const ib = dateInfo(b);
+    const sharedDates = [...ia.byDate.keys()].filter((d) => ib.byDate.has(d));
+    const conservative = ia.hasUnknown || ib.hasUnknown;
+    if (sharedDates.length === 0 && !conservative) continue;
+    const positionIndices = (
+      conservative
+        ? [...(indicesByZiffer.get(a) ?? []), ...(indicesByZiffer.get(b) ?? [])]
+        : sharedDates.flatMap((d) => [...(ia.byDate.get(d) ?? []), ...(ib.byDate.get(d) ?? [])])
+    ).sort((x, y) => x - y);
     violations.push({
       type: 'excludes',
       message: `Die Ziffern ${a} und ${b} sind nicht nebeneinander berechnungsfähig.`,
