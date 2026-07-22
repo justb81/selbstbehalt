@@ -62,6 +62,10 @@
     loadError = null;
     try {
       invoice = await api.invoices.get(invoiceId);
+      // Neue Einreichung: das Feld mit dem berechneten Erstattungsbetrag der Rechnung
+      // vorbelegen (Σ positions.eligible_amount, serverseitig aggregiert). Bleibt
+      // editierbar. Im Bearbeiten-Modus zählt danach der gespeicherte Wert.
+      expectedRefund = invoice.eligible_amount ?? null;
       if (invoice.status.submission === 'eingereicht') {
         const submission = await api.invoices.getSubmission(invoiceId);
         submittedAt = submission.submitted_at ? submission.submitted_at.slice(0, 16) : nowIso;
