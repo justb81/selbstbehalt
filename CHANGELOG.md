@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.3](https://github.com/justb81/selbstbehalt/compare/v1.11.2...v1.11.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* prefill expected refund on submit & scope excludes check to treatment date ([#300](https://github.com/justb81/selbstbehalt/issues/300)) ([b36b385](https://github.com/justb81/selbstbehalt/commit/b36b385c84ca03658cadbf59a08f240f4ffb7dd6))
+
 ## [1.11.2](https://github.com/justb81/selbstbehalt/compare/v1.11.1...v1.11.2) (2026-07-18)
 
 ### Bug Fixes
