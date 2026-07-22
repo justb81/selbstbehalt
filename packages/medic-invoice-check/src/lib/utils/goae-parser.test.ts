@@ -1110,10 +1110,7 @@ describe('validateInvoice — excludes (symmetric)', () => {
   it('flags conservatively when a position has no treatment date', () => {
     const table = makeTable([entry('4', { constraints: [ex] }), entry('30')]);
     const v = validateInvoice(
-      [
-        pos('4', table, { treatmentDate: null }),
-        pos('30', table, { treatmentDate: '2026-06-19' }),
-      ],
+      [pos('4', table, { treatmentDate: null }), pos('30', table, { treatmentDate: '2026-06-19' })],
       table,
     );
     expect(v).toHaveLength(1);
