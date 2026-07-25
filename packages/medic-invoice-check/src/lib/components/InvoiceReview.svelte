@@ -64,6 +64,8 @@
   } from '../utils/goae-parser';
   import type { FeeEntry, FeeScheduleId } from '../data/fee-schedule';
   import type { ReviewPositionRow } from './invoice-review-types';
+  import InvoicePagePreview from './InvoicePagePreview.svelte';
+  import type { ScanPreview } from '../ocr/preview';
   import OCRScanner from './OCRScanner.svelte';
   import { Button } from './ui/button';
   import { Input } from './ui/input';
@@ -245,7 +247,17 @@
     }
   });
 
+  /**
+   * Page images of the current scan, with the recognised lines mapped onto them
+   * (issue #27). Memory-only: never persisted or sent to the API, and dropped
+   * with the component (docs/design.md §8.2).
+   */
+  let scanPreview = $state<ScanPreview | null>(null);
+  /** Recognised line the preview highlights — the row the user is checking. */
+  let activeLineIndex = $state<number | null>(null);
+
   const hasScan = $derived(scanResult !== null);
+  const hasPreview = $derived((scanPreview?.pages.length ?? 0) > 0);
   const lowConfidence = $derived(
     scanResult !== null && scanResult.meanConfidence < DEFAULT_CONFIDENCE_THRESHOLD,
   );
@@ -265,8 +277,10 @@
     if (paymentDueDate !== derived) paymentDueDate = derived;
   });
 
-  function onScanned(result: ScanResult): void {
+  function onScanned(result: ScanResult, preview: ScanPreview): void {
     scanResult = result;
+    scanPreview = preview;
+    activeLineIndex = null;
     autoFile = null;
     if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
     if (result.parsed.paymentDueDate) {
@@ -289,6 +303,7 @@
       is_valid: p.isValid,
       flag_reason: p.flagReason,
       confidence: p.confidence,
+      line_index: p.lineIndex,
       benefit_category: null,
     }));
     open = positions.map((p) => p.is_valid !== true);
@@ -608,9 +623,10 @@
   {#if mode === 'create'}
     <div class="flex flex-col gap-3 border-b border-border pb-4">
       {#if hasScan}
-        <span class="text-sm text-green-600 dark:text-green-500">
-          ✓ Aus Scan übernommen – bitte prüfen
-        </span>
+        <!-- `text-success` rather than `text-green-600`: the raw palette step
+        measures only 3.21:1 on white, below the 4.5:1 WCAG AA threshold for
+        14 px text. The token is contrast-tuned and flips for dark mode itself. -->
+        <span class="text-success text-sm">✓ Aus Scan übernommen – bitte prüfen</span>
       {/if}
       <OCRScanner {onScanned} {autoFile} />
     </div>
@@ -630,6 +646,24 @@
         </AlertDescription>
       </Alert>
     {/if}
+  {/if}
+
+  {#if hasPreview && scanPreview}
+    <!-- The scanned page next to the parsed result, so a suspect Ziffer or
+    Betrag can be checked against the paper it came from. -->
+    <div class="flex flex-col gap-2">
+      <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
+        Gescannte Vorlage
+      </p>
+      <InvoicePagePreview
+        preview={scanPreview}
+        {activeLineIndex}
+        onLineSelect={(index) => (activeLineIndex = index)}
+      />
+      <p class="text-muted-foreground text-xs">
+        Nur zur Prüfung: das Bild bleibt auf diesem Gerät und wird beim Speichern verworfen.
+      </p>
+    </div>
   {/if}
 
   <!-- Header fields (reduced Rechnungskopf: no versicherte Person, no Notizen) -->
@@ -771,7 +805,15 @@
       <div class="flex flex-col gap-3">
         {#each positions as pos, i (i)}
           <Collapsible bind:open={open[i]}>
-            <Card class={cn(pos.is_valid === false && 'bg-warning/10 ring-2 ring-warning/50')}>
+            <!-- Pointing at or focusing a row highlights the OCR line it was
+            parsed from in the page preview. `onfocusin` as well as hover so the
+            link works for keyboard users: tabbing into any field of the row —
+            say the Steigerungsfaktor — lights up its source line. -->
+            <Card
+              class={cn(pos.is_valid === false && 'bg-warning/10 ring-2 ring-warning/50')}
+              onmouseenter={() => (activeLineIndex = pos.line_index ?? null)}
+              onfocusin={() => (activeLineIndex = pos.line_index ?? null)}
+            >
               <CardHeader
                 class="flex flex-row items-center justify-between gap-2 border-b border-border pb-3"
               >

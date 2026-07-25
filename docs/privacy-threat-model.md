@@ -88,10 +88,16 @@ The pixels never reach the API layer, let alone the network:
    back **only** `OcrResult[]` = `{ text, bbox, confidence }`. No response type
    carries pixels (`packages/medic-invoice-check/src/lib/ocr/types.ts`). The
    worker performs no network I/O.
-5. `OCRScanner.svelte` (`processImages`) holds each frame in a loop-local and
-   drops it as soon as `onScanned(...)` returns — no field, no store. Comment:
-   *"Frames are discarded as soon as recognition finishes (Datenminimierung
-   §8.2)."* The camera stream is torn down on capture/destroy.
+5. `OCRScanner.svelte` (`runPages`) holds each full-resolution frame in a
+   loop-local and drops it once recognition returns — no field, no store. The
+   camera stream is torn down on capture/destroy.
+6. A **downscaled copy** of each page (`ocr/preview.ts`, ≤1024 px on the long
+   edge, ≤12 pages) is handed to the review screen alongside the parsed result,
+   so the user can check a suspect Ziffer against the paper it came from (§4.1
+   of `docs/design.md`). It is a plain in-memory `ImageData` — deliberately not
+   a blob/object URL, which would outlive its creator unless revoked — is held
+   in component state only, and dies with the component when the invoice is
+   saved or abandoned. No response type, payload or column carries it.
 
 ### 1.4 Offline queue and PWA share-target stay local
 
@@ -208,8 +214,10 @@ Zero runtime leaks.
 
 ## 3. Data minimisation (§8.2)
 
-- **Images are discarded after OCR** and never uploaded (§1.3). There is no
-  code path that persists or transmits the invoice image.
+- **Images are never uploaded or persisted** (§1.3). There is no code path that
+  transmits or stores the invoice image. The full-resolution frame is dropped as
+  soon as recognition finishes; a downscaled review copy lives in component
+  state until the invoice is saved or abandoned.
 - The only opt-in retention is the **recognised text** (`ocr_raw`), saved by
   default so the user can re-parse later and opt-out-able via the checkbox in
   `InvoiceForm.svelte`. This matches the §8.1 row "OCR-Rohtxt | Client →
@@ -293,7 +301,7 @@ Each row of the design doc's data-category table (§8.1), checked against the co
 
 | Datenkategorie | Soll (§8.1) | Ist (verified) |
 |---|---|---|
-| Rechnungsbilder (Fotos/Scans) | Nur Client | ✅ Never leaves the browser; discarded after OCR (§1, §3). No image column exists; E2E-guarded. |
+| Rechnungsbilder (Fotos/Scans) | Nur Client | ✅ Never leaves the browser; never persisted (§1, §3). Full frame dropped after OCR, downscaled review copy held in component state only. No image column exists; E2E-guarded. |
 | OCR-Rohtext | Client → optional Backend (opt-in) | ✅ `ocr_raw` text column; opt-out checkbox in `InvoiceForm`. No image. |
 | Strukturierte Rechnungsdaten (JSON) | Backend (SQLite), keine Bilder | ✅ `invoices` + `invoice_positions`: metadata/numeric/text only. |
 | GOÄ-Ziffern & Beträge | Backend (SQLite) | ✅ In `invoice_positions`; GOÄ lookup tables are static local JSON. |
@@ -366,7 +374,7 @@ and for anyone deploying it for family members.
 | Verarbeitungsort | Ausschließlich Gerät des Nutzers (Browser) + selbst gehosteter Backend-Server. **Keine Übermittlung an Dritte** (§1.3 Nr. 4). |
 | OCR/KI | 100 % client-seitig; keine serverseitige KI, kein externer LLM-Aufruf (Standard). |
 | Empfänger | Keine. Optional: die eigene Versicherung bei manueller Einreichung durch den Nutzer (außerhalb der App). |
-| Speicherdauer | Bis zur Löschung durch den Nutzer (Art. 17). Bilder: sofort nach OCR verworfen. |
+| Speicherdauer | Bis zur Löschung durch den Nutzer (Art. 17). Bilder: nie gespeichert — Vollbild direkt nach OCR verworfen, Review-Kopie beim Speichern/Verwerfen der Rechnung. |
 | Betroffenenrechte | Auskunft/Portabilität via DB-Export (Art. 15/20); Löschung via kaskadierendem DELETE je Entität (Art. 17) — siehe §4. |
 | TOMs | Client-seitige OCR; strikte CSP ohne Drittanbieter; HTTPS-Pflicht; Reverse-Proxy-Auth / `X-API-Key`; kaskadierende Löschung; optional Verschlüsselung at rest. |
 
@@ -381,7 +389,7 @@ Design-principle and DSGVO items verified in this review:
 - [x] No third-party runtime resources — CSP `connect-src/font-src 'self'`, no
       CDN/analytics, models + WASM served locally (§2), CSP e2e-guarded
       (`csp.spec.ts`).
-- [x] Images discarded after OCR; only opt-in `ocr_raw` **text** persists (§3).
+- [x] Images never persisted (full frame dropped after OCR, review copy with the component); only opt-in `ocr_raw` **text** persists (§3).
 - [x] Per-entity DELETE cascade with no orphans; FK enforcement on at runtime
       (§4.1) — now tested for `persons` too.
 - [x] Whole-DB export + validated, transactional import for portability; the

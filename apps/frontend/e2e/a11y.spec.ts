@@ -73,6 +73,47 @@ test.describe('axe: core flows', () => {
     await expectNoViolations(page);
   });
 
+  // The page preview and the parsed position rows only exist after a scan, so
+  // the unscanned form above cannot cover them. A <canvas> in particular is an
+  // unlabelled graphic to axe unless it is named.
+  test('invoice new form after a scan, including the page preview', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await page.goto('/invoices/new');
+    await expect(page.getByRole('heading', { level: 1, name: 'Rechnung erfassen' })).toBeVisible();
+
+    // Drive the scan through the dev-only hook, as scan.spec.ts does: it
+    // bypasses the headless-incompatible image codec and the model-downloading
+    // OCR binding, while parsing, review and the preview render for real.
+    await page.waitForFunction(
+      () =>
+        typeof (window as unknown as { __selbstbehaltStubScan?: unknown })
+          .__selbstbehaltStubScan === 'function',
+    );
+    await page.evaluate(
+      (text) =>
+        (
+          window as unknown as { __selbstbehaltStubScan: (t: string) => void }
+        ).__selbstbehaltStubScan(text),
+      [
+        'Praxis Dr. med. Mustermann',
+        'Rechnungsdatum: 15.03.2026',
+        '250 Blutentnahme 2,3 5,36',
+      ].join('\n'),
+    );
+    await page.setInputFiles('input[type="file"]', {
+      name: 'rechnung.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    });
+
+    await expect(page.getByText('Gescannte Vorlage')).toBeVisible();
+    await expect(page.getByRole('img', { name: /Vorschau der gescannten Rechnung/ })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test('invoice edit form', async ({ page }) => {
     await mockBackend(page, { populated: true });
     await page.goto(`/invoices/${INVOICE_ID}/edit`);

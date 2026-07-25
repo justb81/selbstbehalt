@@ -476,8 +476,36 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
    - GOÄ-Ziffer-Lookup
    - Validierung
         ↓
-5. Ergebnis-JSON → Review-Screen → bei Bestätigung: API POST
+5. Ergebnis-JSON → Review-Screen (mit Seitenvorschau, s. u.)
+   → bei Bestätigung: API POST
 ```
+
+**Seitenvorschau im Review (`ocr/preview.ts`, `InvoicePagePreview`).** Der
+Review-Screen zeigt die gescannte Seite und zeichnet jede erkannte Textzeile als
+Rahmen darüber; die Zeile hinter der gerade geprüften Position ist hervorgehoben
+(Maus **oder** Tastaturfokus auf der Positionszeile). Damit ist ein Fehlleser
+nachprüfbar, statt nur behauptet. Die Geometrie stammt aus `OcrResult.bbox` —
+`mapPaddleResult` vereinigt dort schon die Regionen-Boxen einer Zeile zu einem
+Viereck; `ScanResult.positionLineIndex` verbindet jede geparste Position mit
+ihrer Quellzeile (abgeleitet aus **einem** Durchlauf der Zeilen, gemeinsam mit
+`positionConfidence`, damit die beiden GOZ-Sonderfälle nicht auseinanderlaufen).
+
+Zwei Fallstricke, die die Implementierung bestimmen:
+
+- Der Schnappschuss entsteht **vor** dem Preprocessing, weil der OCR-Client den
+  Pixelpuffer per Transfer an den Worker übergibt (Zero-Copy) — eine später
+  gezogene Kopie kann bereits detached sein. `createPagePreview` kopiert außerdem
+  immer, da `downscale` sein Eingabebild unverändert zurückgibt, wenn es schon
+  klein genug ist.
+- Die Seitenzuordnung nutzt **halboffene Zeilenbereiche** je Seite, nicht bloße
+  Startindizes: ein PDF kann Textlayer- und Scan-Seiten mischen, und eine reine
+  Offset-Liste kann die Lücke nicht ausdrücken — die Zeilen der Textlayer-Seite
+  würden der vorherigen Bildseite zugeschlagen.
+
+Seiten mit brauchbarem Textlayer haben kein Bild und daher keine Vorschau; ihre
+Zeilen tragen ohnehin ein leeres Viereck. Dieselbe Komponente zeigt auch die
+Aufnahme, die die Qualitätswarnung (Schritt 2b) beanstandet — „zu dunkel" ist
+deutlich leichter zu befolgen, wenn das Foto daneben steht.
 
 Die Entscheidung Textlayer-vs-OCR fällt **pro Seite**, nicht pro Dokument — ein
 mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
@@ -1008,6 +1036,7 @@ aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur 
 | Komponente | Datei | Zweck |
 |---|---|---|
 | `OCRScanner` | `packages/medic-invoice-check/src/lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
+| `InvoicePagePreview` | `packages/medic-invoice-check/src/lib/components/InvoicePagePreview.svelte` | Gescannte Seite mit eingezeichneten erkannten Textzeilen (§4.1); hebt die Quellzeile der geprüften Position hervor |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
 | `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position + „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
@@ -1171,7 +1200,7 @@ services:
 
 ### 8.2 DSGVO-relevante Maßnahmen
 
-- **Datenminimierung:** Rechnungsbilder werden nach OCR client-seitig verworfen (kein Upload), sofern Nutzer nicht explizit "Datei speichern" wählt
+- **Datenminimierung:** Rechnungsbilder werden client-seitig verworfen (kein Upload), sofern Nutzer nicht explizit "Datei speichern" wählt. Eine heruntergerechnete Kopie bleibt bis zum Speichern bzw. Verwerfen der Rechnung im Speicher, damit der Review-Screen die Vorlage zur Prüfung zeigen kann (§4.1); sie wird nie persistiert und nie übertragen
 - **Löschbarkeit:** Jede Entität hat einen `DELETE`-Endpunkt; Datenbank-Export für Portabilität (Art. 20 DSGVO)
 - **Verschlüsselung at rest:** Optional SQLCipher für verschlüsselte SQLite-Datenbank
 - **Keine Drittanbieter-Abhängigkeiten:** Kein Analytics, kein CDN-Loading von externen Ressourcen

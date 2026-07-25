@@ -16,9 +16,12 @@
   live camera preview the same metrics drive an overlay that guides the shot as
   it is framed (issue #281).
 
-  Privacy by design: the frame is recognised on-device and discarded as soon as
-  OCR finishes; only the parsed text/metadata leaves this component (never the
-  image), and nothing is uploaded here (docs/design.md §1.3, §8).
+  Privacy by design: the frame is recognised on-device and only the parsed
+  text/metadata leaves this component — never the image — and nothing is uploaded
+  here (docs/design.md §1.3, §8). A downscaled copy of each page is handed to the
+  parent alongside the result so the review screen can show what was read; it
+  lives in memory only, is never persisted, and the parent drops it when the
+  invoice is saved or abandoned (docs/design.md §8.2).
 
   The capture/preprocess/recognise steps are injectable via `deps` so the flow
   is unit-testable without a real camera, worker or DOM.
@@ -53,6 +56,7 @@
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
   import { isScanImagePage, type OcrProgress, type OcrResult, type ScanPage } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
+  import InvoicePagePreview from './InvoicePagePreview.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
   import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -431,6 +435,11 @@
           </ul>
         </AlertDescription>
       </Alert>
+      <!-- Show the frame being faulted: "zu dunkel" is far easier to act on
+      when the shot is on screen next to the advice. -->
+      {#if pendingPreviews.length > 0}
+        <InvoicePagePreview preview={{ pages: pendingPreviews, lines: [] }} />
+      {/if}
       <div class="flex flex-wrap gap-2">
         <Button type="button" variant="default" onclick={() => void confirmQuality()}>
           Trotzdem erkennen
@@ -552,7 +561,7 @@
       </div>
       <p class="text-muted-foreground text-sm">
         Foto, Bild oder PDF. Die Erkennung läuft vollständig auf diesem Gerät; das Bild verlässt es
-        nie und wird nach der Erkennung verworfen.
+        nie. Es bleibt nur zur Prüfung sichtbar und wird beim Speichern verworfen.
       </p>
     </div>
   {/if}

@@ -18,4 +18,5 @@ export { FEE_SCHEDULE_IDS, SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from './d
 // --- Components -------------------------------------------------------------
 export { default as OCRScanner } from './components/OCRScanner.svelte';
 export { default as InvoiceReview } from './components/InvoiceReview.svelte';
+export { default as InvoicePagePreview } from './components/InvoicePagePreview.svelte';
 export type { ReviewPositionRow } from './components/invoice-review-types.js';
