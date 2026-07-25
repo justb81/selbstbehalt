@@ -6,7 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockedEnv = vi.hoisted(() => ({ PUBLIC_API_URL: undefined as string | undefined }));
 vi.mock('$env/dynamic/public', () => ({ env: mockedEnv }));
 
-import { resolveApiBaseUrl, settings, type Settings } from './settings';
+import {
+  resolveApiBaseUrl,
+  resolvePaymentReminderLeadDays,
+  settings,
+  type Settings,
+} from './settings';
 
 const STORAGE_KEY = 'selbstbehalt:settings';
 
@@ -15,6 +20,9 @@ const defaults: Settings = {
   apiKey: '',
   discountRate: 0.03,
   claimFreeProbability: 0.7,
+  defaultPaymentTermDays: 30,
+  paymentReminderLeadDays: 7,
+  paymentRemindersEnabled: true,
 };
 
 beforeEach(() => {
@@ -42,6 +50,23 @@ describe('resolveApiBaseUrl', () => {
   it('defaults to the live store value (not a fresh localStorage read) when called without args', () => {
     settings.set({ ...defaults, apiUrl: 'http://fromstore:9000' });
     expect(resolveApiBaseUrl()).toBe('http://fromstore:9000');
+  });
+});
+
+describe('resolvePaymentReminderLeadDays', () => {
+  it('returns the configured lead time when reminders are on', () => {
+    expect(resolvePaymentReminderLeadDays({ ...defaults, paymentReminderLeadDays: 14 })).toBe(14);
+  });
+
+  it('returns null when reminders are switched off', () => {
+    expect(
+      resolvePaymentReminderLeadDays({ ...defaults, paymentRemindersEnabled: false }),
+    ).toBeNull();
+  });
+
+  it('defaults to the live store value', () => {
+    settings.set({ ...defaults, paymentReminderLeadDays: 3 });
+    expect(resolvePaymentReminderLeadDays()).toBe(3);
   });
 });
 

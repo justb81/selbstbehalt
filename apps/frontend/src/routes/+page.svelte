@@ -17,10 +17,12 @@
     type Invoice,
     type PositionYearRollup,
   } from '@selbstbehalt/shared';
-  import { settings } from '$lib/stores/settings';
+  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import { ampelPriority, computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
+  import { summarizeDueInvoices } from '$lib/utils/payment-reminders';
   import PersonStatusCard from '$lib/components/PersonStatusCard.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
@@ -46,6 +48,30 @@
   );
   const pendingSubmissions = $derived(
     invoices.filter((i) => i.status.submission === 'eingereicht'),
+  );
+
+  // Zahlungsziel-Status (issue #288). Base set is every *unpaid* invoice — one
+  // already submitted to the insurer still has to be paid to the doctor. A
+  // Terminüberweisung is stored as bezahlt with a future Zahlungsdatum and is
+  // therefore never counted as overdue, only flagged when its scheduled day lies
+  // after the Zahlungsziel.
+  const reminderLeadDays = $derived(resolvePaymentReminderLeadDays($settings));
+  const dueSummary = $derived(
+    summarizeDueInvoices(invoices, {
+      leadDays: reminderLeadDays,
+      termDays: $settings.defaultPaymentTermDays,
+    }),
+  );
+  const dueParts = $derived(
+    [
+      dueSummary.overdue.length > 0 ? `${dueSummary.overdue.length} überfällig` : null,
+      dueSummary.dueSoon.length > 0
+        ? `${dueSummary.dueSoon.length} fällig in ≤ ${reminderLeadDays} Tagen`
+        : null,
+      dueSummary.scheduledLate.length > 0
+        ? `${dueSummary.scheduledLate.length} Zahlungstermin nach Zahlungsziel`
+        : null,
+    ].filter((p): p is string => p !== null),
   );
   const year = new Date().getFullYear();
   // resolve() has no query-string support; appended here once so the "Anzeigen
@@ -191,6 +217,9 @@
         <CardContent class="flex flex-col gap-1">
           <p class="text-2xl font-bold tabular-nums">{openInvoices.length}</p>
           <div class="min-h-5">
+            {#if dueParts.length > 0}
+              <p class="text-xs text-muted-foreground truncate">{dueParts.join(' · ')}</p>
+            {/if}
             {#if openInvoices.length > 0}
               <a href="#offene-rechnungen" class={tileLinkClass}>Anzeigen →</a>
             {/if}
@@ -257,7 +286,14 @@
                 <span class="text-muted-foreground sm:order-1"
                   >{formatDate(invoice.invoice_date)}</span
                 >
-                <span class="sm:order-4"><InvoiceBadge status={invoice.status.submission} /></span>
+                <span class="flex flex-wrap justify-end gap-1 sm:order-4">
+                  <InvoiceBadge status={invoice.status.submission} />
+                  <PaymentDueBadge
+                    {invoice}
+                    leadDays={reminderLeadDays}
+                    termDays={$settings.defaultPaymentTermDays}
+                  />
+                </span>
               </span>
               <span class="flex items-center justify-between gap-2 sm:contents">
                 <span class="min-w-0 sm:order-2">

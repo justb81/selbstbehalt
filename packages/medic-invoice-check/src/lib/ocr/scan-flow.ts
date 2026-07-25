@@ -188,6 +188,8 @@ export interface ReviewPosition {
 export interface ReviewState {
   insuredPersonId: string;
   invoiceDate: string;
+  /** Zahlungsziel; omitted/null lets the server-side default apply (issue #288). */
+  paymentDueDate?: string | null;
   invoiceNumber: string | null;
   providerName: string;
   providerType: ProviderType;
@@ -250,6 +252,7 @@ export function toInvoicePayload(state: ReviewState): InvoiceCreatePayload {
   return invoiceCreatePayloadSchema.parse({
     insured_person_id: state.insuredPersonId,
     invoice_date: state.invoiceDate,
+    payment_due_date: state.paymentDueDate ?? null,
     invoice_number: state.invoiceNumber,
     provider_name: state.providerName,
     provider_type: state.providerType,

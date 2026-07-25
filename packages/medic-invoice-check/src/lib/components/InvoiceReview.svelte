@@ -34,6 +34,8 @@
     BENEFIT_CATEGORY_LABELS,
     benefitCategoryValues,
     defaultBenefitCategoryForProvider,
+    defaultPaymentDueDate,
+    DEFAULT_PAYMENT_TERM_DAYS,
     formatEur,
     isNonScheduleCategory,
     PROVIDER_TYPE_LABELS,
@@ -99,7 +101,15 @@
      * turns it on to drive its reimbursement.
      */
     showBenefitCategory = false,
+    /**
+     * Default payment term in days used to prefill the Zahlungsziel from the
+     * Rechnungsdatum (issue #288). Passed in so this component stays free of the
+     * host app's settings; the shared default keeps other call sites unchanged.
+     */
+    paymentTermDays = DEFAULT_PAYMENT_TERM_DAYS,
     invoiceDate = $bindable(''),
+    /** Zahlungsziel (ISO); prefilled from `invoiceDate` + {@link paymentTermDays}. */
+    paymentDueDate = $bindable(''),
     invoiceNumber = $bindable(''),
     providerName = $bindable(''),
     providerType = $bindable<ProviderType>('arzt'),
@@ -113,7 +123,9 @@
     reparseOcrRaw?: string | null;
     sharedFile?: File | null;
     showBenefitCategory?: boolean;
+    paymentTermDays?: number;
     invoiceDate?: string;
+    paymentDueDate?: string;
     invoiceNumber?: string;
     providerName?: string;
     providerType?: ProviderType;
@@ -239,10 +251,29 @@
   );
   const flaggedCount = $derived(positions.filter((p) => p.is_valid === false).length);
 
+  // ---------------------------------------------------------------------------
+  // Zahlungsziel (issue #288) — unless it was set explicitly (by the user, a
+  // stored value, or the parser), it tracks `invoiceDate` + the default term, so
+  // correcting the Rechnungsdatum moves the due date along with it.
+  // ---------------------------------------------------------------------------
+
+  let dueDatePinned = $state(paymentDueDate !== '');
+
+  $effect(() => {
+    if (dueDatePinned || !invoiceDate) return;
+    const derived = defaultPaymentDueDate(invoiceDate, paymentTermDays);
+    if (paymentDueDate !== derived) paymentDueDate = derived;
+  });
+
   function onScanned(result: ScanResult): void {
     scanResult = result;
     autoFile = null;
     if (result.parsed.invoiceDate) invoiceDate = result.parsed.invoiceDate;
+    if (result.parsed.paymentDueDate) {
+      // The invoice states its own Zahlungsziel — pin it against the default.
+      paymentDueDate = result.parsed.paymentDueDate;
+      dueDatePinned = true;
+    }
     if (result.parsed.invoiceNumber) invoiceNumber = result.parsed.invoiceNumber;
     if (result.parsed.providerName) providerName = result.parsed.providerName;
     providerType = result.providerType;
@@ -610,6 +641,21 @@
         Rechnungsdatum <span class="text-destructive">*</span>
       </Label>
       <Input id="field-date" type="date" bind:value={invoiceDate} required {disabled} />
+    </div>
+
+    <!-- Zahlungsziel (issue #288) -->
+    <div class="space-y-1.5">
+      <Label for="field-due-date">Zahlungsziel</Label>
+      <Input
+        id="field-due-date"
+        type="date"
+        bind:value={paymentDueDate}
+        oninput={() => (dueDatePinned = true)}
+        {disabled}
+      />
+      <p class="text-xs text-muted-foreground">
+        {dueDatePinned ? 'Laut Rechnung' : `Standard: ${paymentTermDays} Tage nach Rechnungsdatum`}
+      </p>
     </div>
 
     <!-- Rechnungsnummer -->

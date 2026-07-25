@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { assessImageQuality, QUALITY_OK_HINT, type QualityReport } from '../ocr/quality';
 import { textToOcrResults } from '../ocr/scan-ocr';
 import type { ScanResult } from '../ocr/scan-flow';
 import type { ScanPage } from '../ocr/types';
@@ -18,11 +19,39 @@ function imagePage(): ScanPage {
   return { kind: 'image', image: dummyImage() };
 }
 
+/**
+ * A frame the quality gate (#279) waves through. Injected by every test that is
+ * about something else — the one-pixel `dummyImage()` those tests use is, quite
+ * correctly, judged unusable, and each of them would otherwise stop at the
+ * warning instead of exercising the flow it is actually testing.
+ */
+const OK_QUALITY: QualityReport = {
+  ok: true,
+  issues: [],
+  metrics: { sharpness: 500, brightness: 140, contrast: 70, clipped: 0 },
+};
+
+/** A flat mid-gray frame: no edges and no contrast, so the gate rejects it. */
+function flatImage(size = 8): ImageData {
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 128;
+    data[i + 1] = 128;
+    data[i + 2] = 128;
+    data[i + 3] = 255;
+  }
+  return { data, width: size, height: size, colorSpace: 'srgb' } as unknown as ImageData;
+}
+
+/** The real verdict on {@link flatImage} — no hand-written expectations to drift. */
+const BAD_QUALITY = assessImageQuality(flatImage());
+
 function stubDeps(recognizeText = SAMPLE) {
   return {
     fileToPages: vi.fn(async () => [imagePage()]),
     preprocess: vi.fn((img: ImageData) => img),
     recognize: vi.fn(async () => textToOcrResults(recognizeText)),
+    assessQuality: vi.fn(() => OK_QUALITY),
   };
 }
 
@@ -89,6 +118,7 @@ describe('OCRScanner', () => {
         .fn()
         .mockResolvedValueOnce(textToOcrResults(page1))
         .mockResolvedValueOnce(textToOcrResults(page2)),
+      assessQuality: vi.fn(() => OK_QUALITY),
     };
     render(OCRScanner, { props: { onScanned, deps } });
 
@@ -117,6 +147,7 @@ describe('OCRScanner', () => {
       ]),
       preprocess,
       recognize,
+      assessQuality: vi.fn(() => OK_QUALITY),
     };
     render(OCRScanner, { props: { onScanned, deps } });
 
@@ -173,6 +204,8 @@ describe('OCRScanner camera capture (issue #280)', () => {
       capturePhoto: vi.fn(async () => dummyImage()),
       preprocess: vi.fn((img: ImageData) => img),
       recognize: vi.fn(async () => textToOcrResults(recognizeText)),
+      assessQuality: vi.fn(() => OK_QUALITY),
+      grabPreviewFrame: vi.fn(async () => dummyImage()),
     };
   }
 
@@ -248,5 +281,153 @@ describe('OCRScanner camera capture (issue #280)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Kamerabild ist noch nicht bereit.');
     expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
     expect(onScanned).not.toHaveBeenCalled();
+  });
+});
+
+describe('OCRScanner capture-quality gate (issue #279)', () => {
+  const uploadFile = async (): Promise<void> => {
+    await userEvent.upload(
+      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      new File(['x'], 'rechnung.png', { type: 'image/png' }),
+    );
+  };
+
+  it('warns before recognising instead of burning an OCR run on an unusable frame', async () => {
+    const onScanned = vi.fn();
+    const deps = { ...stubDeps(), assessQuality: vi.fn(() => BAD_QUALITY) };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    expect(
+      await screen.findByText('Die Vorlage könnte für die Erkennung zu schlecht sein'),
+    ).toBeInTheDocument();
+    // Every problem the metrics found is spelled out, not just the first.
+    for (const issue of BAD_QUALITY.issues) {
+      expect(screen.getByText(issue.hint)).toBeInTheDocument();
+    }
+    expect(deps.recognize).not.toHaveBeenCalled();
+    expect(onScanned).not.toHaveBeenCalled();
+  });
+
+  it('recognises anyway when the user overrides the warning (never blocking)', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = { ...stubDeps(), assessQuality: vi.fn(() => BAD_QUALITY) };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+    await userEvent.click(await screen.findByRole('button', { name: 'Trotzdem erkennen' }));
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(deps.recognize).toHaveBeenCalledOnce();
+  });
+
+  it('discards the frame and returns to the file entry point on retake', async () => {
+    const onScanned = vi.fn();
+    const deps = { ...stubDeps(), assessQuality: vi.fn(() => BAD_QUALITY) };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+    await userEvent.click(await screen.findByRole('button', { name: 'Andere Datei wählen' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Rechnung fotografieren' })).toBeInTheDocument(),
+    );
+    expect(deps.recognize).not.toHaveBeenCalled();
+    expect(onScanned).not.toHaveBeenCalled();
+  });
+
+  it('offers a retake through the camera when the frame came from the camera', async () => {
+    const onScanned = vi.fn();
+    const stream = { id: 'cam-stream' } as unknown as MediaStream;
+    const deps = {
+      requestCameraStream: vi.fn(async () => stream),
+      stopStream: vi.fn(),
+      capturePhoto: vi.fn(async () => dummyImage()),
+      grabPreviewFrame: vi.fn(async () => dummyImage()),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => textToOcrResults(SAMPLE)),
+      assessQuality: vi.fn(() => BAD_QUALITY),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+    await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Neu aufnehmen' }));
+
+    // Straight back into the preview rather than out to the drop zone.
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledTimes(2));
+    expect(onScanned).not.toHaveBeenCalled();
+  });
+
+  it('never warns about a PDF read entirely from its text layer (no image to fault)', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const assessQuality = vi.fn(() => BAD_QUALITY);
+    const deps = {
+      fileToPages: vi.fn(async (): Promise<ScanPage[]> => [
+        { kind: 'text', lines: textToOcrResults(SAMPLE) },
+      ]),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => []),
+      assessQuality,
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(assessQuality).not.toHaveBeenCalled();
+  });
+});
+
+describe('OCRScanner live capture hints (issue #281)', () => {
+  function stubLiveDeps(quality: QualityReport) {
+    const stream = { id: 'cam-stream' } as unknown as MediaStream;
+    return {
+      stream,
+      requestCameraStream: vi.fn(async () => stream),
+      stopStream: vi.fn(),
+      capturePhoto: vi.fn(async () => dummyImage()),
+      grabPreviewFrame: vi.fn(async () => dummyImage()),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => textToOcrResults(SAMPLE)),
+      assessQuality: vi.fn(() => quality),
+    };
+  }
+
+  it('shows the root-cause hint while the preview is poor', async () => {
+    const deps = stubLiveDeps(BAD_QUALITY);
+    render(OCRScanner, { props: { onScanned: vi.fn(), deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+
+    expect(await screen.findByText(BAD_QUALITY.issues[0]!.liveHint)).toBeInTheDocument();
+  });
+
+  it('shows the all-clear once the preview passes', async () => {
+    const deps = stubLiveDeps(OK_QUALITY);
+    render(OCRScanner, { props: { onScanned: vi.fn(), deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+
+    expect(await screen.findByText(QUALITY_OK_HINT)).toBeInTheDocument();
+  });
+
+  it('stops sampling once the preview is torn down', async () => {
+    const deps = stubLiveDeps(OK_QUALITY);
+    render(OCRScanner, { props: { onScanned: vi.fn(), deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await screen.findByText(QUALITY_OK_HINT);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    const callsAtCancel = deps.grabPreviewFrame.mock.calls.length;
+
+    // Well past one sampling interval: a retired loop must not tick again.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(deps.grabPreviewFrame).toHaveBeenCalledTimes(callsAtCancel);
+    expect(screen.queryByText(QUALITY_OK_HINT)).not.toBeInTheDocument();
   });
 });

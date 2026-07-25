@@ -15,6 +15,7 @@ import {
   extractOrRenderAllPdfPages as defaultExtractOrRenderAllPdfPages,
   renderPdfPage as defaultRenderPdfPage,
 } from './pdf';
+import { pickSharpestFrame } from './quality';
 import type { ScanPage } from './types';
 
 /** Stable reasons a capture can fail. */
@@ -59,7 +60,18 @@ export interface CaptureDeps {
    * `ImageCapture.takePhoto()`, issue #280).
    */
   takePhoto?: (track: MediaStreamTrack) => Promise<Blob>;
+  /**
+   * Waits between the frames of a best-frame burst (issue #281). Injectable so
+   * {@link captureBestVideoFrame} runs instantly in tests.
+   */
+  sleep?: (ms: number) => Promise<void>;
 }
+
+/** Frames grabbed in a best-frame burst when `ImageCapture` is unavailable. */
+export const BEST_FRAME_SAMPLE_COUNT = 3;
+
+/** Delay between the frames of a best-frame burst, in milliseconds. */
+export const BEST_FRAME_INTERVAL_MS = 80;
 
 /**
  * Default camera constraints: rear-facing video at a high still-image
@@ -152,6 +164,62 @@ export async function captureVideoFrame(
   return toImageData(video, width, height);
 }
 
+/**
+ * Grabs the current preview frame already scaled down to `maxSide` on its
+ * longest edge (issue #281). Rasterising small straight away — rather than
+ * reading a full 1080p frame and shrinking it afterwards — is what keeps the
+ * live quality sampling cheap enough to run a few times a second without the
+ * preview stuttering.
+ *
+ * Returns `null` while the stream has no dimensions yet, so a sampling loop
+ * that starts before the camera is ready can simply skip the tick instead of
+ * treating it as an error.
+ */
+export async function grabPreviewFrame(
+  video: HTMLVideoElement,
+  maxSide: number,
+  deps: CaptureDeps = {},
+): Promise<ImageData | null> {
+  const width = video.videoWidth;
+  const height = video.videoHeight;
+  if (!width || !height) return null;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const targetWidth = Math.max(1, Math.round(width * scale));
+  const targetHeight = Math.max(1, Math.round(height * scale));
+  const toImageData = deps.toImageData ?? defaultToImageData;
+  return toImageData(video, targetWidth, targetHeight);
+}
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Grabs a short burst of video frames and keeps the sharpest (issue #281).
+ * Hand shake blurs individual frames unpredictably, so sampling a few and
+ * picking the best mitigates it without asking the user to do anything.
+ *
+ * This is the fallback path only — {@link capturePhoto} prefers
+ * `ImageCapture.takePhoto()`, whose full-sensor-resolution still beats any
+ * video frame no matter how sharp (#280).
+ */
+export async function captureBestVideoFrame(
+  video: HTMLVideoElement,
+  deps: CaptureDeps = {},
+  options: { count?: number; intervalMs?: number } = {},
+): Promise<ImageData> {
+  const { count = BEST_FRAME_SAMPLE_COUNT, intervalMs = BEST_FRAME_INTERVAL_MS } = options;
+  const sleep = deps.sleep ?? defaultSleep;
+  const frames: ImageData[] = [];
+  for (let i = 0; i < Math.max(1, count); i++) {
+    if (i > 0) await sleep(intervalMs);
+    frames.push(await captureVideoFrame(video, deps));
+  }
+  // `frames` is non-empty (the first grab either succeeded or threw), so
+  // `pickSharpestFrame` cannot return null here.
+  return pickSharpestFrame(frames) ?? frames[0]!;
+}
+
 /** `ImageCapture` isn't in every target yet; look it up dynamically. */
 function defaultTakePhoto(track: MediaStreamTrack): Promise<Blob> {
   const ImageCaptureCtor = (globalThis as { ImageCapture?: typeof ImageCapture }).ImageCapture;
@@ -165,10 +233,14 @@ function defaultTakePhoto(track: MediaStreamTrack): Promise<Blob> {
  * Captures a full-resolution still photo from a live camera stream. Prefers
  * `ImageCapture.takePhoto()`, which grabs a still image at the sensor's native
  * resolution instead of a `<video>` frame, and so is markedly sharper on
- * devices that support it. Falls back to {@link captureVideoFrame} when
+ * devices that support it. Falls back to {@link captureBestVideoFrame} when
  * `ImageCapture` is unavailable or the still capture fails for any reason
  * (issue #280) — the camera flow must never dead-end just because the richer
  * API isn't there.
+ *
+ * Best-frame selection (issue #281) applies to the fallback only, and
+ * deliberately so: `takePhoto()` already returns the better image, so re-picking
+ * among video frames when it is available would trade resolution for nothing.
  */
 export async function capturePhoto(
   stream: MediaStream,
@@ -189,10 +261,10 @@ export async function capturePhoto(
         bitmap.close?.();
       }
     } catch {
-      // Fall through to the video-frame grab below.
+      // Fall through to the video-frame burst below.
     }
   }
-  return captureVideoFrame(video, deps);
+  return captureBestVideoFrame(video, deps);
 }
 
 /**

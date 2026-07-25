@@ -32,6 +32,7 @@
     type ReviewPositionRow,
     type ScanResult,
   } from '@selbstbehalt/medic-invoice-check';
+  import { settings } from '$lib/stores/settings';
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
   import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
   import { resolveBenefitCategory } from '$lib/utils/benefit-category';
@@ -54,6 +55,8 @@
   export type FormPayload = {
     insured_person_id: string;
     invoice_date: string;
+    /** Zahlungsziel (#288); null when the field was cleared. */
+    payment_due_date: string | null;
     invoice_number: string | null;
     provider_name: string;
     provider_type: ProviderType | null;
@@ -106,6 +109,9 @@
   let invoiceDate = $state(
     untrack(() => initialData?.invoice_date ?? new Date().toISOString().slice(0, 10)),
   );
+  // Empty in create mode: <InvoiceReview> then prefills it from the Rechnungsdatum
+  // plus the configured Standard-Zahlungsfrist (issue #288).
+  let paymentDueDate = $state(untrack(() => initialData?.payment_due_date ?? ''));
   let invoiceNumber = $state(untrack(() => initialData?.invoice_number ?? ''));
   let providerName = $state(untrack(() => initialData?.provider_name ?? ''));
   let providerType = $state<ProviderType>(untrack(() => initialData?.provider_type ?? 'arzt'));
@@ -266,6 +272,7 @@
     onSave({
       insured_person_id: insuredPersonId,
       invoice_date: invoiceDate,
+      payment_due_date: paymentDueDate || null,
       invoice_number: invoiceNumber.trim() || null,
       provider_name: providerName.trim(),
       provider_type: providerType,
@@ -315,7 +322,9 @@
     {sharedFile}
     {reparseOcrRaw}
     showBenefitCategory
+    paymentTermDays={$settings.defaultPaymentTermDays}
     bind:invoiceDate
+    bind:paymentDueDate
     bind:invoiceNumber
     bind:providerName
     bind:providerType

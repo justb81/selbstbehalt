@@ -182,6 +182,7 @@ export function serializeInvoice(row: InvoiceRow, status: InvoiceStatus): Invoic
     created_at: row.createdAt,
     insured_person_id: row.insuredPersonId,
     invoice_date: row.invoiceDate,
+    payment_due_date: row.paymentDueDate,
     invoice_number: row.invoiceNumber,
     provider_name: row.providerName,
     provider_type: row.providerType,
@@ -199,6 +200,7 @@ export function toInvoiceInsert(input: InvoiceCreate): InvoiceInsert {
   return {
     insuredPersonId: input.insured_person_id,
     invoiceDate: input.invoice_date,
+    paymentDueDate: input.payment_due_date,
     invoiceNumber: input.invoice_number,
     providerName: input.provider_name,
     providerType: input.provider_type,
@@ -213,6 +215,7 @@ export function toInvoiceUpdate(input: InvoiceUpdate): Partial<InvoiceInsert> {
   const u: Partial<InvoiceInsert> = {};
   if (input.insured_person_id !== undefined) u.insuredPersonId = input.insured_person_id;
   if (input.invoice_date !== undefined) u.invoiceDate = input.invoice_date;
+  if (input.payment_due_date !== undefined) u.paymentDueDate = input.payment_due_date;
   if (input.invoice_number !== undefined) u.invoiceNumber = input.invoice_number;
   if (input.provider_name !== undefined) u.providerName = input.provider_name;
   if (input.provider_type !== undefined) u.providerType = input.provider_type;

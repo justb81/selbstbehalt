@@ -117,7 +117,9 @@ Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`
 
 ### Dependency hygiene (supply-chain cooldown)
 
-To avoid pulling in freshly published — and potentially compromised — releases, a **7-day cooldown** applies everywhere: [Dependabot](.github/dependabot.yml) (`cooldown.default-days: 7`) and pnpm itself ([`minimumReleaseAge: 10080`](pnpm-workspace.yaml) minutes). A package version must be at least 7 days old before it is adopted by an update or a manual `pnpm add`/`pnpm update`. Frozen-lockfile installs (CI) are unaffected.
+To avoid pulling in freshly published — and potentially compromised — releases, a **7-day cooldown** applies everywhere: [Dependabot](.github/dependabot.yml) (`cooldown.default-days: 7`) and pnpm itself ([`minimumReleaseAge: 10080`](pnpm-workspace.yaml) minutes). A package version must be at least 7 days old before it is adopted by an update or a manual `pnpm add`/`pnpm update`.
+
+The cooldown is also enforced **against the committed lockfile**: pnpm 11 verifies every `pnpm-lock.yaml` entry on install, `--frozen-lockfile` included, so a lockfile carrying a too-young version fails CI with `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`. Dependabot regenerates the lockfile with its own resolver, which does not apply `minimumReleaseAge`, so its PRs can drift unrelated transitive dependencies to versions the policy rejects — even when the bump itself is old enough. The fix is to redo that bump locally (`pnpm install --lockfile-only`, where pnpm applies the cooldown during resolution) rather than to relax the policy; see the note in [`CLAUDE.md`](CLAUDE.md).
 
 ### Security & supply-chain automation
 

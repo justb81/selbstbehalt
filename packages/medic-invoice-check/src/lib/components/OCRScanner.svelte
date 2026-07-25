@@ -9,6 +9,13 @@
   guess is corrected afterwards via the per-position Kategorie picker in
   `InvoiceReview`, same as any other misread field.
 
+  Capture quality is judged before the expensive step, not after it: every
+  rasterised page is measured (issue #279) and a frame that reads as blurred,
+  dark or glare-struck raises a warning with concrete advice *before* OCR runs.
+  The warning never blocks — "Trotzdem erkennen" always proceeds. During the
+  live camera preview the same metrics drive an overlay that guides the shot as
+  it is framed (issue #281).
+
   Privacy by design: the frame is recognised on-device and discarded as soon as
   OCR finishes; only the parsed text/metadata leaves this component (never the
   image), and nothing is uploaded here (docs/design.md §1.3, §8).
@@ -21,11 +28,18 @@
 
   import {
     capturePhoto as defaultCapturePhoto,
+    grabPreviewFrame as defaultGrabPreviewFrame,
     requestCameraStream as defaultRequestCameraStream,
     stopStream as defaultStopStream,
     CaptureError,
   } from '../ocr/capture';
-  import { preprocess as defaultPreprocess } from '../ocr/preprocess';
+  import { preprocess as defaultPreprocess, QUALITY_METRIC_MAX_SIDE } from '../ocr/preprocess';
+  import {
+    assessImageQuality as defaultAssessQuality,
+    mergeQualityReports,
+    QUALITY_OK_HINT,
+    type QualityReport,
+  } from '../ocr/quality';
   import { loadAllInvoicePages, recognizeInvoiceImage } from '../ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
@@ -33,10 +47,11 @@
   import LoadingState from './LoadingState.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
-  import { Alert, AlertDescription } from './ui/alert';
+  import { Alert, AlertDescription, AlertTitle } from './ui/alert';
   import CameraIcon from '@lucide/svelte/icons/camera';
   import FileIcon from '@lucide/svelte/icons/file';
   import ScanIcon from '@lucide/svelte/icons/scan';
+  import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
   import XIcon from '@lucide/svelte/icons/x';
   import { cn } from '../utils';
 
@@ -51,7 +66,19 @@
     requestCameraStream: () => Promise<MediaStream>;
     stopStream: (stream: MediaStream) => void;
     capturePhoto: (stream: MediaStream, video: HTMLVideoElement) => Promise<ImageData>;
+    /** Judges one frame's capture quality (issues #279/#281). */
+    assessQuality: (image: ImageData) => QualityReport;
+    /** Grabs a small preview frame for the live quality overlay (issue #281). */
+    grabPreviewFrame: (video: HTMLVideoElement) => Promise<ImageData | null>;
   }
+
+  /**
+   * How often the live preview is sampled, in milliseconds (issue #281). At
+   * ~2.5 samples a second the advice keeps up with the user repositioning the
+   * page, while leaving the main thread free between ticks — each tick only
+   * touches a 256 px copy, but the preview must never stutter.
+   */
+  const LIVE_SAMPLE_INTERVAL_MS = 400;
 
   let {
     onScanned,
@@ -84,8 +111,14 @@
   // svelte-ignore state_referenced_locally
   const capturePhoto =
     deps.capturePhoto ?? ((s: MediaStream, v: HTMLVideoElement) => defaultCapturePhoto(s, v));
+  // svelte-ignore state_referenced_locally
+  const assessQuality = deps.assessQuality ?? ((img: ImageData) => defaultAssessQuality(img));
+  // svelte-ignore state_referenced_locally
+  const grabPreviewFrame =
+    deps.grabPreviewFrame ??
+    ((v: HTMLVideoElement) => defaultGrabPreviewFrame(v, QUALITY_METRIC_MAX_SIDE));
 
-  type Phase = 'idle' | 'camera' | 'processing';
+  type Phase = 'idle' | 'camera' | 'processing' | 'quality-warning';
   let phase = $state<Phase>('idle');
   let progress = $state<OcrProgress | null>(null);
   let error = $state<string | null>(null);
@@ -94,6 +127,22 @@
   let fileInput = $state<HTMLInputElement | null>(null);
   let dragDepth = $state(0);
   const isDragging = $derived(dragDepth > 0);
+
+  /** Pages parked by the quality gate, awaiting the user's call (issue #279). */
+  let pendingPages: ScanPage[] = [];
+  let pendingQuality = $state<QualityReport | null>(null);
+  /** Which entry point produced {@link pendingPages} — drives the retake action. */
+  let pendingSource = $state<'camera' | 'file'>('file');
+
+  /** Latest live verdict on the camera preview, or null before the first tick. */
+  let liveQuality = $state<QualityReport | null>(null);
+  /** Cancels the preview sampling loop; bumped on every teardown. */
+  let sampleToken = 0;
+
+  /** The single line the live overlay shows: the root cause, or the all-clear. */
+  const liveHint = $derived(
+    liveQuality === null ? null : (liveQuality.issues[0]?.liveHint ?? QUALITY_OK_HINT),
+  );
 
   function messageFor(err: unknown): string {
     if (err instanceof CaptureError) return err.message;
@@ -110,7 +159,7 @@
    * invoice. Frames are discarded as soon as recognition finishes
    * (Datenminimierung §8.2).
    */
-  async function processPages(pages: ScanPage[]): Promise<void> {
+  async function runPages(pages: ScanPage[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
@@ -136,10 +185,59 @@
     }
   }
 
+  /**
+   * The capture-quality gate (issue #279). Judges every page that will actually
+   * be recognised — pages read from a PDF text layer have no image to fault —
+   * and, when any of them looks unusable, parks the document and asks first
+   * instead of burning an OCR run on it.
+   *
+   * Sitting here rather than inside {@link runPages} makes the check
+   * source-agnostic for free: camera shots, uploaded photos and rasterised
+   * scan-PDF pages all arrive through this one funnel.
+   */
+  async function processPages(pages: ScanPage[], source: 'camera' | 'file'): Promise<void> {
+    const reports = pages
+      .filter((page) => page.kind === 'image')
+      .map((page) => assessQuality(page.image));
+    const verdict = mergeQualityReports(reports);
+    if (!verdict.ok) {
+      pendingPages = pages;
+      pendingQuality = verdict;
+      pendingSource = source;
+      error = null;
+      phase = 'quality-warning';
+      return;
+    }
+    await runPages(pages);
+  }
+
+  /** "Trotzdem erkennen": the warning is advice, never a wall. */
+  async function confirmQuality(): Promise<void> {
+    const pages = pendingPages;
+    pendingPages = [];
+    pendingQuality = null;
+    await runPages(pages);
+  }
+
+  /** Discard the parked pages and offer the same entry point again. */
+  async function retakeQuality(): Promise<void> {
+    pendingPages = [];
+    pendingQuality = null;
+    phase = 'idle';
+    if (pendingSource === 'camera') {
+      await startCamera();
+      return;
+    }
+    // The file input only exists in the idle branch — wait for it to render
+    // again before reaching for it.
+    await tick();
+    fileInput?.click();
+  }
+
   async function handleFile(file: File): Promise<void> {
     try {
       const pages = await fileToPages(file);
-      await processPages(pages);
+      await processPages(pages, 'file');
     } catch (err) {
       error = messageFor(err);
     }
@@ -187,8 +285,36 @@
     if (file) await handleFile(file);
   }
 
+  /**
+   * Samples the preview a few times a second and publishes a live verdict
+   * (issue #281), so the user can fix a dark or shaky shot while framing it
+   * rather than discovering the problem after the OCR run.
+   *
+   * `sampleToken` is the cancellation handle: {@link teardownCamera} bumps it,
+   * which retires any loop still in flight — a sample must never outlive the
+   * preview it belongs to (the camera is released the moment the user leaves).
+   */
+  function startQualitySampling(): void {
+    sampleToken += 1;
+    const token = sampleToken;
+    const tickOnce = async (): Promise<void> => {
+      if (token !== sampleToken || !video) return;
+      try {
+        const frame = await grabPreviewFrame(video);
+        if (token !== sampleToken) return;
+        if (frame) liveQuality = assessQuality(frame);
+      } catch {
+        // A dropped sample is not worth surfacing — the next tick retries.
+      }
+      if (token !== sampleToken) return;
+      setTimeout(() => void tickOnce(), LIVE_SAMPLE_INTERVAL_MS);
+    };
+    void tickOnce();
+  }
+
   async function startCamera(): Promise<void> {
     error = null;
+    liveQuality = null;
     try {
       stream = await requestCameraStream();
       phase = 'camera';
@@ -196,7 +322,11 @@
       await tick();
       if (video && stream) {
         video.srcObject = stream;
-        void video.play().catch(() => undefined);
+        // `play()` returns a promise per spec, but not in every environment
+        // (jsdom hands back `undefined`) — optional-chain it so a missing
+        // promise can't take the preview, and the sampling below, down with it.
+        void video.play()?.catch(() => undefined);
+        startQualitySampling();
       }
     } catch (err) {
       error = messageFor(err);
@@ -204,6 +334,9 @@
   }
 
   function teardownCamera(): void {
+    // Retire the sampling loop before the stream goes away.
+    sampleToken += 1;
+    liveQuality = null;
     if (stream) stopStream(stream);
     stream = null;
     if (video) video.srcObject = null;
@@ -220,7 +353,7 @@
     try {
       const image = await capturePhoto(activeStream, video);
       teardownCamera();
-      await processPages([{ kind: 'image', image }]);
+      await processPages([{ kind: 'image', image }], 'camera');
     } catch (err) {
       // Never leave the camera running on a failed capture.
       teardownCamera();
@@ -241,6 +374,30 @@
       {#if progress?.ratio != null}
         <Progress value={Math.round(progress.ratio * 100)} max={100} />
       {/if}
+    </div>
+  {:else if phase === 'quality-warning' && pendingQuality}
+    <!-- Pre-OCR quality warning (issue #279). Advisory, not a gate: the primary
+    action is still to recognise the frame the user already captured. -->
+    <div class="flex flex-col gap-3">
+      <Alert>
+        <TriangleAlertIcon />
+        <AlertTitle>Die Vorlage könnte für die Erkennung zu schlecht sein</AlertTitle>
+        <AlertDescription>
+          <ul class="list-disc space-y-1 pl-4">
+            {#each pendingQuality.issues as issue (issue.code)}
+              <li>{issue.hint}</li>
+            {/each}
+          </ul>
+        </AlertDescription>
+      </Alert>
+      <div class="flex flex-wrap gap-2">
+        <Button type="button" variant="default" onclick={() => void confirmQuality()}>
+          Trotzdem erkennen
+        </Button>
+        <Button type="button" variant="outline" onclick={() => void retakeQuality()}>
+          {pendingSource === 'camera' ? 'Neu aufnehmen' : 'Andere Datei wählen'}
+        </Button>
+      </div>
     </div>
   {:else if phase === 'camera'}
     <!-- Fullscreen overlay (issue: the small inline preview made the round
@@ -264,6 +421,25 @@
         aria-label="Kameravorschau"
         class="min-h-0 w-full flex-1 object-cover"
       ></video>
+      <!-- Live capture advice (issue #281). A polite live region so the hint is
+      announced as it changes without interrupting; deliberately text-only, as a
+      progressbar-style meter here would need its own accessible name. -->
+      <div
+        role="status"
+        aria-live="polite"
+        class="pointer-events-none flex min-h-9 items-center justify-center px-4"
+      >
+        {#if liveHint}
+          <span
+            class={cn(
+              'rounded-full px-3 py-1.5 text-sm font-medium text-white',
+              liveQuality?.ok ? 'bg-emerald-600/80' : 'bg-black/70',
+            )}
+          >
+            {liveHint}
+          </span>
+        {/if}
+      </div>
       <div class="flex items-center justify-center py-6">
         <Button
           type="button"

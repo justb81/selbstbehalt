@@ -11,15 +11,25 @@ vi.mock('../ocr', () => ({
 
 // OCRScanner imports the recognition pipeline from this module directly (not
 // via the '../ocr' barrel above), so a scan can be driven end-to-end in tests.
-vi.mock('../ocr/scan-ocr', () => ({
-  loadAllInvoicePages: vi.fn(async () => [
-    {
-      kind: 'image',
-      image: { data: new Uint8ClampedArray(4), width: 1, height: 1, colorSpace: 'srgb' },
-    },
-  ]),
-  recognizeInvoiceImage: vi.fn(async () => []),
-}));
+vi.mock('../ocr/scan-ocr', () => {
+  // A sharp, well-exposed 4×4 checkerboard. The capture-quality gate (#279) is
+  // deliberately left unmocked here so these scans exercise the real path, and
+  // it would — rightly — stop a blank placeholder frame before recognition.
+  const bytes: number[] = [];
+  for (let i = 0; i < 16; i++) {
+    const luma = ((i % 4) + Math.floor(i / 4)) % 2 === 0 ? 60 : 200;
+    bytes.push(luma, luma, luma, 255);
+  }
+  return {
+    loadAllInvoicePages: vi.fn(async () => [
+      {
+        kind: 'image',
+        image: { data: new Uint8ClampedArray(bytes), width: 4, height: 4, colorSpace: 'srgb' },
+      },
+    ]),
+    recognizeInvoiceImage: vi.fn(async () => []),
+  };
+});
 
 vi.mock('../data/fee-tables', () => ({
   loadFeeTable: vi.fn(async () => ({ entries: [] })),
@@ -199,6 +209,105 @@ describe('InvoiceReview — create mode', () => {
     expect(
       screen.queryByRole('button', { name: 'Positionen neu einlesen' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('InvoiceReview — Zahlungsziel (issue #288)', () => {
+  /** The Zahlungsziel date input. */
+  const dueInput = () => document.getElementById('field-due-date') as HTMLInputElement;
+
+  it('prefills the Zahlungsziel 30 days after the Rechnungsdatum', async () => {
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'create', initialInvoiceDate: '2026-06-01' },
+    });
+    await waitFor(() => expect(dueInput().value).toBe('2026-07-01'));
+    expect(screen.getByText('Standard: 30 Tage nach Rechnungsdatum')).toBeInTheDocument();
+  });
+
+  it('honours a custom default payment term', async () => {
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'create', initialInvoiceDate: '2026-06-01', paymentTermDays: 14 },
+    });
+    await waitFor(() => expect(dueInput().value).toBe('2026-06-15'));
+    expect(screen.getByText('Standard: 14 Tage nach Rechnungsdatum')).toBeInTheDocument();
+  });
+
+  it('follows a corrected Rechnungsdatum while untouched', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'create', initialInvoiceDate: '2026-06-01' },
+    });
+    await waitFor(() => expect(dueInput().value).toBe('2026-07-01'));
+
+    const dateInput = document.getElementById('field-date') as HTMLInputElement;
+    await user.clear(dateInput);
+    await user.type(dateInput, '2026-06-10');
+
+    await waitFor(() => expect(dueInput().value).toBe('2026-07-10'));
+  });
+
+  it('stops following the Rechnungsdatum once edited by hand', async () => {
+    const user = userEvent.setup();
+    render(InvoiceReviewTestHarness, {
+      props: { mode: 'create', initialInvoiceDate: '2026-06-01' },
+    });
+    await waitFor(() => expect(dueInput().value).toBe('2026-07-01'));
+
+    await user.clear(dueInput());
+    await user.type(dueInput(), '2026-06-20');
+    await waitFor(() => expect(screen.getByText('Laut Rechnung')).toBeInTheDocument());
+
+    const dateInput = document.getElementById('field-date') as HTMLInputElement;
+    await user.clear(dateInput);
+    await user.type(dateInput, '2026-06-10');
+
+    await waitPastDebounce();
+    expect(dueInput().value).toBe('2026-06-20');
+  });
+
+  it('keeps a stored Zahlungsziel in edit mode', async () => {
+    render(InvoiceReviewTestHarness, {
+      props: {
+        mode: 'edit',
+        initialInvoiceDate: '2026-06-01',
+        initialPaymentDueDate: '2026-06-15',
+        initialPositions: [{ ...SAMPLE_POSITION }],
+      },
+    });
+    await waitPastDebounce();
+    expect(dueInput().value).toBe('2026-06-15');
+    expect(screen.getByText('Laut Rechnung')).toBeInTheDocument();
+  });
+
+  it('takes the Zahlungsziel detected by the parser on a scan', async () => {
+    vi.mocked(parseInvoice).mockReturnValueOnce({
+      invoiceDate: '2026-06-01',
+      paymentDueDate: '2026-06-15',
+      positions: [],
+      violations: [],
+    } as never);
+
+    render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
+    const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
+    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+
+    await waitFor(() => expect(dueInput().value).toBe('2026-06-15'));
+    expect(screen.getByText('Laut Rechnung')).toBeInTheDocument();
+  });
+
+  it('falls back to the default term when the scan finds no Zahlungsziel', async () => {
+    vi.mocked(parseInvoice).mockReturnValueOnce({
+      invoiceDate: '2026-06-01',
+      paymentDueDate: null,
+      positions: [],
+      violations: [],
+    } as never);
+
+    render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
+    const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
+    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+
+    await waitFor(() => expect(dueInput().value).toBe('2026-07-01'));
   });
 });
 
