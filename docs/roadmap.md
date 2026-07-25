@@ -81,6 +81,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #24 | OCR-Web-Worker + PP-OCRv5 (`ppu-paddle-ocr`, WebGPU/WASM) | #19 | ✅ |
 | #25 | Bildaufnahme & -vorverarbeitung | #19 | ✅ |
 | #26 | Scan-Flow (Scan → Parse → Review → Speichern) | #24, #25, #16, #22 | 🚧 |
+| #315 | `ppu-paddle-ocr` auf 6.2.0 + geänderte Defaults explizit pinnen | — (Cooldown bis 2026-07-29) | ⬜ |
 
 ## Phase 3 — PWA, Auswertung, Polish, Security & Release
 
@@ -95,6 +96,8 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #33 | Release-Pipeline (GHCR-Images, GitHub Release) | #5, #30 | 🚧 |
 | #34 | Docs (Self-Hosting-README, OpenAPI) | #11–#14, #30 | ⬜ |
 | #133 | Navigationsstruktur optimieren (Bottom-Nav, Bündelung, Breadcrumbs, shadcn-Migration) | #19, #26, #29 | ⬜ |
+| #316 | Zuschnitt auf den bedruckten Bereich via `detect()` — messen, dann entscheiden | #315, #27 | ⬜ |
+| #317 | PP-OCRv6 als Modellfamilie evaluieren (Hürde: `.ort` im Browser) | #315, #27 | ⬜ |
 | #134 | Versicherte Person als Knoten: IA-Neuordnung + Günstigerprüfung-Verdikt je Leistungsjahr (Redesign 5/5, ehem. #143) | #133, #23, #28, #140, #141, #142 | ⬜ |
 
 ## Phase 4 — Erweiterungen
