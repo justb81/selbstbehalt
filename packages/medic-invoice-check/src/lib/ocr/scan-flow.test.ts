@@ -6,6 +6,7 @@ import {
   buildScanResult,
   meanConfidence,
   ocrResultsToText,
+  positionLineIndices,
   scheduleForProviderType,
   toInvoicePayload,
   toReviewPositions,
@@ -98,6 +99,71 @@ describe('buildScanResult', () => {
     expect(result.parsed.positions).toHaveLength(2);
     expect(result.positionConfidence).toEqual([0.4, 0.95]);
   });
+
+  it('keeps the recognised lines so the review screen can locate a position', () => {
+    const results = textToOcrResults(SAMPLE);
+    const result = buildScanResult(results, [GOAE]);
+    expect(result.lines).toEqual(results);
+  });
+});
+
+describe('positionLineIndices', () => {
+  const line = (text: string, confidence = 1): OcrResult => ({
+    text,
+    bbox: { points: [] },
+    confidence,
+  });
+
+  it('points at the source line of each parsed position, skipping header lines', () => {
+    const results = textToOcrResults(SAMPLE);
+    const indices = positionLineIndices(results);
+    // SAMPLE has three header lines, then three position lines.
+    expect(indices).toEqual([3, 4, 5]);
+    expect(results[indices[0]!]?.text).toContain('250');
+    expect(results[indices[2]!]?.text).toContain('99999');
+  });
+
+  it('stays index-aligned with the parsed positions', () => {
+    const results = textToOcrResults(SAMPLE);
+    const result = buildScanResult(results, [GOAE]);
+    expect(result.positionLineIndex).toHaveLength(result.parsed.positions.length);
+    // The k-th index must name a line whose Ziffer is the k-th position's.
+    result.parsed.positions.forEach((position, k) => {
+      const sourceLine = result.lines[result.positionLineIndex[k]!]!;
+      expect(sourceLine.text).toContain(position.ziffer.replace(/^[ÄZ]/, ''));
+    });
+  });
+
+  // Both dental special cases (#251) — the reason indices and confidences are
+  // derived from one walk of the lines rather than two.
+  it('counts a §9-GOZ practice-lab summary line, which parsePositionLine rejects', () => {
+    const results = [
+      line('30   Eingehende Untersuchung   2,3   14,51'),
+      line('Auslagen nach §9 GOZ gemäß Praxislaborbeleg: 1.001,91'),
+    ];
+    expect(positionLineIndices(results)).toEqual([0, 1]);
+  });
+
+  it('truncates at an attached Eigenlabor-/Materialbeleg section marker', () => {
+    const results = [
+      line('30   Eingehende Untersuchung   2,3   14,51'),
+      line('Eigenlaborbeleg'),
+      line('40   Weitere Leistung   2,3   20,00'),
+    ];
+    // Everything from the marker onward is not extracted as a position.
+    expect(positionLineIndices(results)).toEqual([0]);
+  });
+
+  it('agrees with positionConfidence line for line', () => {
+    const results = [
+      line('Rechnungsdatum: 15.03.2026', 0.99),
+      line('250  Blutentnahme  2,3  5,36', 0.4),
+      line('75   Krankheitsbericht  3,5  26,53', 0.7),
+    ];
+    const result = buildScanResult(results, [GOAE]);
+    expect(result.positionLineIndex).toEqual([1, 2]);
+    expect(result.positionConfidence).toEqual([0.4, 0.7]);
+  });
 });
 
 describe('scheduleForProviderType', () => {
@@ -170,6 +236,7 @@ describe('toReviewPositions / toInvoicePayload', () => {
         isValid: true,
         flagReason: null,
         confidence: 1,
+        lineIndex: null,
       },
     ];
     expect(toInvoicePayload(state).total_amount).toBeCloseTo(10.72);

@@ -445,7 +445,8 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 ### 4.1 Ablauf
 
 ```
-1. Nutzer fotografiert Rechnung (Kamera) oder wählt PDF/Bild
+1. Nutzer fotografiert die Rechnung (Kamera, mehrere Seiten in Folge) oder
+   wählt PDF(s)/Bild(er) — auch gemischt; alle Seiten bilden **eine** Rechnung
         ↓
 2a. PDF mit Textlayer (digital erzeugt, z. B. Praxissoftware/"als PDF drucken"):
     `pdfjs` liest den Textlayer je Seite direkt aus (`getTextContent()`,
@@ -476,8 +477,51 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
    - GOÄ-Ziffer-Lookup
    - Validierung
         ↓
-5. Ergebnis-JSON → Review-Screen → bei Bestätigung: API POST
+5. Ergebnis-JSON → Review-Screen (mit Seitenvorschau, s. u.)
+   → bei Bestätigung: API POST
 ```
+
+**Seitenvorschau im Review (`ocr/preview.ts`, `InvoicePagePreview`).** Der
+Review-Screen zeigt die gescannte Seite und zeichnet jede erkannte Textzeile als
+Rahmen darüber; die Zeile hinter der gerade geprüften Position ist hervorgehoben
+(Maus **oder** Tastaturfokus auf der Positionszeile). Damit ist ein Fehlleser
+nachprüfbar, statt nur behauptet. Die Geometrie stammt aus `OcrResult.bbox` —
+`mapPaddleResult` vereinigt dort schon die Regionen-Boxen einer Zeile zu einem
+Viereck; `ScanResult.positionLineIndex` verbindet jede geparste Position mit
+ihrer Quellzeile (abgeleitet aus **einem** Durchlauf der Zeilen, gemeinsam mit
+`positionConfidence`, damit die beiden GOZ-Sonderfälle nicht auseinanderlaufen).
+
+Zwei Fallstricke, die die Implementierung bestimmen:
+
+- Der Schnappschuss entsteht **vor** dem Preprocessing, weil der OCR-Client den
+  Pixelpuffer per Transfer an den Worker übergibt (Zero-Copy) — eine später
+  gezogene Kopie kann bereits detached sein. `createPagePreview` kopiert außerdem
+  immer, da `downscale` sein Eingabebild unverändert zurückgibt, wenn es schon
+  klein genug ist.
+- Die Seitenzuordnung nutzt **halboffene Zeilenbereiche** je Seite, nicht bloße
+  Startindizes: ein PDF kann Textlayer- und Scan-Seiten mischen, und eine reine
+  Offset-Liste kann die Lücke nicht ausdrücken — die Zeilen der Textlayer-Seite
+  würden der vorherigen Bildseite zugeschlagen.
+
+Seiten mit brauchbarem Textlayer haben kein Bild und daher keine Vorschau; ihre
+Zeilen tragen ohnehin ein leeres Viereck. Dieselbe Komponente zeigt auch die
+Aufnahme, die die Qualitätswarnung (Schritt 2b) beanstandet — „zu dunkel" ist
+deutlich leichter zu befolgen, wenn das Foto daneben steht.
+
+**Mehrseitige Rechnungen.** Mehrseitigkeit ist nicht auf PDFs beschränkt: eine
+zweiseitige Papierrechnung darf als mehrere Fotos ausgewählt (`<input multiple>`,
+`filesToAllPages`) oder in einer Kamerasitzung in Folge aufgenommen werden — der
+Auslöser hängt eine Seite an und lässt die Kamera offen, „Fertig – erkennen"
+startet die Erkennung. Gemischte Auswahlen (zwei Fotos + ein PDF) werden zu
+*einer* Seitenfolge verkettet. Die Reihenfolge einer Dateiauswahl ist
+browserabhängig und wird daher numerisch nach Dateiname sortiert (`seite-2` vor
+`seite-10`); eine Drag-&-Drop-Reihenfolge bleibt unangetastet, denn die hat der
+Nutzer gewählt. Die Seitenvorschau macht eine falsche Reihenfolge sichtbar.
+
+Weil `mergeQualityReports` die Einzelurteile bewusst zu einem zusammenfasst,
+behält der Scanner die Berichte je Seite und nennt über `failingPageNumbers` die
+beanstandete Seite („Betrifft Seite 2 von 2") — sonst müsste der Nutzer alle
+Blätter neu fotografieren.
 
 Die Entscheidung Textlayer-vs-OCR fällt **pro Seite**, nicht pro Dokument — ein
 mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
@@ -547,6 +591,66 @@ Verarbeitung nicht blockiert. Die schweren Laufzeit-Assets (ONNX-Runtime-WASM
 und die ~12 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
 Worker beim ersten Gebrauch gecacht (§6.3); kein Drittanbieter-Abruf zur
 Laufzeit.
+
+**Modellwahl (Stand `ppu-paddle-ocr` 6.2.0).** Ab 6.2.0 ist PP-OCRv6 die
+Standard-Modellfamilie der Bindung. Weil wir *immer* explizite, selbst gehostete
+URLs übergeben, ändert sich dadurch nichts von allein — ein Wechsel wäre eine
+bewusste Entscheidung. Gemessene Kandidaten:
+
+| Bündel | Detektion + Erkennung | Zeichen im Wörterbuch |
+|---|---|---|
+| **v5 latin mobile (aktuell)** | 4,6 + 7,7 = **12,3 MB** | **837** |
+| v6 tiny | 1,8 + 4,4 = **6,2 MB** | 6 905 |
+| v6 small | 9,5 + 20,3 = **29,8 MB** | 18 709 |
+
+Alle drei Wörterbücher decken Deutsch vollständig ab (`ä ö ü Ä Ö Ü ß` sowie
+`€ § %`) — Deutsch ist also *nicht* das Unterscheidungskriterium. Zwei Punkte
+sprechen dagegen, v6 einfach als besser anzunehmen:
+
+- Ein **engeres** Wörterbuch ist in einer rein lateinischen Domäne ein Vorteil:
+  mit 837 Zeichen *kann* der Erkenner keine CJK-Glyphe auf eine deutsche Rechnung
+  schreiben, mit 18 709 schon.
+- Die Herstellerangabe (99,48 % vs. 97,39 %) stammt aus dessen eigenem
+  Kassenbon-Benchmark mit dem allgemeinen Standardmodell — nicht aus deutschen
+  GOÄ-Rechnungen gegen eine lateinisch beschränkte Vergleichsbasis.
+
+Die eigentliche Hürde ist zudem technisch: v6 liefert das
+ONNX-Runtime-Serialisierungsformat `.ort` (für Minimal-/Mobile-Builds gedacht),
+v5-latin schlichtes `.onnx`. Ob der JSEP-/WebGPU-Build von `onnxruntime-web` 1.27
+`.ort` in unserem Worker-Setup überhaupt lädt, ist vor allem anderen zu prüfen.
+Ein Wechsel zöge außerdem neue SHA-256-Pins (`models.sha256`), neue
+Dateinamen (`det.ort`/`rec.ort` statt `.onnx`, samt `OCR_ASSET_PATHS` und
+`.gitignore`) und bei v6 small ein Asset-Budget von ~30 MB statt ~12 MB nach sich
+(§6.3) — relevant für eine PWA, die die Modelle beim ersten Gebrauch cacht.
+
+### 4.2.1 Reine Texterkennungs-Suche (`detect`) und Zuschnitt
+
+`ppu-paddle-ocr` 6.1.0 bietet `detect()` — nur das Detektionsmodell, ohne
+Erkennung. Der Adapter macht das über den Engine-Seam verfügbar
+(`OcrEngine.detect`, Worker-Nachricht `detect` → `detected`, `OcrClient.detect`);
+`mapPaddleDetectResult` übersetzt die achsenparallelen `Box`-Werte der Bindung in
+dieselben Vierecke, die `recognize` liefert.
+
+**Wofür `detect` *nicht* gedacht ist:** die Seitenvorschau braucht es nicht —
+`recognize` liefert dieselben Boxen bereits mit, ein vorgeschalteter `detect`-Lauf
+würde also eine zweite Detektions-Inferenz bezahlen, um zu erfahren, was uns
+gleich ohnehin mitgeteilt wird. Für die Live-Kameraschleife (alle 400 ms) ist es
+ebenfalls viel zu langsam.
+
+**Wofür es sich anbietet:** den Zuschnitt *vor* der Erkennung. Der Detektor
+skaliert jeden Frame auf ein festes Längstkanten-Budget herunter; bei einem Foto,
+auf dem die Rechnung nur die halbe Bildfläche einnimmt, geht die Hälfte dieses
+Budgets für Schreibtisch drauf. Die Hülle der erkannten Boxen (`ocr/crop.ts`:
+`hullOfQuads`, `isCropWorthwhile`, `cropImageData`, `uncropQuad`) begrenzt den
+Frame auf den bedruckten Bereich, sodass die Erkennung die volle Auflösung auf die
+Seite legt.
+
+> **Bewusst noch nicht in der Standard-Pipeline aktiv.** Das ist ein plausibles
+> Argument, kein Messergebnis, und es kostet eine zusätzliche Inferenz pro Seite.
+> Vor einer Aktivierung: an echten Rechnungsfotos gegenmessen (Erkennungsqualität
+> *und* Laufzeit) und bei fehlendem Gewinn wieder verwerfen. Solche Fixtures
+> können nicht ins Repository — Rechnungen sind Art.-9-Daten (§8) —, die Messung
+> läuft also lokal, und nur die aggregierten Zahlen gehören in den PR.
 
 ### 4.3 GOÄ-Strukturparser
 
@@ -1008,6 +1112,7 @@ aggregiert über alle Rechnungen der Person, §5.2). `/invoices/[id]` zeigt nur 
 | Komponente | Datei | Zweck |
 |---|---|---|
 | `OCRScanner` | `packages/medic-invoice-check/src/lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
+| `InvoicePagePreview` | `packages/medic-invoice-check/src/lib/components/InvoicePagePreview.svelte` | Gescannte Seite mit eingezeichneten erkannten Textzeilen (§4.1); hebt die Quellzeile der geprüften Position hervor |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
 | `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position + „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
@@ -1171,7 +1276,7 @@ services:
 
 ### 8.2 DSGVO-relevante Maßnahmen
 
-- **Datenminimierung:** Rechnungsbilder werden nach OCR client-seitig verworfen (kein Upload), sofern Nutzer nicht explizit "Datei speichern" wählt
+- **Datenminimierung:** Rechnungsbilder werden client-seitig verworfen (kein Upload), sofern Nutzer nicht explizit "Datei speichern" wählt. Eine heruntergerechnete Kopie bleibt bis zum Speichern bzw. Verwerfen der Rechnung im Speicher, damit der Review-Screen die Vorlage zur Prüfung zeigen kann (§4.1); sie wird nie persistiert und nie übertragen
 - **Löschbarkeit:** Jede Entität hat einen `DELETE`-Endpunkt; Datenbank-Export für Portabilität (Art. 20 DSGVO)
 - **Verschlüsselung at rest:** Optional SQLCipher für verschlüsselte SQLite-Datenbank
 - **Keine Drittanbieter-Abhängigkeiten:** Kein Analytics, kein CDN-Loading von externen Ressourcen

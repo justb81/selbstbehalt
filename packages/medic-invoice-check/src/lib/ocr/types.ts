@@ -46,6 +46,14 @@ export interface OcrResult {
  */
 export type ScanPage = { kind: 'text'; lines: OcrResult[] } | { kind: 'image'; image: ImageData };
 
+/** The rasterised variant of {@link ScanPage} — the one that carries pixels. */
+export type ScanImagePage = Extract<ScanPage, { kind: 'image' }>;
+
+/** Narrows a {@link ScanPage} to the rasterised variant (usable as a filter predicate). */
+export function isScanImagePage(page: ScanPage): page is ScanImagePage {
+  return page.kind === 'image';
+}
+
 /** Lifecycle phase reported through {@link OcrProgress}. */
 export type OcrPhase = 'init' | 'recognize';
 
@@ -60,7 +68,13 @@ export interface OcrProgress {
 
 /** Stable error codes so callers can branch without string matching. */
 export type OcrErrorCode =
-  'init_failed' | 'recognize_failed' | 'dispose_failed' | 'not_initialized' | 'unknown_message';
+  | 'init_failed'
+  | 'recognize_failed'
+  | 'detect_failed'
+  | 'detect_unsupported'
+  | 'dispose_failed'
+  | 'not_initialized'
+  | 'unknown_message';
 
 /** Serialisable error carried over the worker boundary. */
 export interface OcrErrorPayload {
@@ -160,13 +174,24 @@ export interface OcrRecognizeRequest {
   image: ImageData;
 }
 
+/**
+ * Locate text regions without reading them (detection model only).
+ * `image.data.buffer` should be transferred, as with `recognize`.
+ */
+export interface OcrDetectRequest {
+  type: 'detect';
+  id: number;
+  image: ImageData;
+}
+
 /** Tear the engine down and free model memory; the worker stays alive. */
 export interface OcrDisposeRequest {
   type: 'dispose';
   id: number;
 }
 
-export type OcrWorkerRequest = OcrInitRequest | OcrRecognizeRequest | OcrDisposeRequest;
+export type OcrWorkerRequest =
+  OcrInitRequest | OcrRecognizeRequest | OcrDetectRequest | OcrDisposeRequest;
 
 // ---------------------------------------------------------------------------
 // Worker message protocol (worker → main thread)
@@ -184,6 +209,13 @@ export interface OcrResultResponse {
   type: 'result';
   id: number;
   results: OcrResult[];
+}
+
+/** Detection finished for request `id`. */
+export interface OcrDetectedResponse {
+  type: 'detected';
+  id: number;
+  boxes: OcrBoundingBox[];
 }
 
 /** Engine disposed for request `id`. */
@@ -209,6 +241,7 @@ export interface OcrErrorResponse {
 export type OcrWorkerResponse =
   | OcrReadyResponse
   | OcrResultResponse
+  | OcrDetectedResponse
   | OcrDisposedResponse
   | OcrProgressResponse
   | OcrErrorResponse;
@@ -227,6 +260,16 @@ export interface OcrEngine {
   init(onProgress?: (progress: OcrProgress) => void): Promise<void>;
   /** Recognise a single preprocessed frame into text lines. */
   recognize(image: ImageData, onProgress?: (progress: OcrProgress) => void): Promise<OcrResult[]>;
+  /**
+   * Locate text regions **without reading them** — the detection model only.
+   * Optional, because not every engine (or binding version) offers it.
+   *
+   * Cheaper than {@link recognize}, but not cheap: it is still one model
+   * inference, far too slow for the live camera loop. Its use is finding the
+   * printed area of a frame so recognition can run on a crop rather than on a
+   * page surrounded by desk (see `./crop`).
+   */
+  detect?(image: ImageData): Promise<OcrBoundingBox[]>;
   /** Release the model and any GPU/WASM resources. */
   dispose(): Promise<void> | void;
 }

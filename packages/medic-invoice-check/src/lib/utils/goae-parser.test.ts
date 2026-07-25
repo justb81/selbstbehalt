@@ -1661,3 +1661,47 @@ describe('integration with the generated GOÄ table', () => {
     expect(invoice.positions[2]?.known).toBe(false);
   });
 });
+
+// Multi-page documents (a scan-PDF or several photographed sheets) arrive as one
+// concatenated text block, so the parser sees repeated page headers and any
+// carry-forward line. Both are already handled — these lock that in.
+describe('parseInvoice — multi-page documents', () => {
+  const table = makeTable([entry('1'), entry('30')]);
+
+  it('takes the header from its first occurrence when pages repeat it', () => {
+    const text = [
+      // Page 1
+      'Praxis Dr. med. Test',
+      'Rechnungsnummer: R-1',
+      'Rechnungsdatum: 27.06.2026',
+      '1    Beratung      2,3    10,72',
+      // Page 2 — practices reprint the header on every sheet
+      'Praxis Dr. med. Test',
+      'Rechnungsnummer: R-1',
+      'Rechnungsdatum: 27.06.2026',
+      '30   Akupunktur    2,3    23,00',
+    ].join('\n');
+
+    const invoice = parseInvoice(text, table);
+    expect(invoice.invoiceNumber).toBe('R-1');
+    expect(invoice.invoiceDate).toBe('2026-06-27');
+    // Two real positions — the repeated header contributes none.
+    expect(invoice.positions.map((p) => p.ziffer)).toEqual(['1', '30']);
+  });
+
+  it('ignores a page carry-forward line instead of billing it as a position', () => {
+    const text = [
+      'Praxis Dr. med. Test',
+      'Rechnungsdatum: 27.06.2026',
+      '1    Beratung      2,3    10,72',
+      // Carries the running total to the next sheet; no Ziffer, no factor.
+      'Übertrag                    10,72',
+      '30   Akupunktur    2,3    23,00',
+      'Zwischensumme               33,72',
+    ].join('\n');
+
+    const invoice = parseInvoice(text, table);
+    expect(invoice.positions.map((p) => p.ziffer)).toEqual(['1', '30']);
+    expect(invoice.totalAmount).toBeCloseTo(33.72);
+  });
+});

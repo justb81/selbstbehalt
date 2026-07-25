@@ -16,9 +16,12 @@
   live camera preview the same metrics drive an overlay that guides the shot as
   it is framed (issue #281).
 
-  Privacy by design: the frame is recognised on-device and discarded as soon as
-  OCR finishes; only the parsed text/metadata leaves this component (never the
-  image), and nothing is uploaded here (docs/design.md §1.3, §8).
+  Privacy by design: the frame is recognised on-device and only the parsed
+  text/metadata leaves this component — never the image — and nothing is uploaded
+  here (docs/design.md §1.3, §8). A downscaled copy of each page is handed to the
+  parent alongside the result so the review screen can show what was read; it
+  lives in memory only, is never persisted, and the parent drops it when the
+  invoice is saved or abandoned (docs/design.md §8.2).
 
   The capture/preprocess/recognise steps are injectable via `deps` so the flow
   is unit-testable without a real camera, worker or DOM.
@@ -31,20 +34,31 @@
     grabPreviewFrame as defaultGrabPreviewFrame,
     requestCameraStream as defaultRequestCameraStream,
     stopStream as defaultStopStream,
+    sortFilesByName,
     CaptureError,
   } from '../ocr/capture';
   import { preprocess as defaultPreprocess, QUALITY_METRIC_MAX_SIDE } from '../ocr/preprocess';
   import {
     assessImageQuality as defaultAssessQuality,
+    failingPageNumbers,
     mergeQualityReports,
     QUALITY_OK_HINT,
     type QualityReport,
   } from '../ocr/quality';
   import { loadAllInvoicePages, recognizeInvoiceImage } from '../ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
+  import {
+    buildScanPreview,
+    createPagePreview,
+    PREVIEW_MAX_PAGES,
+    type PageLineRange,
+    type PagePreview,
+    type ScanPreview,
+  } from '../ocr/preview';
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
-  import type { OcrProgress, OcrResult, ScanPage } from '../ocr/types';
+  import { isScanImagePage, type OcrProgress, type OcrResult, type ScanPage } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
+  import InvoicePagePreview from './InvoicePagePreview.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
   import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -57,7 +71,8 @@
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {
-    fileToPages: (file: File) => Promise<ScanPage[]>;
+    /** Expands the whole selection into one page list (multi-sheet invoices). */
+    filesToPages: (files: File[]) => Promise<ScanPage[]>;
     preprocess: (image: ImageData) => ImageData;
     recognize: (
       image: ImageData,
@@ -85,8 +100,13 @@
     deps = {},
     autoFile = null,
   }: {
-    /** Called with the parsed result once a frame has been recognised. */
-    onScanned: (result: ScanResult) => void;
+    /**
+     * Called with the parsed result once a frame has been recognised, plus the
+     * in-memory page previews the review screen draws the recognised lines on
+     * (docs/design.md §4.1). The preview holds pixels — it is never persisted or
+     * uploaded, and the caller must drop it when the scan is saved or abandoned.
+     */
+    onScanned: (result: ScanResult, preview: ScanPreview) => void;
     deps?: Partial<ScannerDeps>;
     /**
      * A file supplied by the caller (e.g. a PWA share target, issue #158)
@@ -98,7 +118,7 @@
   // `deps` is injected once (tests) and never changes; capturing the initial
   // value here is intentional, so silence the seed-once reactivity warning.
   // svelte-ignore state_referenced_locally
-  const fileToPages = deps.fileToPages ?? ((f: File) => loadAllInvoicePages(f));
+  const filesToPages = deps.filesToPages ?? ((f: File[]) => loadAllInvoicePages(f));
   // svelte-ignore state_referenced_locally
   const preprocess =
     deps.preprocess ?? ((img: ImageData) => defaultPreprocess(img, { contrast: 1.2 }));
@@ -130,9 +150,24 @@
 
   /** Pages parked by the quality gate, awaiting the user's call (issue #279). */
   let pendingPages: ScanPage[] = [];
+  /** Previews of {@link pendingPages}, so the warning can show the frame it faults. */
+  let pendingPreviews = $state<PagePreview[]>([]);
   let pendingQuality = $state<QualityReport | null>(null);
+  /** 1-based numbers of the parked pages that failed, so the warning can name them. */
+  let pendingFailingPages = $state<number[]>([]);
+  /** How many image pages were judged — the warning only names a sheet when >1. */
+  let pendingPageCount = $state(0);
   /** Which entry point produced {@link pendingPages} — drives the retake action. */
   let pendingSource = $state<'camera' | 'file'>('file');
+
+  /**
+   * Sheets shot in the current camera session, awaiting "Fertig". Full-resolution
+   * frames, so they are dropped on cancel/unmount as well as after recognition.
+   * The array itself is not reactive (the frames are heavy and never rendered);
+   * {@link capturedCount} drives the UI.
+   */
+  let capturedPages: ScanPage[] = [];
+  let capturedCount = $state(0);
 
   /** Latest live verdict on the camera preview, or null before the first tick. */
   let liveQuality = $state<QualityReport | null>(null);
@@ -159,23 +194,42 @@
    * invoice. Frames are discarded as soon as recognition finishes
    * (Datenminimierung §8.2).
    */
-  async function runPages(pages: ScanPage[]): Promise<void> {
+  /**
+   * Preview snapshots of the image pages, in page order, built by
+   * {@link processPages} *before* recognition — `recognize` transfers the pixel
+   * buffer to the worker, so a copy taken afterwards may already be detached.
+   * Shared by the quality warning (which shows the frame it is judging) and the
+   * review screen (which draws the recognised lines on it).
+   */
+  async function runPages(pages: ScanPage[], previews: PagePreview[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
       const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
       const allResults: OcrResult[] = [];
+      const ranges: PageLineRange[] = [];
+      let imagePage = 0;
       for (const page of pages) {
         if (page.kind === 'text') {
+          // A text-layer page has no image, so it gets no preview — and
+          // deliberately no range either, so its lines are attributed to no page
+          // rather than bleeding into the previous one.
           allResults.push(...page.lines);
           continue;
         }
+        const preview = previews[imagePage];
+        imagePage += 1;
+        const start = allResults.length;
         const prepared = preprocess(page.image);
         const results = await recognize(prepared, (p) => (progress = p));
         allResults.push(...results);
+        if (preview) ranges.push({ start, end: allResults.length });
       }
-      onScanned(buildScanResult(allResults, tables));
+      onScanned(
+        buildScanResult(allResults, tables),
+        buildScanPreview(previews, allResults, ranges),
+      );
       phase = 'idle';
       progress = null;
     } catch (err) {
@@ -196,33 +250,46 @@
    * scan-PDF pages all arrive through this one funnel.
    */
   async function processPages(pages: ScanPage[], source: 'camera' | 'file'): Promise<void> {
-    const reports = pages
-      .filter((page) => page.kind === 'image')
-      .map((page) => assessQuality(page.image));
+    const imagePages = pages.filter(isScanImagePage);
+    const reports = imagePages.map((page) => assessQuality(page.image));
+    // Snapshot every image page up front, while the buffers are still intact.
+    const previews = imagePages
+      .slice(0, PREVIEW_MAX_PAGES)
+      .map((page) => createPagePreview(page.image));
     const verdict = mergeQualityReports(reports);
     if (!verdict.ok) {
       pendingPages = pages;
+      pendingPreviews = previews;
       pendingQuality = verdict;
+      pendingFailingPages = failingPageNumbers(reports);
+      pendingPageCount = reports.length;
       pendingSource = source;
       error = null;
       phase = 'quality-warning';
       return;
     }
-    await runPages(pages);
+    await runPages(pages, previews);
   }
 
   /** "Trotzdem erkennen": the warning is advice, never a wall. */
   async function confirmQuality(): Promise<void> {
     const pages = pendingPages;
+    const previews = pendingPreviews;
     pendingPages = [];
+    pendingPreviews = [];
     pendingQuality = null;
-    await runPages(pages);
+    pendingFailingPages = [];
+    pendingPageCount = 0;
+    await runPages(pages, previews);
   }
 
   /** Discard the parked pages and offer the same entry point again. */
   async function retakeQuality(): Promise<void> {
     pendingPages = [];
+    pendingPreviews = [];
     pendingQuality = null;
+    pendingFailingPages = [];
+    pendingPageCount = 0;
     phase = 'idle';
     if (pendingSource === 'camera') {
       await startCamera();
@@ -234,9 +301,10 @@
     fileInput?.click();
   }
 
-  async function handleFile(file: File): Promise<void> {
+  async function handleFiles(files: File[]): Promise<void> {
+    if (files.length === 0) return;
     try {
-      const pages = await fileToPages(file);
+      const pages = await filesToPages(files);
       await processPages(pages, 'file');
     } catch (err) {
       error = messageFor(err);
@@ -245,17 +313,18 @@
 
   async function onFileChange(event: Event): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
+    const files = Array.from(input.files ?? []);
     // Reset so re-selecting the same file fires `change` again.
     input.value = '';
-    if (!file) return;
-    await handleFile(file);
+    // A file picker's FileList order is browser-defined, so sort it — otherwise
+    // `seite-10.jpg` can land before `seite-2.jpg`.
+    await handleFiles(sortFilesByName(files));
   }
 
   // Web Share Target (issue #158): scan a caller-supplied file straight away,
   // as if the user had just picked it from the file dialog.
   onMount(() => {
-    if (autoFile) void handleFile(autoFile);
+    if (autoFile) void handleFiles([autoFile]);
   });
 
   // Drop zone (issue #224). `dragDepth` counts nested enter/leave pairs so the
@@ -281,8 +350,9 @@
   async function onDrop(event: DragEvent): Promise<void> {
     event.preventDefault();
     dragDepth = 0;
-    const file = event.dataTransfer?.files?.[0];
-    if (file) await handleFile(file);
+    // Drop order is kept as-is: unlike a file picker's arbitrary FileList, the
+    // order the user dropped files in is a choice.
+    await handleFiles(Array.from(event.dataTransfer?.files ?? []));
   }
 
   /**
@@ -315,6 +385,8 @@
   async function startCamera(): Promise<void> {
     error = null;
     liveQuality = null;
+    capturedPages = [];
+    capturedCount = 0;
     try {
       stream = await requestCameraStream();
       phase = 'camera';
@@ -343,17 +415,24 @@
   }
 
   function cancelCamera(): void {
+    // Abandon every sheet shot in this session, not just the preview.
+    capturedPages = [];
+    capturedCount = 0;
     teardownCamera();
     phase = 'idle';
   }
 
+  /**
+   * Shutter: adds one sheet and **keeps the camera open**, so a multi-page paper
+   * invoice can be shot in one go. Recognition starts only on "Fertig".
+   */
   async function capture(): Promise<void> {
     if (!video || !stream) return;
     const activeStream = stream;
     try {
       const image = await capturePhoto(activeStream, video);
-      teardownCamera();
-      await processPages([{ kind: 'image', image }], 'camera');
+      capturedPages.push({ kind: 'image', image });
+      capturedCount = capturedPages.length;
     } catch (err) {
       // Never leave the camera running on a failed capture.
       teardownCamera();
@@ -362,9 +441,27 @@
     }
   }
 
+  /** "Fertig – erkennen": close the camera and run the sheets shot so far. */
+  async function finishCamera(): Promise<void> {
+    const pages = capturedPages;
+    capturedPages = [];
+    capturedCount = 0;
+    teardownCamera();
+    if (pages.length === 0) {
+      phase = 'idle';
+      return;
+    }
+    await processPages(pages, 'camera');
+  }
+
   // Release the camera if the component is torn down (navigate-away) before the
-  // user captures or cancels — the LED must not stay on (privacy, §8).
-  onDestroy(teardownCamera);
+  // user captures or cancels — the LED must not stay on (privacy, §8) — and drop
+  // any sheets shot but not yet recognised, so frames never outlive the view.
+  onDestroy(() => {
+    capturedPages = [];
+    capturedCount = 0;
+    teardownCamera();
+  });
 </script>
 
 <div class="flex flex-col gap-3">
@@ -388,14 +485,27 @@
               <li>{issue.hint}</li>
             {/each}
           </ul>
+          <!-- Name the offending sheet: on a multi-page document, unqualified
+          advice leaves the user re-shooting all of them. -->
+          {#if pendingPageCount > 1 && pendingFailingPages.length > 0}
+            <p class="mt-2">
+              Betrifft {pendingFailingPages.length === 1 ? 'Seite' : 'Seiten'}
+              {pendingFailingPages.join(', ')} von {pendingPageCount}.
+            </p>
+          {/if}
         </AlertDescription>
       </Alert>
+      <!-- Show the frame being faulted: "zu dunkel" is far easier to act on
+      when the shot is on screen next to the advice. -->
+      {#if pendingPreviews.length > 0}
+        <InvoicePagePreview preview={{ pages: pendingPreviews, lines: [] }} />
+      {/if}
       <div class="flex flex-wrap gap-2">
         <Button type="button" variant="default" onclick={() => void confirmQuality()}>
           Trotzdem erkennen
         </Button>
         <Button type="button" variant="outline" onclick={() => void retakeQuality()}>
-          {pendingSource === 'camera' ? 'Neu aufnehmen' : 'Andere Datei wählen'}
+          {pendingSource === 'camera' ? 'Neu aufnehmen' : 'Andere Dateien wählen'}
         </Button>
       </div>
     </div>
@@ -440,16 +550,35 @@
           </span>
         {/if}
       </div>
-      <div class="flex items-center justify-center py-6">
-        <Button
-          type="button"
-          variant="ghost"
-          onclick={capture}
-          aria-label="Aufnehmen"
-          class="size-16 shrink-0 rounded-full border-4 border-white bg-white/10 p-0 hover:bg-white/20"
-        >
-          <span class="size-12 rounded-full bg-white"></span>
-        </Button>
+      <!-- Multi-sheet capture: the shutter adds a page and keeps the camera
+      open, so a two-page invoice needs no second trip through the dropzone.
+      Recognition starts on "Fertig". The count is a live region so the
+      confirmation is announced without stealing focus from the shutter. -->
+      <div class="grid grid-cols-3 items-center gap-2 px-4 py-6">
+        <span class="text-sm font-medium text-white" role="status" aria-live="polite">
+          {#if capturedCount > 0}
+            {capturedCount}
+            {capturedCount === 1 ? 'Seite' : 'Seiten'} aufgenommen
+          {/if}
+        </span>
+        <div class="flex justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            onclick={capture}
+            aria-label={capturedCount > 0 ? 'Weitere Seite aufnehmen' : 'Aufnehmen'}
+            class="size-16 shrink-0 rounded-full border-4 border-white bg-white/10 p-0 hover:bg-white/20"
+          >
+            <span class="size-12 rounded-full bg-white"></span>
+          </Button>
+        </div>
+        <div class="flex justify-end">
+          {#if capturedCount > 0}
+            <Button type="button" variant="secondary" onclick={() => void finishCamera()}>
+              Fertig – erkennen
+            </Button>
+          {/if}
+        </div>
       </div>
     </div>
   {:else}
@@ -475,7 +604,9 @@
           <ScanIcon class="size-5.5" />
         </div>
         <p class="text-sm font-semibold">Rechnung hierher ziehen oder auswählen</p>
-        <p class="text-muted-foreground -mt-1.5 text-xs">Foto, Bild oder PDF</p>
+        <p class="text-muted-foreground -mt-1.5 text-xs">
+          Fotos, Bilder oder PDFs – mehrere Seiten möglich
+        </p>
         <div class="flex flex-wrap justify-center gap-2">
           <Button
             type="button"
@@ -497,21 +628,26 @@
             }}
           >
             <FileIcon class="mr-1.5 size-3.5" />
-            Datei/PDF wählen
+            Dateien/PDF wählen
           </Button>
         </div>
+        <!-- `multiple`: a multi-sheet paper invoice is often several photos, and
+        they belong to one invoice. Mixed selections (photos + a PDF) flatten
+        into one page sequence. -->
         <input
           bind:this={fileInput}
           type="file"
           accept="image/*,application/pdf"
+          multiple
           class="sr-only"
-          aria-label="Rechnungsdatei (Bild oder PDF)"
+          aria-label="Rechnungsdateien (Bilder oder PDFs)"
           onchange={onFileChange}
         />
       </div>
       <p class="text-muted-foreground text-sm">
-        Foto, Bild oder PDF. Die Erkennung läuft vollständig auf diesem Gerät; das Bild verlässt es
-        nie und wird nach der Erkennung verworfen.
+        Fotos, Bilder oder PDFs – mehrseitige Rechnungen können als mehrere Dateien ausgewählt oder
+        in Folge fotografiert werden. Die Erkennung läuft vollständig auf diesem Gerät; das Bild
+        verlässt es nie. Es bleibt nur zur Prüfung sichtbar und wird beim Speichern verworfen.
       </p>
     </div>
   {/if}

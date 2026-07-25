@@ -46,9 +46,23 @@ function flatImage(size = 8): ImageData {
 /** The real verdict on {@link flatImage} — no hand-written expectations to drift. */
 const BAD_QUALITY = assessImageQuality(flatImage());
 
+function stubCameraDeps(recognizeText = SAMPLE) {
+  const stream = { id: 'cam-stream' } as unknown as MediaStream;
+  return {
+    stream,
+    requestCameraStream: vi.fn(async () => stream),
+    stopStream: vi.fn(),
+    capturePhoto: vi.fn(async () => dummyImage()),
+    preprocess: vi.fn((img: ImageData) => img),
+    recognize: vi.fn(async () => textToOcrResults(recognizeText)),
+    assessQuality: vi.fn(() => OK_QUALITY),
+    grabPreviewFrame: vi.fn(async () => dummyImage()),
+  };
+}
+
 function stubDeps(recognizeText = SAMPLE) {
   return {
-    fileToPages: vi.fn(async () => [imagePage()]),
+    filesToPages: vi.fn(async () => [imagePage()]),
     preprocess: vi.fn((img: ImageData) => img),
     recognize: vi.fn(async () => textToOcrResults(recognizeText)),
     assessQuality: vi.fn(() => OK_QUALITY),
@@ -61,12 +75,12 @@ describe('OCRScanner', () => {
     const deps = stubDeps();
     render(OCRScanner, { props: { onScanned, deps } });
 
-    const input = screen.getByLabelText('Rechnungsdatei (Bild oder PDF)');
+    const input = screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)');
     const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
     await userEvent.upload(input, file);
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToPages).toHaveBeenCalledWith(file);
+    expect(deps.filesToPages).toHaveBeenCalledWith([file]);
     expect(deps.preprocess).toHaveBeenCalled();
 
     const result = onScanned.mock.calls[0]?.[0] as ScanResult;
@@ -83,7 +97,7 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps: stubDeps(dentistSample) } });
 
     await userEvent.upload(
-      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
       new File(['x'], 'r.png', { type: 'image/png' }),
     );
 
@@ -103,7 +117,7 @@ describe('OCRScanner', () => {
     await fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToPages).toHaveBeenCalledWith(file);
+    expect(deps.filesToPages).toHaveBeenCalledWith([file]);
   });
 
   it('concatenates OCR results from a multi-page PDF into one parsed invoice', async () => {
@@ -111,7 +125,7 @@ describe('OCRScanner', () => {
     const page2 = ['75  Bericht  3,5  26,53'].join('\n');
     const onScanned = vi.fn<(r: ScanResult) => void>();
     const deps = {
-      fileToPages: vi.fn(async () => [imagePage(), imagePage()]),
+      filesToPages: vi.fn(async () => [imagePage(), imagePage()]),
       preprocess: vi.fn((img: ImageData) => img),
       // Each call returns OCR results for one page.
       recognize: vi
@@ -123,7 +137,7 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps } });
 
     await userEvent.upload(
-      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
       new File(['x'], 'rechnung.pdf', { type: 'application/pdf' }),
     );
 
@@ -141,7 +155,7 @@ describe('OCRScanner', () => {
     const preprocess = vi.fn((img: ImageData) => img);
     const recognize = vi.fn(async () => textToOcrResults(scannedPage));
     const deps = {
-      fileToPages: vi.fn(async (): Promise<ScanPage[]> => [
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [
         { kind: 'text', lines: textLines },
         imagePage(),
       ]),
@@ -152,7 +166,7 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps } });
 
     await userEvent.upload(
-      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
       new File(['x'], 'rechnung.pdf', { type: 'application/pdf' }),
     );
 
@@ -173,7 +187,7 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps } });
 
     await userEvent.upload(
-      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
       new File(['x'], 'r.png', { type: 'image/png' }),
     );
 
@@ -188,27 +202,13 @@ describe('OCRScanner', () => {
     render(OCRScanner, { props: { onScanned, deps, autoFile } });
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
-    expect(deps.fileToPages).toHaveBeenCalledWith(autoFile);
+    expect(deps.filesToPages).toHaveBeenCalledWith([autoFile]);
   });
 });
 
 // One dedicated photo entry point ("Rechnung fotografieren") vs. one dedicated
 // file entry point ("Datei/PDF wählen", tested above) — issue #280.
 describe('OCRScanner camera capture (issue #280)', () => {
-  function stubCameraDeps(recognizeText = SAMPLE) {
-    const stream = { id: 'cam-stream' } as unknown as MediaStream;
-    return {
-      stream,
-      requestCameraStream: vi.fn(async () => stream),
-      stopStream: vi.fn(),
-      capturePhoto: vi.fn(async () => dummyImage()),
-      preprocess: vi.fn((img: ImageData) => img),
-      recognize: vi.fn(async () => textToOcrResults(recognizeText)),
-      assessQuality: vi.fn(() => OK_QUALITY),
-      grabPreviewFrame: vi.fn(async () => dummyImage()),
-    };
-  }
-
   it('opens the in-app camera preview via the dedicated photo entry point', async () => {
     const onScanned = vi.fn();
     const deps = stubCameraDeps();
@@ -230,6 +230,8 @@ describe('OCRScanner camera capture (issue #280)', () => {
     await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
 
     await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+    // The shutter only adds a sheet — recognition starts on "Fertig".
+    await userEvent.click(await screen.findByRole('button', { name: 'Fertig – erkennen' }));
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
     expect(deps.capturePhoto).toHaveBeenCalledWith(deps.stream, expect.anything());
@@ -287,7 +289,7 @@ describe('OCRScanner camera capture (issue #280)', () => {
 describe('OCRScanner capture-quality gate (issue #279)', () => {
   const uploadFile = async (): Promise<void> => {
     await userEvent.upload(
-      screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'),
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
       new File(['x'], 'rechnung.png', { type: 'image/png' }),
     );
   };
@@ -328,7 +330,7 @@ describe('OCRScanner capture-quality gate (issue #279)', () => {
     render(OCRScanner, { props: { onScanned, deps } });
 
     await uploadFile();
-    await userEvent.click(await screen.findByRole('button', { name: 'Andere Datei wählen' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Andere Dateien wählen' }));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Rechnung fotografieren' })).toBeInTheDocument(),
@@ -354,6 +356,7 @@ describe('OCRScanner capture-quality gate (issue #279)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
     await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
     await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Fertig – erkennen' }));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Neu aufnehmen' }));
 
@@ -366,7 +369,7 @@ describe('OCRScanner capture-quality gate (issue #279)', () => {
     const onScanned = vi.fn<(r: ScanResult) => void>();
     const assessQuality = vi.fn(() => BAD_QUALITY);
     const deps = {
-      fileToPages: vi.fn(async (): Promise<ScanPage[]> => [
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [
         { kind: 'text', lines: textToOcrResults(SAMPLE) },
       ]),
       preprocess: vi.fn((img: ImageData) => img),
@@ -429,5 +432,155 @@ describe('OCRScanner live capture hints (issue #281)', () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(deps.grabPreviewFrame).toHaveBeenCalledTimes(callsAtCancel);
     expect(screen.queryByText(QUALITY_OK_HINT)).not.toBeInTheDocument();
+  });
+});
+
+describe('OCRScanner multi-page image invoices', () => {
+  const twoFiles = (): File[] => [
+    new File(['a'], 'seite-1.png', { type: 'image/png' }),
+    new File(['b'], 'seite-2.png', { type: 'image/png' }),
+  ];
+
+  it('scans a multi-sheet paper invoice picked as several files as one invoice', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      ...stubDeps(),
+      filesToPages: vi.fn<(files: File[]) => Promise<ScanPage[]>>(async () => [
+        imagePage(),
+        imagePage(),
+      ]),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.upload(
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
+      twoFiles(),
+    );
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    // The whole selection goes to the loader in one call, and both pages'
+    // lines land in a single parsed invoice.
+    expect(deps.filesToPages).toHaveBeenCalledOnce();
+    expect(deps.filesToPages.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(deps.recognize).toHaveBeenCalledTimes(2);
+  });
+
+  // A file picker's FileList order is browser-defined, and a plain
+  // lexicographic sort puts "10" before "2".
+  it('orders a picked selection numerically by filename', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      ...stubDeps(),
+      filesToPages: vi.fn<(files: File[]) => Promise<ScanPage[]>>(async () => [imagePage()]),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.upload(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'), [
+      new File(['c'], 'seite-10.png', { type: 'image/png' }),
+      new File(['a'], 'seite-2.png', { type: 'image/png' }),
+    ]);
+
+    await waitFor(() => expect(deps.filesToPages).toHaveBeenCalledOnce());
+    const names = deps.filesToPages.mock.calls[0]![0].map((f) => f.name);
+    expect(names).toEqual(['seite-2.png', 'seite-10.png']);
+  });
+
+  it('keeps the drop order, which the user chose', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      ...stubDeps(),
+      filesToPages: vi.fn<(files: File[]) => Promise<ScanPage[]>>(async () => [imagePage()]),
+    };
+    const { container } = render(OCRScanner, { props: { onScanned, deps } });
+
+    const dropzone = container.querySelector('[role="presentation"]')!;
+    await fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [
+          new File(['c'], 'seite-10.png', { type: 'image/png' }),
+          new File(['a'], 'seite-2.png', { type: 'image/png' }),
+        ],
+      },
+    });
+
+    await waitFor(() => expect(deps.filesToPages).toHaveBeenCalledOnce());
+    const names = deps.filesToPages.mock.calls[0]![0].map((f) => f.name);
+    expect(names).toEqual(['seite-10.png', 'seite-2.png']);
+  });
+
+  it('does nothing when the selection is empty', async () => {
+    const onScanned = vi.fn();
+    const deps = stubDeps();
+    const { container } = render(OCRScanner, { props: { onScanned, deps } });
+
+    const dropzone = container.querySelector('[role="presentation"]')!;
+    await fireEvent.drop(dropzone, { dataTransfer: { files: [] } });
+
+    expect(deps.filesToPages).not.toHaveBeenCalled();
+    expect(onScanned).not.toHaveBeenCalled();
+  });
+
+  it('shoots several sheets in one camera session before recognising', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = stubCameraDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+    // The camera stays open, and the shutter now offers another sheet.
+    expect(deps.stopStream).not.toHaveBeenCalled();
+    expect(await screen.findByText(/1 Seite aufgenommen/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Weitere Seite aufnehmen' }));
+    expect(await screen.findByText(/2 Seiten aufgenommen/)).toBeInTheDocument();
+    expect(onScanned).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fertig – erkennen' }));
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    expect(deps.capturePhoto).toHaveBeenCalledTimes(2);
+    expect(deps.recognize).toHaveBeenCalledTimes(2);
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+  });
+
+  it('discards sheets already shot when the camera is cancelled', async () => {
+    const onScanned = vi.fn();
+    const deps = stubCameraDeps();
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledOnce());
+    await userEvent.click(screen.getByRole('button', { name: 'Aufnehmen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    expect(onScanned).not.toHaveBeenCalled();
+    expect(deps.stopStream).toHaveBeenCalledWith(deps.stream);
+
+    // Re-entering the camera starts from zero, not from the abandoned sheet.
+    await userEvent.click(screen.getByRole('button', { name: 'Rechnung fotografieren' }));
+    await waitFor(() => expect(deps.requestCameraStream).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/aufgenommen/)).not.toBeInTheDocument();
+  });
+
+  it('names the offending sheet when only one page of several is unusable', async () => {
+    const onScanned = vi.fn();
+    let call = 0;
+    const deps = {
+      ...stubDeps(),
+      filesToPages: vi.fn(async () => [imagePage(), imagePage()]),
+      // First sheet fine, second unusable.
+      assessQuality: vi.fn(() => (call++ === 0 ? OK_QUALITY : BAD_QUALITY)),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await userEvent.upload(
+      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
+      twoFiles(),
+    );
+
+    expect(await screen.findByText(/Betrifft Seite 2 von 2/)).toBeInTheDocument();
+    expect(onScanned).not.toHaveBeenCalled();
   });
 });

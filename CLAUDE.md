@@ -49,7 +49,7 @@ Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, and `pac
 
 These come from §1.3 and §8 of the design doc and override convenience:
 
-- **Invoice images never leave the client.** OCR is browser-side; only structured JSON metadata (no images) is sent to the backend. Images are discarded after OCR unless the user explicitly opts to save.
+- **Invoice images never leave the client.** OCR is browser-side; only structured JSON metadata (no images) is sent to the backend. Images are never persisted unless the user explicitly opts to save: the full-resolution frame is dropped as soon as OCR finishes, and the downscaled review copy (`ocr/preview.ts`, shown so the user can check a position against the paper) lives in component state only.
 - **No server-side AI/LLM.** All inference is client-side. The backend stays ~128 MB RAM, no GPU.
 - **No third-party dependencies at runtime** — no analytics, no external CDN loading.
 - Health data falls under Art. 9 DSGVO; treat invoice content and diagnoses as maximally sensitive.

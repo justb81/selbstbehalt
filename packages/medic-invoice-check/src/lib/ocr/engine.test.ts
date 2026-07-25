@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createPaddleOcrEngine,
+  mapPaddleDetectResult,
   mapPaddleResult,
   type PaddleBox,
   type PaddleOcrModule,
@@ -284,5 +285,101 @@ describe('createPaddleOcrEngine', () => {
     await engine.dispose();
     expect(service.destroy).toHaveBeenCalledOnce();
     await expect(engine.recognize(image)).rejects.toThrow(/before init/);
+  });
+});
+
+describe('mapPaddleDetectResult', () => {
+  it('turns axis-aligned detection boxes into clockwise quads', () => {
+    expect(mapPaddleDetectResult({ boxes: [{ x: 10, y: 20, width: 30, height: 40 }] })).toEqual([
+      {
+        points: [
+          [10, 20],
+          [40, 20],
+          [40, 60],
+          [10, 60],
+        ],
+      },
+    ]);
+  });
+
+  it('drops degenerate and non-finite boxes rather than emitting broken quads', () => {
+    const mapped = mapPaddleDetectResult({
+      boxes: [
+        { x: 0, y: 0, width: 0, height: 10 },
+        { x: 0, y: 0, width: 10, height: -1 },
+        { x: Number.NaN, y: 0, width: 10, height: 10 },
+        { x: 1, y: 1, width: 2, height: 2 },
+      ],
+    });
+    expect(mapped).toHaveLength(1);
+    expect(mapped[0]?.points[0]).toEqual([1, 1]);
+  });
+
+  it('returns nothing when boxes are missing', () => {
+    expect(mapPaddleDetectResult({ boxes: undefined as unknown as [] })).toEqual([]);
+  });
+});
+
+describe('createPaddleOcrEngine — detect', () => {
+  function detectingService(): PaddleOcrServiceLike {
+    return {
+      initialize: vi.fn().mockResolvedValue(undefined),
+      recognize: vi.fn().mockResolvedValue({ text: '', lines: [] }),
+      detect: vi.fn().mockResolvedValue({ boxes: [{ x: 5, y: 5, width: 10, height: 10 }] }),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  /** The adapter constructs the service with `new`, so this must be constructible. */
+  function moduleFor(service: PaddleOcrServiceLike): PaddleOcrModule {
+    return {
+      PaddleOcrService: vi.fn().mockImplementation(function () {
+        return service;
+      }),
+    } as unknown as PaddleOcrModule;
+  }
+
+  const image = { data: new Uint8ClampedArray(4), width: 1, height: 1 } as unknown as ImageData;
+
+  it('maps the binding detection result through the seam', async () => {
+    const service = detectingService();
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+      loadModule: async () => moduleFor(service),
+      toImageSource: () => 'CANVAS',
+    });
+    await engine.init();
+
+    const boxes = await engine.detect!(image);
+    expect(service.detect).toHaveBeenCalledWith('CANVAS');
+    expect(boxes).toEqual([
+      {
+        points: [
+          [5, 5],
+          [15, 5],
+          [15, 15],
+          [5, 15],
+        ],
+      },
+    ]);
+  });
+
+  it('throws before init()', async () => {
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+      loadModule: async () => moduleFor(detectingService()),
+    });
+    await expect(engine.detect!(image)).rejects.toThrow(/before init/);
+  });
+
+  // Older bindings have no detection-only path; say so rather than crashing on
+  // an undefined call.
+  it('reports a binding without detection support', async () => {
+    const service = detectingService();
+    delete service.detect;
+    const engine = createPaddleOcrEngine('wasm', DEFAULT_ENGINE_CONFIG, {
+      loadModule: async () => moduleFor(service),
+      toImageSource: () => 'CANVAS',
+    });
+    await engine.init();
+    await expect(engine.detect!(image)).rejects.toThrow(/unterstützt keine/);
   });
 });

@@ -39,10 +39,18 @@ describe('loadAllInvoicePages', () => {
   it('routes through an injected loader override', async () => {
     const loader: MultiPageLoader = vi.fn(async () => []);
     setPageLoader(loader);
-    const file = new File([], 'test.pdf');
-    const result = await loadAllInvoicePages(file);
-    expect(loader).toHaveBeenCalledWith(file);
+    const files = [new File([], 'test.pdf')];
+    const result = await loadAllInvoicePages(files);
+    expect(loader).toHaveBeenCalledWith(files);
     expect(result).toEqual([]);
+  });
+
+  it('passes the whole selection through, so several sheets are one scan', async () => {
+    const loader: MultiPageLoader = vi.fn(async () => []);
+    setPageLoader(loader);
+    const files = [new File([], 'seite-1.jpg'), new File([], 'seite-2.jpg')];
+    await loadAllInvoicePages(files);
+    expect(loader).toHaveBeenCalledWith(files);
   });
 });
 

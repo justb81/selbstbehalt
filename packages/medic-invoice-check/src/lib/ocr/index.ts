@@ -15,6 +15,7 @@ export {
   preprocess,
   IDENTITY_HOMOGRAPHY,
   downscale,
+  makeImageData,
   lumaPlane,
   laplacianVariance,
   meanLuma,
@@ -33,6 +34,7 @@ export type {
 export {
   assessImageQuality,
   mergeQualityReports,
+  failingPageNumbers,
   pickSharpestFrame,
   QUALITY_THRESHOLDS,
   QUALITY_OK_HINT,
@@ -47,6 +49,8 @@ export {
   grabPreviewFrame,
   fileToImageData,
   fileToAllPages,
+  filesToAllPages,
+  sortFilesByName,
   CaptureError,
   REAR_CAMERA_CONSTRAINTS,
   BEST_FRAME_SAMPLE_COUNT,
@@ -73,9 +77,29 @@ export {
 } from './scan-ocr';
 export type { OcrRecognizer, MultiPageLoader } from './scan-ocr';
 export {
+  hullOfQuads,
+  isCropWorthwhile,
+  cropImageData,
+  uncropQuad,
+  DEFAULT_CROP_MARGIN,
+} from './crop';
+export type { CropRect } from './crop';
+export {
+  createPagePreview,
+  buildScanPreview,
+  scaleQuadToPreview,
+  quadBounds,
+  pageIndexForLine,
+  findPreviewLineIndex,
+  PREVIEW_MAX_SIDE,
+  PREVIEW_MAX_PAGES,
+} from './preview';
+export type { PagePreview, PreviewLine, ScanPreview, QuadBounds, PageLineRange } from './preview';
+export {
   buildScanResult,
   ocrResultsToText,
   meanConfidence,
+  positionLineIndices,
   scheduleForProviderType,
   toReviewPositions,
   toInvoicePayload,

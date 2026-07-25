@@ -93,6 +93,25 @@ export function createOcrWorkerCore(deps: OcrWorkerCoreDeps) {
     }
   }
 
+  async function handleDetect(id: number, request: Extract<OcrWorkerRequest, { type: 'detect' }>) {
+    if (!engine) {
+      fail(id, 'not_initialized', 'OCR engine not initialised — send an init message first.');
+      return;
+    }
+    if (typeof engine.detect !== 'function') {
+      // `detect` is optional on the engine seam, so an engine without it is a
+      // distinct, actionable outcome rather than a generic failure.
+      fail(id, 'detect_unsupported', 'This OCR engine does not support detection-only runs.');
+      return;
+    }
+    try {
+      const boxes = await engine.detect(request.image);
+      deps.post({ type: 'detected', id, boxes });
+    } catch (err) {
+      fail(id, 'detect_failed', err);
+    }
+  }
+
   async function handleDispose(id: number) {
     if (!engine) {
       deps.post({ type: 'disposed', id });
@@ -119,6 +138,9 @@ export function createOcrWorkerCore(deps: OcrWorkerCoreDeps) {
           return;
         case 'recognize':
           await handleRecognize(message.id, message);
+          return;
+        case 'detect':
+          await handleDetect(message.id, message);
           return;
         case 'dispose':
           await handleDispose(message.id);

@@ -286,6 +286,49 @@ export async function fileToAllPages(file: File, deps: CaptureDeps = {}): Promis
 }
 
 /**
+ * Collator that orders `seite-2.jpg` before `seite-10.jpg`. A plain
+ * lexicographic sort puts "10" first, which silently scrambles the pages of a
+ * multi-sheet invoice.
+ */
+const FILENAME_COLLATOR = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+
+/**
+ * Loads every page of several user-selected files into one page list, so a
+ * multi-sheet paper invoice photographed as separate images is scanned as *one*
+ * invoice. Mixed selections work: two photos plus a PDF flatten into the
+ * combined page sequence, in file order, each file expanded by
+ * {@link fileToAllPages}.
+ *
+ * Files are **not** reordered here — page order is the caller's decision, since
+ * only it knows whether the order was chosen (a drop sequence) or incidental (a
+ * file picker's arbitrary `FileList` order). Callers that need name-based
+ * ordering should apply {@link sortFilesByName} first.
+ *
+ * Pages are loaded sequentially rather than with `Promise.all`: each rasterised
+ * page is a full-resolution RGBA buffer, and decoding a dozen at once is how a
+ * mobile browser runs out of memory mid-scan.
+ */
+export async function filesToAllPages(
+  files: readonly File[],
+  deps: CaptureDeps = {},
+): Promise<ScanPage[]> {
+  const pages: ScanPage[] = [];
+  for (const file of files) {
+    pages.push(...(await fileToAllPages(file, deps)));
+  }
+  return pages;
+}
+
+/**
+ * Orders files by filename, numerically — `seite-2` before `seite-10`. Use for a
+ * file-picker selection, whose `FileList` order is browser-defined; leave a
+ * drag-and-drop order alone, since that one the user chose.
+ */
+export function sortFilesByName(files: readonly File[]): File[] {
+  return [...files].sort((a, b) => FILENAME_COLLATOR.compare(a.name, b.name));
+}
+
+/**
  * Loads a user-selected file into {@link ImageData}: PDFs are rendered (first
  * page by default), images are decoded and rasterised. Unknown types and decode
  * failures surface as {@link CaptureError}s.

@@ -15,7 +15,7 @@
  */
 
 /** Builds an {@link ImageData}; falls back to a structural value off-DOM (tests). */
-function makeImageData(data: Uint8ClampedArray, width: number, height: number): ImageData {
+export function makeImageData(data: Uint8ClampedArray, width: number, height: number): ImageData {
   if (typeof ImageData !== 'undefined') {
     const out = new ImageData(width, height);
     out.data.set(data);

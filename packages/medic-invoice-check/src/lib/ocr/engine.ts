@@ -16,7 +16,7 @@
  * recognition runs on the local {@link ImageData}; no image or model byte ever
  * leaves the device (docs/design.md §1.3, §8; model hosting + caching is #27).
  */
-import type { OcrBackend, OcrEngine, OcrEngineConfig, OcrResult } from './types';
+import type { OcrBackend, OcrBoundingBox, OcrEngine, OcrEngineConfig, OcrResult } from './types';
 
 /** Axis-aligned box `ppu-paddle-ocr` reports for one recognised region. */
 export interface PaddleBox {
@@ -79,11 +79,24 @@ interface PaddleOcrSubService {
   platform?: PaddleOcrPlatformLike;
 }
 
+/**
+ * Detection-only payload from `PaddleOcrService.detect()` (added in
+ * `ppu-paddle-ocr` 6.1.0). Runs the detection model without recognition, so it
+ * reports *where* text is without reading it. `Box` is axis-aligned — the binding
+ * offers no quads here — and `crops` (PNG-encoded regions) is only populated when
+ * `crop: true` is requested, which this adapter never does.
+ */
+export interface PaddleDetectResult {
+  boxes: PaddleBox[];
+}
+
 /** The `PaddleOcrService` instance surface this adapter drives. */
 export interface PaddleOcrServiceLike {
   initialize(): Promise<void>;
   /** Accepts a canvas-like source (the binding calls `.getContext()` on it). */
   recognize(image: unknown, options?: { noCache?: boolean }): Promise<PaddleRecognizeResult>;
+  /** Detection without recognition (6.1.0+); same canvas-like source. */
+  detect?(image: unknown): Promise<PaddleDetectResult>;
   destroy(): Promise<void> | void;
   platform?: PaddleOcrPlatformLike;
   /** Created during `initialize()`; each holds its own platform provider. */
@@ -163,6 +176,33 @@ export function mapPaddleResult(raw: PaddleRecognizeResult): OcrResult[] {
           );
     return { text, bbox: { points: lineBoxToPoints(items) }, confidence };
   });
+}
+
+/**
+ * Maps a detection-only result onto our quad form. The binding reports
+ * axis-aligned `{ x, y, width, height }` boxes here (unlike `recognize`, whose
+ * per-region boxes we union per line), so each becomes a rectangular quad in the
+ * same clockwise order {@link mapPaddleResult} produces. Boxes with non-finite
+ * or non-positive extents are dropped rather than passed on as degenerate quads.
+ */
+export function mapPaddleDetectResult(raw: PaddleDetectResult): OcrBoundingBox[] {
+  const boxes = Array.isArray(raw?.boxes) ? raw.boxes : [];
+  const out: OcrBoundingBox[] = [];
+  for (const box of boxes) {
+    if (!box) continue;
+    const { x, y, width, height } = box;
+    if (![x, y, width, height].every((n) => Number.isFinite(n))) continue;
+    if (width <= 0 || height <= 0) continue;
+    out.push({
+      points: [
+        [x, y],
+        [x + width, y],
+        [x + width, y + height],
+        [x, y + height],
+      ],
+    });
+  }
+  return out;
 }
 
 /** Maps our backend choice onto an ONNX Runtime execution provider. */
@@ -311,6 +351,13 @@ export function createPaddleOcrEngine(
       const results = mapPaddleResult(raw);
       onProgress?.({ phase: 'recognize', ratio: 1 });
       return results;
+    },
+    async detect(image) {
+      if (!service) throw new Error('PaddleOCR engine used before init().');
+      if (typeof service.detect !== 'function') {
+        throw new Error('Diese OCR-Bindung unterstützt keine reine Texterkennungs-Suche.');
+      }
+      return mapPaddleDetectResult(await service.detect(toImageSource(image)));
     },
     async dispose() {
       // Free the ONNX session + model memory and drop our reference so a later

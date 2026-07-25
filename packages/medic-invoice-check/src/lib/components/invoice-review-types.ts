@@ -29,6 +29,14 @@ export type ReviewPositionRow = {
   /** OCR confidence carried per row (uncertainty markers survive reorder/removal). */
   confidence: number;
   /**
+   * Index of the recognised OCR line this row was parsed from, so the page
+   * preview can highlight it (`InvoicePagePreview`). Carried per row for the same
+   * reason as {@link confidence} — it survives reordering and removal. `null` for
+   * a hand-added row, an edited invoice loaded from the API, or a row whose
+   * source line is unknown. Rein transient (UI-State) — nicht gespeichert.
+   */
+  line_index?: number | null;
+  /**
    * Tarif-Leistungsbereich dieser Position, Quelle für die tarifbasierte
    * Erstattung des aufrufenden Apps (`eligible_amount`). Standard aus dem
    * Fee-Table-Lookup (`FeeEntry.benefitCategory`), sonst dem rechnungsweiten
