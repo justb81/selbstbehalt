@@ -215,6 +215,22 @@ export function mergeQualityReports(reports: QualityReport[]): QualityReport {
 }
 
 /**
+ * 1-based page numbers of the reports that failed, in page order.
+ *
+ * {@link mergeQualityReports} deliberately collapses the per-page verdicts into
+ * one, which loses *which* sheet was bad — unhelpful advice for a multi-page
+ * document, where "unscharf" leaves the user re-shooting all of them. Callers
+ * keep the individual reports and use this to name the offending pages.
+ */
+export function failingPageNumbers(reports: QualityReport[]): number[] {
+  const failing: number[] = [];
+  reports.forEach((report, index) => {
+    if (!report.ok) failing.push(index + 1);
+  });
+  return failing;
+}
+
+/**
  * Picks the sharpest of a burst of frames (issue #281). Used by the camera
  * shutter's fallback path to shrug off hand shake: `ImageCapture.takePhoto()`
  * already returns a stabilised still at full sensor resolution and is always

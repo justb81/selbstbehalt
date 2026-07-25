@@ -34,6 +34,7 @@ export type {
 export {
   assessImageQuality,
   mergeQualityReports,
+  failingPageNumbers,
   pickSharpestFrame,
   QUALITY_THRESHOLDS,
   QUALITY_OK_HINT,
@@ -48,6 +49,8 @@ export {
   grabPreviewFrame,
   fileToImageData,
   fileToAllPages,
+  filesToAllPages,
+  sortFilesByName,
   CaptureError,
   REAR_CAMERA_CONSTRAINTS,
   BEST_FRAME_SAMPLE_COUNT,

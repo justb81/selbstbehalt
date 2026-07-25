@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ImageQualityMetrics } from './preprocess';
 import {
   assessImageQuality,
+  failingPageNumbers,
   mergeQualityReports,
   pickSharpestFrame,
   QUALITY_THRESHOLDS,
@@ -181,5 +182,23 @@ describe('pickSharpestFrame', () => {
     const first = checkerboard(0, 255);
     const second = checkerboard(0, 255);
     expect(pickSharpestFrame([first, second])).toBe(first);
+  });
+});
+
+describe('failingPageNumbers', () => {
+  const metrics: ImageQualityMetrics = { sharpness: 0, brightness: 0, contrast: 0, clipped: 0 };
+  const ok: QualityReport = { ok: true, issues: [], metrics };
+  const bad: QualityReport = assessImageQuality(gray(4, 4, Array(16).fill(128)));
+
+  it('names the failing pages, 1-based and in page order', () => {
+    expect(failingPageNumbers([ok, bad, ok, bad])).toEqual([2, 4]);
+  });
+
+  it('is empty when every page passes', () => {
+    expect(failingPageNumbers([ok, ok])).toEqual([]);
+  });
+
+  it('is empty for no pages at all (a text-layer-only PDF)', () => {
+    expect(failingPageNumbers([])).toEqual([]);
   });
 });

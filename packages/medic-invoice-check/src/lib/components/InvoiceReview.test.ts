@@ -124,7 +124,7 @@ const SAMPLE_OCR_TEXT = 'Praxis Dr. med. Mustermann\n1  Beratung  2,3  10.73';
 describe('InvoiceReview — create mode', () => {
   it('always renders the OCR scanner (no toggle button)', () => {
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
-    expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)')).toBeInTheDocument();
     expect(screen.queryByText('Rechnung scannen / hochladen')).not.toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe('InvoiceReview — create mode', () => {
     const sharedFile = new File(['x'], 'geteilte-rechnung.pdf', { type: 'application/pdf' });
     render(InvoiceReviewTestHarness, { props: { mode: 'create', sharedFile } });
     await waitFor(() =>
-      expect(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)')).toBeInTheDocument(),
+      expect(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)')).toBeInTheDocument(),
     );
   });
 
@@ -178,7 +178,7 @@ describe('InvoiceReview — create mode', () => {
 
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
     const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
-    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+    await userEvent.upload(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'), file);
 
     await waitFor(() =>
       expect(document.getElementById('pos-0-kategorie')).toHaveTextContent('GOZ'),
@@ -291,7 +291,7 @@ describe('InvoiceReview — Zahlungsziel (issue #288)', () => {
 
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
     const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
-    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+    await userEvent.upload(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'), file);
 
     await waitFor(() => expect(dueInput().value).toBe('2026-06-15'));
     expect(screen.getByText('Laut Rechnung')).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('InvoiceReview — Zahlungsziel (issue #288)', () => {
 
     render(InvoiceReviewTestHarness, { props: { mode: 'create' } });
     const file = new File(['x'], 'rechnung.png', { type: 'image/png' });
-    await userEvent.upload(screen.getByLabelText('Rechnungsdatei (Bild oder PDF)'), file);
+    await userEvent.upload(screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'), file);
 
     await waitFor(() => expect(dueInput().value).toBe('2026-07-01'));
   });
@@ -318,7 +318,7 @@ describe('InvoiceReview — edit mode', () => {
     render(InvoiceReviewTestHarness, {
       props: { mode: 'edit', initialPositions: [{ ...SAMPLE_POSITION }] },
     });
-    expect(screen.queryByLabelText('Rechnungsdatei (Bild oder PDF)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Rechnungsdateien (Bilder oder PDFs)')).not.toBeInTheDocument();
   });
 
   it('pre-fills the header fields from the bound props', () => {

@@ -8,7 +8,9 @@ import {
   capturePhoto,
   captureVideoFrame,
   fileToAllPages,
+  filesToAllPages,
   fileToImageData,
+  sortFilesByName,
   grabPreviewFrame,
   REAR_CAMERA_CONSTRAINTS,
   requestCameraStream,
@@ -364,5 +366,65 @@ describe('fileToAllPages', () => {
     const toImageData = vi.fn().mockReturnValue(sentinel);
     const results = await fileToAllPages(file, { decode, toImageData });
     expect(results).toEqual([{ kind: 'image', image: sentinel }]);
+  });
+});
+
+describe('filesToAllPages / sortFilesByName', () => {
+  /** Decodes any image file to the shared 1×1 `sentinel` frame. */
+  const imageDeps = () => ({
+    decode: vi.fn().mockResolvedValue({ width: 1, height: 1, close: vi.fn() }),
+    toImageData: vi.fn().mockResolvedValue(sentinel),
+  });
+
+  it('flattens several files into one page list, in the given order', async () => {
+    const files = [
+      new File([new Uint8Array([1])], 'seite-1.png', { type: 'image/png' }),
+      new File([new Uint8Array([2])], 'seite-2.png', { type: 'image/png' }),
+    ];
+    const pages = await filesToAllPages(files, imageDeps());
+    expect(pages).toEqual([
+      { kind: 'image', image: sentinel },
+      { kind: 'image', image: sentinel },
+    ]);
+  });
+
+  // A multi-sheet invoice can legitimately mix a photographed page and a PDF.
+  it('mixes image and PDF sources into one sequence', async () => {
+    const files = [
+      new File([new Uint8Array([1])], 'seite-1.png', { type: 'image/png' }),
+      new File([new Uint8Array([2])], 'seite-2.pdf', { type: 'application/pdf' }),
+    ];
+    const pages = await filesToAllPages(files, {
+      ...imageDeps(),
+      extractOrRenderAllPdfPages: vi.fn().mockResolvedValue([
+        { kind: 'text', lines: [] },
+        { kind: 'image', image: sentinel },
+      ]),
+    });
+    // One page from the image, then both PDF pages — selection order preserved.
+    expect(pages.map((page) => page.kind)).toEqual(['image', 'text', 'image']);
+  });
+
+  it('returns nothing for an empty selection', async () => {
+    expect(await filesToAllPages([])).toEqual([]);
+  });
+
+  it('orders filenames numerically, not lexicographically', () => {
+    const files = [
+      new File([], 'seite-10.jpg'),
+      new File([], 'seite-2.jpg'),
+      new File([], 'seite-1.jpg'),
+    ];
+    expect(sortFilesByName(files).map((f) => f.name)).toEqual([
+      'seite-1.jpg',
+      'seite-2.jpg',
+      'seite-10.jpg',
+    ]);
+  });
+
+  it('does not mutate the input array', () => {
+    const files = [new File([], 'b.jpg'), new File([], 'a.jpg')];
+    sortFilesByName(files);
+    expect(files.map((f) => f.name)).toEqual(['b.jpg', 'a.jpg']);
   });
 });

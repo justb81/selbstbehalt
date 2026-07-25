@@ -12,7 +12,7 @@
  * **Privacy:** the image is transferred into the worker and recognised
  * on-device; it never reaches the network (docs/design.md §1.3, §8).
  */
-import { fileToAllPages } from './capture';
+import { filesToAllPages } from './capture';
 import { OcrClient } from './ocr-client';
 import type { OcrBackend, OcrEngineConfig, OcrProgress, OcrResult, ScanPage } from './types';
 
@@ -22,8 +22,12 @@ export type OcrRecognizer = (
   onProgress?: (progress: OcrProgress) => void,
 ) => Promise<OcrResult[]>;
 
-/** Loads all pages of a user-selected file as {@link ScanPage}s. */
-export type MultiPageLoader = (file: File) => Promise<ScanPage[]>;
+/**
+ * Loads all pages of a user-selected *set* of files as {@link ScanPage}s. Takes a
+ * list, not a single file, so a multi-sheet paper invoice photographed as several
+ * images is one scan (`filesToAllPages`).
+ */
+export type MultiPageLoader = (files: readonly File[]) => Promise<ScanPage[]>;
 
 let client: OcrClient | null = null;
 let initPromise: Promise<OcrBackend> | null = null;
@@ -70,9 +74,9 @@ export function recognizeInvoiceImage(
   return (override ?? defaultRecognize)(image, onProgress);
 }
 
-/** Loads all invoice pages from a file via the active loader (override or default). */
-export function loadAllInvoicePages(file: File): Promise<ScanPage[]> {
-  return (pageLoaderOverride ?? fileToAllPages)(file);
+/** Loads all invoice pages from the selection via the active loader (override or default). */
+export function loadAllInvoicePages(files: readonly File[]): Promise<ScanPage[]> {
+  return (pageLoaderOverride ?? filesToAllPages)(files);
 }
 
 /** Overrides the recognizer (tests/E2E); pass `null` to restore the default. */

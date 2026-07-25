@@ -445,7 +445,8 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
 ### 4.1 Ablauf
 
 ```
-1. Nutzer fotografiert Rechnung (Kamera) oder wählt PDF/Bild
+1. Nutzer fotografiert die Rechnung (Kamera, mehrere Seiten in Folge) oder
+   wählt PDF(s)/Bild(er) — auch gemischt; alle Seiten bilden **eine** Rechnung
         ↓
 2a. PDF mit Textlayer (digital erzeugt, z. B. Praxissoftware/"als PDF drucken"):
     `pdfjs` liest den Textlayer je Seite direkt aus (`getTextContent()`,
@@ -506,6 +507,21 @@ Seiten mit brauchbarem Textlayer haben kein Bild und daher keine Vorschau; ihre
 Zeilen tragen ohnehin ein leeres Viereck. Dieselbe Komponente zeigt auch die
 Aufnahme, die die Qualitätswarnung (Schritt 2b) beanstandet — „zu dunkel" ist
 deutlich leichter zu befolgen, wenn das Foto daneben steht.
+
+**Mehrseitige Rechnungen.** Mehrseitigkeit ist nicht auf PDFs beschränkt: eine
+zweiseitige Papierrechnung darf als mehrere Fotos ausgewählt (`<input multiple>`,
+`filesToAllPages`) oder in einer Kamerasitzung in Folge aufgenommen werden — der
+Auslöser hängt eine Seite an und lässt die Kamera offen, „Fertig – erkennen"
+startet die Erkennung. Gemischte Auswahlen (zwei Fotos + ein PDF) werden zu
+*einer* Seitenfolge verkettet. Die Reihenfolge einer Dateiauswahl ist
+browserabhängig und wird daher numerisch nach Dateiname sortiert (`seite-2` vor
+`seite-10`); eine Drag-&-Drop-Reihenfolge bleibt unangetastet, denn die hat der
+Nutzer gewählt. Die Seitenvorschau macht eine falsche Reihenfolge sichtbar.
+
+Weil `mergeQualityReports` die Einzelurteile bewusst zu einem zusammenfasst,
+behält der Scanner die Berichte je Seite und nennt über `failingPageNumbers` die
+beanstandete Seite („Betrifft Seite 2 von 2") — sonst müsste der Nutzer alle
+Blätter neu fotografieren.
 
 Die Entscheidung Textlayer-vs-OCR fällt **pro Seite**, nicht pro Dokument — ein
 mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
