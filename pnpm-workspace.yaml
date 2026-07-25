@@ -12,6 +12,16 @@ overrides:
   # is safe and clears the advisory.
   adm-zip@<0.6.0: '>=0.6.0'
 
+  # postcss <=8.5.17 carries a high-severity path-traversal advisory
+  # (GHSA-r28c-9q8g-f849): the previous-source-map auto-loader follows a crafted
+  # `sourceMappingURL` and can disclose arbitrary .map files. It reaches us only
+  # transitively through the Vite/SvelteKit toolchain (bits-ui → runed →
+  # @sveltejs/kit → vite → postcss, 18 paths in all), so there is no direct
+  # dependency to bump and the patched line has to be forced here.
+  # Patched in 8.5.18. The 7-day cooldown still holds 8.5.20+ back, so this
+  # currently resolves to 8.5.19 — patched *and* old enough, no exclusion needed.
+  postcss@<8.5.18: '>=8.5.18'
+
 allowBuilds:
   esbuild: true
   better-sqlite3: true
@@ -30,7 +40,13 @@ allowBuilds:
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
 # the Dependabot `cooldown` setting so manual `pnpm add`/`pnpm update` are held to
-# the same rule. Frozen-lockfile installs (CI) are unaffected.
+# the same rule.
+#
+# This is enforced twice, and the second half is the one that bites in CI: pnpm 11
+# also verifies *every* entry already in the lockfile against the policy, including
+# on `pnpm install --frozen-lockfile`. A lockfile carrying a too-young version
+# therefore fails the install outright (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION) —
+# see the note in CLAUDE.md on how Dependabot PRs trip this.
 minimumReleaseAge: 10080
 
 minimumReleaseAgeExclude:
