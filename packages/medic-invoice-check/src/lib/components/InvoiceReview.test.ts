@@ -889,7 +889,10 @@ describe('InvoiceReview — Leistungsbereich picker (benefit_category)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('hides the picker for a flat Arznei-/Hilfsmittel position even when enabled', async () => {
+  it('offers the picker for an Arznei-/Hilfsmittel position too', async () => {
+    // The Leistungsbereich alone decides the reimbursement, for the non-fee-schedule
+    // categories as well — that is what lets a Sanitätshaus-Rechnung be booked as
+    // `hilfsmittel` and come out non-reimbursable under a tariff without that Baustein.
     render(InvoiceReviewTestHarness, {
       props: {
         mode: 'edit',
@@ -900,6 +903,6 @@ describe('InvoiceReview — Leistungsbereich picker (benefit_category)', () => {
       },
     });
     await waitPastDebounce();
-    expect(screen.queryByText(LEISTUNGSBEREICH_LABEL)).not.toBeInTheDocument();
+    expect(screen.getByText(LEISTUNGSBEREICH_LABEL)).toBeInTheDocument();
   });
 });

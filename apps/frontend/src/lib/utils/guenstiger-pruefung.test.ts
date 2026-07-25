@@ -101,6 +101,24 @@ describe('aggregateByYear — basic grouping', () => {
     expect(result[0]).toMatchObject({ year: 2024, R_Y: 250, alreadyReimbursed: 0 });
   });
 
+  it('leaves R_Y at zero for a generally non-reimbursable invoice', () => {
+    // A pure Hilfsmittel-Rechnung under a tariff without a Hilfsmittel-Baustein: the
+    // Erstattungs-Engine gives every position eligible_amount = 0, so the cost is
+    // recorded but never consumes the Selbstbehalt. Regression guard against a
+    // flat-reimbursement shortcut reappearing.
+    const invoices: GCP_InvoiceData[] = [
+      {
+        status: st('bezahlt'),
+        positions: [
+          { treatment_date: '2024-04-02', eligible_amount: 0 },
+          { treatment_date: '2024-04-02', eligible_amount: 0 },
+        ],
+      },
+    ];
+    const [r] = aggregateByYear(invoices);
+    expect(r).toMatchObject({ year: 2024, R_Y: 0, alreadyReimbursed: 0 });
+  });
+
   it('aggregates eligible_amount for bezahlt invoices', () => {
     const invoices: GCP_InvoiceData[] = [
       {

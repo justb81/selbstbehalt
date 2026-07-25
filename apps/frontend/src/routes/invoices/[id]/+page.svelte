@@ -12,6 +12,7 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
   import {
+    BENEFIT_CATEGORY_LABELS,
     formatDate,
     formatEur,
     resolvePaymentDueDate,
@@ -20,7 +21,11 @@
     type InvoiceWithPositions,
   } from '@selbstbehalt/shared';
   import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
+  import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
+  import { resolveBenefitCategory } from '$lib/utils/benefit-category';
+  import { computeErstattung } from '$lib/utils/erstattungs-engine';
   import { refundStatus } from '$lib/utils/position-refund';
+  import { isNonReimbursable } from '$lib/utils/reimbursability';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
@@ -87,6 +92,59 @@
   $effect(() => {
     if (invoice) setBreadcrumbEntity(invoiceId, invoice.provider_name);
   });
+
+  // ---------------------------------------------------------------------------
+  // Why the reimbursable amount is what it is
+  //
+  // `invoice.eligible_amount` is the persisted sum the statistics read; it carries
+  // no reason. Re-running the Erstattungs-Engine over the *stored* positions
+  // recovers the per-category explanation (§5.1) without duplicating the rules —
+  // the engine stays the single source of the decision.
+  // ---------------------------------------------------------------------------
+
+  const erstattung = $derived.by(() => {
+    if (!invoice || !insuredPerson?.included_benefits || !insuredPerson.start_date) return null;
+    const inv = invoice;
+    // Resolve categories exactly as InvoiceForm did when it computed the stored
+    // amounts — including the Auslagen honorar dominance for legacy rows that have no
+    // persisted benefit_category — so the comparison below is apples to apples.
+    const providerType = inv.provider_type ?? 'sonstiges';
+    const honorarPositions: AuslagenDerivationPosition[] = inv.positions.map((pos) => ({
+      goaeCategory: pos.goae_category ?? null,
+      benefitCategory: pos.benefit_category ?? null,
+      chargedAmount: pos.charged_amount,
+    }));
+    return computeErstattung({
+      positions: inv.positions.map((pos) => ({
+        category: resolveBenefitCategory(pos, honorarPositions, providerType),
+        chargedAmount: pos.charged_amount,
+        treatmentDate: pos.treatment_date || inv.invoice_date,
+      })),
+      benefits: insuredPerson.included_benefits,
+      invoiceDate: inv.invoice_date,
+      coverageStart: insuredPerson.start_date,
+    });
+  });
+
+  /** Benefit areas on this invoice the tariff reimburses nothing for. */
+  const nonReimbursableCategories = $derived(
+    (erstattung?.byCategory ?? []).filter((c) => c.eligibleAmount === 0 && c.chargedAmount > 0),
+  );
+
+  /**
+   * The stored `eligible_amount` no longer matches what the tariff yields today —
+   * the invoice was saved under different tariff rules (or before a rule change).
+   * Statistics use the stored value, so the discrepancy must be visible and is fixed
+   * by re-saving the invoice. Once the insurer has reimbursed, the real
+   * `refund_amount` governs and the estimate is history, so stay quiet then.
+   */
+  const staleEligibleAmount = $derived(
+    invoice != null &&
+      invoice.eligible_amount != null &&
+      invoice.status.submission !== 'erstattet' &&
+      erstattung != null &&
+      erstattung.eligibleAmount !== invoice.eligible_amount,
+  );
 
   // ---------------------------------------------------------------------------
   // Contribution of this invoice's positions per service year
@@ -184,7 +242,11 @@
           )}{invoice.payment_due_date ? '' : ' (Standard)'}
         </span>
         <InvoiceBadge status={invoice.status.payment} />
-        <InvoiceBadge status={invoice.status.submission} />
+        <InvoiceBadge
+          status={isNonReimbursable(invoice)
+            ? 'nicht_erstattungsfaehig'
+            : invoice.status.submission}
+        />
         <PaymentDueBadge
           {invoice}
           leadDays={resolvePaymentReminderLeadDays($settings)}
@@ -261,8 +323,20 @@
           <CardHeader class="pb-2">
             <CardDescription>Erstattungsfähig</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent class="space-y-1">
             <p class="text-lg font-semibold tabular-nums">{formatEur(invoice.eligible_amount)}</p>
+            {#each nonReimbursableCategories as c (c.category)}
+              <p class="text-xs text-muted-foreground">
+                {BENEFIT_CATEGORY_LABELS[c.category]}: {formatEur(c.chargedAmount)} — {c.note ??
+                  'nicht erstattungsfähig'}
+              </p>
+            {/each}
+            {#if staleEligibleAmount}
+              <p class="text-xs text-amber-700 dark:text-amber-400">
+                Nach dem aktuellen Tarif wären es {formatEur(erstattung!.eligibleAmount)}. Die
+                Rechnung erneut speichern, um den Wert zu aktualisieren.
+              </p>
+            {/if}
           </CardContent>
         </Card>
       {/if}

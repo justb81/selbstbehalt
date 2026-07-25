@@ -145,6 +145,39 @@ describe('POST /api/invoices', () => {
     expect(handle.db.select().from(invoicePositions).all()).toHaveLength(0);
   });
 
+  it('records a Sanitätshaus invoice whose positions are all non-reimbursable', async () => {
+    // A pure Hilfsmittel-Rechnung under a tariff without a Hilfsmittel-Baustein: the
+    // client computes eligible_amount = 0 per position, and the roll-up must keep it at
+    // 0 rather than NULL — 0 means "nothing reimbursable", NULL means "unknown", and
+    // only the former lets the UI say so and keeps the amount out of R_Y.
+    const { res, body } = await createInvoice({
+      ...baseInvoice(),
+      provider_name: 'Sanitätshaus Meier',
+      provider_type: 'sanitaetshaus',
+      total_amount: 300,
+      positions: [
+        {
+          goae_number: '',
+          goae_category: 'Arznei-/Hilfsmittel',
+          benefit_category: 'hilfsmittel',
+          description: 'Einlagen',
+          treatment_date: '2026-06-01',
+          quantity: 2,
+          multiplier: 1,
+          base_amount: 150,
+          charged_amount: 300,
+          eligible_amount: 0,
+        },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(body.provider_type).toBe('sanitaetshaus');
+    expect(body.positions[0].benefit_category).toBe('hilfsmittel');
+    expect(body.eligible_amount).toBe(0);
+    // The cost is still fully recorded as self-borne.
+    expect(body.self_paid_amount).toBe(300);
+  });
+
   it('rolls back the invoice when a position is invalid (atomicity)', async () => {
     const res = await json('POST', '/api/invoices', {
       ...baseInvoice(),

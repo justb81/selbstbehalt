@@ -26,6 +26,7 @@
   } from '@selbstbehalt/shared';
   import { benefitCategoryForPosition } from '$lib/utils/benefit-category';
   import { distributeRefundByCategory } from '$lib/utils/refund-distribution';
+  import { isNonReimbursable } from '$lib/utils/reimbursability';
   import InvoiceBadge from './InvoiceBadge.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -63,6 +64,12 @@
 
   const status = $derived(invoice.status);
   const isGeprueft = $derived(status.review === 'geprüft');
+  /**
+   * The tariff reimburses nothing here, so submitting has no upside. The primary
+   * action is replaced by an explanation, but not removed: the user may still submit
+   * (to get the insurer's own verdict on record), and no backend guard changes.
+   */
+  const nothingToSubmit = $derived(isNonReimbursable(invoice));
 
   // ---- Status event history ------------------------------------------------
 
@@ -410,10 +417,17 @@
     <div class="rounded-md border border-border p-3 space-y-2">
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-sm font-medium">Einreichung / Erstattung</span>
-        <InvoiceBadge status={status.submission} />
+        <InvoiceBadge status={nothingToSubmit ? 'nicht_erstattungsfaehig' : status.submission} />
       </div>
       {#if !isGeprueft}
         <p class="text-xs text-muted-foreground">Erst nach der Prüfung möglich.</p>
+      {:else if nothingToSubmit}
+        <p class="text-xs text-muted-foreground">
+          Der Tarif erstattet für diese Rechnung nichts — Einreichen entfällt.
+        </p>
+        <Button variant="outline" size="sm" onclick={goToSubmit} disabled={busy}>
+          Trotzdem einreichen …
+        </Button>
       {:else if status.submission === 'nicht_eingereicht'}
         <Button size="sm" onclick={goToSubmit} disabled={busy}>Einreichen …</Button>
       {:else if status.submission === 'eingereicht'}

@@ -320,67 +320,70 @@ describe('computeErstattung — grouping & totals', () => {
       }),
     );
     expect(result.eligibleAmount).toBe(0);
-    expect(result.byCategory[0]?.note).toContain('Keine Tarifregel');
+    expect(result.byCategory[0]?.note).toContain('keine Tarifregel');
   });
 });
 
-describe('computeErstattung — flat-reimbursed positions are always reimbursed at 100 %', () => {
-  // isFullyReimbursed covers only per-Rezept Arznei-/Hilfsmittel (#251); Auslagenersatz
-  // and Material-/Laborkosten instead run the pipeline under a derived benefit_category.
-  // The engine only sees the boolean flag (goae_category → flag mapping is InvoiceForm's job).
-  it('skips tiers/limits/Beihilfe entirely for a fully-reimbursed position', () => {
+describe('computeErstattung — benefit areas the tariff does not cover', () => {
+  // The way a generally non-reimbursable invoice is recorded: its positions carry a
+  // benefit_category the tariff has no rule for (a Sanitätshaus-Rechnung under
+  // `hilfsmittel` in a tariff without a Hilfsmittel-Baustein), so they contribute 0 €
+  // and stay out of R_Y / Selbstbehalt / Günstigerprüfung while the cost is recorded.
+  it('yields 0 € per position and names the uncovered area', () => {
     const result = computeErstattung(
       input({
-        positions: [{ category: 'ambulant', chargedAmount: 2.8, isFullyReimbursed: true }],
-        // Tariff rule would otherwise cap ambulant heavily — irrelevant here.
-        benefits: {
-          benefits: [
-            { category: 'ambulant', beihilfe_satz: 50, tiers: [{ up_to: null, pct: 20 }] },
-          ],
-        },
+        positions: [
+          { category: 'hilfsmittel', chargedAmount: 189.9 },
+          { category: 'hilfsmittel', chargedAmount: 110.1 },
+        ],
+        benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 100 }] }] },
       }),
     );
-    expect(result.eligibleAmount).toBe(2.8);
-    expect(result.fullyReimbursedAmount).toBe(2.8);
-    expect(result.byPosition[0]?.eligible_amount).toBe(2.8);
-    // No BenefitCategory pipeline ran for it.
-    expect(result.byCategory).toHaveLength(0);
+    expect(result.eligibleAmount).toBe(0);
+    expect(result.byPosition.map((p) => p.eligible_amount)).toEqual([0, 0]);
+    expect(result.byCategory[0]).toMatchObject({
+      category: 'hilfsmittel',
+      chargedAmount: 300,
+      eligibleAmount: 0,
+      appliedPct: 0,
+    });
+    expect(result.byCategory[0]?.note).toBe(
+      'Nicht erstattungsfähig (keine Tarifregel für „Hilfsmittel").',
+    );
   });
 
-  it('is reimbursed even within the Wartezeit and with no tariff rule at all', () => {
+  it('states the verdict plainly for an explicit 0 % tier, not just the tier rule', () => {
     const result = computeErstattung(
       input({
-        positions: [{ category: 'sonstiges', chargedAmount: 1.5, isFullyReimbursed: true }],
-        benefits: { benefits: [] },
-        invoiceDate: '2024-01-15', // inside any waiting period from coverageStart
+        positions: [{ category: 'hilfsmittel', chargedAmount: 300 }],
+        benefits: { benefits: [{ category: 'hilfsmittel', tiers: [{ up_to: null, pct: 0 }] }] },
       }),
     );
-    expect(result.eligibleAmount).toBe(1.5);
-    expect(result.fullyReimbursedAmount).toBe(1.5);
+    expect(result.eligibleAmount).toBe(0);
+    expect(result.byCategory[0]?.note).toBe(
+      'Nicht erstattungsfähig (gestaffelt nach Schwellenwerten).',
+    );
+    expect(result.byCategory[0]?.cappedBy).toBe('tier');
   });
 
-  it('mixes with regular positions: only the flat-reimbursed share bypasses the pipeline', () => {
+  it('leaves covered positions on the same invoice untouched', () => {
     const result = computeErstattung(
       input({
         positions: [
           { category: 'ambulant', chargedAmount: 100 },
-          // e.g. an Arznei-/Hilfsmittel line.
-          { category: 'ambulant', chargedAmount: 2.8, isFullyReimbursed: true },
+          { category: 'hilfsmittel', chargedAmount: 300 },
         ],
         benefits: { benefits: [{ category: 'ambulant', tiers: [{ up_to: null, pct: 80 }] }] },
       }),
     );
-    // 100 × 80 % (regular) + 2.8 × 100 % (flat-reimbursed)
-    expect(result.eligibleAmount).toBe(82.8);
-    expect(result.fullyReimbursedAmount).toBe(2.8);
-    expect(result.byPosition[0]?.eligible_amount).toBe(80);
-    expect(result.byPosition[1]?.eligible_amount).toBe(2.8);
+    expect(result.eligibleAmount).toBe(80);
+    expect(result.byPosition.map((p) => p.eligible_amount)).toEqual([80, 0]);
   });
 
-  it('runs an Auslagen/Material position through the tariff pipeline when NOT flat (#251)', () => {
-    // §9-GOZ Material-/Laborkosten with a derived kieferorthopaedie category and no
-    // isFullyReimbursed flag: the KFO tier/limit/Wartezeit pipeline applies, so it is
-    // NOT reimbursed at 100 %.
+  it('runs a non-fee-schedule position through the tariff pipeline like any other (#251)', () => {
+    // §9-GOZ Material-/Laborkosten with a derived kieferorthopaedie category: the KFO
+    // tier/limit/Wartezeit pipeline applies — there is no flat-100 % shortcut for any
+    // category any more.
     const result = computeErstattung(
       input({
         positions: [{ category: 'kieferorthopaedie', chargedAmount: 1001.91 }],
@@ -391,7 +394,6 @@ describe('computeErstattung — flat-reimbursed positions are always reimbursed 
     );
     // 500 × 100 % + 501.91 × 70 % = 851.34 (nicht 1001.91 pauschal)
     expect(result.eligibleAmount).toBe(851.34);
-    expect(result.fullyReimbursedAmount).toBe(0);
     expect(result.byCategory[0]).toMatchObject({
       category: 'kieferorthopaedie',
       cappedBy: 'tier',

@@ -317,3 +317,74 @@ describe('InvoiceForm — edit mode (wrapper)', () => {
     expect(payload.positions[0]!.charged_amount).toBe(30);
   });
 });
+
+describe('InvoiceForm — generally non-reimbursable invoices', () => {
+  /** A tariff that covers ambulante Behandlung but has no Hilfsmittel-Baustein. */
+  const OHNE_HILFSMITTEL = [
+    {
+      id: 'ip-1',
+      label: 'TestAG · Komfort',
+      insuredPerson: {
+        start_date: '2020-01-01',
+        included_benefits: {
+          benefits: [{ category: 'ambulant' as const, tiers: [{ up_to: null, pct: 100 }] }],
+        },
+      } as never,
+    },
+  ];
+
+  /** A Sanitätshaus invoice — its positions default to the `hilfsmittel` benefit area. */
+  const HILFSMITTEL_INVOICE: InvoiceWithPositions = {
+    ...ARZNEI_INVOICE,
+    provider_name: 'Sanitätshaus Meier',
+    provider_type: 'sanitaetshaus',
+    total_amount: 30,
+  };
+
+  it('saves eligible_amount = 0 and explains why before saving', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: HILFSMITTEL_INVOICE,
+        insuredOptions: OHNE_HILFSMITTEL,
+        onSave,
+      },
+    });
+
+    // The zero is visible before saving, with the reason — not a silent surprise.
+    expect(await screen.findByText('Erstattungsfähig (nach Tarif)')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Hilfsmittel: .* Nicht erstattungsfähig \(keine Tarifregel/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.benefit_category).toBe('hilfsmittel');
+    // 0, not null: "nothing reimbursable", which keeps it out of R_Y and the
+    // Selbstbehalt while the cost itself is still recorded via total_amount.
+    expect(payload.positions[0]!.eligible_amount).toBe(0);
+  });
+
+  it('reimburses a covered area on the same tariff normally', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        // Arzt invoice → ambulant, which this tariff covers at 100 %.
+        initialData: SAMPLE_INVOICE,
+        insuredOptions: OHNE_HILFSMITTEL,
+        onSave,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.benefit_category).toBe('ambulant');
+    expect(payload.positions[0]!.eligible_amount).toBe(SAMPLE_INVOICE.positions[0]!.charged_amount);
+  });
+});

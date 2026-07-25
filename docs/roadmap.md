@@ -160,9 +160,10 @@ Paralleler Domänen-Strang: `#15 → #16`, `#17 → #18` und `#65 → #66`, die 
 Umgesetzt als **schlanke** Positionskategorie `Arznei-/Hilfsmittel` nach Vorbild des §10
 Auslagenersatz (#82/#83/#84): pro Position Bezeichnung, Anzahl, Basis (Einzelpreis) und Gesamtbetrag
 = Anzahl × Basis — ohne Ziffer/Steigerungsfaktor, ohne PZN/HMV und ohne eigene DB-Migration
-(`goae_category` ist eine reine Text-Spalte). Die Erstattung läuft zunächst pauschal zu 100 % wie
-Auslagenersatz und wird über die reale `refund_amount` des Versicherers korrigiert; eine spätere
-Führung über eine echte `BenefitCategory` (z.B. `hilfsmittel`) durch die generische Erstattungs-Engine
-(#66) ist im Design als Option hinterlegt. Die Beleg-OCR für Apotheken-/Hilfsmittel-Belege (#85,
+(`goae_category` ist eine reine Text-Spalte). Die Erstattung läuft über die echte `BenefitCategory`
+der Position durch die generische Erstattungs-Engine (#66) — Apotheke → `ambulant`, Sanitätshaus →
+`hilfsmittel`, pro Position umstellbar. Damit sind auch generell nicht erstattungsfähige Belege
+erfassbar: fehlt im Tarif der passende Baustein, ergibt die Engine 0 €, die Kosten bleiben aber in
+Gesamtkosten und „Selbst getragen" (§3.2/§5.1). Die Beleg-OCR für Apotheken-/Hilfsmittel-Belege (#85,
 PZN/HMV) bleibt offen. Der Strang ist als **Phase 4 (Erweiterung)** eingeordnet — bewusst nach dem
 GOÄ-MVP, da er über die im Design-Dokument dokumentierte MVP-Scope hinausgeht.

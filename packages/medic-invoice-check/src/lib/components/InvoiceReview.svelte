@@ -22,8 +22,9 @@
   per row from the fee-table lookup (falling back to the provider default) and
   surfaced so the parent can run that computation without repeating the lookup.
   With `showBenefitCategory`, a per-position Leistungsbereich picker lets the user
-  override it (pinned via `benefit_category_overridden`); the tariff-agnostic
-  GOÄ-Wächter demo leaves it off.
+  override it (pinned via `benefit_category_overridden`) — for every category
+  including the non-fee-schedule ones, since the Leistungsbereich alone decides the
+  reimbursement; the tariff-agnostic GOÄ-Wächter demo leaves it off.
 
   All state the parent needs to save is exposed via `bind:` props.
 -->
@@ -36,8 +37,8 @@
     defaultPaymentDueDate,
     DEFAULT_PAYMENT_TERM_DAYS,
     formatEur,
-    isFlatReimbursedCategory,
     isNonScheduleCategory,
+    PROVIDER_TYPE_LABELS,
     providerTypeValues,
     roundCents,
     type BenefitCategory,
@@ -133,13 +134,19 @@
     scanResult?: ScanResult | null;
   } = $props();
 
-  const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
+  /**
+   * Display label override for the Art-picker options; falls back to the shared
+   * {@link PROVIDER_TYPE_LABELS}, which carries the compact wording used in tables
+   * and badges. Only the two treating types get the longer gender-inclusive form
+   * that suits a form select.
+   */
+  const PROVIDER_TYPE_OPTION_LABELS: Partial<Record<ProviderType, string>> = {
     arzt: 'Arzt/Ärztin',
     zahnarzt: 'Zahnarzt/Zahnärztin',
-    kieferorthopaede: 'Kieferorthopäde',
-    krankenhaus: 'Krankenhaus',
-    sonstiges: 'Sonstiges',
   };
+
+  const providerTypeLabel = (t: ProviderType): string =>
+    PROVIDER_TYPE_OPTION_LABELS[t] ?? PROVIDER_TYPE_LABELS[t];
 
   /** Display label override for `goae_category` options; falls back to the raw value. */
   const GOAE_CATEGORY_LABELS: Partial<Record<GoaeCategory, string>> = {
@@ -681,14 +688,14 @@
           if (v) providerType = v as ProviderType;
         }}
         {disabled}
-        items={providerTypeValues.map((t) => ({ value: t, label: PROVIDER_TYPE_LABELS[t] }))}
+        items={providerTypeValues.map((t) => ({ value: t, label: providerTypeLabel(t) }))}
       >
         <SelectTrigger id="field-type" class="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {#each providerTypeValues as t (t)}
-            <SelectItem value={t} label={PROVIDER_TYPE_LABELS[t]} />
+            <SelectItem value={t} label={providerTypeLabel(t)} />
           {/each}
         </SelectContent>
       </Select>
@@ -880,7 +887,7 @@
                       </div>
                     {/if}
                   </div>
-                  {#if showBenefitCategory && !isFlatReimbursedCategory(pos.goae_category)}
+                  {#if showBenefitCategory}
                     <div class="space-y-1.5">
                       <Label for="pos-{i}-leistungsbereich">Leistungsbereich (Erstattung)</Label>
                       <div class="flex items-center gap-1">

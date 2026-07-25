@@ -187,6 +187,34 @@ describe('InvoiceStatusFlow — Einreichung / Erstattung track', () => {
     expect(screen.getByText('Offen')).toBeInTheDocument();
   });
 
+  it('replaces the primary action when the tariff reimburses nothing', async () => {
+    // Pure Hilfsmittel-Rechnung: eligible_amount = 0. Submitting is pointless, so the
+    // track says so — but stays available, since the user may still want the insurer's
+    // own verdict on record.
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv({ review: 'geprüft' }, { eligible_amount: 0 }),
+        onChanged: vi.fn(),
+      },
+    });
+    expect(await screen.findByText('Nicht erstattungsfähig')).toBeInTheDocument();
+    expect(
+      screen.getByText('Der Tarif erstattet für diese Rechnung nichts — Einreichen entfällt.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Einreichen …' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trotzdem einreichen …' })).toBeInTheDocument();
+  });
+
+  it('keeps the ordinary submit action when the tariff is merely unknown (null)', async () => {
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv({ review: 'geprüft' }, { eligible_amount: null }),
+        onChanged: vi.fn(),
+      },
+    });
+    expect(await screen.findByRole('button', { name: 'Einreichen …' })).toBeInTheDocument();
+  });
+
   it('opens the refund form (category mode) from "Erstattung erfassen"', async () => {
     const user = userEvent.setup();
     render(InvoiceStatusFlow, {
