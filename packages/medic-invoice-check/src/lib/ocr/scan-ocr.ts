@@ -107,10 +107,32 @@ export function textToOcrResults(text: string): OcrResult[] {
 // production builds: `import.meta.env.DEV` is statically false there, so the
 // hook is never installed.
 if (import.meta.env.DEV && typeof window !== 'undefined') {
+  /**
+   * A small, sharp, well-exposed placeholder frame. The recogniser is stubbed
+   * out here, but the capture-quality gate (#279) is not — it runs for real in
+   * E2E, and it would rightly park a blank frame behind its warning before the
+   * flow ever reached the review screen.
+   */
+  const stubFrame = (): ImageData => {
+    const size = 8;
+    const image = new ImageData(size, size);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const luma = (x + y) % 2 === 0 ? 60 : 200;
+        const i = (y * size + x) * 4;
+        image.data[i] = luma;
+        image.data[i + 1] = luma;
+        image.data[i + 2] = luma;
+        image.data[i + 3] = 255;
+      }
+    }
+    return image;
+  };
+
   (
     window as unknown as { __selbstbehaltStubScan?: (text: string) => void }
   ).__selbstbehaltStubScan = (text: string) => {
-    setPageLoader(async () => [{ kind: 'image', image: new ImageData(1, 1) }]);
+    setPageLoader(async () => [{ kind: 'image', image: stubFrame() }]);
     setOcrRecognizer(async () => textToOcrResults(text));
   };
 }

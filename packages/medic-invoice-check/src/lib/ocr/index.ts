@@ -14,17 +14,43 @@ export {
   applyHomography,
   preprocess,
   IDENTITY_HOMOGRAPHY,
+  downscale,
+  lumaPlane,
+  laplacianVariance,
+  meanLuma,
+  lumaStdDev,
+  clippedFraction,
+  measureImageQuality,
+  QUALITY_METRIC_MAX_SIDE,
+  CLIPPING_LUMA,
 } from './preprocess';
-export type { PreprocessOptions, Homography } from './preprocess';
+export type {
+  PreprocessOptions,
+  Homography,
+  ImageQualityMetrics,
+  MeasureQualityOptions,
+} from './preprocess';
+export {
+  assessImageQuality,
+  mergeQualityReports,
+  pickSharpestFrame,
+  QUALITY_THRESHOLDS,
+  QUALITY_OK_HINT,
+} from './quality';
+export type { QualityIssue, QualityIssueCode, QualityReport, QualityThresholds } from './quality';
 export {
   requestCameraStream,
   stopStream,
   captureVideoFrame,
+  captureBestVideoFrame,
   capturePhoto,
+  grabPreviewFrame,
   fileToImageData,
   fileToAllPages,
   CaptureError,
   REAR_CAMERA_CONSTRAINTS,
+  BEST_FRAME_SAMPLE_COUNT,
+  BEST_FRAME_INTERVAL_MS,
 } from './capture';
 export type { CaptureDeps, CaptureErrorCode } from './capture';
 export {

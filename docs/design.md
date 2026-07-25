@@ -440,7 +440,15 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
     Seite; fällt sie durch (dünn, verrauscht/CID-Font-Müll, reines Scan-PDF),
     läuft genau diese Seite über Pfad 2b/3.
         ↓ (nur Seiten ohne brauchbaren Textlayer)
-2b. Bildvorverarbeitung (Canvas API):
+2b. Aufnahmequalität prüfen (Issue #279), je zu rasterndem Bild auf einer
+    heruntergerechneten Kopie (längste Kante 256 px):
+   - Schärfe (Varianz des Laplace-Operators)
+   - Helligkeit (mittlere Luma) und Kontrast (Luma-Standardabweichung)
+   - Glanz/Überbelichtung (Anteil geclippter Pixel)
+   → bei schlechter Bewertung eine Warnung mit konkreten Hinweisen
+     **vor** dem OCR-Lauf; nie blockierend („Trotzdem erkennen")
+        ↓
+2c. Bildvorverarbeitung (Canvas API):
    - Graustufen-Konvertierung
    - Kontrast-Verstärkung
    - Entzerrung (perspektivische Korrektur via Homographie, optional)
@@ -461,6 +469,28 @@ mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
 Pfade münden in derselben `OcrResult[]`-Form (Textlayer-Zeilen mit fixer
 `confidence: 1`), sodass Parser und Review-Screen die Quelle nicht
 unterscheiden müssen.
+
+**Qualitätsprüfung (Schritt 2b, Issues #279/#281).** Die Metriken liegen in
+`ocr/preprocess.ts`, die Schwellen und Hinweistexte in `ocr/quality.ts` — rein
+lokal, deterministisch, ohne Canvas/DOM/Netzwerk. Sie greifen quellenübergreifend
+an genau einer Stelle (`OCRScanner`), also gleichermaßen für Kameraaufnahme,
+Bild-Upload und rasterisierte Scan-PDF-Seiten; Seiten mit brauchbarem Textlayer
+haben kein Bild und werden nicht bewertet.
+
+Helligkeit am oberen Ende und geclippte Pixel werden dabei **nicht** für sich
+genommen als Fehler gewertet: Scanner heben den Papierhintergrund routinemäßig
+auf reines Weiß, eine einwandfrei lesbare Scan-Seite misst also leicht 90 %
+geclippt. Beide Werte dienen daher nur der **Ursachenzuordnung** eines ohnehin
+als unscharf gemessenen Bildes („Reflexion vermeiden" statt „ruhig halten") —
+Reflexionen löschen den Text darunter aus, ein heller Scan behält seine
+Buchstabenkanten.
+
+Dieselben Metriken speisen die Live-Hinweise in der Kameravorschau (Issue #281):
+Der Vorschauframe wird ~2,5-mal pro Sekunde direkt in verkleinerter Auflösung
+abgegriffen und bewertet; das Overlay zeigt den obersten Hinweis bzw. ein
+„Passt"-Signal. Beim Auslösen bleibt `ImageCapture.takePhoto()` erste Wahl
+(volle Sensorauflösung, Issue #280); nur im Fallback wird eine kurze Serie von
+Videoframes abgegriffen und der schärfste behalten.
 
 ### 4.2 PP-OCRv5-Integration (`ppu-paddle-ocr`)
 
@@ -1179,6 +1209,7 @@ services:
 | UV-GOÄ / BG-Rechnungen | ❌ Not in Scope v1 | Separates Regelwerk für Arbeitsunfälle |
 | Auslandsbehandlungen | ❌ Not in Scope v1 | Keine EHI-Gebührentabellen-Prüfung |
 | OCR Handschrift | ⚠️ Limitiert | PP-OCRv5 begrenzt bei Handschrift – Fallback auf manuelle Eingabe |
+| Schlechte Vorlage (unscharf/dunkel/Reflexion) | ⚠️ Limitiert | Qualitätsprüfung vor dem OCR-Lauf warnt mit konkreten Hinweisen (§4.1, Issue #279); Schwellen sind heuristisch und nicht an einem Referenzkorpus kalibriert – die Warnung ist daher bewusst nie blockierend |
 | OCR-Bindung Lizenz | ✅ OK | `ppu-paddle-ocr` MIT, ONNX Runtime MIT [^6] |
 | SvelteKit Lizenz | ✅ OK | MIT |
 
