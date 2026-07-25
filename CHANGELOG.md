@@ -2,17 +2,15 @@
 
 ## [1.12.0](https://github.com/justb81/selbstbehalt/compare/v1.11.3...v1.12.0) (2026-07-25)
 
-
 ### Features
 
-* detect, store and monitor the Zahlungsziel of an invoice ([#313](https://github.com/justb81/selbstbehalt/issues/313)) ([36fde3f](https://github.com/justb81/selbstbehalt/commit/36fde3fa943e9f20b6b121e8c01204a6b04b4e9a)), closes [#288](https://github.com/justb81/selbstbehalt/issues/288)
-* **erstattung:** support generally non-reimbursable invoices via the tariff ([#311](https://github.com/justb81/selbstbehalt/issues/311)) ([13afb4c](https://github.com/justb81/selbstbehalt/commit/13afb4cb3c2c63ea3d4adc85e48bbccf5520f74d))
-* **ocr:** warn on poor capture quality before OCR and guide the shot live ([#312](https://github.com/justb81/selbstbehalt/issues/312)) ([9c345b4](https://github.com/justb81/selbstbehalt/commit/9c345b4ab46282db188409148f0b1b54457424e2))
-
+- detect, store and monitor the Zahlungsziel of an invoice ([#313](https://github.com/justb81/selbstbehalt/issues/313)) ([36fde3f](https://github.com/justb81/selbstbehalt/commit/36fde3fa943e9f20b6b121e8c01204a6b04b4e9a)), closes [#288](https://github.com/justb81/selbstbehalt/issues/288)
+- **erstattung:** support generally non-reimbursable invoices via the tariff ([#311](https://github.com/justb81/selbstbehalt/issues/311)) ([13afb4c](https://github.com/justb81/selbstbehalt/commit/13afb4cb3c2c63ea3d4adc85e48bbccf5520f74d))
+- **ocr:** warn on poor capture quality before OCR and guide the shot live ([#312](https://github.com/justb81/selbstbehalt/issues/312)) ([9c345b4](https://github.com/justb81/selbstbehalt/commit/9c345b4ab46282db188409148f0b1b54457424e2))
 
 ### Bug Fixes
 
-* **deps:** bump @hono/node-server to 2.0.10 and gate typescript majors ([#303](https://github.com/justb81/selbstbehalt/issues/303)) ([321b2b3](https://github.com/justb81/selbstbehalt/commit/321b2b3a6eeda689ad7e3af0777d41567e0148fc))
+- **deps:** bump @hono/node-server to 2.0.10 and gate typescript majors ([#303](https://github.com/justb81/selbstbehalt/issues/303)) ([321b2b3](https://github.com/justb81/selbstbehalt/commit/321b2b3a6eeda689ad7e3af0777d41567e0148fc))
 
 ## [1.11.3](https://github.com/justb81/selbstbehalt/compare/v1.11.2...v1.11.3) (2026-07-22)
 
