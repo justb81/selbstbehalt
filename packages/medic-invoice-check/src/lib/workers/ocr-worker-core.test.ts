@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createOcrWorkerCore, type OcrWorkerCoreDeps } from './ocr-worker-core';
 import type {
   OcrBackend,
+  OcrBoundingBox,
   OcrEngine,
   OcrProgress,
   OcrResult,
@@ -167,6 +168,65 @@ describe('OCR worker core', () => {
       type: 'error',
       id: 9,
       error: { code: 'unknown_message' },
+    });
+  });
+});
+
+describe('OCR worker core — detect', () => {
+  const BOXES: OcrBoundingBox[] = [
+    {
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+    },
+  ];
+  it('posts the detected boxes', async () => {
+    const detect = vi.fn(async () => BOXES);
+    const { core, posts } = setup({ createEngine: async () => fakeEngine('wasm', { detect }) });
+    await core.handle({ type: 'init', id: 1 });
+    await core.handle({ type: 'detect', id: 2, image });
+
+    expect(detect).toHaveBeenCalledWith(image);
+    expect(posts.at(-1)).toEqual({ type: 'detected', id: 2, boxes: BOXES });
+  });
+
+  it('fails with not_initialized before init', async () => {
+    const { core, posts } = setup();
+    await core.handle({ type: 'detect', id: 7, image });
+    expect(posts.at(-1)).toMatchObject({
+      type: 'error',
+      id: 7,
+      error: { code: 'not_initialized' },
+    });
+  });
+
+  // `detect` is optional on the seam, so "this engine can't" is a distinct,
+  // actionable outcome rather than a generic failure.
+  it('reports detect_unsupported when the engine offers no detection path', async () => {
+    const { core, posts } = setup({ createEngine: async () => fakeEngine('wasm') });
+    await core.handle({ type: 'init', id: 1 });
+    await core.handle({ type: 'detect', id: 2, image });
+    expect(posts.at(-1)).toMatchObject({
+      type: 'error',
+      id: 2,
+      error: { code: 'detect_unsupported' },
+    });
+  });
+
+  it('reports detect_failed when detection throws', async () => {
+    const detect = vi.fn(async () => {
+      throw new Error('boom');
+    });
+    const { core, posts } = setup({ createEngine: async () => fakeEngine('wasm', { detect }) });
+    await core.handle({ type: 'init', id: 1 });
+    await core.handle({ type: 'detect', id: 2, image });
+    expect(posts.at(-1)).toMatchObject({
+      type: 'error',
+      id: 2,
+      error: { code: 'detect_failed', message: 'boom' },
     });
   });
 });

@@ -592,6 +592,66 @@ und die ~12 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
 Worker beim ersten Gebrauch gecacht (§6.3); kein Drittanbieter-Abruf zur
 Laufzeit.
 
+**Modellwahl (Stand `ppu-paddle-ocr` 6.2.0).** Ab 6.2.0 ist PP-OCRv6 die
+Standard-Modellfamilie der Bindung. Weil wir *immer* explizite, selbst gehostete
+URLs übergeben, ändert sich dadurch nichts von allein — ein Wechsel wäre eine
+bewusste Entscheidung. Gemessene Kandidaten:
+
+| Bündel | Detektion + Erkennung | Zeichen im Wörterbuch |
+|---|---|---|
+| **v5 latin mobile (aktuell)** | 4,6 + 7,7 = **12,3 MB** | **837** |
+| v6 tiny | 1,8 + 4,4 = **6,2 MB** | 6 905 |
+| v6 small | 9,5 + 20,3 = **29,8 MB** | 18 709 |
+
+Alle drei Wörterbücher decken Deutsch vollständig ab (`ä ö ü Ä Ö Ü ß` sowie
+`€ § %`) — Deutsch ist also *nicht* das Unterscheidungskriterium. Zwei Punkte
+sprechen dagegen, v6 einfach als besser anzunehmen:
+
+- Ein **engeres** Wörterbuch ist in einer rein lateinischen Domäne ein Vorteil:
+  mit 837 Zeichen *kann* der Erkenner keine CJK-Glyphe auf eine deutsche Rechnung
+  schreiben, mit 18 709 schon.
+- Die Herstellerangabe (99,48 % vs. 97,39 %) stammt aus dessen eigenem
+  Kassenbon-Benchmark mit dem allgemeinen Standardmodell — nicht aus deutschen
+  GOÄ-Rechnungen gegen eine lateinisch beschränkte Vergleichsbasis.
+
+Die eigentliche Hürde ist zudem technisch: v6 liefert das
+ONNX-Runtime-Serialisierungsformat `.ort` (für Minimal-/Mobile-Builds gedacht),
+v5-latin schlichtes `.onnx`. Ob der JSEP-/WebGPU-Build von `onnxruntime-web` 1.27
+`.ort` in unserem Worker-Setup überhaupt lädt, ist vor allem anderen zu prüfen.
+Ein Wechsel zöge außerdem neue SHA-256-Pins (`models.sha256`), neue
+Dateinamen (`det.ort`/`rec.ort` statt `.onnx`, samt `OCR_ASSET_PATHS` und
+`.gitignore`) und bei v6 small ein Asset-Budget von ~30 MB statt ~12 MB nach sich
+(§6.3) — relevant für eine PWA, die die Modelle beim ersten Gebrauch cacht.
+
+### 4.2.1 Reine Texterkennungs-Suche (`detect`) und Zuschnitt
+
+`ppu-paddle-ocr` 6.1.0 bietet `detect()` — nur das Detektionsmodell, ohne
+Erkennung. Der Adapter macht das über den Engine-Seam verfügbar
+(`OcrEngine.detect`, Worker-Nachricht `detect` → `detected`, `OcrClient.detect`);
+`mapPaddleDetectResult` übersetzt die achsenparallelen `Box`-Werte der Bindung in
+dieselben Vierecke, die `recognize` liefert.
+
+**Wofür `detect` *nicht* gedacht ist:** die Seitenvorschau braucht es nicht —
+`recognize` liefert dieselben Boxen bereits mit, ein vorgeschalteter `detect`-Lauf
+würde also eine zweite Detektions-Inferenz bezahlen, um zu erfahren, was uns
+gleich ohnehin mitgeteilt wird. Für die Live-Kameraschleife (alle 400 ms) ist es
+ebenfalls viel zu langsam.
+
+**Wofür es sich anbietet:** den Zuschnitt *vor* der Erkennung. Der Detektor
+skaliert jeden Frame auf ein festes Längstkanten-Budget herunter; bei einem Foto,
+auf dem die Rechnung nur die halbe Bildfläche einnimmt, geht die Hälfte dieses
+Budgets für Schreibtisch drauf. Die Hülle der erkannten Boxen (`ocr/crop.ts`:
+`hullOfQuads`, `isCropWorthwhile`, `cropImageData`, `uncropQuad`) begrenzt den
+Frame auf den bedruckten Bereich, sodass die Erkennung die volle Auflösung auf die
+Seite legt.
+
+> **Bewusst noch nicht in der Standard-Pipeline aktiv.** Das ist ein plausibles
+> Argument, kein Messergebnis, und es kostet eine zusätzliche Inferenz pro Seite.
+> Vor einer Aktivierung: an echten Rechnungsfotos gegenmessen (Erkennungsqualität
+> *und* Laufzeit) und bei fehlendem Gewinn wieder verwerfen. Solche Fixtures
+> können nicht ins Repository — Rechnungen sind Art.-9-Daten (§8) —, die Messung
+> läuft also lokal, und nur die aggregierten Zahlen gehören in den PR.
+
 ### 4.3 GOÄ-Strukturparser
 
 Arztrechnungen nach §12 GOÄ folgen einem gesetzlich definierten Schema. Der

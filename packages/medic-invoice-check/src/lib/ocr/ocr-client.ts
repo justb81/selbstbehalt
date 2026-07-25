@@ -13,6 +13,7 @@
  */
 import type {
   OcrBackend,
+  OcrBoundingBox,
   OcrEngineConfig,
   OcrProgress,
   OcrResult,
@@ -97,6 +98,9 @@ export class OcrClient {
       case 'result':
         pending.resolve(message.results);
         return;
+      case 'detected':
+        pending.resolve(message.boxes);
+        return;
       case 'disposed':
         pending.resolve(undefined);
         return;
@@ -149,6 +153,21 @@ export class OcrClient {
       (id) => ({ message: { type: 'recognize', id, image }, transfer: [image.data.buffer] }),
       onProgress,
     );
+  }
+
+  /**
+   * Locates text regions without reading them (detection model only). Same
+   * zero-copy transfer caveat as {@link recognize}: the passed {@link ImageData}
+   * must not be reused afterwards.
+   *
+   * Rejects with `detect_unsupported` when the engine offers no detection-only
+   * path.
+   */
+  detect(image: ImageData): Promise<OcrBoundingBox[]> {
+    return this.#request<OcrBoundingBox[]>((id) => ({
+      message: { type: 'detect', id, image },
+      transfer: [image.data.buffer],
+    }));
   }
 
   /** Releases the model in the worker while keeping the worker alive. */

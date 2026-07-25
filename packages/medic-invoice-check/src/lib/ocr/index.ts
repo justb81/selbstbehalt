@@ -77,6 +77,14 @@ export {
 } from './scan-ocr';
 export type { OcrRecognizer, MultiPageLoader } from './scan-ocr';
 export {
+  hullOfQuads,
+  isCropWorthwhile,
+  cropImageData,
+  uncropQuad,
+  DEFAULT_CROP_MARGIN,
+} from './crop';
+export type { CropRect } from './crop';
+export {
   createPagePreview,
   buildScanPreview,
   scaleQuadToPreview,

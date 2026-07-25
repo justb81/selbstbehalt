@@ -136,3 +136,34 @@ describe('OcrClient', () => {
     expect(await promise).toBe('webgpu');
   });
 });
+
+describe('OcrClient.detect', () => {
+  it('transfers the pixel buffer and resolves with the boxes', async () => {
+    const worker = new FakeWorker();
+    const client = new OcrClient({ createWorker: () => worker });
+    const image = imageData();
+    const promise = client.detect(image);
+
+    const sent = worker.posted.at(-1)!;
+    expect(sent.message).toMatchObject({ type: 'detect', id: expect.any(Number) });
+    // Same zero-copy hand-off as `recognize`.
+    expect(sent.transfer).toEqual([image.data.buffer]);
+
+    const boxes = [{ points: [[0, 0]] as Array<[number, number]> }];
+    worker.emit({ type: 'detected', id: (sent.message as { id: number }).id, boxes });
+    await expect(promise).resolves.toEqual(boxes);
+  });
+
+  it('rejects with the stable code when detection is unsupported', async () => {
+    const worker = new FakeWorker();
+    const client = new OcrClient({ createWorker: () => worker });
+    const promise = client.detect(imageData());
+    const id = (worker.posted.at(-1)!.message as { id: number }).id;
+    worker.emit({
+      type: 'error',
+      id,
+      error: { code: 'detect_unsupported', message: 'nope' },
+    });
+    await expect(promise).rejects.toMatchObject({ code: 'detect_unsupported' });
+  });
+});
