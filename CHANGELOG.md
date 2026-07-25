@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/justb81/selbstbehalt/compare/v1.12.0...v1.13.0) (2026-07-25)
+
+
+### Features
+
+* **ocr:** show the scanned page in the review, and scan multi-page image invoices ([#314](https://github.com/justb81/selbstbehalt/issues/314)) ([4396a3f](https://github.com/justb81/selbstbehalt/commit/4396a3f0c9a63030e970e3f7ea5cd4bd82c222e5))
+
 ## [1.12.0](https://github.com/justb81/selbstbehalt/compare/v1.11.3...v1.12.0) (2026-07-25)
 
 ### Features
