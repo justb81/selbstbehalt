@@ -43,6 +43,25 @@ export default defineConfig({
           functions: 90,
           lines: 90,
         },
+        // The capture-quality metrics and their thresholds (issues #279/#281)
+        // are pure and deterministic too, and they decide whether a scan is
+        // worth running at all — same bar as the parser.
+        'src/lib/ocr/preprocess.ts': {
+          statements: 90,
+          // Every pixel loop here indexes defensively (`src[i] ?? 0`), and a
+          // well-formed ImageData never takes the fallback side. Chasing those
+          // branches would mean feeding the metrics deliberately malformed
+          // buffers — coverage of the guard, not of any real behaviour.
+          branches: 60,
+          functions: 90,
+          lines: 90,
+        },
+        'src/lib/ocr/quality.ts': {
+          statements: 90,
+          branches: 90,
+          functions: 90,
+          lines: 90,
+        },
       },
     },
   },

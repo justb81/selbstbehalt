@@ -2,11 +2,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  BEST_FRAME_SAMPLE_COUNT,
   CaptureError,
+  captureBestVideoFrame,
   capturePhoto,
   captureVideoFrame,
   fileToAllPages,
   fileToImageData,
+  grabPreviewFrame,
   REAR_CAMERA_CONSTRAINTS,
   requestCameraStream,
   stopStream,
@@ -28,6 +31,31 @@ function setNavigator(value: unknown): void {
 }
 
 const sentinel = { data: new Uint8ClampedArray(4), width: 1, height: 1 } as unknown as ImageData;
+
+/** Never actually wait between the frames of a best-frame burst in tests. */
+const noSleep = vi.fn(async () => {});
+
+/** An opaque grayscale frame built from per-pixel luma values. */
+function gray(width: number, height: number, lumas: number[]): ImageData {
+  const bytes: number[] = [];
+  for (const value of lumas) bytes.push(value, value, value, 255);
+  return {
+    data: new Uint8ClampedArray(bytes),
+    width,
+    height,
+    colorSpace: 'srgb',
+  } as unknown as ImageData;
+}
+
+/** A flat frame — no edge energy at all. */
+const blurredFrame = gray(4, 4, Array<number>(16).fill(128));
+
+/** A hard-edged checkerboard — the sharpest 4×4 pattern there is. */
+const sharpFrame = gray(
+  4,
+  4,
+  Array.from({ length: 16 }, (_, i) => (((i % 4) + Math.floor(i / 4)) % 2 === 0 ? 0 : 255)),
+);
 
 describe('REAR_CAMERA_CONSTRAINTS', () => {
   it('requests a high-resolution rear-facing stream (issue #280)', () => {
@@ -137,40 +165,135 @@ describe('capturePhoto', () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it('falls back to captureVideoFrame when the stream has no video track', async () => {
+  it('never re-picks among video frames when takePhoto succeeded (issue #281)', async () => {
+    // The still is already the better image; a best-frame burst here would
+    // trade full sensor resolution for nothing.
+    const track = { id: 'vid' } as unknown as MediaStreamTrack;
+    const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
+    const close = vi.fn();
+    const takePhoto = vi.fn().mockResolvedValue({ size: 1 } as Blob);
+    const decode = vi.fn().mockResolvedValue({ width: 10, height: 8, close });
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+    const sleep = vi.fn(async () => {});
+
+    await capturePhoto(stream, video, { takePhoto, decode, toImageData, sleep });
+
+    expect(toImageData).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a best-frame burst when the stream has no video track', async () => {
     const stream = { getVideoTracks: () => [] } as unknown as MediaStream;
     const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
     const takePhoto = vi.fn();
     const toImageData = vi.fn().mockReturnValue(sentinel);
 
-    await expect(capturePhoto(stream, video, { takePhoto, toImageData })).resolves.toBe(sentinel);
+    await expect(
+      capturePhoto(stream, video, { takePhoto, toImageData, sleep: noSleep }),
+    ).resolves.toBe(sentinel);
 
     expect(takePhoto).not.toHaveBeenCalled();
     expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
+    expect(toImageData).toHaveBeenCalledTimes(BEST_FRAME_SAMPLE_COUNT);
   });
 
-  it('falls back to captureVideoFrame when takePhoto rejects', async () => {
+  it('falls back to a best-frame burst when takePhoto rejects', async () => {
     const track = {} as unknown as MediaStreamTrack;
     const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
     const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
     const takePhoto = vi.fn().mockRejectedValue(new Error('still capture unsupported'));
     const toImageData = vi.fn().mockReturnValue(sentinel);
 
-    await expect(capturePhoto(stream, video, { takePhoto, toImageData })).resolves.toBe(sentinel);
+    await expect(
+      capturePhoto(stream, video, { takePhoto, toImageData, sleep: noSleep }),
+    ).resolves.toBe(sentinel);
 
     expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
   });
 
-  it('falls back to captureVideoFrame when ImageCapture is unavailable in this environment', async () => {
+  it('falls back to a best-frame burst when ImageCapture is unavailable in this environment', async () => {
     const track = {} as unknown as MediaStreamTrack;
     const stream = { getVideoTracks: () => [track] } as unknown as MediaStream;
     const video = { videoWidth: 4, videoHeight: 2 } as HTMLVideoElement;
     const toImageData = vi.fn().mockReturnValue(sentinel);
 
     // No `takePhoto` dep injected, and jsdom has no global `ImageCapture`.
-    await expect(capturePhoto(stream, video, { toImageData })).resolves.toBe(sentinel);
+    await expect(capturePhoto(stream, video, { toImageData, sleep: noSleep })).resolves.toBe(
+      sentinel,
+    );
 
     expect(toImageData).toHaveBeenCalledWith(video, 4, 2);
+  });
+
+  it('keeps the sharpest frame of the fallback burst', async () => {
+    const stream = { getVideoTracks: () => [] } as unknown as MediaStream;
+    const video = { videoWidth: 4, videoHeight: 4 } as HTMLVideoElement;
+    const toImageData = vi
+      .fn()
+      .mockReturnValueOnce(blurredFrame)
+      .mockReturnValueOnce(sharpFrame)
+      .mockReturnValueOnce(blurredFrame);
+
+    await expect(capturePhoto(stream, video, { toImageData, sleep: noSleep })).resolves.toBe(
+      sharpFrame,
+    );
+  });
+});
+
+describe('captureBestVideoFrame', () => {
+  it('waits between frames so the burst spans real hand movement', async () => {
+    const video = { videoWidth: 4, videoHeight: 4 } as HTMLVideoElement;
+    const sleep = vi.fn(async () => {});
+    const toImageData = vi.fn().mockReturnValue(blurredFrame);
+
+    await captureBestVideoFrame(video, { toImageData, sleep }, { count: 3, intervalMs: 50 });
+
+    expect(toImageData).toHaveBeenCalledTimes(3);
+    // Three frames, two gaps — no pointless wait before the first grab.
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(50);
+  });
+
+  it('always grabs at least one frame, even when asked for none', async () => {
+    const video = { videoWidth: 4, videoHeight: 4 } as HTMLVideoElement;
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await expect(
+      captureBestVideoFrame(video, { toImageData, sleep: noSleep }, { count: 0 }),
+    ).resolves.toBe(sentinel);
+    expect(toImageData).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a capture failure rather than returning a blank frame', async () => {
+    const video = { videoWidth: 0, videoHeight: 0 } as HTMLVideoElement;
+    await expect(captureBestVideoFrame(video, { sleep: noSleep })).rejects.toMatchObject({
+      code: 'camera_error',
+    });
+  });
+});
+
+describe('grabPreviewFrame', () => {
+  it('returns null while the stream has no dimensions yet', async () => {
+    const video = { videoWidth: 0, videoHeight: 0 } as HTMLVideoElement;
+    await expect(grabPreviewFrame(video, 256)).resolves.toBeNull();
+  });
+
+  it('rasterises straight to the requested size, preserving the aspect ratio', async () => {
+    const video = { videoWidth: 1920, videoHeight: 1080 } as HTMLVideoElement;
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await expect(grabPreviewFrame(video, 256, { toImageData })).resolves.toBe(sentinel);
+    // 1920 -> 256 is a factor of 7.5; 1080 / 7.5 = 144.
+    expect(toImageData).toHaveBeenCalledWith(video, 256, 144);
+  });
+
+  it('never upscales a preview that is already small', async () => {
+    const video = { videoWidth: 120, videoHeight: 90 } as HTMLVideoElement;
+    const toImageData = vi.fn().mockReturnValue(sentinel);
+
+    await grabPreviewFrame(video, 256, { toImageData });
+    expect(toImageData).toHaveBeenCalledWith(video, 120, 90);
   });
 });
 
