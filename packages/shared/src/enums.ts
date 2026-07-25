@@ -12,12 +12,21 @@ export const contractTypeValues = ['vollversicherung', 'zusatztarif', 'beihilfe'
 export const contractTypeSchema = z.enum(contractTypeValues);
 export type ContractType = z.infer<typeof contractTypeSchema>;
 
-/** Kind of healthcare provider that issued an invoice (`invoices.provider_type`). */
+/**
+ * Kind of healthcare provider that issued an invoice (`invoices.provider_type`).
+ *
+ * Beyond the treating providers this covers the two dispensing ones, because their
+ * receipts fall into different tariff areas: `apotheke` (Arzneimittel → `ambulant`)
+ * and `sanitaetshaus` (Hilfsmittel → `hilfsmittel`). See
+ * {@link defaultBenefitCategoryForProvider}.
+ */
 export const providerTypeValues = [
   'arzt',
   'zahnarzt',
   'kieferorthopaede',
   'krankenhaus',
+  'apotheke',
+  'sanitaetshaus',
   'sonstiges',
 ] as const;
 export const providerTypeSchema = z.enum(providerTypeValues);
@@ -92,11 +101,12 @@ export function trackForStatusValue(value: InvoiceStatusEventValue): StatusTrack
  *   summary line on dental/orthodontic invoices (the itemised BEB/BEL breakdown
  *   is only in the attached Eigenlabor-/Materialbeleg).
  *
- * Only `Arznei-/Hilfsmittel` is reimbursed at a flat 100 % of `charged_amount`
- * ({@link isFlatReimbursedCategory}) — provisional, later corrected by the insurer's
- * actual `refund_amount`. `Auslagenersatz` and `Material-/Laborkosten` run through
- * the normal §5.1 tariff pipeline with a benefit_category derived from the invoice's
- * honorar positions (see design §5.1).
+ * The category governs the **amount arithmetic** only. Reimbursement is decided
+ * exclusively by the position's `benefit_category` running through the §5.1 tariff
+ * pipeline — for the non-fee-schedule categories too. `Arznei-/Hilfsmittel` takes it
+ * from the provider default (Apotheke → `ambulant`, Sanitätshaus → `hilfsmittel`) or
+ * the user's pick; `Auslagenersatz` and `Material-/Laborkosten` derive it from the
+ * invoice's honorar positions (see design §5.1).
  */
 export const goaeCategoryValues = [
   'GOÄ',
@@ -113,10 +123,9 @@ export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
  * The non-fee-schedule position categories: no Ziffer/Steigerungsfaktor, amount is
  * `quantity × base_amount` (Anzahl × Basis). This governs the **amount arithmetic**
  * and the review UI (hidden Ziffer/Faktor fields, Betrag = Anzahl × Basis) only — it
- * does **not** imply flat 100 % reimbursement. Only `Arznei-/Hilfsmittel` is reimbursed
- * flat ({@link isFlatReimbursedCategory}); `Auslagenersatz` (§10 GOÄ) and
- * `Material-/Laborkosten` (§9 GOZ) run through the §5.1 tariff pipeline with a derived
- * benefit_category. See {@link goaeCategoryValues} and design §3.2/§5.1.
+ * says nothing about the reimbursement, which always runs the §5.1 tariff pipeline
+ * under the position's `benefit_category`. See {@link goaeCategoryValues} and design
+ * §3.2/§5.1.
  */
 export const nonScheduleGoaeCategoryValues = [
   'Auslagenersatz',
@@ -128,8 +137,8 @@ export type NonScheduleGoaeCategory = (typeof nonScheduleGoaeCategoryValues)[num
 /**
  * Whether `cat` is a non-fee-schedule category (Auslagenersatz, Arznei-/Hilfsmittel
  * or Material-/Laborkosten): billed as `quantity × base_amount`, no
- * Ziffer/Steigerungsfaktor. Governs amount arithmetic and the review UI — **not**
- * whether the reimbursement is flat 100 % (that is {@link isFlatReimbursedCategory}).
+ * Ziffer/Steigerungsfaktor. Governs amount arithmetic and the review UI only — the
+ * reimbursement of these positions runs the same §5.1 tariff pipeline as any other.
  */
 export function isNonScheduleCategory(
   cat: GoaeCategory | null | undefined,
@@ -137,22 +146,6 @@ export function isNonScheduleCategory(
   return (
     cat === 'Auslagenersatz' || cat === 'Arznei-/Hilfsmittel' || cat === 'Material-/Laborkosten'
   );
-}
-
-/**
- * Whether `cat` is reimbursed at a flat 100 % of `charged_amount`, bypassing the
- * §5.1 tariff pipeline entirely (Wartezeit, Schwellen-Staffel, Beihilfe-Quote,
- * Summengrenzen, Aufbaujahres-Staffel). Only `Arznei-/Hilfsmittel` (per-Rezept
- * medication/aids, #248) — provisional, later corrected by the insurer's actual
- * `refund_amount`.
- *
- * Distinct from {@link isNonScheduleCategory}, the broader "Anzahl × Basis, no
- * Ziffer/Faktor" arithmetic/UI concern: `Auslagenersatz` and `Material-/Laborkosten`
- * are non-schedule but **not** flat — they run the tariff pipeline with a
- * benefit_category derived from the invoice's honorar positions.
- */
-export function isFlatReimbursedCategory(cat: GoaeCategory | null | undefined): boolean {
-  return cat === 'Arznei-/Hilfsmittel';
 }
 
 /** Channel an invoice was submitted through (`submissions.submitted_via`). */

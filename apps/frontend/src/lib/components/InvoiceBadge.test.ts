@@ -13,6 +13,8 @@ describe('InvoiceBadge', () => {
     ['nicht_eingereicht', 'Nicht eingereicht'],
     ['eingereicht', 'Eingereicht'],
     ['erstattet', 'Erstattet'],
+    // Display-only, never persisted as an event value.
+    ['nicht_erstattungsfaehig', 'Nicht erstattungsfähig'],
   ] as const)('renders the German label for status "%s"', (status, label) => {
     render(InvoiceBadge, { props: { status } });
     expect(screen.getByText(label)).toBeInTheDocument();

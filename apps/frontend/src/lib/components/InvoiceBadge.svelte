@@ -1,13 +1,24 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Status badge for a single lifecycle-track value (docs/design.md §6.2, issue #22/#142). -->
+<!--
+  Status badge for a single lifecycle-track value (docs/design.md §6.2, issue #22/#142).
+
+  Besides the seven real event values it renders one **display-only** value,
+  `nicht_erstattungsfaehig`: an invoice the tariff reimburses nothing for is shown as
+  "Einreichen entfällt" rather than as a pending submission. It is derived at render
+  time from the amounts (`isNonReimbursable`) and is never persisted — there is no such
+  `invoice_status_events` value and no such submission state.
+-->
 <script lang="ts">
   import type { InvoiceStatusEventValue } from '@selbstbehalt/shared';
   import { Badge } from '$lib/components/ui/badge';
   import { cn } from '$lib/utils';
 
-  let { status }: { status: InvoiceStatusEventValue } = $props();
+  /** A real event value, or the derived display-only "nothing to submit" state. */
+  export type InvoiceBadgeStatus = InvoiceStatusEventValue | 'nicht_erstattungsfaehig';
 
-  const LABELS: Record<InvoiceStatusEventValue, string> = {
+  let { status }: { status: InvoiceBadgeStatus } = $props();
+
+  const LABELS: Record<InvoiceBadgeStatus, string> = {
     neu: 'Neu',
     geprüft: 'Geprüft',
     offen: 'Offen',
@@ -15,6 +26,7 @@
     nicht_eingereicht: 'Nicht eingereicht',
     eingereicht: 'Eingereicht',
     erstattet: 'Erstattet',
+    nicht_erstattungsfaehig: 'Nicht erstattungsfähig',
   };
 
   type BadgeConfig = {
@@ -22,7 +34,7 @@
     class?: string;
   };
 
-  const VARIANTS: Record<InvoiceStatusEventValue, BadgeConfig> = {
+  const VARIANTS: Record<InvoiceBadgeStatus, BadgeConfig> = {
     neu: { variant: 'secondary' },
     geprüft: {
       variant: 'outline',
@@ -46,6 +58,7 @@
       class:
         'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300',
     },
+    nicht_erstattungsfaehig: { variant: 'outline' },
   };
 
   const config = $derived(VARIANTS[status]);

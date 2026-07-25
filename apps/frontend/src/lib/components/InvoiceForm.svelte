@@ -8,6 +8,7 @@
     - versicherte Person selection,
     - Notizen,
     - the per-position reimbursement (`eligible_amount`) via erstattungs-engine,
+      plus the summary line that explains a reduced or zero result before saving,
     - the OCR opt-out (raw OCR saved by default), and
     - assembling + saving the payload.
   Mode-specific: create shows the scanner + OCR opt-out; edit pre-fills from
@@ -16,7 +17,8 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import {
-    isFlatReimbursedCategory,
+    BENEFIT_CATEGORY_LABELS,
+    formatEur,
     isNonScheduleCategory,
     roundCents,
     type BenefitCategory,
@@ -160,8 +162,9 @@
   // ---------------------------------------------------------------------------
   // Reimbursement (eligible_amount) — tariff-dependent, computed here from the
   // reviewed positions' benefit_category (set by the fee-table lookup in the
-  // review component) plus the insured person's included_benefits. Not shown in
-  // the form; only assembled into the save payload.
+  // review component) plus the insured person's included_benefits. Shown as a
+  // summary line below, so a reduced or zero result is visible *before* saving,
+  // and assembled into the save payload.
   // ---------------------------------------------------------------------------
 
   /**
@@ -171,38 +174,49 @@
    * and stored on the position so the per-category refund entry can group without a
    * fee-table re-lookup.
    */
-  function resolvedBenefitCategories(): BenefitCategory[] {
+  const benefitCategories = $derived.by((): BenefitCategory[] => {
     const honorarPositions: AuslagenDerivationPosition[] = positions.map((p) => ({
       goaeCategory: p.goae_category,
       benefitCategory: p.benefit_category,
       chargedAmount: p.charged_amount,
     }));
     return positions.map((p) => resolveBenefitCategory(p, honorarPositions, providerType));
-  }
+  });
 
-  function computeEligibleAmounts(categories: BenefitCategory[]): (number | null)[] {
-    const insuredPerson = insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson;
-    if (!(insuredPerson?.included_benefits && insuredPerson.start_date)) {
-      return positions.map(() => null);
-    }
+  const selectedInsuredPerson = $derived(
+    insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson,
+  );
+
+  /**
+   * The reimbursement breakdown for the current positions, or `null` when the tariff
+   * cannot be evaluated at all (no `included_benefits` or no `start_date` on the
+   * insured person) — then every `eligible_amount` stays `null`, i.e. "unknown",
+   * which is deliberately different from a computed 0 € ("not reimbursable").
+   */
+  const erstattung = $derived.by(() => {
+    if (!(selectedInsuredPerson?.included_benefits && selectedInsuredPerson.start_date))
+      return null;
     const erstattungPositions: ErstattungPosition[] = positions.map((p, i) => ({
-      category: categories[i]!,
+      category: benefitCategories[i]!,
       chargedAmount: p.charged_amount,
       treatmentDate: p.treatment_date || invoiceDate,
-      // Only Arznei-/Hilfsmittel is reimbursed flat at 100 %, outside the tariff
-      // pipeline (provisional; corrected later by the insurer's refund_amount).
-      // Auslagenersatz and Material-/Laborkosten run the §5.1 pipeline under their
-      // derived benefit_category.
-      isFullyReimbursed: isFlatReimbursedCategory(p.goae_category),
     }));
-    const result = computeErstattung({
+    return computeErstattung({
       positions: erstattungPositions,
-      benefits: insuredPerson.included_benefits,
+      benefits: selectedInsuredPerson.included_benefits,
       invoiceDate,
-      coverageStart: insuredPerson.start_date,
+      coverageStart: selectedInsuredPerson.start_date,
     });
-    return positions.map((_, i) => result.byPosition[i]?.eligible_amount ?? null);
-  }
+  });
+
+  const eligibleAmounts = $derived(
+    positions.map((_, i) => erstattung?.byPosition[i]?.eligible_amount ?? null),
+  );
+
+  /** Categories the tariff reimburses nothing for — the reason shown to the user. */
+  const nonReimbursableCategories = $derived(
+    (erstattung?.byCategory ?? []).filter((c) => c.eligibleAmount === 0 && c.chargedAmount > 0),
+  );
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -225,8 +239,6 @@
       internalError = 'Bitte einen Gesamtbetrag > 0 eingeben.';
       return;
     }
-    const benefitCategories = resolvedBenefitCategories();
-    const eligibleAmounts = computeEligibleAmounts(benefitCategories);
     const positionInputs: InvoicePositionInput[] = positions.map((p, i) => {
       // Non-fee-schedule categories (Auslagenersatz, Arznei-/Hilfsmittel) have no
       // Ziffer/Steigerungsfaktor: clear the Ziffer and fix the Faktor at 1. The
@@ -311,6 +323,27 @@
     bind:positions
     bind:scanResult
   />
+
+  <!-- Erstattung: what the tariff will cover, and why it is less than billed -->
+  {#if erstattung && positions.length > 0}
+    <div class="rounded-md border border-border p-3 space-y-1">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <span class="text-sm font-medium">Erstattungsfähig (nach Tarif)</span>
+        <span class="text-sm font-semibold tabular-nums">
+          {formatEur(erstattung.eligibleAmount)}
+        </span>
+      </div>
+      {#each nonReimbursableCategories as c (c.category)}
+        <p class="text-xs text-muted-foreground">
+          {BENEFIT_CATEGORY_LABELS[c.category]}: {formatEur(c.chargedAmount)} — {c.note ??
+            'nicht erstattungsfähig'}
+        </p>
+      {/each}
+      <p class="text-xs text-muted-foreground">
+        Schätzung aus dem Tarif. Maßgeblich ist die später vom Versicherer gemeldete Erstattung.
+      </p>
+    </div>
+  {/if}
 
   <!-- Notizen -->
   <div class="space-y-1.5">

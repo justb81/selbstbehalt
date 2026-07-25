@@ -241,7 +241,7 @@ insured_person_id TEXT REFERENCES insured_persons(id)  -- welche versicherte Per
 invoice_date      DATE NOT NULL        -- Ausstellungsdatum der Rechnung (NICHT BRE-relevant, siehe §5.2)
 invoice_number    TEXT
 provider_name     TEXT NOT NULL        -- Name des Arztes / der Einrichtung
-provider_type     TEXT                 -- 'arzt' | 'zahnarzt' | 'krankenhaus' | 'sonstiges'
+provider_type     TEXT                 -- 'arzt' | 'zahnarzt' | 'kieferorthopaede' | 'krankenhaus' | 'apotheke' | 'sanitaetshaus' | 'sonstiges'
 total_amount      REAL NOT NULL        -- Rechnungsbetrag brutto in EUR (erfasster Kopfbetrag)
 eligible_amount   REAL                 -- ABGELEITET: Σ positions.eligible_amount (read-only)
 self_paid_amount  REAL DEFAULT 0       -- ABGELEITET: selbst getragener Anteil aus den Positionen (read-only)
@@ -325,7 +325,9 @@ flag_reason      TEXT               -- Begründung bei Auffälligkeit
   Kategorie beim Einlesen automatisch; sie bleibt in der UI jederzeit manuell umstellbar.
 - **`Arznei-/Hilfsmittel`** für per Rezept eingereichte Belege (Apotheke/Sanitätshaus): erfasst mit
   Bezeichnung, Menge und Einzelpreis — ohne Ziffer/Steigerungsfaktor. Wird ausschließlich manuell
-  gewählt (keine OCR-Schlüsselwort-Erkennung).
+  gewählt (keine OCR-Schlüsselwort-Erkennung). Für die Erstattung zählt allein die
+  `benefit_category`; sie ergibt sich standardmäßig aus dem `provider_type` (Apotheke → `ambulant`,
+  Sanitätshaus → `hilfsmittel`) und ist pro Position umstellbar.
 - **`Material-/Laborkosten`** für §9-GOZ-Praxislabor-Auslagen: zahnärztliche/kieferorthopädische
   Rechnungen führen diese als **eine Summenzeile** („Auslagen nach §9 GOZ gemäß Praxislaborbeleg:
   1.001,91"). Der Parser übernimmt sie als **eine** Sammelposition (Anzahl 1 × Basis) und schließt
@@ -337,19 +339,32 @@ Alle drei Nicht-GO-Kategorien haben **keine Ziffer/keinen Steigerungsfaktor**; i
 genau prüft (`isNonScheduleCategory`). Sie durchlaufen keine Ziffer-/Steigerungsfaktor-Prüfung gegen
 ein Gebührenverzeichnis (`is_valid = true` ohne Lookup).
 
-Für die **Erstattung** unterscheiden sie sich jedoch (`isFlatReimbursedCategory`):
+Für die **Erstattung** gibt es dagegen keine Sonderbehandlung: `goae_category` bestimmt allein die
+Betragsarithmetik. Alle Positionen — auch die Nicht-GO-Kategorien — laufen über ihre
+`benefit_category` durch die normale §5.1-Pipeline. `Auslagenersatz` und `Material-/Laborkosten` sind
+fachlich **kein** pauschaler Auslagenersatz (zahntechnische Leistungen werden quotal erstattet) und
+leiten ihre `benefit_category` aus dem Rechnungskontext ab (§5.1,
+`deriveAuslagenBenefitCategory`); `Arznei-/Hilfsmittel` erhält sie aus dem `provider_type` bzw. der
+Auswahl des Nutzers.
 
-- **`Arznei-/Hilfsmittel`** wird in der Erstattungs-Engine **zunächst zu 100 % von `charged_amount`**
-  erstattet — unabhängig von Tarifstufen, Wartezeit, Beihilfe-Quote oder Summengrenzen (§5.1).
-- **`Auslagenersatz`** und **`Material-/Laborkosten`** sind fachlich **kein** pauschaler Auslagenersatz:
-  zahntechnische Leistungen werden quotal erstattet. Sie durchlaufen daher die normale §5.1-Pipeline mit
-  einer aus dem Rechnungskontext abgeleiteten `benefit_category` (§5.1, `deriveAuslagenBenefitCategory`).
+##### Generell nicht erstattungsfähige Rechnungen
 
-> **Ausblick:** Für `Arznei-/Hilfsmittel` ist die 100 %-Behandlung bewusst vorläufig — die reale
-> Erstattung wird über die vom Versicherer zurückgemeldete `refund_amount` korrigiert. Als spätere
-> Option kann die Kategorie stattdessen über eine echte Tarif-Kategorie (`BenefitCategory`, z.B.
-> `hilfsmittel`) durch die generische Erstattungs-Engine (§5.1) laufen und so Tarif-Staffeln/-Limits
-> berücksichtigen; das bestehende `included_benefits`-Modell ist bereits darauf ausgelegt.
+Manche Belege sind im Tarif **generell nicht erstattungsfähig** — der Regelfall ist eine reine
+Hilfsmittel-Rechnung (Sanitätshaus: Einlagen, Bandagen) in einem Tarif ohne Hilfsmittel-Baustein. Sie
+werden trotzdem vollständig erfasst; dafür braucht es **kein** Kennzeichen an der Rechnung:
+
+- Die Positionen tragen die `benefit_category`, für die der Tarif keine Regel hat. Die
+  Erstattungs-Engine liefert dafür `eligible_amount = 0` (§5.1). Damit fallen sie aus `R_Y` heraus —
+  sie verbrauchen keinen Selbstbehalt, verändern die Ampel nicht und lösen keine
+  Einreichungs-Empfehlung aus.
+- `total_amount` und `self_paid_amount` bleiben unverändert, die Kosten erscheinen also vollständig
+  in der Jahresauswertung (Gesamtkosten, „Selbst getragen").
+- `eligible_amount = 0` heißt „nachweislich nichts erstattungsfähig", `NULL` dagegen „unbekannt"
+  (kein Tarif konfiguriert oder keine Positionen). Die UI unterscheidet beides: eine Rechnung mit
+  `eligible_amount = 0` und `submission = nicht_eingereicht` wird als **„Nicht erstattungsfähig"**
+  statt als offene Einreichung angezeigt, und die Einreichen-Aktion tritt hinter eine Erklärung
+  zurück (bleibt aber möglich). Der Zustand ist rein **abgeleitet** — es gibt weder eine
+  Rechnungs-Spalte noch einen vierten `submission`-Wert dafür (`isNonReimbursable`).
 
 #### `invoice_status_events`
 
@@ -566,7 +581,7 @@ siehe `included_benefits` in §3.2) in den konkret erstattungsfähigen Betrag.
 interface ErstattungPosition {
   category: BenefitCategory;        // benefitCategory aus dem GOÄ-Parser (+ ggf. Kontext-Override)
   chargedAmount: number;            // in Rechnung gestellter Betrag der Position
-  isFullyReimbursed?: boolean;      // isFlatReimbursedCategory(goae_category) (nur Arznei-/Hilfsmittel); überspringt die Pipeline unten komplett
+  treatmentDate?: Date | string;    // Leistungsdatum; ersetzt invoiceDate in der Wartezeit-Prüfung (§2.3)
 }
 
 interface ErstattungInput {
@@ -595,7 +610,8 @@ Die Positionen tragen ihre `benefitCategory` standardmäßig aus der Fee-Schedul
 (§4.4, `FeeEntry.benefitCategory`); fehlt dort eine (unbekannte Ziffer, Nicht-GOÄ/GOZ-Bereiche),
 greift der rechnungsweite Default aus `provider_type` (`defaultBenefitCategoryForProvider`:
 `zahnarzt`→`zahnbehandlung`, `kieferorthopaede`→`kieferorthopaedie`, `arzt`→`ambulant`,
-`krankenhaus`→`stationaer`). Im Review lässt sich der Leistungsbereich **pro Position manuell
+`krankenhaus`→`stationaer`, `apotheke`→`ambulant`, `sanitaetshaus`→`hilfsmittel`). Im Review lässt
+sich der Leistungsbereich **pro Position manuell
 korrigieren** (`InvoiceReview` mit `showBenefitCategory`): z. B. eine beim Kieferorthopäden
 miterbrachte Zahnreinigung auf `zahnbehandlung`, während die übrigen Positionen
 `kieferorthopaedie` bleiben. Die gewählte `benefit_category` wird je Position persistiert
@@ -625,18 +641,19 @@ das Rechnungsdatum.
 Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
 die Günstigerprüfung (§5.2/§5.3) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
 
-**Pauschal (100 %) erstattete Positionen** (`isFlatReimbursedCategory(goae_category)` →
-`isFullyReimbursed: true`) überspringen die fünfstufige Pipeline oben vollständig und werden
-**zu 100 % von `chargedAmount`** erstattet — unabhängig von Wartezeit, Schwellen-Staffel,
-Beihilfe-Quote oder Summengrenzen. Sie fließen in `fullyReimbursedAmount` (separat von `byCategory`)
-und summieren sich mit in `eligibleAmount` ein. Das betrifft **nur**:
+**Nicht gedeckte Leistungsbereiche.** Gibt es in `included_benefits` **keinen** Baustein für die
+`category` einer Positions-Gruppe, ist der Bereich nicht versichert: die Gruppe ergibt
+`eligibleAmount = 0`, `appliedPct = 0` und eine `note`, die den Bereich benennt. Das ist der Weg, auf
+dem generell nicht erstattungsfähige Rechnungen erfasst werden, ohne die Kennzahlen zu verfälschen
+(§3.2 „Generell nicht erstattungsfähige Rechnungen"): eine reine Hilfsmittel-Rechnung läuft als
+`hilfsmittel` durch die Pipeline, erhält 0 € und bleibt damit aus $$R_Y$$, Selbstbehalt und
+Günstigerprüfung heraus — während `total_amount`/`self_paid_amount` die Kosten voll ausweisen.
+Ergibt eine Gruppe 0 €, formuliert die `note` das auch so („Nicht erstattungsfähig (…)"), damit ein
+0-%-`tier` nicht wie eine bloße Kürzung gelesen wird.
 
-- **`Arznei-/Hilfsmittel`** (per-Rezept-Belege, Anzahl × Basis); ausschließlich manuell gewählt.
-
-> **Ausblick:** Die 100 %-Behandlung von `Arznei-/Hilfsmittel` ist vorläufig und wird über die reale
-> `refund_amount` des Versicherers korrigiert. Als spätere Option lässt sich die Kategorie über eine
-> echte `BenefitCategory` (z.B. `hilfsmittel`) durch die obige generische Pipeline führen, um
-> Tarif-Staffeln/-Limits zu berücksichtigen — das `included_benefits`-Modell trägt das bereits.
+Eine **Pauschalerstattung außerhalb der Pipeline gibt es nicht** — jede Position, auch die
+Nicht-Gebührenordnungs-Kategorien, wird über ihre `benefit_category` erstattet. Der Leistungsbereich
+ist deshalb im Review für **jede** Kategorie umstellbar.
 
 **Auslagen-Sammelpositionen mit abgeleiteter `benefit_category`.** §10-GOÄ-`Auslagenersatz` (auch
 Materialkosten) und §9-GOZ-`Material-/Laborkosten` sind **kein** pauschaler Auslagenersatz —
@@ -649,9 +666,8 @@ feeSchedule, providerType)`:
 
 1. **Betragsgewichtete Dominanz** der Honorar-Positionen derselben Gebührenordnung (§9-GOZ →
    GOZ-Positionen, §10-GOÄ → GOÄ-Positionen); ein eindeutiger Sieger (kein Gleichstand) gewinnt.
-2. **Fallback** (keine passenden Honorar-Positionen / Gleichstand): Provider-Typ-Mapping
-   (`kieferorthopaede`→`kieferorthopaedie`, `zahnarzt`→`zahnbehandlung`, `arzt`→`ambulant`,
-   `krankenhaus`→`stationaer`).
+2. **Fallback** (keine passenden Honorar-Positionen / Gleichstand): das Provider-Typ-Mapping
+   `defaultBenefitCategoryForProvider` von oben.
 3. **Letzter Fallback:** `sonstiges`.
 
 Beispiel: GOZ-Honorar ≈ 275 € `kieferorthopaedie` vs. ≈ 104 € `zahnbehandlung` → die 1.001,91 €

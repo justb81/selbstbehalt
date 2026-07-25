@@ -24,6 +24,7 @@
     formatDate,
     formatEur,
     paymentStatusValues,
+    PROVIDER_TYPE_LABELS,
     providerTypeValues,
     submissionStatusValues,
     type InsuredPerson,
@@ -33,7 +34,8 @@
     type ProviderType,
     type SubmissionStatus,
   } from '@selbstbehalt/shared';
-  import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import { isNonReimbursable } from '$lib/utils/reimbursability';
+  import InvoiceBadge, { type InvoiceBadgeStatus } from '$lib/components/InvoiceBadge.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -81,19 +83,28 @@
     offen: 'Offen',
     bezahlt: 'Bezahlt',
   };
-  const SUBMISSION_LABELS: Record<SubmissionStatus, string> = {
+  const SUBMISSION_LABELS: Record<SubmissionFilterValue, string> = {
     nicht_eingereicht: 'Nicht eingereicht',
     eingereicht: 'Eingereicht',
     erstattet: 'Erstattet',
+    nicht_erstattungsfaehig: 'Nicht erstattungsfähig',
   };
 
-  const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
-    arzt: 'Arzt',
-    zahnarzt: 'Zahnarzt',
-    kieferorthopaede: 'Kieferorthopäde',
-    krankenhaus: 'Krankenhaus',
-    sonstiges: 'Sonstiges',
-  };
+  /**
+   * The Einreichung filter splits the `nicht_eingereicht` state in two, because the
+   * two mean different things to the user: invoices still to be submitted, and ones
+   * the tariff reimburses nothing for, where submitting is pointless. Filtering by
+   * "Nicht eingereicht" therefore shows only the genuinely pending ones.
+   */
+  type SubmissionFilterValue = SubmissionStatus | 'nicht_erstattungsfaehig';
+  const submissionFilterValues: SubmissionFilterValue[] = [
+    ...submissionStatusValues,
+    'nicht_erstattungsfaehig',
+  ];
+
+  /** What the Einreichung column shows for an invoice — see {@link isNonReimbursable}. */
+  const submissionDisplay = (inv: Invoice): InvoiceBadgeStatus =>
+    isNonReimbursable(inv) ? 'nicht_erstattungsfaehig' : inv.status.submission;
 
   const ALL = 'all';
 
@@ -103,7 +114,7 @@
   // svelte-ignore state_referenced_locally
   let paymentFilter = $state<PaymentStatus | typeof ALL>(initialPayment ?? ALL);
   // svelte-ignore state_referenced_locally
-  let submissionFilter = $state<SubmissionStatus | typeof ALL>(initialSubmission ?? ALL);
+  let submissionFilter = $state<SubmissionFilterValue | typeof ALL>(initialSubmission ?? ALL);
   let providerTypeFilter = $state<ProviderType | typeof ALL>(ALL);
   let searchQuery = $state('');
 
@@ -135,7 +146,7 @@
   ]);
   const submissionItems = $derived([
     { value: ALL, label: 'Alle' },
-    ...submissionStatusValues.map((s) => ({ value: s, label: SUBMISSION_LABELS[s] })),
+    ...submissionFilterValues.map((s) => ({ value: s, label: SUBMISSION_LABELS[s] })),
   ]);
   const providerTypeItems = $derived([
     { value: ALL, label: 'Alle' },
@@ -150,7 +161,7 @@
           if (personIdByInsured.get(inv.insured_person_id) !== personFilter) return false;
         }
         if (paymentFilter !== ALL && inv.status.payment !== paymentFilter) return false;
-        if (submissionFilter !== ALL && inv.status.submission !== submissionFilter) return false;
+        if (submissionFilter !== ALL && submissionDisplay(inv) !== submissionFilter) return false;
         if (providerTypeFilter !== ALL && inv.provider_type !== providerTypeFilter) return false;
         if (q) {
           return (
@@ -306,7 +317,7 @@
                 <TableCell>
                   <div class="flex flex-wrap gap-1">
                     <InvoiceBadge status={invoice.status.payment} />
-                    <InvoiceBadge status={invoice.status.submission} />
+                    <InvoiceBadge status={submissionDisplay(invoice)} />
                   </div>
                 </TableCell>
               </TableRow>

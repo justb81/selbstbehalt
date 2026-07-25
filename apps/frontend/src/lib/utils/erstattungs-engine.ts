@@ -12,7 +12,11 @@
  * ## Per-category pipeline (design §5.1)
  *
  * Positions are grouped by their {@link BenefitCategory}; for each group the
- * matching `included_benefits` block is applied in order:
+ * matching `included_benefits` block is applied in order. A category with **no**
+ * matching block is not a covered benefit at all and yields 0 € — that is how a
+ * benefit area the tariff never reimburses (a Sanitätshaus-Rechnung under
+ * `hilfsmittel` in a tariff without a Hilfsmittel-Baustein) stays out of `R_Y`, the
+ * Selbstbehalt and the Günstigerprüfung while its cost is still recorded in full.
  *
  *  1. **Wartezeit** — invoice before `coverageStart + waiting_period_months` ⇒
  *     nothing reimbursable (`cappedBy: 'waiting_period'`).
@@ -31,6 +35,7 @@
 
 import { addMonths, differenceInYears, isBefore } from 'date-fns';
 import {
+  BENEFIT_CATEGORY_LABELS,
   roundCents,
   toCalendarDate,
   type AnnualStaffelEntry,
@@ -59,18 +64,6 @@ export interface ErstattungPosition {
    * (§2.3, Issue #139).
    */
   treatmentDate?: DateInput;
-  /**
-   * True only for positions reimbursed at a flat 100 % — per-Rezept
-   * Arznei-/Hilfsmittel, i.e. `isFlatReimbursedCategory(goae_category)`. Skips the
-   * whole `category` pipeline below: always reimbursed at 100 % of `chargedAmount`,
-   * regardless of tariff tiers, Wartezeit, Beihilfe-Quote or Summengrenzen.
-   * (Provisional; the insurer's actual `refund_amount` corrects it later — see §5.1.)
-   *
-   * The Auslagen categories §10-GOÄ Auslagenersatz and §9-GOZ Material-/Laborkosten
-   * are **not** flat: the caller assigns them a `category` derived from the invoice's
-   * honorar positions and they run the pipeline below like any covered benefit (#251).
-   */
-  isFullyReimbursed?: boolean;
 }
 
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
@@ -129,17 +122,11 @@ export interface ErstattungResult {
   byCategory: ErstattungByCategory[];
   /**
    * Per-position eligible amounts, proportionally distributed from `byCategory`.
-   * Positions blocked by a waiting period receive `eligible_amount = 0`.
-   * Flat-reimbursed positions (Arznei-/Hilfsmittel) receive
-   * `eligible_amount = chargedAmount`.
+   * Positions blocked by a waiting period receive `eligible_amount = 0`, as do all
+   * positions of a category the tariff does not cover.
    * Has the same length and order as {@link ErstattungInput.positions}.
    */
   byPosition: ErstattungByPosition[];
-  /**
-   * Summe der pauschal (100 %) erstatteten Positionen außerhalb der `byCategory`-
-   * Pipeline — nur `Arznei-/Hilfsmittel` (#248). Included in `eligibleAmount`.
-   */
-  fullyReimbursedAmount: number;
 }
 
 /**
@@ -192,18 +179,33 @@ function computeCategory(
   benefit: IncludedBenefit | undefined,
   input: ErstattungInput,
 ): ErstattungByCategory {
-  const base = (eligible: number, cappedBy: CappedBy, note?: string): ErstattungByCategory => ({
-    category,
-    chargedAmount: roundCents(chargedAmount),
-    eligibleAmount: roundCents(Math.max(0, eligible)),
-    appliedPct: chargedAmount > 0 ? roundCents((Math.max(0, eligible) / chargedAmount) * 100) : 0,
-    cappedBy,
-    note,
-  });
+  const base = (eligible: number, cappedBy: CappedBy, note?: string): ErstattungByCategory => {
+    const eligibleAmount = roundCents(Math.max(0, eligible));
+    return {
+      category,
+      chargedAmount: roundCents(chargedAmount),
+      eligibleAmount,
+      appliedPct: chargedAmount > 0 ? roundCents((eligibleAmount / chargedAmount) * 100) : 0,
+      cappedBy,
+      // A zero result is the headline, not a detail: a partial reason such as
+      // "gestaffelt nach Schwellenwerten" (from a 0 % tier) would read as a mere
+      // reduction. Say plainly that nothing is reimbursable, keeping the specific
+      // rule as the qualifier.
+      note:
+        eligibleAmount === 0 && chargedAmount > 0
+          ? note
+            ? `Nicht erstattungsfähig (${note}).`
+            : 'Nicht erstattungsfähig.'
+          : note,
+    };
+  };
 
-  // No tariff rule for this category → not a covered benefit.
+  // No tariff rule for this category → not a covered benefit. This is how a benefit
+  // area the tariff simply does not cover (e.g. `hilfsmittel` in a tariff without a
+  // Hilfsmittel-Baustein) yields 0 € and thus stays out of `R_Y`, the Selbstbehalt
+  // and the Günstigerprüfung, while the invoice's cost is still recorded in full.
   if (!benefit) {
-    return base(0, null, `Keine Tarifregel für „${category}" — nicht erstattungsfähig.`);
+    return base(0, null, `keine Tarifregel für „${BENEFIT_CATEGORY_LABELS[category]}"`);
   }
 
   // 1. Schwellen-Staffel (no tiers ⇒ 100 % base).
@@ -285,20 +287,10 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     eligible_amount: 0,
   }));
 
-  // Flat-reimbursed positions (Arznei-/Hilfsmittel) skip the category pipeline
-  // entirely — always reimbursed at 100 % of chargedAmount.
-  let fullyReimbursedAmount = 0;
-
   // Per-position waiting-period check using individual treatment dates.
   const categoryGroups = new Map<BenefitCategory, PositionEntry[]>();
   for (let idx = 0; idx < input.positions.length; idx++) {
     const pos = input.positions[idx]!;
-    if (pos.isFullyReimbursed) {
-      const amount = roundCents(pos.chargedAmount);
-      byPosition[idx]!.eligible_amount = amount;
-      fullyReimbursedAmount += amount;
-      continue;
-    }
     const benefit = benefitMap.get(pos.category);
     const checkDate = pos.treatmentDate ?? input.invoiceDate;
     const waiting = benefit?.waiting_period_months ?? 0;
@@ -328,7 +320,7 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
         eligibleAmount: 0,
         appliedPct: 0,
         cappedBy: 'waiting_period',
-        note: `Innerhalb der Wartezeit von ${benefit?.waiting_period_months ?? 0} Monaten.`,
+        note: `Nicht erstattungsfähig (innerhalb der Wartezeit von ${benefit?.waiting_period_months ?? 0} Monaten).`,
       });
     } else {
       // Run the pipeline on non-blocked positions (waiting period already handled).
@@ -346,13 +338,6 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
     }
   }
 
-  const eligibleAmount = roundCents(
-    byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0) + fullyReimbursedAmount,
-  );
-  return {
-    eligibleAmount,
-    byCategory,
-    byPosition,
-    fullyReimbursedAmount: roundCents(fullyReimbursedAmount),
-  };
+  const eligibleAmount = roundCents(byCategory.reduce((sum, c) => sum + c.eligibleAmount, 0));
+  return { eligibleAmount, byCategory, byPosition };
 }

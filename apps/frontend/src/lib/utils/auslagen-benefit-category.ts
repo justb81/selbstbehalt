@@ -3,9 +3,9 @@
  * Derives the tariff {@link BenefitCategory} for a non-fee-schedule Auslagen-
  * Sammelposition — §9-GOZ `Material-/Laborkosten` or §10-GOÄ `Auslagenersatz`
  * (issue #251). These positions have no Ziffer and therefore no fee-table lookup
- * to draw a `benefitCategory` from, yet they must run through the normal §5.1
- * Erstattungs-Engine pipeline (Quote/Staffel/Limit/Wartezeit) rather than being
- * reimbursed flat. The category is derived **transiently** at calculation time
+ * to draw a `benefitCategory` from, yet they run through the normal §5.1
+ * Erstattungs-Engine pipeline (Quote/Staffel/Limit/Wartezeit) like every other
+ * position. The category is derived **transiently** at calculation time
  * (nothing persisted, no extra user input), mirroring how ordinary positions get
  * their category transiently from the table.
  *

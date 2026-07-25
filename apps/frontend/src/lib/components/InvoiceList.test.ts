@@ -147,4 +147,35 @@ describe('InvoiceList', () => {
     });
     expect(screen.getByText('Keine Rechnungen entsprechen dem Filter.')).toBeInTheDocument();
   });
+
+  describe('non-reimbursable invoices', () => {
+    // eligible_amount = 0 (Hilfsmittel outside the tariff) vs. null (tariff unknown).
+    const HILFSMITTEL = invoice({
+      id: 'inv-h',
+      insured_person_id: 'ip-a',
+      provider_name: 'Sanitätshaus Meier',
+      provider_type: 'sanitaetshaus',
+      eligible_amount: 0,
+    });
+
+    it('shows "Nicht erstattungsfähig" instead of a pending submission', () => {
+      render(InvoiceList, { props: { invoices: [HILFSMITTEL] } });
+      expect(screen.getByText('Nicht erstattungsfähig')).toBeInTheDocument();
+      expect(screen.queryByText('Nicht eingereicht')).not.toBeInTheDocument();
+    });
+
+    it('keeps them out of the "Nicht eingereicht" filter — that is real pending work', () => {
+      render(InvoiceList, {
+        props: { invoices: [INVOICE_ALICE, HILFSMITTEL], initialSubmission: 'nicht_eingereicht' },
+      });
+      expect(screen.getByRole('link', { name: 'Dr. Arzt' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Sanitätshaus Meier' })).not.toBeInTheDocument();
+    });
+
+    it('still shows a pending submission when the tariff is simply unknown (null)', () => {
+      render(InvoiceList, { props: { invoices: [INVOICE_ALICE] } });
+      expect(screen.getByText('Nicht eingereicht')).toBeInTheDocument();
+      expect(screen.queryByText('Nicht erstattungsfähig')).not.toBeInTheDocument();
+    });
+  });
 });
