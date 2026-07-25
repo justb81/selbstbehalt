@@ -107,6 +107,13 @@ export const invoices = sqliteTable('invoices', {
     .notNull()
     .references(() => insuredPersons.id, { onDelete: 'cascade' }),
   invoiceDate: text('invoice_date').notNull(),
+  /**
+   * Zahlungsziel (ISO YYYY-MM-DD, issue #288). Nullable: rows created before the
+   * column existed derive it as `invoice_date` + the configured default term.
+   * Not to be confused with the Zahlungsdatum, which is the `bezahlt` event's
+   * `changed_at` (see `invoiceCurrentStatus.paidOn`).
+   */
+  paymentDueDate: text('payment_due_date'),
   invoiceNumber: text('invoice_number'),
   providerName: text('provider_name').notNull(),
   providerType: text('provider_type').$type<ProviderType>(),

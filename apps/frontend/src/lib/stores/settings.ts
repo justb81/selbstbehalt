@@ -2,6 +2,10 @@
 //
 // User-adjustable client settings, persisted to localStorage.
 
+import {
+  DEFAULT_PAYMENT_REMINDER_LEAD_DAYS,
+  DEFAULT_PAYMENT_TERM_DAYS,
+} from '@selbstbehalt/shared';
 import { get, writable } from 'svelte/store';
 
 import { envApiBaseUrl, FALLBACK_API_BASE_URL } from '$lib/config.js';
@@ -17,6 +21,15 @@ export interface Settings {
   discountRate: number;
   /** Wahrscheinlichkeit 0–1, in einem künftigen Jahr leistungsfrei zu bleiben (design §5.2.2). */
   claimFreeProbability: number;
+  /**
+   * Standard-Zahlungsfrist in Tagen: prefills the Zahlungsziel in der
+   * Rechnungsmaske und ersetzt es bei Rechnungen ohne gespeicherten Wert (#288).
+   */
+  defaultPaymentTermDays: number;
+  /** Tage vor dem Zahlungsziel, ab denen eine Rechnung als fällig markiert wird. */
+  paymentReminderLeadDays: number;
+  /** Fälligkeits-Hinweise in der UI überhaupt anzeigen. */
+  paymentRemindersEnabled: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -24,6 +37,9 @@ const DEFAULTS: Settings = {
   apiKey: '',
   discountRate: 0.03,
   claimFreeProbability: 0.7,
+  defaultPaymentTermDays: DEFAULT_PAYMENT_TERM_DAYS,
+  paymentReminderLeadDays: DEFAULT_PAYMENT_REMINDER_LEAD_DAYS,
+  paymentRemindersEnabled: true,
 };
 
 /** True only in a browser context with usable localStorage. */
@@ -79,4 +95,12 @@ export function resolveApiBaseUrl(current: Settings = get(settings)): string {
 export function resolveApiKey(current: Settings = get(settings)): string | undefined {
   const key = current.apiKey.trim();
   return key || undefined;
+}
+
+/**
+ * Resolve the reminder lead time in days, or `null` when Fälligkeits-Hinweise are
+ * switched off — consumers then skip the marking entirely (issue #288).
+ */
+export function resolvePaymentReminderLeadDays(current: Settings = get(settings)): number | null {
+  return current.paymentRemindersEnabled ? current.paymentReminderLeadDays : null;
 }

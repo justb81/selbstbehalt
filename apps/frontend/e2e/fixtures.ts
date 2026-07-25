@@ -88,6 +88,7 @@ export const INVOICE_LIST_ITEM = {
   id: INVOICE_ID,
   insured_person_id: INSURED_ID,
   invoice_date: '2026-03-15',
+  payment_due_date: '2026-04-14',
   invoice_number: 'R-2026-001',
   provider_name: 'Praxis Dr. med. Mustermann',
   provider_type: null,

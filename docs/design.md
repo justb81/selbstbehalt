@@ -239,6 +239,7 @@ Kopfbetrag der Rechnung (Abgleich gegen Σ `charged_amount`).
 id                TEXT PRIMARY KEY
 insured_person_id TEXT REFERENCES insured_persons(id)  -- welche versicherte Person die Rechnung betrifft
 invoice_date      DATE NOT NULL        -- Ausstellungsdatum der Rechnung (NICHT BRE-relevant, siehe §5.2)
+payment_due_date  DATE                 -- Zahlungsziel; NULL = aus invoice_date + Standardfrist ableiten
 invoice_number    TEXT
 provider_name     TEXT NOT NULL        -- Name des Arztes / der Einrichtung
 provider_type     TEXT                 -- 'arzt' | 'zahnarzt' | 'krankenhaus' | 'sonstiges'
@@ -251,6 +252,32 @@ ocr_raw           TEXT                 -- Roh-OCR-Text (für Debugging)
 notes             TEXT
 created_at        DATETIME
 ```
+
+**Zahlungsziel (`payment_due_date`, Issue #288):**
+
+Eine Arztrechnung ist formal sofort fällig, in **Verzug** gerät der Empfänger aber erst 30 Tage nach
+Rechnungsdatum (§286 Abs. 3 BGB) — realistisch ist das Zahlungsziel also `invoice_date + 30 Tage`,
+solange die Rechnung nichts anderes nennt. Nennt sie ein eigenes Ziel, gilt dieses.
+
+- **Erkennung beim Einlesen** (`extractPaymentDueDate`, §4.3): ausschließlich **außerhalb der
+  Positionen**, in dieser Reihenfolge — (1) beschriftetes Datum („Zahlbar bis 15.08.2026",
+  „Fälligkeit: …"), (2) beschriftete Frist in Tagen („zahlbar innerhalb 14 Tagen", „30 Tage netto")
+  ab `invoice_date`, (3) sonst das früheste unbeschriftete Datum, das nach dem Rechnungsdatum und
+  innerhalb von 180 Tagen liegt. „Sofort fällig" gilt **nicht** als Zahlungsziel (Verzug erst nach
+  30 Tagen) und fällt auf den Standard zurück.
+- **Feld in der Rechnungsmaske**: vorbelegt mit `invoice_date` + Standard-Zahlungsfrist und dieser
+  folgend, solange es nicht per OCR erkannt oder manuell gesetzt wurde.
+- **`NULL`** heißt „aus `invoice_date` + der eingestellten Standardfrist ableiten"
+  (`resolvePaymentDueDate`) — Alt-Rechnungen folgen damit der aktuellen Einstellung statt einem
+  eingefrorenen Wert.
+- **Abgrenzung zu `status.paid_on`**: `payment_due_date` sagt, *wann gezahlt werden muss*;
+  `paid_on` (der `changed_at` des `bezahlt`-Events), *wann gezahlt wurde*. Eine
+  **Terminüberweisung** wird als `payment = bezahlt` mit einem `paid_on` **in der Zukunft** erfasst:
+  die Zahlung ist beauftragt, aber noch nicht ausgeführt. Solche Rechnungen sind darum **nie
+  überfällig**; markiert wird nur ein Zahltermin **nach** dem Zahlungsziel.
+- **UI-Kennzeichnung** ist bewusst *still* (kein Push, keine OS-Benachrichtigung — es gibt keinen
+  Server, der sie senden könnte): Badge an der Rechnung und Zähler im Dashboard, gesteuert über die
+  Einstellungen (Standard-Zahlungsfrist, Hinweis-Schwelle in Tagen, Hinweise ganz abschaltbar, §6.1).
 
 **Status-Workflow — drei unabhängige Tracks:**
 
@@ -490,6 +517,17 @@ arbeitet in vier Schritten:
    Euro-Betrag; der abschließende Zahlen-Lauf wird von rechts als
    `[… Anzahl] Faktor Betrag` gelesen (deutsche Dezimal-/Tausenderzeichen,
    OCR-Rauschen tolerant). Eine explizite Mengenangabe (`2x`) wird erkannt.
+   Dazu das **Zahlungsziel** (`extractPaymentDueDate`, #288): beschriftetes
+   Datum → beschriftete Frist in Tagen → frühestes plausibles Zukunftsdatum,
+   gesucht **nur in den Nicht-Positionszeilen**. Als solche gelten alle Zeilen
+   außer den Positionen selbst und den Leistungsdaten, die zu ihnen gehören
+   (datumspräfigierte Zeilen sowie eine reine Datumszeile *innerhalb* des
+   Positionsblocks oder direkt vor einer Position — die
+   Sammelrechnungs-Konvention). Ein Datum im Kopf oder Fuß bleibt damit ein
+   Zahlungsziel-Kandidat, ein Leistungsdatum nie. Umgekehrt überspringt der
+   Rechnungsdatums-Fallback (erstes Datum irgendwo im Text) Zeilen mit
+   Zahlungsziel-Schlüsselwort, damit ein zuerst gedrucktes Zahlungsziel nicht
+   als Rechnungsdatum gelesen wird.
 2. **Lookup** jeder Ziffer in der generierten Tabelle (`{goae,goz,got}.json`,
    Typ `FeeScheduleTable`); die Ziffer wird beim Nachschlagen normalisiert
    (führende Nullen gestrippt). `baseAmount`/`category`/`benefitCategory`/
@@ -896,7 +934,7 @@ Jahres zusammen. Die einzelne Rechnung zeigt **kein** eigenes Verdikt mehr, sond
 /persons                → Personen (Versicherungsnehmer und Haushaltsmitglieder als Identitäten)
 /persons/[id]           → Personendetail + Bearbeitung
 /stats                  → Jahresauswertung (Kosten, Erstattungen, BRE — vollständige Analyse, geplant)
-/settings               → Server-URL, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Datenbankexport
+/settings               → Server-URL, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Zahlungsziel (Standardfrist + Fälligkeits-Hinweise), Datenbankexport
 ```
 
 **Informationsarchitektur und Rollentrennung:**

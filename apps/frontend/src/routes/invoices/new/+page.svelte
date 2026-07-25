@@ -75,6 +75,7 @@
       const invoice = await api.invoices.create({
         insured_person_id: payload.insured_person_id,
         invoice_date: payload.invoice_date,
+        payment_due_date: payload.payment_due_date,
         invoice_number: payload.invoice_number,
         provider_name: payload.provider_name,
         provider_type: payload.provider_type ?? undefined,

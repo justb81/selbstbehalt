@@ -16,6 +16,14 @@ export const invoiceCreateSchema = z
   .object({
     insured_person_id: uuid,
     invoice_date: isoDate,
+    /**
+     * Zahlungsziel — the day the invoice must be paid by (§3.2). Detected from the
+     * invoice text or prefilled as `invoice_date + Standardzahlungsfrist`; `null`
+     * means "derive from `invoice_date`" (see `resolvePaymentDueDate`). Distinct
+     * from `status.paid_on`, which records when payment actually happened (or, for
+     * a Terminüberweisung, is scheduled to happen).
+     */
+    payment_due_date: isoDate.nullish(),
     invoice_number: z.string().nullish(),
     provider_name: z.string().min(1, 'Leistungserbringer darf nicht leer sein'),
     provider_type: providerTypeSchema.nullish(),

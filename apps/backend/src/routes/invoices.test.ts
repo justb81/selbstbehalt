@@ -108,6 +108,24 @@ describe('POST /api/invoices', () => {
     expect(res.status).toBe(400);
   });
 
+  it('round-trips the Zahlungsziel and leaves it null when omitted', async () => {
+    const withDue = await createInvoice({ ...baseInvoice(), payment_due_date: '2026-06-15' });
+    expect(withDue.body.payment_due_date).toBe('2026-06-15');
+    expect((await getDetail(withDue.body.id)).payment_due_date).toBe('2026-06-15');
+    const [listed] = await (await app.request('/api/invoices')).json();
+    expect(listed.payment_due_date).toBe('2026-06-15');
+
+    const without = await createInvoice();
+    expect(without.body.payment_due_date).toBeNull();
+  });
+
+  it('updates the Zahlungsziel on PUT', async () => {
+    const { body } = await createInvoice({ ...baseInvoice(), payment_due_date: '2026-06-15' });
+    const res = await json('PUT', `/api/invoices/${body.id}`, { payment_due_date: '2026-07-01' });
+    expect(res.status).toBe(200);
+    expect((await res.json()).payment_due_date).toBe('2026-07-01');
+  });
+
   it('rejects an Arznei-/Hilfsmittel position whose Gesamtbetrag ≠ Anzahl × Basis with 400', async () => {
     const res = await json('POST', '/api/invoices', {
       ...baseInvoice(),

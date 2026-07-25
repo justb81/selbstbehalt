@@ -16,6 +16,7 @@
   // disabled, reparseOcrRaw, sharedFile) are simply ignored by this stub.
   let {
     invoiceDate = $bindable(''),
+    paymentDueDate = $bindable(''),
     invoiceNumber = $bindable(''),
     providerName = $bindable(''),
     providerType = $bindable<ProviderType>('arzt'),
@@ -24,6 +25,7 @@
     scanResult = $bindable<ScanResult | null>(null),
   }: {
     invoiceDate?: string;
+    paymentDueDate?: string;
     invoiceNumber?: string;
     providerName?: string;
     providerType?: ProviderType;
@@ -41,6 +43,10 @@
   <label>
     Rechnungsbetrag (€)
     <input type="number" bind:value={totalAmount} />
+  </label>
+  <label>
+    Zahlungsziel
+    <input type="date" bind:value={paymentDueDate} />
   </label>
   <span data-testid="stub-positions-count">{positions.length}</span>
   <span data-testid="stub-invoice-date">{invoiceDate}</span>

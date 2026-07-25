@@ -17,6 +17,7 @@ import {
   buildIndex,
   detectProviderType,
   extractInvoiceFields,
+  extractPaymentDueDate,
   extractPositions,
   isAuslagenersatzDescription,
   isBelegSectionMarker,
@@ -235,6 +236,141 @@ describe('extractInvoiceFields', () => {
   it('strips a trailing sentence period from the captured number', () => {
     const text = 'Rechnungsnummer: 375135/07.';
     expect(extractInvoiceFields(text).invoiceNumber).toBe('375135/07');
+  });
+
+  it('does not mistake a Zahlungsziel date for the Rechnungsdatum (#288)', () => {
+    // No labelled Rechnungsdatum, and the due date is printed first.
+    const text = [
+      'Praxis Dr. med. Anna Beispiel',
+      'Zahlbar bis 15.08.2026',
+      'Erstellt 27.06.2026',
+    ].join('\n');
+    expect(extractInvoiceFields(text).invoiceDate).toBe('2026-06-27');
+  });
+
+  it('still finds a date when every line mentions a Zahlungsziel', () => {
+    expect(extractInvoiceFields('zahlbar bis 15.08.2026').invoiceDate).toBe('2026-08-15');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Zahlungsziel (issue #288)
+// ---------------------------------------------------------------------------
+
+describe('extractPaymentDueDate (issue #288)', () => {
+  const header = ['Praxis Dr. med. Anna Beispiel', 'Rechnungsdatum: 01.06.2026'];
+  const positions = ['07.06.2026 1   Beratung   2,3   10,72', '0340  Erörterung  2,3  46,25'];
+  const build = (...footer: string[]) => [...header, ...positions, ...footer].join('\n');
+
+  describe('explicitly labelled dates', () => {
+    const cases: [string, string][] = [
+      ['Zahlbar bis 15.08.2026', '2026-08-15'],
+      ['zahlbar bis zum 15.08.2026', '2026-08-15'],
+      ['Zahlungsziel: 15.08.2026', '2026-08-15'],
+      ['Zahlungstermin 15.08.2026', '2026-08-15'],
+      ['Fälligkeit: 15.08.2026', '2026-08-15'],
+      ['Fälligkeitsdatum 15.08.2026', '2026-08-15'],
+      ['fällig am 15.08.2026', '2026-08-15'],
+      ['Zahlung bis zum 15.08.2026', '2026-08-15'],
+      ['Bitte zu zahlen bis 15.08.2026', '2026-08-15'],
+      ['Bitte überweisen Sie den Betrag bis zum 15.08.2026', '2026-08-15'],
+      ['Zahlbar bis 15.08.26', '2026-08-15'],
+    ];
+    it.each(cases)('reads "%s" as %s', (line, expected) => {
+      expect(extractPaymentDueDate(build(line), '2026-06-01')).toBe(expected);
+    });
+
+    it('reads a label whose date OCR pushed onto the next line', () => {
+      expect(extractPaymentDueDate(build('Zahlungsziel:', '15.08.2026'), '2026-06-01')).toBe(
+        '2026-08-15',
+      );
+    });
+
+    it('wins over a term stated in the same footer', () => {
+      const text = build('Zahlbar bis 15.08.2026', 'zahlbar innerhalb 14 Tagen');
+      expect(extractPaymentDueDate(text, '2026-06-01')).toBe('2026-08-15');
+    });
+
+    it('needs no invoice date', () => {
+      expect(extractPaymentDueDate(build('Zahlbar bis 15.08.2026'), null)).toBe('2026-08-15');
+    });
+  });
+
+  describe('terms stated in days', () => {
+    const cases: [string, string][] = [
+      ['Fällig zahlbar 14 Tage ab Rechnungsdatum', '2026-06-15'],
+      ['zahlbar innerhalb 14 Tagen', '2026-06-15'],
+      ['zahlbar innerhalb von 30 Tagen ohne Abzug', '2026-07-01'],
+      ['Zahlbar binnen 10 Tagen', '2026-06-11'],
+      ['Zahlungsziel: 14 Tage', '2026-06-15'],
+      ['Zahlungsfrist 21 Tage', '2026-06-22'],
+      ['Zahlungsbedingungen: 30 Tage netto', '2026-07-01'],
+      ['Bitte überweisen Sie den Betrag innerhalb von 14 Kalendertagen', '2026-06-15'],
+    ];
+    it.each(cases)('reads "%s" as %s', (line, expected) => {
+      expect(extractPaymentDueDate(build(line), '2026-06-01')).toBe(expected);
+    });
+
+    it('ignores an implausible term', () => {
+      expect(extractPaymentDueDate(build('zahlbar innerhalb 400 Tagen'), '2026-06-01')).toBeNull();
+      expect(extractPaymentDueDate(build('zahlbar innerhalb 0 Tagen'), '2026-06-01')).toBeNull();
+    });
+
+    it('returns null for a term without an invoice date to count from', () => {
+      expect(extractPaymentDueDate(build('zahlbar innerhalb 14 Tagen'), null)).toBeNull();
+    });
+  });
+
+  describe('unlabelled future dates', () => {
+    it('takes the earliest plausible date after the invoice date', () => {
+      const text = build('Überweisung erbeten', '15.08.2026', '20.09.2026');
+      expect(extractPaymentDueDate(text, '2026-06-01')).toBe('2026-08-15');
+    });
+
+    it('ignores dates at or before the invoice date', () => {
+      expect(extractPaymentDueDate(build('Ausgestellt 01.06.2026'), '2026-06-01')).toBeNull();
+      expect(extractPaymentDueDate(build('Vorbefund 12.03.2026'), '2026-06-01')).toBeNull();
+    });
+
+    it('ignores a date beyond the plausibility window', () => {
+      expect(extractPaymentDueDate(build('Gültig bis 01.06.2027'), '2026-06-01')).toBeNull();
+    });
+  });
+
+  describe('exclusion of the position block', () => {
+    it('ignores treatment dates prefixed to position lines', () => {
+      // The position's Leistungsdatum lies after the invoice date, which would
+      // otherwise be picked up by the unlabelled fallback.
+      const text = [...header, '07.07.2026 1   Beratung   2,3   10,72'].join('\n');
+      expect(extractPaymentDueDate(text, '2026-06-01')).toBeNull();
+    });
+
+    it('ignores a standalone Leistungsdatum line (Sammelrechnung)', () => {
+      const text = [...header, '07.07.2026', '1   Beratung   2,3   10,72'].join('\n');
+      expect(extractPaymentDueDate(text, '2026-06-01')).toBeNull();
+    });
+
+    it('ignores a date inside a position line', () => {
+      const text = [...header, '1  Beratung 07.07.2026  2,3  10,72'].join('\n');
+      expect(extractPaymentDueDate(text, '2026-06-01')).toBeNull();
+    });
+  });
+
+  describe('no Zahlungsziel stated', () => {
+    it('returns null so the caller can apply the default term', () => {
+      expect(extractPaymentDueDate(build(), '2026-06-01')).toBeNull();
+    });
+
+    it('treats "sofort fällig" as no stated Zahlungsziel', () => {
+      expect(
+        extractPaymentDueDate(build('Der Betrag ist sofort fällig.'), '2026-06-01'),
+      ).toBeNull();
+      expect(extractPaymentDueDate(build('zahlbar sofort ohne Abzug'), '2026-06-01')).toBeNull();
+    });
+
+    it('returns null for empty text', () => {
+      expect(extractPaymentDueDate('', '2026-06-01')).toBeNull();
+    });
   });
 });
 
@@ -1403,6 +1539,15 @@ describe('parseInvoice — end to end on a synthetic table', () => {
       invoiceDate: '2026-06-27',
       invoiceNumber: 'R-1',
     });
+  });
+
+  it('leaves paymentDueDate null when the invoice states no Zahlungsziel', () => {
+    expect(invoice.paymentDueDate).toBeNull();
+  });
+
+  it('fills paymentDueDate from a stated term (#288)', () => {
+    const withTerm = parseInvoice(`${text}\nZahlbar innerhalb 14 Tagen ohne Abzug.`, table);
+    expect(withTerm.paymentDueDate).toBe('2026-07-11');
   });
 
   it('parses positions and sums the total', () => {

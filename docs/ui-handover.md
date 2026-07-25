@@ -117,9 +117,15 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 - Suche (Anbieter **oder** Person), Filter-Chips (Offen · Alle · Eingereicht · Erstattet · Selbst gezahlt).
 - Zeilen: Anbieter + Status-Badge (**InvoiceBadge**), Person · Art · Datum · Nr.,
   Betrag und – bei offenen – die GCP-Empfehlung.
+- **Fälligkeits-Badge** (**PaymentDueBadge**, `#288`) in der Status-Zelle, sobald am Zahlungsziel
+  etwas anzumerken ist: „N Tage überfällig" (rot), „Heute fällig"/„Fällig in N Tagen" (amber),
+  „Zahlung terminiert zum TT.MM.JJJJ" (neutral) und „Zahlungstermin nach Zahlungsziel" (amber).
+  Keine eigene Spalte; abschaltbar über die Einstellungen.
 
 ### 3.6 Rechnung – Detail + Günstigerprüfung (`#22`)
-- Kopf: Status-Badge, Anbieter, Datum/Nr./Kontext (Person · Versicherer · Tarif), Rechnungsbetrag.
+- Kopf: Status-Badge, Anbieter, Datum/Nr./Zahlungsziel (mit Zusatz „(Standard)", wenn aus der
+  Standardfrist abgeleitet) + Fälligkeits-Badge, Kontext (Person · Versicherer · Tarif),
+  Rechnungsbetrag.
 - **Positionen** (GOÄ/GOZ) mit §5-Prüfung: markierte Zeilen (Faktor > Regelhöchstsatz) hervorgehoben,
   Sammelhinweis bei Auffälligkeiten, „Erstattungsfähig (Erstattungs-Engine)".
 - **GCPCard** (siehe §5).
@@ -128,8 +134,11 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 ### 3.7 Rechnung erfassen (`#22`/`#26`/§4 OCR, Route `/invoices/new`)
 - Einheitliches Formular für manuelle Erfassung und OCR-gestützte Erfassung.
 - **Scan-Schaltfläche** oben im Formular öffnet OCRScanner (Kamera oder Datei/PDF);
-  nach Erkennung werden erkannte Felder (Datum, Nr., Anbieter, Positionen) direkt in das Formular
-  übernommen; nicht erkannte Felder bleiben unverändert.
+  nach Erkennung werden erkannte Felder (Datum, Zahlungsziel, Nr., Anbieter, Positionen) direkt in
+  das Formular übernommen; nicht erkannte Felder bleiben unverändert.
+- **Zahlungsziel** (`#288`) im Rechnungskopf: vorbelegt mit Rechnungsdatum + Standard-Zahlungsfrist
+  (Hinweis „Standard: N Tage nach Rechnungsdatum") und dieser folgend, solange es nicht per OCR
+  erkannt oder manuell geändert wurde — danach „Laut Rechnung".
 - Felder und Positionen bleiben vollständig bearbeitbar; OCR-Zeilen mit geringer Konfidenz oder
   §5-Auffälligkeiten werden mit Warnhinweis markiert.
 - Nach dem Einlesen/Neu-einlesen werden unauffällige Positionen automatisch auf ihre Titelzeile
@@ -142,6 +151,8 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
 - **Stammdaten** → Personen verwalten.
 - **Server**: API-URL, API-Key (X-API-Key).
 - **Günstigerprüfung**: Diskontierungsrate (wirksam).
+- **Zahlungsziel** (`#288`): Standard-Zahlungsfrist in Tagen (Default 30), Fälligkeits-Hinweise
+  Ein/Aus, Hinweis-Schwelle in Tagen vor dem Zahlungsziel (Default 7).
 - **Datenschutz**: Toggle „Rechnungsbilder lokal speichern" (Default aus).
 - **Datensicherung**: Export/Import der SQLite-DB (Art. 20 DSGVO).
 

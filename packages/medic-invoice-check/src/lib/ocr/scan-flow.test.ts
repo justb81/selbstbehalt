@@ -180,6 +180,12 @@ describe('toReviewPositions / toInvoicePayload', () => {
     expect(toInvoicePayload(state).ocr_raw).toBe(scan.ocrText);
   });
 
+  it('carries the Zahlungsziel and sends null when unset (#288)', () => {
+    expect(toInvoicePayload(baseState()).payment_due_date).toBeNull();
+    const state = { ...baseState(), paymentDueDate: '2026-03-29' };
+    expect(toInvoicePayload(state).payment_due_date).toBe('2026-03-29');
+  });
+
   it('rejects an invalid payload via the shared schema', () => {
     const state = { ...baseState(), insuredPersonId: 'not-a-uuid' };
     expect(() => toInvoicePayload(state)).toThrow(ZodError);

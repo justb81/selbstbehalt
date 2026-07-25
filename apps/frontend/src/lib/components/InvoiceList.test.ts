@@ -10,6 +10,10 @@ vi.mock('$app/paths', () => ({
     params ? pattern.replace(/\[(\w+)\]/g, (_, k) => params[k] ?? `[${k}]`) : pattern,
 }));
 
+// The Fälligkeits-Badge reads the settings store, which resolves the API base
+// URL from this env module.
+vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
 import InvoiceList from './InvoiceList.svelte';
 
 function invoice(overrides: Partial<Invoice> & Pick<Invoice, 'id' | 'insured_person_id'>): Invoice {
@@ -79,6 +83,28 @@ describe('InvoiceList', () => {
     render(InvoiceList, { props: { invoices: INVOICES } });
     expect(screen.getByText('Arzt')).toBeInTheDocument();
     expect(screen.getByText('Zahnarzt')).toBeInTheDocument();
+  });
+
+  it('marks an unpaid invoice past its Zahlungsziel as überfällig (#288)', () => {
+    render(InvoiceList, {
+      props: {
+        invoices: [
+          invoice({ id: 'inv-x', insured_person_id: 'ip-a', payment_due_date: '2020-01-01' }),
+        ],
+      },
+    });
+    expect(screen.getByText(/überfällig$/)).toBeInTheDocument();
+  });
+
+  it('shows no Fälligkeits-Badge for an invoice due far out', () => {
+    render(InvoiceList, {
+      props: {
+        invoices: [
+          invoice({ id: 'inv-y', insured_person_id: 'ip-a', payment_due_date: '2099-01-01' }),
+        ],
+      },
+    });
+    expect(screen.queryByText(/überfällig|Fällig in|Heute fällig/)).not.toBeInTheDocument();
   });
 
   it('renders Person tabs and filters by the selected person', async () => {

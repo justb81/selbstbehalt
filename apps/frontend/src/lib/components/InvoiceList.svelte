@@ -34,7 +34,9 @@
     type SubmissionStatus,
   } from '@selbstbehalt/shared';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -106,6 +108,10 @@
   let submissionFilter = $state<SubmissionStatus | typeof ALL>(initialSubmission ?? ALL);
   let providerTypeFilter = $state<ProviderType | typeof ALL>(ALL);
   let searchQuery = $state('');
+
+  // Fälligkeits-Hinweise (issue #288): null while switched off, which makes
+  // <PaymentDueBadge> render nothing.
+  const reminderLeadDays = $derived(resolvePaymentReminderLeadDays($settings));
 
   // insured_person_id -> person_id, so an invoice can be traced to its person.
   const personIdByInsured = $derived(new Map(insuredPersons.map((ip) => [ip.id, ip.person_id])));
@@ -307,6 +313,11 @@
                   <div class="flex flex-wrap gap-1">
                     <InvoiceBadge status={invoice.status.payment} />
                     <InvoiceBadge status={invoice.status.submission} />
+                    <PaymentDueBadge
+                      {invoice}
+                      leadDays={reminderLeadDays}
+                      termDays={$settings.defaultPaymentTermDays}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
