@@ -30,7 +30,13 @@ allowBuilds:
 # Supply-chain cooldown: a newly published version may only be resolved once it
 # is at least 7 days old (value is in minutes: 7 × 24 × 60 = 10080). This mirrors
 # the Dependabot `cooldown` setting so manual `pnpm add`/`pnpm update` are held to
-# the same rule. Frozen-lockfile installs (CI) are unaffected.
+# the same rule.
+#
+# This is enforced twice, and the second half is the one that bites in CI: pnpm 11
+# also verifies *every* entry already in the lockfile against the policy, including
+# on `pnpm install --frozen-lockfile`. A lockfile carrying a too-young version
+# therefore fails the install outright (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION) —
+# see the note in CLAUDE.md on how Dependabot PRs trip this.
 minimumReleaseAge: 10080
 
 minimumReleaseAgeExclude:
