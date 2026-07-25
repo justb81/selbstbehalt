@@ -12,6 +12,16 @@ overrides:
   # is safe and clears the advisory.
   adm-zip@<0.6.0: '>=0.6.0'
 
+  # postcss <=8.5.17 carries a high-severity path-traversal advisory
+  # (GHSA-r28c-9q8g-f849): the previous-source-map auto-loader follows a crafted
+  # `sourceMappingURL` and can disclose arbitrary .map files. It reaches us only
+  # transitively through the Vite/SvelteKit toolchain (bits-ui → runed →
+  # @sveltejs/kit → vite → postcss, 18 paths in all), so there is no direct
+  # dependency to bump and the patched line has to be forced here.
+  # Patched in 8.5.18. The 7-day cooldown still holds 8.5.20+ back, so this
+  # currently resolves to 8.5.19 — patched *and* old enough, no exclusion needed.
+  postcss@<8.5.18: '>=8.5.18'
+
 allowBuilds:
   esbuild: true
   better-sqlite3: true
