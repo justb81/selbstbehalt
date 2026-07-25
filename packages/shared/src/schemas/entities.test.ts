@@ -156,6 +156,16 @@ describe('invoiceCreateSchema', () => {
     expect(invoiceCreateSchema.safeParse({ ...base, status: 'neu' }).success).toBe(false);
   });
 
+  it('accepts an optional Zahlungsziel and rejects a malformed one', () => {
+    expect(invoiceCreateSchema.safeParse({ ...base, payment_due_date: '2026-07-01' }).success).toBe(
+      true,
+    );
+    expect(invoiceCreateSchema.safeParse({ ...base, payment_due_date: null }).success).toBe(true);
+    expect(invoiceCreateSchema.safeParse({ ...base, payment_due_date: '01.07.2026' }).success).toBe(
+      false,
+    );
+  });
+
   it('read schema requires server-managed fields and the derived status object', () => {
     expect(invoiceSchema.safeParse(base).success).toBe(false);
     // A plain status string is no longer valid — status is the derived multivalue object.

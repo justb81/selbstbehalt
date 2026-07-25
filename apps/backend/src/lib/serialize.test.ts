@@ -197,6 +197,7 @@ describe('invoice mapping', () => {
         id: ID,
         insuredPersonId: ID,
         invoiceDate: '2026-06-01',
+        paymentDueDate: '2026-07-01',
         invoiceNumber: 'R-1',
         providerName: 'Dr. Müller',
         providerType: 'arzt',
@@ -213,6 +214,7 @@ describe('invoice mapping', () => {
     expect(result).toMatchObject({
       insured_person_id: ID,
       provider_name: 'Dr. Müller',
+      payment_due_date: '2026-07-01',
       eligible_amount: 62.5,
       status,
     });
@@ -233,6 +235,7 @@ describe('invoice mapping', () => {
     const update = toInvoiceUpdate({
       insured_person_id: ID,
       invoice_date: '2026-07-01',
+      payment_due_date: '2026-07-31',
       invoice_number: 'R-2',
       provider_name: 'Dr. B',
       provider_type: 'zahnarzt',
@@ -241,7 +244,12 @@ describe('invoice mapping', () => {
       ocr_raw: 'raw',
       notes: 'n',
     });
-    expect(Object.keys(update)).toHaveLength(9);
+    expect(Object.keys(update)).toHaveLength(10);
+    expect(update.paymentDueDate).toBe('2026-07-31');
+  });
+
+  it('clears the Zahlungsziel when explicitly set to null', () => {
+    expect(toInvoiceUpdate({ payment_due_date: null })).toEqual({ paymentDueDate: null });
   });
 
   it('produces an empty patch for an empty update', () => {

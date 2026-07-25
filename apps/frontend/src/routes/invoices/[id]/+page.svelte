@@ -14,6 +14,7 @@
   import {
     formatDate,
     formatEur,
+    resolvePaymentDueDate,
     roundCents,
     type InsuredPerson,
     type InvoiceWithPositions,
@@ -21,7 +22,9 @@
   import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
   import { refundStatus } from '$lib/utils/position-refund';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
+  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
   import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
   import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
@@ -175,8 +178,18 @@
       <div class="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
         <span>{formatDate(invoice.invoice_date)}</span>
         {#if invoice.invoice_number}<span>Nr. {invoice.invoice_number}</span>{/if}
+        <span>
+          Zahlungsziel {formatDate(
+            resolvePaymentDueDate(invoice, $settings.defaultPaymentTermDays),
+          )}{invoice.payment_due_date ? '' : ' (Standard)'}
+        </span>
         <InvoiceBadge status={invoice.status.payment} />
         <InvoiceBadge status={invoice.status.submission} />
+        <PaymentDueBadge
+          {invoice}
+          leadDays={resolvePaymentReminderLeadDays($settings)}
+          termDays={$settings.defaultPaymentTermDays}
+        />
       </div>
       <div class="flex gap-2 flex-wrap items-start">
         {#if invoice.status.payment === 'offen' && invoice.status.submission === 'nicht_eingereicht'}

@@ -20,8 +20,10 @@
     reparseOcrRaw = null,
     sharedFile = null,
     showBenefitCategory = false,
+    paymentTermDays = undefined,
     initialPositions = [],
     initialInvoiceDate = '',
+    initialPaymentDueDate = '',
     initialInvoiceNumber = '',
     initialProviderName = '',
     initialProviderType = 'arzt',
@@ -32,8 +34,10 @@
     reparseOcrRaw?: string | null;
     sharedFile?: File | null;
     showBenefitCategory?: boolean;
+    paymentTermDays?: number;
     initialPositions?: ReviewPositionRow[];
     initialInvoiceDate?: string;
+    initialPaymentDueDate?: string;
     initialInvoiceNumber?: string;
     initialProviderName?: string;
     initialProviderType?: ProviderType;
@@ -44,6 +48,7 @@
   // initial-value reads as intentionally non-reactive).
   let positions = $state<ReviewPositionRow[]>(untrack(() => initialPositions));
   let invoiceDate = $state(untrack(() => initialInvoiceDate));
+  let paymentDueDate = $state(untrack(() => initialPaymentDueDate));
   let invoiceNumber = $state(untrack(() => initialInvoiceNumber));
   let providerName = $state(untrack(() => initialProviderName));
   let providerType = $state<ProviderType>(untrack(() => initialProviderType));
@@ -57,7 +62,9 @@
   {reparseOcrRaw}
   {sharedFile}
   {showBenefitCategory}
+  {paymentTermDays}
   bind:invoiceDate
+  bind:paymentDueDate
   bind:invoiceNumber
   bind:providerName
   bind:providerType

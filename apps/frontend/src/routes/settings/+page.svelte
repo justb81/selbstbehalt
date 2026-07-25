@@ -13,6 +13,16 @@
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Separator } from '$lib/components/ui/separator';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '$lib/components/ui/select';
+
+  const ON = 'ein';
+  const OFF = 'aus';
 
   const settingsSchema = z.object({
     apiUrl: z.string(),
@@ -22,6 +32,16 @@
       .number({ error: 'Muss eine Zahl sein' })
       .min(0, 'Muss ≥ 0 % sein')
       .max(100, 'Muss ≤ 100 % sein'),
+    defaultPaymentTermDays: z
+      .number({ error: 'Muss eine Zahl sein' })
+      .int('Muss eine ganze Zahl sein')
+      .min(0, 'Muss ≥ 0 Tage sein')
+      .max(365, 'Muss ≤ 365 Tage sein'),
+    paymentReminderLeadDays: z
+      .number({ error: 'Muss eine Zahl sein' })
+      .int('Muss eine ganze Zahl sein')
+      .min(0, 'Muss ≥ 0 Tage sein')
+      .max(365, 'Muss ≤ 365 Tage sein'),
   });
 
   // Local editable copies (displayed as %)
@@ -29,6 +49,14 @@
   let apiKey = $state($settings.apiKey);
   let discountRatePct = $state($settings.discountRate * 100);
   let claimFreeProbabilityPct = $state($settings.claimFreeProbability * 100);
+  let defaultPaymentTermDays = $state($settings.defaultPaymentTermDays);
+  let paymentReminderLeadDays = $state($settings.paymentReminderLeadDays);
+  let remindersMode = $state($settings.paymentRemindersEnabled ? ON : OFF);
+
+  const remindersItems = [
+    { value: ON, label: 'Ein' },
+    { value: OFF, label: 'Aus' },
+  ];
 
   let saveError = $state<string | null>(null);
   let savedOk = $state(false);
@@ -41,6 +69,8 @@
       apiKey,
       discountRatePct,
       claimFreeProbabilityPct,
+      defaultPaymentTermDays,
+      paymentReminderLeadDays,
     });
     if (!result.success) {
       saveError = result.error.issues.map((i) => i.message).join(' · ');
@@ -52,6 +82,9 @@
       apiKey: apiKey.trim(),
       discountRate: discountRatePct / 100,
       claimFreeProbability: claimFreeProbabilityPct / 100,
+      defaultPaymentTermDays,
+      paymentReminderLeadDays,
+      paymentRemindersEnabled: remindersMode === ON,
     }));
     savedOk = true;
     setTimeout(() => (savedOk = false), 3000);
@@ -226,6 +259,74 @@
               <p class="text-xs text-muted-foreground">
                 Wahrscheinlichkeit, ein weiteres Jahr leistungsfrei zu bleiben (p, Design-Standard:
                 70 %).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div class="space-y-4">
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Zahlungsziel
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="space-y-1">
+              <Label for="defaultPaymentTermDays">Standard-Zahlungsfrist (Tage)</Label>
+              <Input
+                id="defaultPaymentTermDays"
+                type="number"
+                bind:value={defaultPaymentTermDays}
+                min="0"
+                max="365"
+                step="1"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Vorbelegung des Zahlungsziels, wenn die Rechnung keines nennt. Standard: 30 Tage
+                (Verzug tritt erst dann ein).
+              </p>
+            </div>
+
+            <div class="space-y-1">
+              <Label for="paymentReminders">Fälligkeits-Hinweise</Label>
+              <Select
+                type="single"
+                value={remindersMode}
+                onValueChange={(v: string) => {
+                  if (v) remindersMode = v;
+                }}
+                items={remindersItems}
+              >
+                <SelectTrigger id="paymentReminders" class="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {#each remindersItems as item (item.value)}
+                    <SelectItem value={item.value} label={item.label} />
+                  {/each}
+                </SelectContent>
+              </Select>
+              <p class="text-xs text-muted-foreground">
+                Markiert fällige und überfällige Rechnungen in Listen und im Dashboard. „Aus"
+                deaktiviert jede Fälligkeits-Markierung.
+              </p>
+            </div>
+
+            <div class="space-y-1">
+              <Label for="paymentReminderLeadDays">Hinweis ab (Tage vor Zahlungsziel)</Label>
+              <Input
+                id="paymentReminderLeadDays"
+                type="number"
+                bind:value={paymentReminderLeadDays}
+                min="0"
+                max="365"
+                step="1"
+                disabled={remindersMode === OFF}
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Ab wie vielen Tagen vor dem Zahlungsziel eine Rechnung als fällig markiert wird
+                (Standard: 7 Tage).
               </p>
             </div>
           </div>

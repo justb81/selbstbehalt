@@ -1,0 +1,16 @@
+-- Migration 0008: add invoices.payment_due_date (Zahlungsziel, issue #288).
+--
+-- An invoice is formally due immediately, but the payer only falls into Verzug 30
+-- days after the invoice date — so the realistic Zahlungsziel is invoice_date + 30
+-- days unless the invoice names its own term ("zahlbar innerhalb 14 Tagen",
+-- "Zahlbar bis 15.08.2026"). The parser detects that term while scanning and the
+-- Rechnungsmaske carries it as an editable field, so it has to be persisted.
+--
+-- Distinct from the Zahlungsdatum: that is the `bezahlt` event's changed_at (a
+-- Terminüberweisung is recorded as bezahlt with a date in the future), whereas
+-- this column says when the invoice *must* be paid.
+--
+-- Nullable, no backfill: NULL means "derive from invoice_date + the configured
+-- default payment term", so legacy rows follow the user's current setting instead
+-- of carrying a frozen 30-day value.
+ALTER TABLE `invoices` ADD COLUMN `payment_due_date` TEXT;

@@ -127,6 +127,8 @@ export function seed(handle: DbHandle): void {
     .values({
       insuredPersonId: insured.id,
       invoiceDate: '2026-06-01',
+      // Zahlungsziel laut Rechnung ("zahlbar innerhalb 14 Tagen") statt der 30-Tage-Regel.
+      paymentDueDate: '2026-06-15',
       invoiceNumber: 'R-2026-0042',
       providerName: 'Dr. med. Müller',
       providerType: 'arzt',
@@ -203,6 +205,7 @@ export function seed(handle: DbHandle): void {
     .values({
       insuredPersonId: insured.id,
       invoiceDate: '2025-11-15',
+      paymentDueDate: '2025-12-15',
       invoiceNumber: 'R-2025-0089',
       providerName: 'Zahnarztpraxis Dr. Weber',
       providerType: 'zahnarzt',

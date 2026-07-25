@@ -44,6 +44,8 @@
  */
 
 import {
+  addDaysIso,
+  daysUntilDue,
   roundCents,
   type BenefitCategory,
   type GoaeCategory,
@@ -224,6 +226,12 @@ export interface ParsedInvoice {
   feeSchedule: FeeScheduleId;
   /** Invoice date as ISO `YYYY-MM-DD`, or null when none was found. */
   invoiceDate: string | null;
+  /**
+   * Zahlungsziel as ISO `YYYY-MM-DD`, or null when the invoice states none
+   * (the review UI then prefills `invoiceDate` + the default term).
+   * See {@link extractPaymentDueDate}.
+   */
+  paymentDueDate: string | null;
   invoiceNumber: string | null;
   providerName: string | null;
   positions: ParsedPosition[];
@@ -352,6 +360,14 @@ function extractInvoiceNumber(text: string): string | null {
   return null;
 }
 
+/**
+ * Lines carrying a Zahlungsziel keyword. Used to keep the unlabelled
+ * invoice-date fallback in {@link extractInvoiceFields} from mistaking a due date
+ * for the Rechnungsdatum when the invoice prints the payment terms first.
+ */
+const DUE_LABEL_RE =
+  /Zahlungsziel|Zahlungstermin|Zahlungsfrist|Zahlungsbedingungen|Fälligkeit|fällig|zahlbar|zu\s+zahlen\s+bis|überweisen/i;
+
 /** Extracts the header fields (date, number, provider) from invoice text. */
 export function extractInvoiceFields(text: string): {
   invoiceDate: string | null;
@@ -360,7 +376,17 @@ export function extractInvoiceFields(text: string): {
 } {
   const labelled = LABELLED_DATE_RE.exec(text);
   const labelledDate = labelled?.[1];
-  const dateMatch = (labelledDate ? DATE_RE.exec(labelledDate) : null) ?? DATE_RE.exec(text);
+  // Without a labelled Rechnungsdatum, fall back to the first date anywhere in
+  // the text — but skip lines that state a Zahlungsziel, whose date is not the
+  // invoice date (issue #288).
+  const fallbackScope = text
+    .split(/\r?\n/)
+    .filter((l) => !DUE_LABEL_RE.test(l))
+    .join('\n');
+  const dateMatch =
+    (labelledDate ? DATE_RE.exec(labelledDate) : null) ??
+    DATE_RE.exec(fallbackScope) ??
+    DATE_RE.exec(text);
   const invoiceDate =
     dateMatch && dateMatch[1] && dateMatch[2] && dateMatch[3]
       ? toIso(dateMatch[1], dateMatch[2], dateMatch[3])
@@ -375,6 +401,113 @@ export function extractInvoiceFields(text: string): {
   const providerName = lines.find((l) => PROVIDER_RE.test(l)) ?? lines[0] ?? null;
 
   return { invoiceDate, invoiceNumber, providerName };
+}
+
+// ---------------------------------------------------------------------------
+// Zahlungsziel (payment due date, issue #288)
+// ---------------------------------------------------------------------------
+
+/**
+ * A stated due **date**: a Zahlungsziel label followed by a German date. `[^\d\n]`
+ * spans the gap so a label at the end of one line still reaches the date on the
+ * next (OCR breaks these lines freely) while never skipping over another number.
+ */
+const DUE_DATE_RE =
+  /(?:Zahlungsziel|Zahlungstermin|Fälligkeit(?:sdatum)?|fällig\s+(?:am|bis)|zahlbar\s+bis(?:\s+zum)?|Zahlung\s+bis(?:\s+zum)?|zu\s+zahlen\s+bis(?:\s+zum)?|(?:Überweisung|überweisen)[^\d\n]{0,20}?bis(?:\s+zum)?)[^\d\n]{0,20}(\d{1,2}\.\d{1,2}\.\d{2,4})/i;
+
+/**
+ * A stated payment **term** in days, e.g. "Fällig zahlbar 14 Tage ab
+ * Rechnungsdatum", "zahlbar innerhalb von 30 Tagen ohne Abzug", "Zahlungsziel:
+ * 14 Tage", "30 Tage netto". `[^\d\n]{0,30}` keeps the label and the number on
+ * the same line and stops the match from jumping across an unrelated figure.
+ */
+const DUE_TERM_RE =
+  /(?:Zahlungsziel|Zahlungsfrist|Zahlungsbedingungen|zahlbar|fällig|Zahlung|überweisen)[^\d\n]{0,30}(\d{1,3})\s*(?:Kalender)?tage?n?\b/i;
+
+/** Any German date, used to harvest candidates from the non-position text. */
+const ANY_DATE_RE = /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/g;
+
+/**
+ * The invoice text reduced to the lines outside the position block — issue #288
+ * requires the Zahlungsziel to come from outside the positions.
+ *
+ * Dropped are the position lines themselves plus the Leistungsdaten that belong
+ * to them: a date-only or date-prefixed line **inside** the position block, or one
+ * that directly introduces a position (the Sammelrechnung convention of printing
+ * a block's date on its own line above it). A bare date in the header or footer is
+ * kept — there it is a due-date candidate, not a treatment date.
+ */
+function nonPositionLines(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const isPosition = lines.map((l) => parsePositionLine(l) !== null);
+  const firstPosition = isPosition.indexOf(true);
+  const lastPosition = isPosition.lastIndexOf(true);
+
+  return lines.filter((line, i) => {
+    if (isPosition[i]) return false;
+    const carriesDate = BARE_DATE_RE.test(line) || DATE_PREFIX_RE.test(line);
+    if (!carriesDate) return true;
+    const insideBlock = firstPosition !== -1 && i > firstPosition && i < lastPosition;
+    return !insideBlock && isPosition[i + 1] !== true;
+  });
+}
+
+/**
+ * How far after the invoice date an unlabelled date may sit and still be read as
+ * a Zahlungsziel. Generous enough for a Ratenzahlung hint, tight enough to rule
+ * out a validity date ("Rezept gültig bis") a year out.
+ */
+const MAX_PLAUSIBLE_TERM_DAYS = 180;
+
+/**
+ * Extracts the Zahlungsziel from invoice text (issue #288), searching **only
+ * outside the positions** ({@link nonPositionLines}). In order of confidence:
+ *
+ *  1. an explicitly labelled date ("Zahlbar bis 15.08.2026"),
+ *  2. a labelled term in days ("zahlbar innerhalb 14 Tagen") counted from
+ *     `invoiceDate`,
+ *  3. otherwise, the earliest unlabelled date that lies after `invoiceDate` and
+ *     within {@link MAX_PLAUSIBLE_TERM_DAYS} — invoices often print the due date
+ *     without a keyword the OCR preserved.
+ *
+ * Returns null when nothing plausible is found; the caller then falls back to
+ * `invoiceDate` + the configured default term. "Sofort fällig" is deliberately
+ * *not* treated as a due date: Verzug only starts 30 days after the invoice, so
+ * such an invoice keeps the default term.
+ */
+export function extractPaymentDueDate(text: string, invoiceDate: string | null): string | null {
+  const lines = nonPositionLines(text);
+  const scope = lines.join('\n');
+
+  const labelled = DUE_DATE_RE.exec(scope);
+  const labelledDate = labelled?.[1] ? DATE_RE.exec(labelled[1]) : null;
+  if (labelledDate?.[1] && labelledDate[2] && labelledDate[3]) {
+    return toIso(labelledDate[1], labelledDate[2], labelledDate[3]);
+  }
+
+  if (!invoiceDate) return null;
+
+  const term = DUE_TERM_RE.exec(scope);
+  const termDays = term?.[1] ? Number(term[1]) : null;
+  if (termDays !== null && termDays > 0 && termDays <= MAX_PLAUSIBLE_TERM_DAYS) {
+    return addDaysIso(invoiceDate, termDays);
+  }
+
+  // Unlabelled fallback: the earliest plausible future date on the sheet.
+  let earliest: string | null = null;
+  for (const line of lines) {
+    for (const match of line.matchAll(ANY_DATE_RE)) {
+      if (!match[1] || !match[2] || !match[3]) continue;
+      const iso = toIso(match[1], match[2], match[3]);
+      const offset = daysUntilDue(iso, invoiceDate);
+      if (offset <= 0 || offset > MAX_PLAUSIBLE_TERM_DAYS) continue;
+      if (earliest === null || iso < earliest) earliest = iso;
+    }
+  }
+  return earliest;
 }
 
 const ORTHODONTIST_RE = /\bKieferorthop(?:äde|ädin|ädisch|ädie)\w*\b|\bKFO\b/i;
@@ -1475,6 +1608,7 @@ export function parseInvoice(
   return {
     feeSchedule: primaryTable.feeSchedule,
     invoiceDate: fields.invoiceDate,
+    paymentDueDate: extractPaymentDueDate(text, fields.invoiceDate),
     invoiceNumber: fields.invoiceNumber,
     providerName: fields.providerName,
     positions,

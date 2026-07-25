@@ -12,6 +12,10 @@ vi.mock('@selbstbehalt/medic-invoice-check', async () => ({
   InvoiceReview: (await import('./__mocks__/InvoiceReviewStub.svelte')).default,
 }));
 
+// The form reads the Standard-Zahlungsfrist from the settings store, which
+// resolves the API base URL from this env module.
+vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
 import InvoiceForm from './InvoiceForm.svelte';
 import type { FormPayload } from './InvoiceForm.svelte';
 import type { InvoiceWithPositions } from '@selbstbehalt/shared';
@@ -123,6 +127,26 @@ describe('InvoiceForm — create mode (wrapper)', () => {
     expect(payload.total_amount).toBe(50);
     expect(payload.insured_person_id).toBe('ip-1');
     expect(payload.notes).toBeNull();
+  });
+
+  it('includes the Zahlungsziel in the payload, and null when unset (#288)', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: { mode: 'create', insuredOptions: INSURED_OPTIONS, onSave },
+    });
+
+    await user.type(screen.getByRole('textbox', { name: /Leistungserbringer/i }), 'Praxis Test');
+    const totalInput = screen.getByRole('spinbutton', { name: /Rechnungsbetrag/i });
+    await user.clear(totalInput);
+    await user.type(totalInput, '50');
+    await user.click(screen.getByRole('button', { name: 'Rechnung speichern' }));
+    // The stub does not prefill, so an untouched field saves as null.
+    expect(onSave.mock.calls[0]![0].payment_due_date).toBeNull();
+
+    await user.type(screen.getByLabelText('Zahlungsziel'), '2026-06-15');
+    await user.click(screen.getByRole('button', { name: 'Rechnung speichern' }));
+    expect(onSave.mock.calls[1]![0].payment_due_date).toBe('2026-06-15');
   });
 
   it('includes typed Notizen in the payload', async () => {
