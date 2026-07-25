@@ -57,6 +57,12 @@ export interface ScanResult {
   providerType: ProviderType;
   /** The recognised text, newline-joined (for review + optional `ocr_raw`). */
   ocrText: string;
+  /**
+   * The recognised lines themselves, in order — kept so the review screen can
+   * locate a position on the page image via `OcrResult.bbox` (see `./preview`).
+   * In memory only: never serialised into the invoice payload.
+   */
+  lines: OcrResult[];
   /** The fully parsed + validated invoice. */
   parsed: ParsedInvoice;
   /** Mean OCR confidence across all recognised lines, in `[0, 1]`. */
@@ -68,6 +74,12 @@ export interface ScanResult {
    * lines up with the k-th parsed position (no stringly-typed re-matching).
    */
   positionConfidence: number[];
+  /**
+   * Index into {@link lines} of the recognised line each parsed position came
+   * from, aligned to {@link ParsedInvoice.positions} the same way. Lets the
+   * review screen highlight the exact line on the page image behind a row.
+   */
+  positionLineIndex: number[];
 }
 
 /** An insured person the scanned invoice can be filed under (review dropdown). */
@@ -89,7 +101,7 @@ export function meanConfidence(results: OcrResult[]): number {
 }
 
 /**
- * Confidence of each recognised line the parser reads as a position, in order.
+ * Indices of the recognised lines the parser reads as positions, in order.
  * `parseInvoice` extracts positions from the same lines in the same order, so
  * this array aligns 1:1 with {@link ParsedInvoice.positions} by index — robust to
  * duplicate line text and whitespace differences, unlike a text-keyed lookup.
@@ -98,15 +110,28 @@ export function meanConfidence(results: OcrResult[]): number {
  * practice-lab summary line is counted (it becomes one Material-/Laborkosten
  * position even though {@link parsePositionLine} rejects it), and an attached
  * Eigenlabor-/Materialbeleg truncates the count (its lines are not extracted).
+ *
+ * This is the single walk of the lines that both {@link positionConfidences} and
+ * the per-position source-line provenance derive from, so the two special cases
+ * above can never drift apart between them.
  */
-function positionConfidences(results: OcrResult[]): number[] {
+export function positionLineIndices(results: OcrResult[]): number[] {
   const out: number[] = [];
-  for (const r of results) {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]!;
     const summary = matchMaterialLaborSummary(r.text);
     if (summary === null && isBelegSectionMarker(r.text)) break;
-    if (summary !== null || parsePositionLine(r.text)) out.push(r.confidence);
+    if (summary !== null || parsePositionLine(r.text)) out.push(i);
   }
   return out;
+}
+
+/**
+ * Confidence of each recognised position line, index-aligned with
+ * {@link ParsedInvoice.positions}. Derived from {@link positionLineIndices}.
+ */
+function positionConfidences(results: OcrResult[], indices: number[]): number[] {
+  return indices.map((i) => results[i]?.confidence ?? 1);
 }
 
 /**
@@ -138,13 +163,16 @@ export function buildScanResult(
   const primary = tables.find((t) => t.feeSchedule === schedule) ?? tables[0]!;
   const ordered = [primary, ...tables.filter((t) => t !== primary)];
   const parsed = parseInvoice(ocrText, ordered, context);
+  const lineIndices = positionLineIndices(results);
   return {
     schedule,
     providerType,
     ocrText,
+    lines: results,
     parsed,
     meanConfidence: meanConfidence(results),
-    positionConfidence: positionConfidences(results),
+    positionConfidence: positionConfidences(results, lineIndices),
+    positionLineIndex: lineIndices,
   };
 }
 
@@ -182,6 +210,13 @@ export interface ReviewPosition {
    * into the scan).
    */
   confidence: number;
+  /**
+   * Index of the recognised line this row was parsed from
+   * ({@link ScanResult.lines}), so the review screen can highlight it on the page
+   * image. Carried on the row for the same reason as {@link confidence}. `null`
+   * for a row the user added by hand, or one whose source line is unknown.
+   */
+  lineIndex: number | null;
 }
 
 /** The full, user-confirmed review state the save step serialises. */
@@ -224,6 +259,7 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
       isValid: p.isValid,
       flagReason: p.flags.length > 0 ? p.flags.map((f) => f.reason).join(' ') : null,
       confidence: scan.positionConfidence[i] ?? 1,
+      lineIndex: scan.positionLineIndex[i] ?? null,
     };
   });
 }

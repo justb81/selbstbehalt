@@ -42,8 +42,16 @@
   } from '../ocr/quality';
   import { loadAllInvoicePages, recognizeInvoiceImage } from '../ocr/scan-ocr';
   import { buildScanResult, type ScanResult } from '../ocr/scan-flow';
+  import {
+    buildScanPreview,
+    createPagePreview,
+    PREVIEW_MAX_PAGES,
+    type PageLineRange,
+    type PagePreview,
+    type ScanPreview,
+  } from '../ocr/preview';
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
-  import type { OcrProgress, OcrResult, ScanPage } from '../ocr/types';
+  import { isScanImagePage, type OcrProgress, type OcrResult, type ScanPage } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
   import { Button } from './ui/button';
   import { Progress } from './ui/progress';
@@ -85,8 +93,13 @@
     deps = {},
     autoFile = null,
   }: {
-    /** Called with the parsed result once a frame has been recognised. */
-    onScanned: (result: ScanResult) => void;
+    /**
+     * Called with the parsed result once a frame has been recognised, plus the
+     * in-memory page previews the review screen draws the recognised lines on
+     * (docs/design.md §4.1). The preview holds pixels — it is never persisted or
+     * uploaded, and the caller must drop it when the scan is saved or abandoned.
+     */
+    onScanned: (result: ScanResult, preview: ScanPreview) => void;
     deps?: Partial<ScannerDeps>;
     /**
      * A file supplied by the caller (e.g. a PWA share target, issue #158)
@@ -130,6 +143,8 @@
 
   /** Pages parked by the quality gate, awaiting the user's call (issue #279). */
   let pendingPages: ScanPage[] = [];
+  /** Previews of {@link pendingPages}, so the warning can show the frame it faults. */
+  let pendingPreviews = $state<PagePreview[]>([]);
   let pendingQuality = $state<QualityReport | null>(null);
   /** Which entry point produced {@link pendingPages} — drives the retake action. */
   let pendingSource = $state<'camera' | 'file'>('file');
@@ -159,23 +174,42 @@
    * invoice. Frames are discarded as soon as recognition finishes
    * (Datenminimierung §8.2).
    */
-  async function runPages(pages: ScanPage[]): Promise<void> {
+  /**
+   * Preview snapshots of the image pages, in page order, built by
+   * {@link processPages} *before* recognition — `recognize` transfers the pixel
+   * buffer to the worker, so a copy taken afterwards may already be detached.
+   * Shared by the quality warning (which shows the frame it is judging) and the
+   * review screen (which draws the recognised lines on it).
+   */
+  async function runPages(pages: ScanPage[], previews: PagePreview[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
       const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
       const allResults: OcrResult[] = [];
+      const ranges: PageLineRange[] = [];
+      let imagePage = 0;
       for (const page of pages) {
         if (page.kind === 'text') {
+          // A text-layer page has no image, so it gets no preview — and
+          // deliberately no range either, so its lines are attributed to no page
+          // rather than bleeding into the previous one.
           allResults.push(...page.lines);
           continue;
         }
+        const preview = previews[imagePage];
+        imagePage += 1;
+        const start = allResults.length;
         const prepared = preprocess(page.image);
         const results = await recognize(prepared, (p) => (progress = p));
         allResults.push(...results);
+        if (preview) ranges.push({ start, end: allResults.length });
       }
-      onScanned(buildScanResult(allResults, tables));
+      onScanned(
+        buildScanResult(allResults, tables),
+        buildScanPreview(previews, allResults, ranges),
+      );
       phase = 'idle';
       progress = null;
     } catch (err) {
@@ -196,32 +230,39 @@
    * scan-PDF pages all arrive through this one funnel.
    */
   async function processPages(pages: ScanPage[], source: 'camera' | 'file'): Promise<void> {
-    const reports = pages
-      .filter((page) => page.kind === 'image')
-      .map((page) => assessQuality(page.image));
+    const imagePages = pages.filter(isScanImagePage);
+    const reports = imagePages.map((page) => assessQuality(page.image));
+    // Snapshot every image page up front, while the buffers are still intact.
+    const previews = imagePages
+      .slice(0, PREVIEW_MAX_PAGES)
+      .map((page) => createPagePreview(page.image));
     const verdict = mergeQualityReports(reports);
     if (!verdict.ok) {
       pendingPages = pages;
+      pendingPreviews = previews;
       pendingQuality = verdict;
       pendingSource = source;
       error = null;
       phase = 'quality-warning';
       return;
     }
-    await runPages(pages);
+    await runPages(pages, previews);
   }
 
   /** "Trotzdem erkennen": the warning is advice, never a wall. */
   async function confirmQuality(): Promise<void> {
     const pages = pendingPages;
+    const previews = pendingPreviews;
     pendingPages = [];
+    pendingPreviews = [];
     pendingQuality = null;
-    await runPages(pages);
+    await runPages(pages, previews);
   }
 
   /** Discard the parked pages and offer the same entry point again. */
   async function retakeQuality(): Promise<void> {
     pendingPages = [];
+    pendingPreviews = [];
     pendingQuality = null;
     phase = 'idle';
     if (pendingSource === 'camera') {

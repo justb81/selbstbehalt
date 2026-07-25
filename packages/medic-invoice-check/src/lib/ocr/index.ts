@@ -15,6 +15,7 @@ export {
   preprocess,
   IDENTITY_HOMOGRAPHY,
   downscale,
+  makeImageData,
   lumaPlane,
   laplacianVariance,
   meanLuma,
@@ -73,9 +74,21 @@ export {
 } from './scan-ocr';
 export type { OcrRecognizer, MultiPageLoader } from './scan-ocr';
 export {
+  createPagePreview,
+  buildScanPreview,
+  scaleQuadToPreview,
+  quadBounds,
+  pageIndexForLine,
+  findPreviewLineIndex,
+  PREVIEW_MAX_SIDE,
+  PREVIEW_MAX_PAGES,
+} from './preview';
+export type { PagePreview, PreviewLine, ScanPreview, QuadBounds, PageLineRange } from './preview';
+export {
   buildScanResult,
   ocrResultsToText,
   meanConfidence,
+  positionLineIndices,
   scheduleForProviderType,
   toReviewPositions,
   toInvoicePayload,

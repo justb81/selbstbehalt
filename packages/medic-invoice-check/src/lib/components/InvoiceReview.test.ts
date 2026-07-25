@@ -158,6 +158,7 @@ describe('InvoiceReview — create mode', () => {
         isValid: true,
         flagReason: null,
         confidence: 1,
+        lineIndex: null,
       },
       {
         goaeNumber: 'Ä1',
@@ -171,6 +172,7 @@ describe('InvoiceReview — create mode', () => {
         isValid: true,
         flagReason: null,
         confidence: 1,
+        lineIndex: null,
       },
     ] satisfies ReviewPosition[]);
 

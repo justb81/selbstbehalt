@@ -46,6 +46,14 @@ export interface OcrResult {
  */
 export type ScanPage = { kind: 'text'; lines: OcrResult[] } | { kind: 'image'; image: ImageData };
 
+/** The rasterised variant of {@link ScanPage} — the one that carries pixels. */
+export type ScanImagePage = Extract<ScanPage, { kind: 'image' }>;
+
+/** Narrows a {@link ScanPage} to the rasterised variant (usable as a filter predicate). */
+export function isScanImagePage(page: ScanPage): page is ScanImagePage {
+  return page.kind === 'image';
+}
+
 /** Lifecycle phase reported through {@link OcrProgress}. */
 export type OcrPhase = 'init' | 'recognize';
 
