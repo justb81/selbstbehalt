@@ -1,4 +1,4 @@
-# On-device PP-OCRv5 model assets (issue #27). These are large binaries fetched
+# On-device PP-OCRv6 model assets (issue #27). These are large binaries fetched
 # by `pnpm ocr:models` (scripts/fetch-ocr-models.mjs) and are NOT committed to
 # git — same policy as the other maintainer-curated build inputs. The app serves
 # whatever is present here same-origin under /models/ocr/, so nothing is loaded
