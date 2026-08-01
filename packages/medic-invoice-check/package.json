@@ -28,13 +28,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.25.0",
+    "@lucide/svelte": "^1.26.0",
     "@selbstbehalt/shared": "workspace:*",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",
     "onnxruntime-web": "1.27.0",
     "pdfjs-dist": "^6.1.200",
-    "ppu-paddle-ocr": "6.1.0",
+    "ppu-paddle-ocr": "6.2.0",
     "tailwind-merge": "^3.6.0",
     "tailwind-variants": "^3.2.2",
     "zod": "^4.4.3"

@@ -61,8 +61,8 @@ importers:
   apps/backend:
     dependencies:
       '@hono/node-server':
-        specifier: ^2.0.10
-        version: 2.0.10(hono@4.12.30)
+        specifier: ^2.0.11
+        version: 2.0.11(hono@4.12.32)
       '@selbstbehalt/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -73,8 +73,8 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.11.1)
       hono:
-        specifier: ^4.12.30
-        version: 4.12.30
+        specifier: ^4.12.32
+        version: 4.12.32
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -123,8 +123,8 @@ importers:
         specifier: ^3.12.2
         version: 3.12.2
       '@lucide/svelte':
-        specifier: ^1.25.0
-        version: 1.25.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
+        specifier: ^1.26.0
+        version: 1.26.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
       '@playwright/test':
         specifier: ^1.62.0
         version: 1.62.0
@@ -195,8 +195,8 @@ importers:
   apps/goae-waechter:
     dependencies:
       '@lucide/svelte':
-        specifier: ^1.25.0
-        version: 1.25.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
+        specifier: ^1.26.0
+        version: 1.26.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
       '@selbstbehalt/medic-invoice-check':
         specifier: workspace:*
         version: link:../../packages/medic-invoice-check
@@ -274,8 +274,8 @@ importers:
   packages/medic-invoice-check:
     dependencies:
       '@lucide/svelte':
-        specifier: ^1.25.0
-        version: 1.25.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
+        specifier: ^1.26.0
+        version: 1.26.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))
       '@selbstbehalt/shared':
         specifier: workspace:*
         version: link:../shared
@@ -292,8 +292,8 @@ importers:
         specifier: ^6.1.200
         version: 6.1.200
       ppu-paddle-ocr:
-        specifier: 6.1.0
-        version: 6.1.0(onnxruntime-node@1.27.0)(onnxruntime-web@1.27.0)
+        specifier: 6.2.0
+        version: 6.2.0(onnxruntime-node@1.27.0)(onnxruntime-web@1.27.0)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -1542,8 +1542,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@hono/node-server@2.0.10':
-    resolution: {integrity: sha512-ZcnNVhKTmyDJeg0UlnZjvM73JBsTAuhrH/J4fjwGOw59PwOW51r4J+p6CsKZWXdKSme4MFqU62CZMOsdDrU4CA==}
+  '@hono/node-server@2.0.11':
+    resolution: {integrity: sha512-bjD221KPLoJTWUwso1J6fGKiTXEUFedG/s0visavY4zakFPkeGURMRNly+FhBHs7T8Dz4qHaZIMX9ZoJHSJtKA==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -1606,8 +1606,8 @@ packages:
   '@layerstack/utils@2.0.0-next.18':
     resolution: {integrity: sha512-EYILHpfBRYMMEahajInu9C2AXQom5IcAEdtCeucD3QIl/fdDgRbtzn6/8QW9ewumfyNZetdUvitOksmI1+gZYQ==}
 
-  '@lucide/svelte@1.25.0':
-    resolution: {integrity: sha512-v9m+dD68jxVnqkU3K59mG/RSRFlPGzmKCGSyMfnXcaGv9jODDQMyQkcp1CGvk3Y/cUj9v7f8rw1n//K0B53xGQ==}
+  '@lucide/svelte@1.26.0':
+    resolution: {integrity: sha512-KUfLTlNRVrHZ460Um7jdrvh46hI/8Sw4+1k/Ttj4g6JI9bCrjD7HZVG4cqhh7LasjfDz5b+CuKrjd/k/3obYcA==}
     peerDependencies:
       svelte: ^5
 
@@ -3361,8 +3361,8 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
-  hono@4.12.30:
-    resolution: {integrity: sha512-emn+JoJjrN9YTpRDS5it/UI2SO9BAE37T6I3d963RxcZ81G9A4pr2SZTEiiaiKbzx+NKRg5BZ89fCL7gCJCUog==}
+  hono@4.12.32:
+    resolution: {integrity: sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -4124,8 +4124,8 @@ packages:
       '@shopify/react-native-skia':
         optional: true
 
-  ppu-paddle-ocr@6.1.0:
-    resolution: {integrity: sha512-PJgV3T0Sp0O1e1JGElSm+g/xj1izWCy2cVTM8yFXpcHtJ3c+cJmMZP2+MSR33M7OzkOXC6cZGdFDFlNBrv+2Vw==}
+  ppu-paddle-ocr@6.2.0:
+    resolution: {integrity: sha512-8YI6uI/IdhK5Jsi7Tb2job2k+Z5NgLdxh/4xkXVV5RJ+Qxeqq1FnThCRyigb9wy7baOzGKjrMAUBzAm+r2q5sw==}
     hasBin: true
     peerDependencies:
       '@shopify/react-native-skia': '>=1.0.0'
@@ -6140,9 +6140,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hono/node-server@2.0.10(hono@4.12.30)':
+  '@hono/node-server@2.0.11(hono@4.12.32)':
     dependencies:
-      hono: 4.12.30
+      hono: 4.12.32
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -6213,7 +6213,7 @@ snapshots:
       d3-time: 3.1.0
       d3-time-format: 4.1.0
 
-  '@lucide/svelte@1.25.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))':
+  '@lucide/svelte@1.26.0(svelte@5.56.8(@typescript-eslint/types@8.65.0))':
     dependencies:
       svelte: 5.56.8(@typescript-eslint/types@8.65.0)
 
@@ -7858,7 +7858,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.12.30: {}
+  hono@4.12.32: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:
@@ -8550,7 +8550,7 @@ snapshots:
       '@napi-rs/canvas': 1.0.2
       '@techstark/opencv-js': 5.0.0-release.1
 
-  ppu-paddle-ocr@6.1.0(onnxruntime-node@1.27.0)(onnxruntime-web@1.27.0):
+  ppu-paddle-ocr@6.2.0(onnxruntime-node@1.27.0)(onnxruntime-web@1.27.0):
     dependencies:
       ppu-ocv: 4.0.0
     optionalDependencies:
