@@ -223,7 +223,7 @@ an invalid `DATABASE_PATH` or a permissions issue on the `./data/db` bind
 mount (the entrypoint should fix ownership automatically — if it doesn't,
 check the host directory isn't mounted read-only).
 
-**Do I need a GPU for OCR?** No. OCR (PP-OCRv5 via `ppu-paddle-ocr` on ONNX
+**Do I need a GPU for OCR?** No. OCR (PP-OCRv6 via `ppu-paddle-ocr` on ONNX
 Runtime) runs **in the visiting browser**, not on the server — the backend
 never runs any AI/ML workload (§2.3, §8). It tries WebGPU first and falls
 back to WASM automatically if the browser/device doesn't support WebGPU
@@ -233,7 +233,7 @@ inference time beyond the initial model download from your own server
 (never a third-party CDN — see [Privacy by design](../README.md#design-principles)).
 
 **OCR result looks wrong / misses positions.** Doctor invoices are usually
-typewritten or letterhead-printed, and PP-OCRv5 handles that well.
+typewritten or letterhead-printed, and PP-OCRv6 handles that well.
 **Handwritten** invoices or annotations are a known, documented limitation
 (design doc §10: "OCR Handschrift — Limitiert") — recognition quality drops
 significantly on handwriting, and there is currently no automatic fallback

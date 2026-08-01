@@ -84,7 +84,7 @@ export interface OcrErrorPayload {
 
 /**
  * Local URLs of the three OCR model assets the `ppu-paddle-ocr` binding needs:
- * the PP-OCRv5 detection + recognition ONNX models and the character dictionary.
+ * the PP-OCRv6 detection + recognition ONNX models and the character dictionary.
  * These point at on-device, same-origin assets under `models/ocr/` — never a
  * remote CDN — so both the image and the model stay local (docs/design.md §1.3,
  * §8). The service worker caches `models/**` on first use (docs/design.md §6.3).
@@ -138,7 +138,7 @@ export const DEFAULT_MODEL_URLS: OcrModelUrls = resolveOcrAssets().modelUrls;
 export interface OcrEngineConfig {
   /** Recognition language; the app targets German (Latin-script) invoices. */
   language: 'de';
-  /** Local URLs of the PP-OCRv5 models + dictionary (defaults to {@link DEFAULT_MODEL_URLS}). */
+  /** Local URLs of the PP-OCRv6 models + dictionary (defaults to {@link DEFAULT_MODEL_URLS}). */
   modelUrls: OcrModelUrls;
   /**
    * Local, same-origin directory (trailing slash) the ONNX Runtime WASM assets
@@ -147,7 +147,7 @@ export interface OcrEngineConfig {
   wasmPath: string;
 }
 
-/** Default engine configuration for German, on-device PP-OCRv5 (root-served). */
+/** Default engine configuration for German, on-device PP-OCRv6 (root-served). */
 export const DEFAULT_ENGINE_CONFIG: OcrEngineConfig = {
   language: 'de',
   ...resolveOcrAssets(),

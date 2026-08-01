@@ -1,4 +1,4 @@
-# On-device PP-OCRv5 models
+# On-device PP-OCRv6 models
 
 Same on-device OCR pipeline as `apps/frontend` (see
 `apps/frontend/static/models/ocr/README.md` for the full explanation) — GOÄ-Wächter
@@ -7,11 +7,11 @@ same three files from its own origin.
 
 ## Expected files
 
-| File served at         | Model (PP-OCRv5)                                  | ~size   |
-| ---------------------- | ------------------------------------------------- | ------- |
-| `/models/ocr/det.onnx` | mobile text **detection**                         | ~4.5 MB |
-| `/models/ocr/rec.onnx` | Latin mobile text **recognition** (covers German) | ~7.7 MB |
-| `/models/ocr/dict.txt` | Latin character **dictionary**                    | ~3 KB   |
+| File served at         | Model (PP-OCRv6 tiny)                     | ~size   |
+| ---------------------- | ----------------------------------------- | ------- |
+| `/models/ocr/det.onnx` | tiny text **detection**                   | ~1.8 MB |
+| `/models/ocr/rec.onnx` | tiny text **recognition** (covers German) | ~4.4 MB |
+| `/models/ocr/dict.txt` | tiny character **dictionary**             | ~27 KB  |
 
 These paths are the defaults in `packages/medic-invoice-check/src/lib/ocr/types.ts`
 (`DEFAULT_MODEL_URLS`); change them there and here together if you host a

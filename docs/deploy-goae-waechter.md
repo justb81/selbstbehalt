@@ -18,7 +18,7 @@ is a **reusable workflow** ([`workflow_call`](https://docs.github.com/actions/us
    calls it right after it publishes a `vX.Y.Z` release (so the demo is
    republished on every release, never on every ordinary `main` push) — plus
    manual **Run workflow** (`workflow_dispatch`);
-2. installs dependencies and fetches the PP-OCRv5 models with `pnpm ocr:models`
+2. installs dependencies and fetches the PP-OCRv6 models with `pnpm ocr:models`
    (they are **not** committed to git — see
    [`static/models/ocr/README.md`](../apps/goae-waechter/static/models/ocr/README.md));
 3. builds `pnpm --filter @selbstbehalt/goae-waechter... build` (which also runs

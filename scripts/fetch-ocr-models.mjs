@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Downloads the on-device PP-OCRv5 model assets into every app's
+// Downloads the on-device PP-OCRv6 model assets into every app's
 // static/models/ocr/ (apps/frontend and apps/goae-waechter — issue #170) so the
 // OCR pipeline (docs/design.md §4, issue #27) can run client-side without ever
 // fetching a model from a third-party CDN at runtime (CLAUDE.md privacy
 // constraint; §1.3/§8). The files are large binaries and are git-ignored —
 // re-run this script to (re)populate them.
 //
-// Source: the ppu-paddle-ocr model release repo. We pick the PP-OCRv5 *mobile*
-// detection model plus the *Latin* recognition model + dictionary, which cover
-// German (Latin-script) invoices. Binaries live behind Git LFS, so they are
+// Source: the ppu-paddle-ocr model release repo. We pick the PP-OCRv6 *tiny*
+// detection + recognition models in plain **`.onnx`** form (not the `.ort`
+// variant the same repo also publishes — `.ort` fails to build an ONNX Runtime
+// Web session on the WebGPU/JSEP execution provider, `ResolveKernelTypeStr
+// Failed to find op_id: com.ms.internal.nhwc:Conv:1`, verified in a real
+// browser against onnxruntime-web 1.27; `.onnx` loads fine on both WebGPU and
+// WASM, see docs/design.md §4.2 and issue #317) plus its matching tiny
+// dictionary, which cover German (Latin-script) invoices — all three
+// dictionaries in the repo (v5-latin, v6-tiny, v6-small/medium) include the
+// full German alphabet plus `€ § %`. Binaries live behind Git LFS, so they are
 // fetched from the `media.githubusercontent.com/media/...` LFS endpoint; the
 // plain-text dictionary comes from `raw.githubusercontent.com`.
 //
@@ -45,12 +52,9 @@ const RAW = 'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle
 // Served filename ← upstream path. Keep in sync with DEFAULT_MODEL_URLS in
 // packages/medic-invoice-check/src/lib/ocr/types.ts and static/models/ocr/README.md.
 const ASSETS = [
-  { out: 'det.onnx', url: `${LFS}/detection/PP-OCRv5_mobile_det_infer.onnx` },
-  {
-    out: 'rec.onnx',
-    url: `${LFS}/recognition/multi/latin/v5/latin_PP-OCRv5_mobile_rec_infer.onnx`,
-  },
-  { out: 'dict.txt', url: `${RAW}/recognition/multi/latin/v5/ppocrv5_latin_dict.txt` },
+  { out: 'det.onnx', url: `${LFS}/detection/PP-OCRv6_tiny_det.onnx` },
+  { out: 'rec.onnx', url: `${LFS}/recognition/PP-OCRv6_tiny_rec.onnx` },
+  { out: 'dict.txt', url: `${RAW}/recognition/ppocrv6_tiny_dict.txt` },
 ];
 
 /** Parses `models.sha256` (`<hex>  <filename>` per line) into a name→hash map. */

@@ -1,6 +1,6 @@
 # On-device ONNX Runtime Web WASM assets
 
-The OCR engine runs PP-OCRv5 on **ONNX Runtime Web** (`ppu-paddle-ocr`). ONNX
+The OCR engine runs PP-OCRv6 on **ONNX Runtime Web** (`ppu-paddle-ocr`). ONNX
 Runtime loads its WASM binaries at init from `ort.env.wasm.wasmPaths`, which the
 engine pins to **`/models/ort/`** (`packages/medic-invoice-check/src/lib/ocr/engine.ts`) so they are
 served same-origin and never fetched from a CDN at runtime (CLAUDE.md privacy

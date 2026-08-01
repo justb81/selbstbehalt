@@ -2,7 +2,7 @@
 /**
  * PaddleOCR engine adapter (docs/design.md §4.2, issues #24/#27).
  *
- * Adapts the `ppu-paddle-ocr` (PP-OCRv5 on ONNX Runtime) binding to the
+ * Adapts the `ppu-paddle-ocr` (PP-OCRv6 on ONNX Runtime) binding to the
  * {@link OcrEngine} interface the worker drives. We use the package's **web**
  * entry (`ppu-paddle-ocr/web`), which runs in a Web Worker, accepts an
  * {@link ImageData} frame directly and selects WebGPU with an automatic WASM

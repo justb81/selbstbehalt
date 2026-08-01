@@ -41,7 +41,7 @@ Bestehende Apps (PKV Go, RechnungsDoc Mobil, Belegkompass) lösen Teile davon, s
 │                                                         │
 │  ┌──────────┐   ┌──────────────┐   ┌─────────────────┐ │
 │  │ Kamera   │──▶│ PaddleOCR.js │──▶│ GOÄ-Parser      │ │
-│  │ getUserM │   │ (PP-OCRv5)   │   │ (Regex + Lookup) │ │
+│  │ getUserM │   │ (PP-OCRv6)   │   │ (Regex + Lookup) │ │
 │  │ edia API │   │ WebGPU/WASM  │   └────────┬────────┘ │
 │  └──────────┘   └──────────────┘            │           │
 │                                             ▼           │
@@ -70,7 +70,7 @@ Bestehende Apps (PKV Go, RechnungsDoc Mobil, Belegkompass) lösen Teile davon, s
 | Schicht | Technologie | Begründung |
 |---|---|---|
 | **Frontend** | SvelteKit (TypeScript) | Leichtgewichtig, SSR optional, PWA-Support nativ |
-| **OCR Engine** | PP-OCRv5 via `ppu-paddle-ocr` (ONNX Runtime) | Browser-native, WebGPU + WASM Fallback, Web-Worker-tauglich, kein Server [^6] |
+| **OCR Engine** | PP-OCRv6 via `ppu-paddle-ocr` (ONNX Runtime) | Browser-native, WebGPU + WASM Fallback, Web-Worker-tauglich, kein Server [^6] |
 | **AI-Beschleunigung** | WebGPU API (Chrome/Edge) + WebNN (Android NPU) | Standard in Chrome seit 2025, ~82% Browser-Coverage [^7] |
 | **Fallback OCR** | WASM-Execution-Provider (ONNX Runtime) | Wenn kein WebGPU verfügbar |
 | **GOÄ-Prüfung** | Statische JSON-Lookup-Tabelle + Regex-Parser | GOÄ ist öffentlich, kein LLM nötig |
@@ -469,7 +469,7 @@ projected_bre     REAL                 -- Erwartete BRE bei Leistungsfreiheit
    - Kontrast-Verstärkung
    - Entzerrung (perspektivische Korrektur via Homographie, optional)
         ↓
-3. PP-OCRv5 (`ppu-paddle-ocr`, ONNX Runtime, WebGPU/WASM):
+3. PP-OCRv6 (`ppu-paddle-ocr`, ONNX Runtime, WebGPU/WASM):
    - Texterkennung → Array von { text, bbox, confidence }
         ↓
 4. GOÄ-Strukturparser:
@@ -551,14 +551,14 @@ abgegriffen und bewertet; das Overlay zeigt den obersten Hinweis bzw. ein
 (volle Sensorauflösung, Issue #280); nur im Fallback wird eine kurze Serie von
 Videoframes abgegriffen und der schärfste behalten.
 
-### 4.2 PP-OCRv5-Integration (`ppu-paddle-ocr`)
+### 4.2 PP-OCRv6-Integration (`ppu-paddle-ocr`)
 
-PP-OCRv5 läuft im Browser über die `ppu-paddle-ocr`-Bindung (MIT) auf **ONNX
+PP-OCRv6 läuft im Browser über die `ppu-paddle-ocr`-Bindung (MIT) auf **ONNX
 Runtime**: WebGPU mit automatischem WASM-Fallback, lauffähig im **Web Worker**
 und mit einem {@link ImageData}-Frame als Eingabe — kein DOM-`HTMLImageElement`
 nötig [^6]. (Das ältere offizielle `@paddle-js-models/ocr` schied aus: WebGL-
 statt WebGPU-gebunden, DOM-/opencv-gebunden und damit nicht Worker-tauglich, und
-kein echtes PP-OCRv5.)
+ohne Zugriff auf eine aktuelle PP-OCR-Modellgeneration.)
 
 Die Bindung sitzt hinter einem schmalen, injizierbaren Adapter-Seam
 (`packages/medic-invoice-check/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
@@ -603,40 +603,71 @@ const { lines } = await service.recognize(imageData); // [{ text, box, score }]
 
 **Wichtig:** OCR läuft in einem **Web Worker**, damit der UI-Thread während der
 Verarbeitung nicht blockiert. Die schweren Laufzeit-Assets (ONNX-Runtime-WASM
-und die ~12 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
+und die ~6 MB Modelldateien) werden **lokal** ausgeliefert und vom Service
 Worker beim ersten Gebrauch gecacht (§6.3); kein Drittanbieter-Abruf zur
 Laufzeit.
 
-**Modellwahl (Stand `ppu-paddle-ocr` 6.2.0).** Ab 6.2.0 ist PP-OCRv6 die
-Standard-Modellfamilie der Bindung. Weil wir *immer* explizite, selbst gehostete
-URLs übergeben, ändert sich dadurch nichts von allein — ein Wechsel wäre eine
-bewusste Entscheidung. Gemessene Kandidaten:
+**Modellwahl (Stand `ppu-paddle-ocr` 6.2.0): PP-OCRv6-tiny.** Ab 6.2.0 ist
+PP-OCRv6 die Standard-Modellfamilie der Bindung; weil wir *immer* explizite,
+selbst gehostete URLs übergeben, ändert sich dadurch nichts von allein — ein
+Wechsel war eine bewusste Entscheidung. Gemessene Kandidaten:
 
 | Bündel | Detektion + Erkennung | Zeichen im Wörterbuch |
 |---|---|---|
-| **v5 latin mobile (aktuell)** | 4,6 + 7,7 = **12,3 MB** | **837** |
-| v6 tiny | 1,8 + 4,4 = **6,2 MB** | 6 905 |
-| v6 small | 9,5 + 20,3 = **29,8 MB** | 18 709 |
+| v5 latin mobile (vorherig) | 4,6 + 7,7 = 12,3 MB | 837 |
+| **v6 tiny (aktuell)** | 1,8 + 4,4 = **6,2 MB** | 6 905 |
+| v6 small | 9,5 + 20,3 = 29,8 MB | 18 709 |
 
 Alle drei Wörterbücher decken Deutsch vollständig ab (`ä ö ü Ä Ö Ü ß` sowie
-`€ § %`) — Deutsch ist also *nicht* das Unterscheidungskriterium. Zwei Punkte
-sprechen dagegen, v6 einfach als besser anzunehmen:
+`€ § %`) — Deutsch war also *nicht* das Unterscheidungskriterium. Entscheidung:
+**v6-tiny** — kleiner *und* schneller als der bisherige Stand, und sein
+Wörterbuch bleibt mit 6 905 Zeichen in der rein lateinischen Domäne eng genug,
+dass der Erkenner keine CJK-Glyphe auf eine deutsche Rechnung schreiben kann
+(anders als v6-small mit 18 709). Die Herstellerangabe (99,48 % vs. 97,39 %)
+beruht auf einem eigenen Kassenbon-Benchmark mit dem allgemeinen
+Standardmodell, nicht auf deutschen GOÄ-Rechnungen, und war daher nicht
+ausschlaggebend.
 
-- Ein **engeres** Wörterbuch ist in einer rein lateinischen Domäne ein Vorteil:
-  mit 837 Zeichen *kann* der Erkenner keine CJK-Glyphe auf eine deutsche Rechnung
-  schreiben, mit 18 709 schon.
-- Die Herstellerangabe (99,48 % vs. 97,39 %) stammt aus dessen eigenem
-  Kassenbon-Benchmark mit dem allgemeinen Standardmodell — nicht aus deutschen
-  GOÄ-Rechnungen gegen eine lateinisch beschränkte Vergleichsbasis.
+**Die `.ort`-Hürde ist browserverifiziert geklärt (issue #317) — deshalb
+`.onnx`, nicht `.ort`.** Mit den echten PP-OCRv6-tiny-`.ort`-Dateien
+(`det.ort`/`rec.ort`, 1,8/4,4 MB, aus `ppu-paddle-ocr-models`) in echtem
+Chromium, über unseren tatsächlichen Lade-Pfad (`await
+import('onnxruntime-web')` + `ort.env.wasm.wasmPaths`, Session im Worker wie in
+Produktion) scheitert die Session-Erstellung über den WebGPU-/JSEP-Execution-
+Provider mit `ResolveKernelTypeStr Failed to find op_id:
+com.ms.internal.nhwc:Conv:1` — die ORT-Format-Konvertierung bakt die
+Conv-Kernel fürs feste Layout der Konvertierungs-Zielplattform ein und liefert
+den zur Laufzeit nötigen NHWC-Layout-Transform nicht mit, den der
+JSEP-/WebGPU-Backend für seine Conv-Kernel erwartet (die offizielle
+ORT-Format-Doku unterscheidet `optimization_style: Fixed`, das
+Laufzeitoptimierungen wie diese gerade *nicht* mitspeichert, von `Runtime`).
+Über den WASM-Pfad lädt dieselbe `.ort`-Datei dagegen anstandslos.
 
-Die eigentliche Hürde ist zudem technisch: v6 liefert das
-ONNX-Runtime-Serialisierungsformat `.ort` (für Minimal-/Mobile-Builds gedacht),
-v5-latin schlichtes `.onnx`. Ob der JSEP-/WebGPU-Build von `onnxruntime-web` 1.27
-`.ort` in unserem Worker-Setup überhaupt lädt, ist vor allem anderen zu prüfen.
-Ein Wechsel zöge außerdem neue SHA-256-Pins (`models.sha256`), neue
-Dateinamen (`det.ort`/`rec.ort` statt `.onnx`, samt `OCR_ASSET_PATHS` und
-`.gitignore`) und bei v6 small ein Asset-Budget von ~30 MB statt ~12 MB nach sich
-(§6.3) — relevant für eine PWA, die die Modelle beim ersten Gebrauch cacht.
+Derselbe Modell-Fundus liefert PP-OCRv6 aber *zusätzlich* als schlichtes
+`.onnx` (`PP-OCRv6_tiny_det.onnx`/`_rec.onnx` — dieselben Gewichte, kein
+ORT-Serialisierungsschritt), und diese Variante lädt im selben Test anstandslos
+über **beide** Pfade, WebGPU und WASM, sowohl im Hauptthread als auch im
+Worker. `scripts/fetch-ocr-models.mjs` fetcht deshalb die `.onnx`-Varianten —
+die Dateinamen bleiben `det.onnx`/`rec.onnx`/`dict.txt`, keine Umbenennung zu
+`.ort` nötig.
+
+Wichtig für einen künftigen Wechsel *auf* `.ort` (z. B. wegen der kleineren
+Dateigröße): `backend.ts` wählt WebGPU, sobald
+`navigator.gpu.requestAdapter()` einen Adapter liefert — ohne zu prüfen, ob
+sich damit tatsächlich eine Session bauen lässt —, und `ocr-worker-core.ts`s
+`handleInit` fällt bei einem Fehlschlag **nicht** automatisch auf WASM zurück,
+sondern meldet `init_failed`. Ein `.ort`-Wechsel bräuchte also zwingend zuerst
+einen Retry-bei-Fehlschlag von WebGPU auf WASM, sonst schlägt die
+OCR-Initialisierung auf jedem WebGPU-fähigen Browser hart fehl statt graceful
+auf WASM zurückzufallen. Mit den `.onnx`-Varianten entfällt dieses Risiko.
+
+Eine formale Erkennungsqualitäts-Messung an echten deutschen GOÄ-Rechnungen
+(v5-latin vs. v6-tiny vs. v6-small) steht noch aus — die darf aus
+Datenschutzgründen (Art. 9 DSGVO, §8) nur lokal beim Maintainer mit echten
+Rechnungen laufen, nicht in CI/Repo. Der Wechsel auf v6-tiny wurde direkt
+vorgenommen; zeigt die lokale Prüfung eine Regression, ist ein Rollback auf
+v5-latin mechanisch identisch (nur `scripts/fetch-ocr-models.mjs`/
+`models.sha256` zurückändern).
 
 ### 4.2.1 Reine Texterkennungs-Suche (`detect`) und Zuschnitt
 
@@ -1165,7 +1196,7 @@ installierbar. Mit dem Attribut wird die gespeicherte Basic Auth mitgesendet.
 Service Worker Strategie:
 - **Shell-Dateien** (App-Code, GOÄ-Tabelle): Cache First
 - **API-Aufrufe** (REST): Network First mit Offline-Queue für Schreiboperationen
-- **OCR-Assets** unter `/models/**` (PP-OCRv5-Modelle ~12 MB + ONNX-Runtime-WASM unter `/models/ort/` ~38 MB): Cache After First Load. Beide werden zur Build-/Deploy-Zeit lokal bereitgestellt (`pnpm ocr:models` bzw. `scripts/copy-ort-wasm.mjs` im Frontend-Build), nicht von einem CDN.
+- **OCR-Assets** unter `/models/**` (PP-OCRv6-tiny-Modelle ~6 MB + ONNX-Runtime-WASM unter `/models/ort/` ~38 MB): Cache After First Load. Beide werden zur Build-/Deploy-Zeit lokal bereitgestellt (`pnpm ocr:models` bzw. `scripts/copy-ort-wasm.mjs` im Frontend-Build), nicht von einem CDN.
 
 ***
 
@@ -1313,7 +1344,7 @@ services:
 
 ### Phase 2: OCR-Integration
 
-- [ ] PP-OCRv5 (`ppu-paddle-ocr`) als Web Worker einbinden
+- [ ] PP-OCRv6 (`ppu-paddle-ocr`) als Web Worker einbinden
 - [ ] WebGPU-Verfügbarkeitsprüfung + WASM-Fallback
 - [ ] GOÄ-Lookup-Tabelle (JSON) aufbauen (GOÄ + GOZ)
 - [ ] OCR-Pipeline: Scan → Parse → Review-Screen
@@ -1344,7 +1375,7 @@ services:
 | GOÄ-Reform 2025 | ⚠️ Prüfen | Die GOÄ-Reform wurde mehrfach verschoben; aktuelle Fassung von 1996 gilt noch |
 | UV-GOÄ / BG-Rechnungen | ❌ Not in Scope v1 | Separates Regelwerk für Arbeitsunfälle |
 | Auslandsbehandlungen | ❌ Not in Scope v1 | Keine EHI-Gebührentabellen-Prüfung |
-| OCR Handschrift | ⚠️ Limitiert | PP-OCRv5 begrenzt bei Handschrift – Fallback auf manuelle Eingabe |
+| OCR Handschrift | ⚠️ Limitiert | PP-OCRv6 begrenzt bei Handschrift – Fallback auf manuelle Eingabe |
 | Schlechte Vorlage (unscharf/dunkel/Reflexion) | ⚠️ Limitiert | Qualitätsprüfung vor dem OCR-Lauf warnt mit konkreten Hinweisen (§4.1, Issue #279); Schwellen sind heuristisch und nicht an einem Referenzkorpus kalibriert – die Warnung ist daher bewusst nie blockierend |
 | OCR-Bindung Lizenz | ✅ OK | `ppu-paddle-ocr` MIT, ONNX Runtime MIT [^6] |
 | SvelteKit Lizenz | ✅ OK | MIT |
@@ -1404,7 +1435,7 @@ pkv-manager/
 
 | Paket | Version | Zweck |
 |---|---|---|
-| `ppu-paddle-ocr` | ^6.0 | PP-OCRv5 Browser-OCR (Web Worker, WebGPU/WASM) [^6] |
+| `ppu-paddle-ocr` | ^6.0 | PP-OCRv6 Browser-OCR (Web Worker, WebGPU/WASM) [^6] |
 | `onnxruntime-web` | ^1.27 | ONNX-Runtime-Backend für `ppu-paddle-ocr` |
 | `@hono/hono` | ^4.x | Backend-Framework |
 | `drizzle-orm` | ^0.30 | Type-safe ORM für SQLite |
