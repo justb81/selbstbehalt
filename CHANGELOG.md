@@ -2,11 +2,10 @@
 
 ## [1.14.0](https://github.com/justb81/selbstbehalt/compare/v1.13.0...v1.14.0) (2026-08-01)
 
-
 ### Features
 
-* **ocr:** pin ppu-paddle-ocr 6.2.0's four changed defaults explicitly ([#325](https://github.com/justb81/selbstbehalt/issues/325)) ([4eae142](https://github.com/justb81/selbstbehalt/commit/4eae1420304257c360dceab8dba85e8298432dae)), closes [#315](https://github.com/justb81/selbstbehalt/issues/315)
-* **ocr:** switch on-device OCR to PP-OCRv6-tiny (.onnx, not .ort) ([#327](https://github.com/justb81/selbstbehalt/issues/327)) ([86f1395](https://github.com/justb81/selbstbehalt/commit/86f1395f6a7380b3c439ada9e6a65a961e490c2c))
+- **ocr:** pin ppu-paddle-ocr 6.2.0's four changed defaults explicitly ([#325](https://github.com/justb81/selbstbehalt/issues/325)) ([4eae142](https://github.com/justb81/selbstbehalt/commit/4eae1420304257c360dceab8dba85e8298432dae)), closes [#315](https://github.com/justb81/selbstbehalt/issues/315)
+- **ocr:** switch on-device OCR to PP-OCRv6-tiny (.onnx, not .ort) ([#327](https://github.com/justb81/selbstbehalt/issues/327)) ([86f1395](https://github.com/justb81/selbstbehalt/commit/86f1395f6a7380b3c439ada9e6a65a961e490c2c))
 
 ## [1.13.0](https://github.com/justb81/selbstbehalt/compare/v1.12.0...v1.13.0) (2026-07-25)
 
