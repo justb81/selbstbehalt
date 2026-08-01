@@ -562,8 +562,10 @@ kein echtes PP-OCRv5.)
 
 Die Bindung sitzt hinter einem schmalen, injizierbaren Adapter-Seam
 (`packages/medic-invoice-check/src/lib/ocr/engine.ts`, `createPaddleOcrEngine`), den der Worker
-(`packages/medic-invoice-check/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt drei
-Dinge explizit:
+(`packages/medic-invoice-check/src/lib/workers/ocr.worker.ts`) ansteuert. Der Adapter setzt fünf
+Dinge explizit — die Modell-URLs, die Detektions- und Erkennungs-Feinabstimmung
+(vier Optionen fest gepinnt, siehe Kommentare), die Backend-Wahl und den
+Bildpfad:
 
 ```typescript
 // packages/medic-invoice-check/src/lib/ocr/engine.ts (Auszug — vom OCR-Web-Worker angesteuert)
@@ -577,6 +579,19 @@ const service = new PaddleOcrService({
     recognition: '/models/ocr/rec.onnx',
     charactersDictionary: '/models/ocr/dict.txt',
   },
+  // maxSideLength wechselt vom bisherigen festen 1280 auf den neuen
+  // 6.2.0-Default "auto" (skaliert mit der Eingabe statt einer festen
+  // Pixelzahl); minimumAreaThreshold übernimmt ebenfalls den neuen
+  // 6.2.0-Default (20 statt 50). Beide dennoch explizit gepinnt, damit eine
+  // künftige Default-Änderung der Bindung sie nicht verschiebt.
+  detection: { maxSideLength: 'auto', minimumAreaThreshold: 20 },
+  // strategy bleibt auf dem Vor-6.2.0-Default "per-box" (der neue Default
+  // "per-line" ist einen eigenen A/B-Test wert, nicht Teil dieses reinen
+  // Versions-Bumps); minimumConfidence wird abweichend vom 6.2.0-Default
+  // (0.5) auf 0 gepinnt — sonst verwirft die Bindung unsichere Zeilen
+  // lautlos vor dem Review und hebt meanConfidence künstlich über die
+  // "Geringe Erkennungsgenauigkeit"-Schwelle (InvoiceReview.svelte, 0.8).
+  recognition: { strategy: 'per-box', minimumConfidence: 0 },
   // Backend-Wahl (WebGPU bevorzugt, sonst WASM) → ONNX-Execution-Provider.
   session: { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' },
   // Worker-tauglicher Bildpfad ohne DOM-gebundenes opencv.
