@@ -629,14 +629,46 @@ sprechen dagegen, v6 einfach als besser anzunehmen:
   Kassenbon-Benchmark mit dem allgemeinen Standardmodell — nicht aus deutschen
   GOÄ-Rechnungen gegen eine lateinisch beschränkte Vergleichsbasis.
 
-Die eigentliche Hürde ist zudem technisch: v6 liefert das
-ONNX-Runtime-Serialisierungsformat `.ort` (für Minimal-/Mobile-Builds gedacht),
-v5-latin schlichtes `.onnx`. Ob der JSEP-/WebGPU-Build von `onnxruntime-web` 1.27
-`.ort` in unserem Worker-Setup überhaupt lädt, ist vor allem anderen zu prüfen.
-Ein Wechsel zöge außerdem neue SHA-256-Pins (`models.sha256`), neue
-Dateinamen (`det.ort`/`rec.ort` statt `.onnx`, samt `OCR_ASSET_PATHS` und
-`.gitignore`) und bei v6 small ein Asset-Budget von ~30 MB statt ~12 MB nach sich
-(§6.3) — relevant für eine PWA, die die Modelle beim ersten Gebrauch cacht.
+**Die `.ort`-Hürde ist browserverifiziert geklärt (issue #317).** Mit den echten
+PP-OCRv6-tiny-Dateien (`det.ort`/`rec.ort`, 1,8/4,4 MB, aus
+`ppu-paddle-ocr-models`) in echtem Chromium, über unseren tatsächlichen
+Lade-Pfad (`await import('onnxruntime-web')` + `ort.env.wasm.wasmPaths`, Session
+im Worker wie in Produktion) scheitert die Session-Erstellung über den
+WebGPU-/JSEP-Execution-Provider mit `ResolveKernelTypeStr Failed to find op_id:
+com.ms.internal.nhwc:Conv:1` — die ORT-Format-Konvertierung bakt die
+Conv-Kernel fürs feste Layout der Konvertierungs-Zielplattform ein und liefert
+den zur Laufzeit nötigen NHWC-Layout-Transform nicht mit, den der
+JSEP-/WebGPU-Backend für seine Conv-Kernel erwartet (die offizielle
+ORT-Format-Doku unterscheidet `optimization_style: Fixed`, das
+Laufzeitoptimierungen wie diese gerade *nicht* mitspeichert, von `Runtime`).
+Über den **WASM**-Pfad lädt dieselbe `.ort`-Datei dagegen anstandslos, sowohl
+im Hauptthread als auch im Worker.
+
+Das entwertet v6 nicht, ändert aber den Beschaffungsweg: derselbe
+Modell-Fundus liefert PP-OCRv6 *zusätzlich* als schlichtes `.onnx`
+(`PP-OCRv6_tiny_det.onnx`/`_rec.onnx` usw. — dieselben Gewichte, kein
+ORT-Serialisierungsschritt), und diese Variante lädt im selben Test
+anstandslos über **beide** Pfade, WebGPU und WASM. Ein Wechsel auf v6 sollte
+also `scripts/fetch-ocr-models.mjs` auf die `.onnx`-Varianten zeigen — die in
+der ursprünglichen Analyse angenommene Umstellung auf `.ort` samt Umbenennung
+zu `det.ort`/`rec.ort` entfällt damit.
+
+Wichtig für jeden künftigen Wechsel (ob auf `.ort` oder `.onnx`): `backend.ts`
+wählt WebGPU, sobald `navigator.gpu.requestAdapter()` einen Adapter liefert —
+ohne zu prüfen, ob sich damit tatsächlich eine Session bauen lässt —, und
+`ocr-worker-core.ts`s `handleInit` fällt bei einem Fehlschlag **nicht**
+automatisch auf WASM zurück, sondern meldet `init_failed`. Ein `.ort`-Wechsel
+(z. B. wegen der kleineren Dateigröße) bräuchte also zwingend zuerst einen
+Retry-bei-Fehlschlag von WebGPU auf WASM, sonst schlägt die OCR-Initialisierung
+auf jedem WebGPU-fähigen Browser hart fehl statt graceful auf WASM
+zurückzufallen. Mit den `.onnx`-Varianten entfällt dieses Risiko.
+
+Ein Wechsel zöge außerdem neue SHA-256-Pins (`models.sha256`) und bei v6 small
+ein Asset-Budget von ~30 MB statt ~12 MB nach sich (§6.3) — relevant für eine
+PWA, die die Modelle beim ersten Gebrauch cacht. Offen bleibt die
+Erkennungsqualität an echten deutschen GOÄ-Rechnungen (v5-latin vs. v6-tiny vs.
+v6-small) — das läuft aus Datenschutzgründen (Art. 9 DSGVO, §8) lokal beim
+Maintainer, nicht in CI/Repo.
 
 ### 4.2.1 Reine Texterkennungs-Suche (`detect`) und Zuschnitt
 
