@@ -37,7 +37,7 @@
     "@sveltejs/kit": "2.70.1",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/svelte": "^5.4.2",
     "@testing-library/user-event": "^14.6.1",
     "@vite-pwa/sveltekit": "1.1.0",
