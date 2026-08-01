@@ -119,7 +119,8 @@ describe('createPaddleOcrEngine', () => {
         recognition: '/m/rec.onnx',
         charactersDictionary: '/m/dict.txt',
       },
-      detection: { maxSideLength: 1280 },
+      detection: { maxSideLength: 'auto', minimumAreaThreshold: 20 },
+      recognition: { strategy: 'per-box', minimumConfidence: 0 },
       session: { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' },
       processing: { engine: 'canvas-native' },
     });

@@ -49,8 +49,22 @@ export interface PaddleRecognizeResult {
 export interface PaddleOcrServiceOptions {
   /** Local URLs/buffers of the detection + recognition models and dictionary. */
   model: { detection: string; recognition: string; charactersDictionary: string };
-  /** Text-detection tuning; `maxSideLength` is raised for dense full-page invoices. */
-  detection: { maxSideLength: number };
+  /**
+   * Text-detection tuning, both matching the binding's own 6.2.0 defaults but
+   * pinned explicitly so a future default change can't move them under us:
+   * `maxSideLength` scales the detection cap with the input (`"auto"`) rather
+   * than a fixed pixel count, and `minimumAreaThreshold` keeps single-digit
+   * detections above the area filter.
+   */
+  detection: { maxSideLength: number | 'auto'; minimumAreaThreshold: number };
+  /**
+   * Text-recognition tuning, both pinned away from the 6.2.0 defaults: `strategy`
+   * stays on the pre-6.2.0 `per-box` (switching to `per-line` is its own A/B
+   * test, not bundled into this version bump), and `minimumConfidence` is
+   * disabled (`0`) so low-confidence lines are shown for review rather than
+   * silently dropped.
+   */
+  recognition: { strategy: 'per-box'; minimumConfidence: number };
   /** ONNX Runtime session config; `executionProviders` picks WebGPU vs WASM. */
   session: { executionProviders: string[]; graphOptimizationLevel: 'all' };
   /**
@@ -270,13 +284,43 @@ function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
 }
 
 /**
- * Longest-side cap (px) the detector scales the frame to before inference. The
- * binding defaults to 640, which shrinks a full-page A4 invoice photo until body
- * text is only ~6 px tall and the detector misses most lines; 1280 keeps text
- * legible (~13 px) for both detection and the recognition crops, while staying
- * within WASM/WebGPU budgets.
+ * Longest-side cap the detector scales the frame to before inference. Our
+ * previous fixed `1280` is superseded by 6.2.0's own `"auto"` default —
+ * `clamp(0.75 × longest side, 960, 1920)` — which scales with the input
+ * instead of a one-size-fits-all constant: a ~3000px phone photo now detects
+ * at 1920 instead of being capped at 1280, a page rasterised at `scale: 2`
+ * lands close to our old value, and the v6 model family is tuned against
+ * these defaults. Pinned explicitly (rather than left unset) so a future
+ * binding default change can't move it under us.
  */
-const DETECTION_MAX_SIDE_LENGTH = 1280;
+const DETECTION_MAX_SIDE_LENGTH: number | 'auto' = 'auto';
+
+/**
+ * Minimum detected-box area (px²) below which a detection is discarded. Kept
+ * at the binding's 6.2.0 default (down from 50 in 6.1.0) and pinned
+ * explicitly: single-digit detections (Anzahl, einzelne Ziffern) survive the
+ * area filter, and a future default change can't shift this under us.
+ */
+const DETECTION_MINIMUM_AREA_THRESHOLD = 20;
+
+/**
+ * Recognition strategy: each detected box is recognised individually. Kept
+ * explicit against the 6.2.0 default (`per-line`) so this version bump stays
+ * a pure fix-import, one variable at a time — `per-line` deserves its own
+ * A/B test now that 6.1.1/6.1.2 fixed its crash on thin regions and its
+ * "all text lands in the first box" bug.
+ */
+const RECOGNITION_STRATEGY = 'per-box';
+
+/**
+ * Confidence floor below which a recognised line is dropped; disabled (`0`)
+ * rather than the 6.2.0 default of `0.5`. The binding would otherwise
+ * silently discard low-confidence lines before they ever reach review,
+ * hiding misreads from the user and inflating `meanConfidence` past the
+ * "Geringe Erkennungsgenauigkeit" banner threshold in `InvoiceReview.svelte`
+ * (0.8). Uncertain lines must be shown, not suppressed.
+ */
+const RECOGNITION_MINIMUM_CONFIDENCE = 0;
 
 /**
  * Lazily loads the real binding. Kept dynamic so the heavy ONNX-Runtime/WASM
@@ -325,7 +369,14 @@ export function createPaddleOcrEngine(
           recognition: config.modelUrls.recognition,
           charactersDictionary: config.modelUrls.dictionary,
         },
-        detection: { maxSideLength: DETECTION_MAX_SIDE_LENGTH },
+        detection: {
+          maxSideLength: DETECTION_MAX_SIDE_LENGTH,
+          minimumAreaThreshold: DETECTION_MINIMUM_AREA_THRESHOLD,
+        },
+        recognition: {
+          strategy: RECOGNITION_STRATEGY,
+          minimumConfidence: RECOGNITION_MINIMUM_CONFIDENCE,
+        },
         session: {
           executionProviders: [executionProviderFor(backend)],
           graphOptimizationLevel: 'all',
