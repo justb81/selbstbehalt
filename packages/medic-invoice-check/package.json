@@ -33,7 +33,7 @@
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",
     "onnxruntime-web": "1.27.0",
-    "pdfjs-dist": "^6.1.200",
+    "pdfjs-dist": "^6.2.108",
     "ppu-paddle-ocr": "6.2.0",
     "tailwind-merge": "^3.6.0",
     "tailwind-variants": "^3.2.2",
