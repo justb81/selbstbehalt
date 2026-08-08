@@ -20,6 +20,15 @@ overrides:
   # dependency to bump and the patched line has to be forced here.
   # Patched in 8.5.18. The 7-day cooldown still holds 8.5.20+ back, so this
   # currently resolves to 8.5.19 — patched *and* old enough, no exclusion needed.
+  #
+  # Separately, postcss also bundles nanoid, and nanoid <3.3.17 has its own
+  # high-severity advisory (GHSA-2v37-7h3g-55p8: a custom generator with size 0
+  # loops indefinitely). postcss only bumped its nanoid dependency past that in
+  # 8.5.26 (2026-08-06) and the patched nanoid releases (3.3.17/3.3.18) landed
+  # 2026-08-03/07 — all three are still inside the 7-day cooldown as of writing,
+  # so there is no age-compliant fix available yet. Once one of them clears the
+  # cutoff, bump the floor here to `postcss@<8.5.26: '>=8.5.26'` (or add a direct
+  # `nanoid@<3.3.17: '>=3.3.17'` override) to close it.
   postcss@<8.5.18: '>=8.5.18'
 
 allowBuilds:
