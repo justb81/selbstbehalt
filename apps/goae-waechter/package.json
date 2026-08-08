@@ -38,7 +38,7 @@
     "@testing-library/svelte": "^5.4.2",
     "@testing-library/user-event": "^14.6.1",
     "@vite-pwa/sveltekit": "1.1.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "svelte": "^5.56.8",
     "svelte-check": "^4.7.3",
     "tailwind-variants": "^3.2.2",
