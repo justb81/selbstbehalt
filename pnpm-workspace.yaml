@@ -18,9 +18,16 @@ overrides:
   # transitively through the Vite/SvelteKit toolchain (bits-ui → runed →
   # @sveltejs/kit → vite → postcss, 18 paths in all), so there is no direct
   # dependency to bump and the patched line has to be forced here.
-  # Patched in 8.5.18. The 7-day cooldown still holds 8.5.20+ back, so this
-  # currently resolves to 8.5.19 — patched *and* old enough, no exclusion needed.
-  postcss@<8.5.18: '>=8.5.18'
+  #
+  # postcss also bundles nanoid, and nanoid <3.3.17 has its own high-severity
+  # advisory (GHSA-2v37-7h3g-55p8: a custom generator with size 0 loops
+  # indefinitely). postcss only bumped its nanoid dependency past that in 8.5.26,
+  # so the floor is raised to that version to close both advisories at once.
+  # 8.5.26 (2026-08-06) and the nanoid it pulls in (3.3.18, 2026-08-07) are both
+  # inside the 7-day cooldown as of writing — see the explicit
+  # minimumReleaseAgeExclude entries below for why that's an accepted, deliberate
+  # exception here rather than drift.
+  postcss@<8.5.26: '>=8.5.26'
 
 allowBuilds:
   esbuild: true
@@ -54,6 +61,12 @@ minimumReleaseAgeExclude:
   - eslint@10.6.0
   - pdfjs-dist@6.1.200
   - prettier@3.9.0
+  # Deliberate exceptions to close two high-severity advisories (postcss
+  # path-traversal + nanoid infinite-loop, see the postcss override above)
+  # despite both landing inside the 7-day cooldown. Revisit once each has
+  # naturally aged past it — the exclusion can be dropped at that point.
+  - postcss@8.5.26
+  - nanoid@3.3.18
 
 onlyBuiltDependencies:
   - better-sqlite3
