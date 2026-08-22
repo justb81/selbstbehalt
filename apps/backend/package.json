@@ -34,6 +34,6 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^26.2.0",
     "drizzle-kit": "^0.31.10",
-    "tsx": "^4.23.11"
+    "tsx": "^4.23.12"
   }
 }
