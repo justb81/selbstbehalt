@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Caddy reverse proxy in front of selbstbehalt: HTTPS (Let's Encrypt via HTTP-01
+# or DNS-01, or a locally-trusted LAN certificate) + HTTP Basic Auth, on top of
+# the base stack. See deploy/reverse-proxy/caddy/README.md for setup steps.
+#
+# Usage (from the repo root):
+#
+#   cp .env.example .env                       # then edit .env
+#   cp deploy/reverse-proxy/caddy/.env.example deploy/reverse-proxy/caddy/.env
+#   cp deploy/reverse-proxy/caddy/basicauth.conf.example \
+#      deploy/reverse-proxy/caddy/basicauth.conf          # see README step 1
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f deploy/reverse-proxy/caddy/docker-compose.override.yml \
+#     --env-file .env --env-file deploy/reverse-proxy/caddy/.env \
+#     up -d --build
+
+services:
+  caddy:
+    # Options A and B run the stock image. Option C (DNS-01) needs a DNS
+    # provider module compiled in: comment `image` out, uncomment `build`, and
+    # set CADDY_DNS_MODULE to your provider (see Dockerfile).
+    image: caddy:2.11-alpine
+    # build:
+    #   context: deploy/reverse-proxy/caddy
+    #   args:
+    #     CADDY_DNS_MODULE: github.com/caddy-dns/cloudflare
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/reverse-proxy/caddy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      # Option C only: the provider module's Caddyfile name and its API
+      # credential. Unused and harmless for Options A and B.
+      CADDY_DNS_PROVIDER: ${CADDY_DNS_PROVIDER:-}
+      DNS_API_TOKEN: ${DNS_API_TOKEN:-}
+    volumes:
+      # Relative paths in an override file resolve against the Compose project
+      # directory — the directory of the first `-f` file, i.e. the repo root —
+      # not against this file, so they are spelled out from the root.
+      - ./deploy/reverse-proxy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/reverse-proxy/caddy/basicauth.conf:/etc/caddy/basicauth.conf:ro
+      # Issued certificates and the ACME account key. Named volumes rather than
+      # bind mounts: this keeps private key material out of the working tree
+      # entirely, and it survives `docker compose down` (only `down -v` clears
+      # it, which would force a re-issue and can hit Let's Encrypt rate limits).
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -119,7 +119,7 @@ unprivileged `node` user — no manual `chown` needed.
 self-signed certificate rather than plain HTTP, since HTTP Basic Auth
 credentials are only as safe as the transport they travel over.
 
-Two ready-to-use override examples route only the **frontend** container
+Three ready-to-use override examples route only the **frontend** container
 (the recommended single-origin setup: its own nginx proxies `/api` to the
 backend over the Compose network, so one Basic Auth prompt covers the whole
 app, including the API, with no CORS to configure):
@@ -130,9 +130,16 @@ app, including the API, with no CORS to configure):
 - [`deploy/reverse-proxy/nginx/`](../deploy/reverse-proxy/nginx/) — a
   standalone nginx `server` block with the same Basic Auth, using `certbot`
   for Let's Encrypt.
+- [`deploy/reverse-proxy/caddy/`](../deploy/reverse-proxy/caddy/) — Caddy,
+  configured statically so it needs no access to the Docker socket. Adds a
+  **DNS-01** option: a publicly trusted certificate for a host that is not
+  reachable from the internet, which is the usual case here since this guide
+  advises against port-forwarding.
 
-Each example's own README covers generating the `htpasswd` file and both TLS
-options (public Let's Encrypt vs. self-signed for a LAN-only host) in detail.
+Each example's own README covers generating the Basic Auth credentials and its
+TLS options in detail — public Let's Encrypt, a locally-trusted or self-signed
+certificate for a LAN-only host, and, in the Caddy example, DNS-01 for a host
+with no inbound ports.
 See [`docs/hardening.md`](hardening.md) for the full rationale, the CSP/
 security headers both services ship with, and the hardening checklist in
 [`SECURITY.md`](../SECURITY.md#hardening-checklist).

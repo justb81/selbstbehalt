@@ -56,9 +56,9 @@ this change — that's an OCR-correctness concern rather than a CSP one.
 
 HTTPS is mandatory (§7.2) — even for a LAN-only deployment, use a self-signed
 certificate rather than plain HTTP, since HTTP Basic Auth credentials are only
-as safe as the transport they travel over. Two ready-to-use examples, either
-one sits in front of the unmodified [`docker-compose.yml`](../docker-compose.yml)
-as an override:
+as safe as the transport they travel over. Three ready-to-use examples, any
+one of which sits in front of the unmodified
+[`docker-compose.yml`](../docker-compose.yml) as an override:
 
 - [`deploy/reverse-proxy/traefik/`](../deploy/reverse-proxy/traefik/) — Traefik
   with automatic Let's Encrypt (or a static self-signed cert) and a Basic Auth
@@ -66,12 +66,19 @@ as an override:
 - [`deploy/reverse-proxy/nginx/`](../deploy/reverse-proxy/nginx/) — a
   standalone nginx `server` block doing the same with `certbot` for Let's
   Encrypt.
+- [`deploy/reverse-proxy/caddy/`](../deploy/reverse-proxy/caddy/) — Caddy,
+  configured statically through a `Caddyfile`. Two properties matter for
+  hardening: it needs **no access to the Docker socket** (unlike the
+  label-driven Traefik example, whose README flags that privilege boundary),
+  and it offers a **DNS-01** option — a publicly trusted certificate without
+  exposing ports 80/443, so a home deployment need not choose between
+  port-forwarding and an untrusted certificate.
 
-Both examples route only the **frontend** container (the default
+All three examples route only the **frontend** container (the default
 single-origin setup from §7.2): its own nginx proxies `/api` to the backend
 over the Compose network, so one Basic Auth prompt covers the whole app,
 including the API, and there is no CORS to configure. Each example's README
-covers generating the `htpasswd` file and both TLS options in detail.
+covers generating the Basic Auth credentials and its TLS options in detail.
 
 ## External access: `X-API-Key` (VPN / Tailscale)
 

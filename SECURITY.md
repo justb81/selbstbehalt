@@ -58,8 +58,9 @@ Before exposing an instance beyond your own machine, work through
 [`docs/hardening.md`](docs/hardening.md) for the details behind each item:
 
 - [ ] **HTTPS reverse proxy with HTTP Basic Auth** in front of the app — see
-      [`deploy/reverse-proxy/traefik/`](deploy/reverse-proxy/traefik/) or
-      [`deploy/reverse-proxy/nginx/`](deploy/reverse-proxy/nginx/). Never run a
+      [`deploy/reverse-proxy/traefik/`](deploy/reverse-proxy/traefik/),
+      [`deploy/reverse-proxy/nginx/`](deploy/reverse-proxy/nginx/) or
+      [`deploy/reverse-proxy/caddy/`](deploy/reverse-proxy/caddy/). Never run a
       deployment reachable outside your own machine over plain HTTP, even on a
       LAN — use a self-signed certificate there instead.
 - [ ] **CSP/security headers are intact.** Both services set their own
