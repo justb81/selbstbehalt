@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Registers @testing-library/jest-dom matchers (e.g. toBeInTheDocument) with Vitest.
 import '@testing-library/jest-dom/vitest';
-import { afterEach } from 'vitest';
+import { afterAll, afterEach } from 'vitest';
 
 // bits-ui's Dialog/AlertDialog lock body scroll while open by setting inline
 // styles (padding-right, overflow, pointer-events: none) on <body>. The lock
@@ -11,6 +11,25 @@ import { afterEach } from 'vitest';
 // unconditionally after every test.
 afterEach(() => {
   document.body.removeAttribute('style');
+});
+
+// The same scroll lock also schedules its cleanup on a 24 ms timer, so that a
+// dialog destroyed and recreated in the same tick does not lose the lock
+// (huntabyte/bits-ui#1639). Nothing cancels that timer when a test file ends:
+// if the last dialog closes within 24 ms of the file finishing, the callback
+// runs after Vitest has torn down the jsdom environment, reaches for
+// `document.body` and throws
+//
+//     ReferenceError: document is not defined
+//
+// as an uncaught exception. Vitest then fails the run with a non-zero exit even
+// though every test passed, and it blames whichever test file happened to be
+// running when the timer fired — so the reported origin moves between runs.
+//
+// Waiting out the window once per file (not per test, which would cost far more)
+// lets the callback run while jsdom is still alive.
+afterAll(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 32));
 });
 
 // JSDOM does not implement window.matchMedia; svelte-sonner's Toaster calls it in a
