@@ -5,7 +5,10 @@ HTTPS and gates the whole app behind HTTP Basic Auth, per
 [`docs/design.md` §7.2](../../../docs/design.md). It layers on top of the base
 [`docker-compose.yml`](../../../docker-compose.yml) as a
 [Compose override](https://docs.docker.com/compose/multiple-compose-files/merge/)
-— the base file is unmodified.
+— the base file is unmodified. Prefer a hand-written server block? See
+[`../nginx/`](../nginx/). Need a trusted certificate without exposing ports
+80/443, or a proxy that needs no access to the Docker socket this example
+mounts? See [`../caddy/`](../caddy/), which adds a DNS-01 option.
 
 Only the **frontend** is routed (the default single-origin setup): its own
 nginx proxies `/api` to the backend over the Compose network, so this one

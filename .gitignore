@@ -56,3 +56,6 @@ deploy/reverse-proxy/nginx/htpasswd
 deploy/reverse-proxy/nginx/certs/
 deploy/reverse-proxy/nginx/certbot-etc/
 deploy/reverse-proxy/nginx/certbot-webroot/
+# Caddy keeps its certificates and ACME account key in a named volume, so only
+# the Basic Auth hashes need ignoring here.
+deploy/reverse-proxy/caddy/basicauth.conf

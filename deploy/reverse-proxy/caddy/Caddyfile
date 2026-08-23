@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Caddy reverse proxy for selbstbehalt: HTTPS + HTTP Basic Auth in front of the
+# app's own frontend container. See README.md for the setup steps.
+#
+# {$DOMAIN} and {$ACME_EMAIL} come from deploy/reverse-proxy/caddy/.env, which
+# docker-compose.override.yml passes into the container as environment
+# variables; Caddy substitutes them when it loads this file.
+
+{
+	# Used by the two ACME options (A and C) for expiry notices. Harmless under
+	# Option B (`tls internal`), which never contacts a CA.
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# selbstbehalt handles Art. 9 DSGVO health data — gate the whole app
+	# (docs/design.md §7.2). The frontend's own nginx proxies /api to the
+	# backend over the Compose network, so this also covers the API.
+	#
+	# The credentials live in an untracked file next to this one: Caddy has no
+	# htpasswd support, and a bcrypt hash cannot travel through the Compose
+	# .env because it contains `$`, which Compose expands. See README step 1.
+	import /etc/caddy/basicauth.conf
+
+	# ── TLS ────────────────────────────────────────────────────────────────
+	# Option A (Let's Encrypt over HTTP-01) is the default and needs no
+	# directive at all: Caddy obtains and renews a certificate for {$DOMAIN} on
+	# its own. Ports 80 and 443 must be reachable from the internet.
+	#
+	# Option B — locally-trusted certificate from Caddy's own CA, for a
+	# LAN-only host. Uncomment:
+	#
+	#     tls internal
+	#
+	# Option C — Let's Encrypt over the DNS-01 challenge, for a host that is
+	# NOT reachable from the internet. Needs the image built from Dockerfile
+	# (see docker-compose.override.yml) and the provider settings in .env.
+	# Uncomment, and check your provider's module README for the exact
+	# credential syntax — some take a single token like this, others a block:
+	#
+	#     tls {
+	#     	dns {$CADDY_DNS_PROVIDER} {env.DNS_API_TOKEN}
+	#     	propagation_delay 30s
+	#     	propagation_timeout 10m
+	#     }
+
+	# Caddy sets X-Forwarded-{For,Proto,Host} itself and streams request
+	# bodies, so the 256 MiB /api/import/db upload
+	# (apps/backend/src/routes/backup.ts) needs no size limit raised here —
+	# unlike the nginx example, which has to set client_max_body_size.
+	reverse_proxy frontend:3000
+}

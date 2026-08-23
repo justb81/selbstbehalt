@@ -7,7 +7,9 @@ and gates the app behind HTTP Basic Auth, per
 [Compose override](https://docs.docker.com/compose/multiple-compose-files/merge/)
 — the base file is unmodified. Prefer Traefik's automatic TLS/routing? See
 [`../traefik/`](../traefik/) instead; both examples cover the same two TLS
-options.
+options. Need a trusted certificate without exposing ports 80/443, or a proxy
+that needs no Docker socket? See [`../caddy/`](../caddy/), which adds a DNS-01
+option.
 
 Only the **frontend** is proxied (the default single-origin setup): its own
 nginx proxies `/api` to the backend over the Compose network, so this one

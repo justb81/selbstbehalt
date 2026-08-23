@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copy to deploy/reverse-proxy/caddy/basicauth.conf and replace both fields
+# below with real values — see README step 1. The copy is gitignored; this
+# template is not, so never put a real hash in here.
+#
+#     cp deploy/reverse-proxy/caddy/basicauth.conf.example \
+#        deploy/reverse-proxy/caddy/basicauth.conf
+#
+# One `<username> <bcrypt-hash>` line per user. Generate a hash with:
+#
+#     docker run --rm -it caddy:2.11-alpine caddy hash-password
+#
+# REPLACE_ME is not a valid bcrypt hash, so Caddy refuses to start while it is
+# still here. That is deliberate: a placeholder that fails closed cannot
+# accidentally end up guarding a deployment.
+
+basic_auth {
+	your-username REPLACE_ME
+}
