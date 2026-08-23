@@ -33,6 +33,12 @@ test-results/
 *.sqlite
 *.sqlite3
 *.db
+# SQLite runs in WAL mode (apps/backend/src/db/client.ts), which writes these
+# two alongside the database file; `*.sqlite` does not match either name.
+# The -wal in particular holds recently committed transactions in the clear, so
+# it is exactly as sensitive as the database itself.
+*.sqlite-wal
+*.sqlite-shm
 
 # Logs
 *.log
