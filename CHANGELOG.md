@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.15.0](https://github.com/justb81/selbstbehalt/compare/v1.14.0...v1.15.0) (2026-08-26)
+
+### Features
+
+- **deploy:** add Caddy reverse-proxy example with a DNS-01 option ([#348](https://github.com/justb81/selbstbehalt/issues/348)) ([37d816f](https://github.com/justb81/selbstbehalt/commit/37d816f1e577fa8d93ca60f52afeab7476a160c8)), closes [#344](https://github.com/justb81/selbstbehalt/issues/344)
+
+### Bug Fixes
+
+- **frontend:** feed prior claims and patient age into the Erstattungs-Engine ([#389](https://github.com/justb81/selbstbehalt/issues/389)) ([0121580](https://github.com/justb81/selbstbehalt/commit/0121580e0f85b99f820cef1ef7bc47f5cd6bea58))
+- **frontend:** name a versicherte Person by her name, not her tariff ([#390](https://github.com/justb81/selbstbehalt/issues/390)) ([5add461](https://github.com/justb81/selbstbehalt/commit/5add461779dd29672e993c66762ee33b2a1d5d88)), closes [#358](https://github.com/justb81/selbstbehalt/issues/358) [#351](https://github.com/justb81/selbstbehalt/issues/351)
+
 ## [1.14.0](https://github.com/justb81/selbstbehalt/compare/v1.13.0...v1.14.0) (2026-08-01)
 
 ### Features
