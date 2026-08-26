@@ -4,7 +4,7 @@
 
 > **Zweck:** Definition des generischen, versionierten JSON-Formats für die
 > Gebühren-Lookup-Tabellen, gegen die der Rechnungsparser (#16) jede Position
-> prüft. Ergänzt `docs/design.md` §4.4 und ist die maßgebliche Spezifikation
+> prüft. Ergänzt `docs/architecture.md` §8.3 und ist die maßgebliche Spezifikation
 > für Issue #15.
 >
 > **Status:** Format-Definition. Das Extraktionsskript (XML → JSON) und der
@@ -100,7 +100,7 @@ Wichtig:
   "points": 80,                 // Punktzahl; null bei GOT
   "baseAmount": 4.66,           // points × pointValueCents/100 bzw. Euro (GOT)
   "category": "default",        // default | technical | lab | inpatient (§5)
-  "benefitCategory": "ambulant", // Tarif-Leistungsbereich (§3.2 included_benefits)
+  "benefitCategory": "ambulant", // Tarif-Leistungsbereich (§5.5 included_benefits)
   "maxMultiplier": 2.3,         // Schwellenwert zum Flaggen (§5 Regelhöchstsatz)
   "isSurcharge": false,         // true bei Zuschlägen
   "section": { "part": "M", "code": "B I", "title": "…" },
@@ -120,7 +120,7 @@ Wichtig:
   `lab`, technische Abschnitte → `technical`, …) und mappt über
   `multiplierLimits` auf die §5-Steigerungsgrenzen.
 - **`benefitCategory`** ist der Tarif-Leistungsbereich (`included_benefits`,
-  Design §3.2), nach dem die Erstattungs-Engine die Positionen gruppiert. Zur
+  Architektur §5.5), nach dem die Erstattungs-Engine die Positionen gruppiert. Zur
   Build-Zeit deterministisch aus Gebührenordnung + Nummernkreis abgeleitet: GOZ
   `5xxx`/`9xxx` → `zahnersatz`, `6xxx` → `kieferorthopaedie`, übrige GOZ →
   `zahnbehandlung`; alle GOÄ → `ambulant`; GOT → `sonstiges`. Es ist der aus den

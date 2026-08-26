@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { money, uuid } from '../common.js';
 
-/** A per-year premium-refund tracking row (§3.2 `bre_periods`). */
+/** A per-year premium-refund tracking row (§5.5 `bre_periods`). */
 export const brePeriodCreateSchema = z
   .object({
     insured_person_id: uuid,

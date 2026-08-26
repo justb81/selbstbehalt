@@ -9,7 +9,7 @@ import { invoiceStatusEventValueSchema, statusTrackSchema } from '../enums.js';
  * A single status-change event on an invoice (`invoice_status_events`) — the append-only
  * source of truth for the lifecycle. Every track transition (review, payment, submit,
  * refund, or a revert back to a ground state) produces an immutable event row; the
- * invoice's current per-track state is derived from these (§3.2, `deriveInvoiceStatus`).
+ * invoice's current per-track state is derived from these (§5.5, `deriveInvoiceStatus`).
  */
 export const invoiceStatusEventSchema = z
   .object({

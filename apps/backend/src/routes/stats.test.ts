@@ -292,7 +292,7 @@ describe('GET /api/stats/bre/:insuredPersonId', () => {
 });
 
 describe('GET /api/stats/positions/:insuredPersonId', () => {
-  it('rolls positions up by Leistungsjahr per the §5.2.1 status rule', async () => {
+  it('rolls positions up by Leistungsjahr per the §8.5.1 status rule', async () => {
     const db = handle.db;
 
     // 'geprüft': contributes eligible_amount (estimate), not refund_amount.

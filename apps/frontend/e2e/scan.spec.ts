@@ -127,7 +127,7 @@ test('scan → parse → save files a metadata-only invoice', async ({ page }) =
   await expect(page).toHaveURL(/\/invoices\/44444444-4444-4444-8444-444444444444$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Rechnungsdetail' })).toBeVisible();
 
-  // Privacy: only metadata is sent — no image, no raw file (§8.2). OCR text is
+  // Privacy: only metadata is sent — no image, no raw file (§8.1). OCR text is
   // saved by default so the user can re-parse later; it can be opted out in the UI.
   const posted = getPostedInvoice() as Record<string, unknown>;
   expect(posted.insured_person_id).toBe(INSURED_ID);

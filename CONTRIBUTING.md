@@ -42,10 +42,39 @@ pnpm typecheck      # type-check every workspace package
 
 Copy [`.env.example`](.env.example) to `.env` and adjust it for your setup.
 
-This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with two
-packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA) and
-[`apps/backend/`](apps/backend/) (Hono REST API + SQLite). See [`README.md`](README.md) and
-[`docs/design.md`](docs/design.md) for the architecture.
+This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with five
+packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA),
+[`apps/backend/`](apps/backend/) (Hono REST API + SQLite),
+[`apps/goae-waechter/`](apps/goae-waechter/) (the standalone GOÄ-Wächter demo),
+[`packages/medic-invoice-check/`](packages/medic-invoice-check/) (on-device OCR +
+GOÄ/GOZ/GOT check engine) and [`packages/shared/`](packages/shared/) (Zod schemas,
+types, domain helpers). See [`README.md`](README.md) and
+[`docs/architecture.md`](docs/architecture.md) for the architecture.
+
+## Where documentation goes
+
+[`docs/architecture.md`](docs/architecture.md) is the single source of truth for
+architecture, data model and domain logic. It follows the twelve
+[arc42](https://arc42.org/) chapters, and that structure is the point: **put new
+content in the chapter it belongs to** — a runtime flow in chapter 6, a
+cross-cutting concept in chapter 8, a decision with its reasoning in chapter 9 —
+rather than appending it wherever it fits. A term the domain relies on goes in the
+glossary (chapter 12).
+
+Two rules keep it from drifting apart again:
+
+- **One content, one place.** If something is already documented, link to it
+  instead of restating it. Duplicated prose diverges.
+- **References use the chapter number**, e.g. `docs/architecture.md §8.5`.
+  `pnpm docs:check` verifies that every such reference resolves, and runs in CI on
+  every change (including docs-only ones).
+
+The deeper operational guides stay separate and are linked from the chapter they
+belong to — [`self-hosting.md`](docs/self-hosting.md),
+[`hardening.md`](docs/hardening.md), [`data-format.md`](docs/data-format.md),
+[`privacy-threat-model.md`](docs/privacy-threat-model.md). Note that
+`data-format.md` and `privacy-threat-model.md` have their **own** §-numbering;
+always name the file when citing them.
 
 ## Branch & commit conventions
 
@@ -95,8 +124,8 @@ pnpm build
 
 ## Privacy constraints (non-negotiable)
 
-This project follows Privacy by Design (see §1.3 and §8 of
-[`docs/design.md`](docs/design.md)). PRs that violate these will not be merged:
+This project follows Privacy by Design (see §2.2 and §8.1 of
+[`docs/architecture.md`](docs/architecture.md)). PRs that violate these will not be merged:
 
 - **Invoice images never leave the client.** OCR runs in the browser; only
   structured JSON metadata (no images) is sent to the backend.

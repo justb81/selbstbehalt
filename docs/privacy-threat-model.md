@@ -3,8 +3,8 @@
 # Privacy-by-Design & DSGVO review — threat model + data-flow audit (issue #32)
 
 A whole-system privacy/security review against the non-negotiable design
-principles in [`docs/design.md`](design.md) §1.3 (Designprinzipien), §4
-(client-seitige OCR) and §8 (Sicherheit & Datenschutz). It documents the proof
+principles in [`docs/architecture.md`](architecture.md) §2.2 (Designprinzipien), §8.2
+(client-seitige OCR) and §8.1 (Sicherheit & Datenschutz). It documents the proof
 that
 
 - invoice **images never leave the device** — only structured JSON metadata is
@@ -74,7 +74,7 @@ this list. The client builders agree:
   image."*
 - `apps/backend/src/db/schema.ts` `invoices` and every other table have **no
   BLOB and no image column**. `file_path` is a `text` path *reference* (for the
-  optional on-disk PDF volume, §7.3), not image binary; `ocr_raw` is text.
+  optional on-disk PDF volume, §7.2), not image binary; `ocr_raw` is text.
 
 ### 1.3 OCR keeps the image in the browser/worker and discards it
 
@@ -95,8 +95,8 @@ The pixels never reach the API layer, let alone the network:
    camera stream is torn down on capture/destroy.
 6. A **downscaled copy** of each page (`ocr/preview.ts`, ≤1024 px on the long
    edge, ≤12 pages) is handed to the review screen alongside the parsed result,
-   so the user can check a suspect Ziffer against the paper it came from (§4.1
-   of `docs/design.md`). It is a plain in-memory `ImageData` — deliberately not
+   so the user can check a suspect Ziffer against the paper it came from (§6.1
+   of `docs/architecture.md`). It is a plain in-memory `ImageData` — deliberately not
    a blob/object URL, which would outlive its creator unless revoked — is held
    in component state only, and dies with the component when the invoice is
    saved or abandoned. No response type, payload or column carries it.
@@ -118,7 +118,7 @@ The pixels never reach the API layer, let alone the network:
 asserts the privacy invariant on the actual POST body:
 
 ```
-// Privacy: only metadata is sent — no image, no raw file (§8.2).
+// Privacy: only metadata is sent — no image, no raw file (§8.1).
 expect(posted.ocr_raw).toBe(OCR_TEXT);
 expect(posted).not.toHaveProperty('file_path');
 ```
@@ -165,7 +165,7 @@ upgrade-insecure-requests
 
 Backend (`apps/backend/src/app.ts`, `hono/secure-headers`): `default-src 'none'`
 (API is JSON-only). `Cross-Origin-Resource-Policy: cross-origin` is relaxed
-solely to support the optional separate-origin backend deployment (§7.2);
+solely to support the optional separate-origin backend deployment (§7.3);
 access control stays with `CORS_ORIGINS` + the API-key/reverse-proxy auth, not
 with CORP.
 
@@ -214,7 +214,7 @@ Zero runtime leaks.
 
 ---
 
-## 3. Data minimisation (§8.2)
+## 3. Data minimisation (§8.1)
 
 - **Images are never uploaded or persisted** (§1.3). There is no code path that
   transmits or stores the invoice image. The full-resolution frame is dropped as
@@ -224,7 +224,7 @@ Zero runtime leaks.
   default so the user can re-parse later and opt-out-able via the checkbox in
   `InvoiceForm.svelte`. This matches the §8.1 row "OCR-Rohtxt | Client →
   optional Backend | opt-in". It is text, not an image.
-- The optional on-disk PDF volume (`file_path`, §7.3) is a *deployment* option;
+- The optional on-disk PDF volume (`file_path`, §7.2) is a *deployment* option;
   no client code populates `file_path` today, and the E2E guard asserts it is
   absent from the save payload (§1.5).
 - Only structured, minimally-necessary fields are stored (metadata + GOÄ
@@ -299,7 +299,7 @@ target (it fails against the old code with the 422).
 
 ## 5. §8.1 data-category reconciliation
 
-Each row of the design doc's data-category table (§8.1), checked against the code:
+Each row of the architecture doc's data-category table (§8.1), checked against the code:
 
 | Datenkategorie | Soll (§8.1) | Ist (verified) |
 |---|---|---|
@@ -333,7 +333,7 @@ nowhere at all.
   Enforced by CSP (`connect-src 'self'`), the local-only OCR/model hosting and
   the no-analytics dependency posture (§2). Images never even reach asset #4.
 - **Browser ↔ self-hosted backend** — JSON metadata only; HTTPS mandatory
-  (§7.2); authenticated by reverse-proxy Basic Auth (single-origin) or
+  (§7.3); authenticated by reverse-proxy Basic Auth (single-origin) or
   `X-API-Key` (separate-origin).
 - **Backend ↔ disk** — SQLite file (+ optional PDF volume) on the host the user
   controls.
@@ -342,12 +342,12 @@ nowhere at all.
 
 | Adversary | Threat | Mitigation |
 |---|---|---|
-| Network eavesdropper / MITM | Intercept health data in transit | HTTPS mandatory (§7.2, [`hardening.md`](hardening.md)); `upgrade-insecure-requests`; HSTS. |
+| Network eavesdropper / MITM | Intercept health data in transit | HTTPS mandatory (§7.3, [`hardening.md`](hardening.md)); `upgrade-insecure-requests`; HSTS. |
 | A malicious/compromised third-party origin | Exfiltrate images or data via a CDN/analytics beacon | No third-party runtime deps; CSP `connect-src/font-src/default-src 'self'` blocks egress; images stay client-side (§1, §2). |
 | A supply-chain-compromised dependency | Inject an exfiltration call | CSP blocks the network egress at runtime; CodeQL/`pnpm audit`/SBOM/Dependabot guard the chain (#6). |
 | Unauthenticated LAN/Internet caller | Read or modify data via the API | Reverse-proxy Basic Auth / `X-API-Key`; `CORS_ORIGINS` must be a specific list, never `*`, when a key is set. |
 | Data-subject request | Cannot erase or export their data | Per-entity cascade DELETE + whole-DB export/import, tested (§4). |
-| Host/backup thief | Read the SQLite file or an exported backup | Residual risk — DB is unencrypted SQLite; see §8. Mitigate with disk/volume encryption; optional SQLCipher (§8.2). |
+| Host/backup thief | Read the SQLite file or an exported backup | Residual risk — DB is unencrypted SQLite; see §8. Mitigate with disk/volume encryption; optional SQLCipher (§8.1). |
 | XSS in the SPA | Steal a session / act as the user | Strict CSP (no third-party/inline scripts beyond the build-hashed init); `object-src/base-uri 'none'`; SvelteKit output encoding. |
 | Clickjacking | Frame the app to trick actions | `frame-ancestors 'none'` + `X-Frame-Options: DENY` (both services). |
 
@@ -373,7 +373,7 @@ and for anyone deploying it for family members.
 | Betroffene Kategorien | Versicherungsnehmer und versicherte Personen (ggf. Familienangehörige). |
 | Datenkategorien | Identitäts-/Vertragsdaten; **Gesundheitsdaten (Art. 9)**: Arztrechnungsinhalte, GOÄ-Ziffern, ggf. OCR-Rohtext; Rechnungsbilder ausschließlich flüchtig im Browser. |
 | Rechtsgrundlage | Für den Eigengebrauch greift die Haushaltsausnahme (Art. 2 Abs. 2 lit. c DSGVO); bei Verwaltung für Dritte: Einwilligung nach Art. 9 Abs. 2 lit. a. |
-| Verarbeitungsort | Ausschließlich Gerät des Nutzers (Browser) + selbst gehosteter Backend-Server. **Keine Übermittlung an Dritte** (§1.3 Nr. 4). |
+| Verarbeitungsort | Ausschließlich Gerät des Nutzers (Browser) + selbst gehosteter Backend-Server. **Keine Übermittlung an Dritte** (§2.2 Nr. 4). |
 | OCR/KI | 100 % client-seitig; keine serverseitige KI, kein externer LLM-Aufruf (Standard). |
 | Empfänger | Keine. Optional: die eigene Versicherung bei manueller Einreichung durch den Nutzer (außerhalb der App). |
 | Speicherdauer | Bis zur Löschung durch den Nutzer (Art. 17). Bilder: nie gespeichert — Vollbild direkt nach OCR verworfen, Review-Kopie beim Speichern/Verwerfen der Rechnung. |
@@ -407,7 +407,7 @@ exposing an instance work through [`SECURITY.md`](../SECURITY.md) and
 - [ ] `PKV_API_KEY` set iff the backend is on its own origin; `CORS_ORIGINS`
       a specific list, never `*`.
 - [ ] Backups/DB encrypted at rest if stored off-host (unencrypted SQLite by
-      default; optional SQLCipher, §8.2).
+      default; optional SQLCipher, §8.1).
 - [ ] Secret scanning + push protection enabled on the repository.
 
 ## 9. Recommendations / follow-ups
@@ -416,6 +416,6 @@ exposing an instance work through [`SECURITY.md`](../SECURITY.md) and
   `z.string()` the backend accepts but no client sets) to make "no image bytes
   in the DB" a hard schema guarantee rather than a convention. Tracked as a
   hardening follow-up, not a live leak.
-- **Encryption at rest** (SQLCipher) remains optional (§8.2) — recommend it, or
+- **Encryption at rest** (SQLCipher) remains optional (§8.1) — recommend it, or
   disk/volume encryption, for any instance whose host or backups are not
   physically trusted.

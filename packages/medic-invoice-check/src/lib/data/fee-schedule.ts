@@ -6,7 +6,7 @@
  * These are the static, version-controlled tables the invoice parser (#16)
  * checks every line item against. They are generated reproducibly from the
  * official source XML under `data/input/` (see docs/data-format.md and
- * docs/design.md §4.4) — never hand-maintained.
+ * docs/architecture.md §8.3) — never hand-maintained.
  *
  * The format is deliberately one shape for all three schedules:
  *  - GOÄ / GOZ are point-based: `baseAmount = points × pointValueCents / 100`.
@@ -116,7 +116,7 @@ export interface FeeEntry {
   category: FeeCategory;
   /**
    * Tariff benefit area this number falls into — the bridge to a tariff's
-   * `included_benefits` (§3.2): the Erstattungs-Engine groups positions by it to
+   * `included_benefits` (§5.5): the Erstattungs-Engine groups positions by it to
    * pick the matching reimbursement block. Derived at build time from the
    * schedule + Gebührenverzeichnis section (GOZ number ranges map to
    * zahnbehandlung / zahnersatz / kieferorthopaedie; all GOÄ → ambulant; GOT →

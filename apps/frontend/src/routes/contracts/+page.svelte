@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Vertragsverwaltung-Liste (docs/design.md §6.1, issue #21).
+  Vertragsverwaltung-Liste (docs/architecture.md §5.2, issue #21).
   Shows all contracts as ContractCards with insured-person counts.
 -->
 <script lang="ts">

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Offline write-queue (docs/design.md §1.3 offline-first, §6.3; issue #27).
+ * Offline write-queue (docs/architecture.md §2.2 offline-first, §8.6; issue #27).
  *
  * When a write (POST/PUT/DELETE) cannot reach the backend, it is persisted here
  * and replayed in FIFO order once connectivity returns (via the `online` event

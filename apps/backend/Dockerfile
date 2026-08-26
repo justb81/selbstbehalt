@@ -8,7 +8,7 @@
 # @selbstbehalt/shared workspace package) which a slim runtime stage serves. The
 # server process itself runs unprivileged as `node`; the entrypoint starts as
 # root only to repair bind-mount ownership, then drops privileges (see
-# docker-entrypoint.sh). See docs/design.md §7.3.
+# docker-entrypoint.sh). See docs/architecture.md §7.2.
 #
 # The build context is the repository ROOT (not ./apps/backend) because the
 # backend depends on the @selbstbehalt/shared workspace package and the root
@@ -60,7 +60,7 @@ RUN --mount=type=cache,id=pnpm-store-backend,target=/pnpm/store \
 # ---- Stage 2: runtime (slim; entrypoint drops to the non-root `node` user) ----
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
-# Defaults mirror docs/design.md §7.3; the DB path points at the mounted volume.
+# Defaults mirror docs/architecture.md §7.2; the DB path points at the mounted volume.
 ENV DATABASE_PATH=/app/db/pkv.sqlite
 ENV PORT=8080
 WORKDIR /app
@@ -82,7 +82,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /app/db /app/files && chown -R node:node /app/db /app/files
 EXPOSE 8080
 
-# Liveness/readiness probe against the unauthenticated health route (§7.2).
+# Liveness/readiness probe against the unauthenticated health route (§7.3).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/api/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"
 

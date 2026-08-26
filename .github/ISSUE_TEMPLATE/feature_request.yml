@@ -30,7 +30,7 @@ body:
     attributes:
       label: Privacy check
       description: >
-        selbstbehalt is privacy-first (see §8 of docs/design.md). Please confirm
+        selbstbehalt is privacy-first (see §8.1 of docs/architecture.md). Please confirm
         your idea is compatible with these constraints.
       options:
         - label: This does not require sending invoice images or raw OCR text off the device

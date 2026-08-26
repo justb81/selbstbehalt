@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Einreichungsformular (docs/design.md §6.1, issue #22): records the submission
+  Einreichungsformular (docs/architecture.md §5.2, issue #22): records the submission
   of an invoice to the insurer. Only metadata is captured here — the actual
   refund amounts are tracked per position via PUT /api/invoices/:id/refund
   (Issue #139).

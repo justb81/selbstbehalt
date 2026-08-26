@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Image capture for the OCR pipeline (docs/design.md §4.1, §2.1, issue #25).
+ * Image capture for the OCR pipeline (docs/architecture.md §6.1, §5.1, issue #25).
  *
  * Acquires an invoice frame either from the camera (`getUserMedia`, rear camera
  * preferred) or from a file/PDF upload, and normalises it to an {@link ImageData}
@@ -9,7 +9,7 @@
  * failures surface as typed {@link CaptureError}s so the UI can react precisely.
  *
  * **Privacy:** frames are decoded and rasterised entirely on-device; no upload
- * ever happens here (docs/design.md §1.3, §8). Canvas/codec/PDF dependencies are
+ * ever happens here (docs/architecture.md §2.2, §8.1). Canvas/codec/PDF dependencies are
  * injectable, keeping the control flow unit-testable without a real DOM.
  */
 import {

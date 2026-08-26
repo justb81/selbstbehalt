@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Structured `insured_persons.included_benefits` (stored as JSON TEXT, §3.2).
+// Structured `insured_persons.included_benefits` (stored as JSON TEXT, §5.5).
 // Per-category tariff reimbursement rules — the data the Erstattungs-Engine
-// (§5.1) turns into a concrete `eligible_amount` per insured person. Each
+// (§8.4) turns into a concrete `eligible_amount` per insured person. Each
 // benefit block combines the four usual PKV/Zusatz knobs:
 //   - Erstattungssatz / Schwellen-Staffel (`tiers`),
 //   - Summengrenzen (`limits`, per case / year / lifelong, optionally age-bound),
@@ -32,7 +32,7 @@ const age = z.number().int().nonnegative();
 /**
  * One step of a threshold ladder: reimburse `pct` % up to the cumulative amount
  * `up_to` (EUR), beyond which the next tier applies. `up_to: null` marks the
- * open-ended top tier ("everything above"). See §3.2 `tiers`.
+ * open-ended top tier ("everything above"). See §5.5 `tiers`.
  */
 export const benefitTierSchema = z
   .object({
@@ -44,7 +44,7 @@ export const benefitTierSchema = z
 /**
  * A spending cap. `max_amount: null` = unlimited (used to declare an age-bound
  * carve-out without a money limit). `age_min`/`age_max` restrict the cap to a
- * patient age range (inclusive). See §3.2 `limits`.
+ * patient age range (inclusive). See §5.5 `limits`.
  */
 export const benefitLimitSchema = z
   .object({
@@ -58,7 +58,7 @@ export const benefitLimitSchema = z
 /**
  * One year of the build-up ladder (Zahnstaffel): the cumulative cap
  * `cumulative_cap` (EUR) that applies in `policy_year`. The final entry with
- * `cumulative_cap: null` means "unlimited from that policy year on". See §3.2
+ * `cumulative_cap: null` means "unlimited from that policy year on". See §5.5
  * `annual_staffel`.
  */
 export const annualStaffelEntrySchema = z

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // BRE-Helfer — pure, deterministic helpers around the premium-refund
-// (Beitragsrückerstattung) ladder. See docs/design.md §3.2 (`bre_structure`
-// JSON) and §5.2 (`getCurrentStreakYears`, `getProjectedBRE`).
+// (Beitragsrückerstattung) ladder. See docs/architecture.md §5.5 (`bre_structure`
+// JSON) and §8.5 (`getCurrentStreakYears`, `getProjectedBRE`).
 //
 // These functions are reused by the Günstigerprüfung (#18), the Stats API
 // (#13) and the BRETracker UI (#20), so they live in @selbstbehalt/shared.
@@ -120,7 +120,7 @@ export function projectedBREForStreak(
  * Projected annual premium refund (in EUR) the member is on track to earn for
  * their current claim-free streak — the refund of the {@link entitledLevel} at
  * the given monthly premium. This is the value forfeited if the streak is reset
- * to zero ("worst case" in the Günstigerprüfung, design §5.2).
+ * to zero ("worst case" in the Günstigerprüfung, architecture §8.5).
  *
  * @param asOf reference day for the underlying streak calculation; injectable.
  */

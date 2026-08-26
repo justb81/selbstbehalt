@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Zahlungsziel-Helfer — pure, deterministic math around an invoice's payment due
-// date (docs/design.md §3.2, issue #288).
+// date (docs/architecture.md §5.5, issue #288).
 //
 // Domain background: a doctor's invoice is formally due immediately, but the
 // payer only falls into Verzug 30 days after the invoice date — so the realistic

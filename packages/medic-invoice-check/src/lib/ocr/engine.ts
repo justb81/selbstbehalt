@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * PaddleOCR engine adapter (docs/design.md §4.2, issues #24/#27).
+ * PaddleOCR engine adapter (docs/architecture.md §8.2, issues #24/#27).
  *
  * Adapts the `ppu-paddle-ocr` (PP-OCRv6 on ONNX Runtime) binding to the
  * {@link OcrEngine} interface the worker drives. We use the package's **web**
@@ -15,7 +15,7 @@
  * **Privacy:** the binding is always pointed at on-device, same-origin model
  * URLs ({@link OcrModelUrls}) — never the package's built-in CDN defaults — and
  * recognition runs on the local {@link ImageData}; no image or model byte ever
- * leaves the device (docs/design.md §1.3, §8; model hosting + caching is #27).
+ * leaves the device (docs/architecture.md §2.2, §8.1; model hosting + caching is #27).
  */
 import type { OcrBackend, OcrBoundingBox, OcrEngine, OcrEngineConfig, OcrResult } from './types';
 
@@ -274,8 +274,8 @@ function patchPlatform(platform: PaddleOcrPlatformLike | undefined): void {
  * reference *throws* `HTMLCanvasElement is not defined` in a Worker). The binding
  * instantiates a *separate* provider for the service, the detector and the
  * recognizer, so all three are patched — the detector/recognizer ones only exist
- * after `initialize()`. Lets recognition run off the main thread (docs/design.md
- * §4.2: OCR must not block the UI thread).
+ * after `initialize()`. Lets recognition run off the main thread (docs/architecture.md
+ * §8.2: OCR must not block the UI thread).
  */
 function patchPlatformsForWorker(service: PaddleOcrServiceLike): void {
   if (typeof OffscreenCanvas === 'undefined') return;
@@ -330,7 +330,7 @@ const RECOGNITION_MINIMUM_CONFIDENCE = 0;
  */
 async function defaultLoadModule(wasmPath: string): Promise<PaddleOcrModule> {
   // Point ONNX Runtime at the on-device WASM assets before the binding spins up
-  // its session, so nothing is fetched from a CDN at runtime (privacy, §1.3/§8).
+  // its session, so nothing is fetched from a CDN at runtime (privacy, §2.2/§8.1).
   // `scripts/copy-ort-wasm.mjs` populates each app's own `static/models/ort/` at
   // build time; the URL is base-prefixed on a subpath deploy (issue #171).
   const ort = await import('onnxruntime-web');

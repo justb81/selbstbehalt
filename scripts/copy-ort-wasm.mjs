@@ -3,10 +3,10 @@
 //
 // Copies the ONNX Runtime Web WASM assets into every app's static/models/ort/
 // (apps/frontend and apps/goae-waechter — issue #170) so they are served
-// same-origin (no CDN at runtime — CLAUDE.md privacy constraint; docs/design.md
-// §1.3/§8). The OCR engine points `ort.env.wasm.wasmPaths` at `/models/ort/`
+// same-origin (no CDN at runtime — CLAUDE.md privacy constraint; docs/architecture.md
+// §2.2/§8.1). The OCR engine points `ort.env.wasm.wasmPaths` at `/models/ort/`
 // (see packages/medic-invoice-check/src/lib/ocr/engine.ts), and each app's
-// service worker already caches `/models/**` on first use (§6.3).
+// service worker already caches `/models/**` on first use (§8.6).
 //
 // Runs automatically as part of each app's `build` script; the copied files are
 // git-ignored.

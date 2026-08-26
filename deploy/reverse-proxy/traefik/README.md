@@ -5,7 +5,7 @@
 
 An example [Traefik](https://doc.traefik.io/traefik/) setup that terminates
 HTTPS and gates the whole app behind HTTP Basic Auth, per
-[`docs/design.md` §7.2](../../../docs/design.md). It layers on top of the base
+[`docs/architecture.md` §7.3](../../../docs/architecture.md). It layers on top of the base
 [`docker-compose.yml`](../../../docker-compose.yml) as a
 [Compose override](https://docs.docker.com/compose/multiple-compose-files/merge/)
 — the base file is unmodified. Prefer a hand-written server block? See
@@ -17,7 +17,7 @@ Only the **frontend** is routed (the default single-origin setup): its own
 nginx proxies `/api` to the backend over the Compose network, so this one
 Basic Auth also protects the API and there is no CORS to configure. If you
 instead run the backend on its own public origin, see
-[`docs/design.md` §7.2](../../../docs/design.md) and the
+[`docs/architecture.md` §7.3](../../../docs/architecture.md) and the
 [X-API-Key section of the README](../../../README.md#external-access-x-api-key--vpntailscale)
 — Basic Auth is not sent cross-origin by the SPA.
 
@@ -82,7 +82,7 @@ credentials from step 1, then loads the app.
 ## Notes
 
 - Plain HTTP (`:80`) always redirects to HTTPS — see
-  [`docs/design.md` §7.2](../../../docs/design.md) ("HTTPS: Pflicht").
+  [`docs/architecture.md` §7.3](../../../docs/architecture.md) ("HTTPS: Pflicht").
 - Traefik needs read access to the Docker socket to discover containers via
   labels. That is a meaningful privilege boundary in itself; if you'd rather
   not grant it directly, put a

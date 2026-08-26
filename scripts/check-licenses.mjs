@@ -4,7 +4,7 @@
 // License-compliance gate for selbstbehalt.
 //
 // selbstbehalt ships under Apache-2.0 and must only redistribute dependencies
-// under OSI-approved, permissive licenses (see docs/design.md §10). This script
+// under OSI-approved, permissive licenses (see docs/architecture.md §11). This script
 // enumerates the licenses of all *production* (redistributed) dependencies via
 // `pnpm licenses list` and fails if any falls outside the allowlist below.
 //

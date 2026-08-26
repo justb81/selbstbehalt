@@ -9,7 +9,7 @@ import { auditFields, isoDate } from '../common.js';
  *
  * A person carries no role of its own — whether it is the Versicherungsnehmer
  * and/or a versicherte Person follows from `contracts.policyholder_id` and
- * `insured_persons.person_id` (§3.2).
+ * `insured_persons.person_id` (§5.5).
  */
 export const personCreateSchema = z
   .object({
@@ -18,7 +18,7 @@ export const personCreateSchema = z
   })
   .strict();
 
-/** A persisted person as returned by the API (§3.2 `persons`). */
+/** A persisted person as returned by the API (§5.5 `persons`). */
 export const personSchema = personCreateSchema.extend(auditFields);
 
 /** Partial update — every field optional, server fields untouchable. */

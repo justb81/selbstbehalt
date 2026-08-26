@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungsdetail (docs/design.md §6.1, issue #22, issue #134, issue #142): invoice with
+  Rechnungsdetail (docs/architecture.md §5.2, issue #22, issue #134, issue #142): invoice with
   positions, §5-validation flags, GCPContributionCard (marginal contribution per service year),
   and the full status-workflow card (InvoiceStatusFlow).
 -->
@@ -99,7 +99,7 @@
   //
   // `invoice.eligible_amount` is the persisted sum the statistics read; it carries
   // no reason. Re-running the Erstattungs-Engine over the *stored* positions
-  // recovers the per-category explanation (§5.1) without duplicating the rules —
+  // recovers the per-category explanation (§8.4) without duplicating the rules —
   // the engine stays the single source of the decision.
   // ---------------------------------------------------------------------------
 

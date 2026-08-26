@@ -10,7 +10,7 @@
  * `S + NPV(ΔBRE)`.
  *
  * Everything is derived from the **same** engine — no reimplemented decision rule
- * (design §5.2, acceptance criterion "gemeinsame Quelle, keine Doppelrechnung"):
+ * (architecture §8.5, acceptance criterion "gemeinsame Quelle, keine Doppelrechnung"):
  * - the Ampel state and `alreadyBroken` come from {@link calculateGCP};
  * - the threshold marker uses {@link calculateBRELadderNPV} for the **potential**
  *   NPV, so `S + NPV` has a fixed position even while the year is still under `S`
@@ -33,7 +33,7 @@ import {
 } from '$lib/utils/guenstiger-pruefung';
 
 /**
- * The four everyday states of the Ampel (design §5.2.1 / §5.2.3):
+ * The four everyday states of the Ampel (architecture §8.5.1 / §8.5.3):
  * - `unter_sb` — R_Y ≤ S: submitting is inconsequential (no refund, streak safe).
  * - `sb_erreicht_unter_schwelle` — S < R_Y ≤ threshold: submitting now still costs
  *   more BRE than it returns; waiting/self-paying preserves the streak.
@@ -48,7 +48,7 @@ export type SBRadarState =
 export interface SBRadarInput {
   /** The (current) Leistungsjahr the radar describes. */
   year: number;
-  /** Cumulative relevant amount R_Y for the year (design §5.2.1; from the positions roll-up). */
+  /** Cumulative relevant amount R_Y for the year (architecture §8.5.1; from the positions roll-up). */
   R_Y: number;
   /** Reimbursements already realised for the year (Σ `refund_amount`). */
   alreadyReimbursed: number;
@@ -142,7 +142,7 @@ export function computeSelbstbehaltRadar(input: SBRadarInput): SBRadar {
   } = input;
 
   // The streak is irrevocably gone only once realised reimbursements exceed S
-  // (design §5.2.1, point 2). Same rule the engine applies.
+  // (architecture §8.5.1, point 2). Same rule the engine applies.
   const alreadyBroken = alreadyReimbursed > selbstbehalt;
 
   // Full verdict via the shared engine (null when no ladder — same as /insured/[id]).

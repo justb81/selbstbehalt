@@ -4,7 +4,7 @@
 #
 # Frontend image for selbstbehalt (SvelteKit PWA, adapter-static). Multi-stage:
 # a build stage produces the static bundle, then a slim nginx stage serves it on
-# port 3000 with an SPA fallback. See docs/design.md §7.3.
+# port 3000 with an SPA fallback. See docs/architecture.md §7.2.
 #
 # The build context is the repository ROOT (not ./apps/frontend) because the
 # frontend depends on the @selbstbehalt/shared workspace package and the root
@@ -55,8 +55,8 @@ COPY scripts scripts
 RUN pnpm --filter @selbstbehalt/shared build
 
 # On-device OCR assets, baked into the served bundle so nothing is fetched from a
-# CDN at runtime (CLAUDE.md privacy constraint; docs/design.md §1.3/§8):
-#   - PP-OCRv5 models via `pnpm ocr:models` (needs curl + network at build time;
+# CDN at runtime (CLAUDE.md privacy constraint; docs/architecture.md §2.2/§8.1):
+#   - PP-OCRv6 models via `pnpm ocr:models` (needs curl + network at build time;
 #     see apps/frontend/static/models/ocr/README.md),
 #   - the ONNX Runtime WASM, copied from node_modules by the frontend build.
 RUN apt-get update \

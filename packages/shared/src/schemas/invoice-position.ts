@@ -7,7 +7,7 @@ import { benefitCategorySchema, goaeCategorySchema, isNonScheduleCategory } from
 import { roundCents } from '../utils/money.js';
 
 /**
- * Client-supplied fields of an invoice line (§3.2 `invoice_positions`), with no
+ * Client-supplied fields of an invoice line (§5.5 `invoice_positions`), with no
  * `invoice_id`. This is the base object shape used when positions are created
  * nested inside their parent invoice (`POST /api/invoices`): the FK comes from
  * the freshly inserted invoice, so a body-level `invoice_id` would be redundant.
@@ -41,7 +41,7 @@ const invoicePositionFields = z
     quantity: z.number().int().positive('Anzahl muss mindestens 1 sein').optional(),
     /**
      * Leistungsdatum (ISO YYYY-MM-DD). Pflichtfeld: bestimmt das Leistungsjahr für die
-     * Günstigerprüfung und die BRE-Berechnung (§5.1, Issue #139).
+     * Günstigerprüfung und die BRE-Berechnung (§8.4, Issue #139).
      */
     treatment_date: z.string().date('Leistungsdatum muss im Format JJJJ-MM-TT vorliegen'),
     description: z.string().nullish(),

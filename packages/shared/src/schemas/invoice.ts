@@ -18,7 +18,7 @@ export const invoiceCreateSchema = z
     insured_person_id: uuid,
     invoice_date: isoDate,
     /**
-     * Zahlungsziel — the day the invoice must be paid by (§3.2). Detected from the
+     * Zahlungsziel — the day the invoice must be paid by (§5.5). Detected from the
      * invoice text or prefilled as `invoice_date + Standardzahlungsfrist`; `null`
      * means "derive from `invoice_date`" (see `resolvePaymentDueDate`). Distinct
      * from `status.paid_on`, which records when payment actually happened (or, for
@@ -39,7 +39,7 @@ export const invoiceCreateSchema = z
 
 /**
  * `POST /api/invoices` body: an invoice plus its line items, persisted together
- * in one transaction (§7.1). Positions omit `invoice_id` — it is assigned from
+ * in one transaction (§5.4). Positions omit `invoice_id` — it is assigned from
  * the invoice the same request creates.
  */
 export const invoiceCreatePayloadSchema = invoiceCreateSchema.extend({

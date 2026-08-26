@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  InvoiceStatusFlow (docs/design.md §6.2, issue #142; step-back issue #230):
+  InvoiceStatusFlow (docs/architecture.md §5.2, issue #142; step-back issue #230):
   Presents the invoice lifecycle as three INDEPENDENT tracks — Prüfung, Bezahlung
   (an den Arzt) and Einreichung/Erstattung (beim Versicherer) — each with its own
   actions. Payment and submission run in parallel and both unlock once the invoice

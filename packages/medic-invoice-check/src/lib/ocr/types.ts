@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Shared types for the client-side OCR pipeline (docs/design.md §4, issues
+ * Shared types for the client-side OCR pipeline (docs/architecture.md §8.2, issues
  * #24/#25). These describe three boundaries:
  *
  *  - the **OCR result** shape (`{ text, bbox, confidence }`) the GOÄ parser and
@@ -14,12 +14,12 @@
  *
  * **Privacy by design:** every type here carries pixels or recognised text
  * only between the camera/canvas, the worker and the parser — all on-device.
- * Nothing in this protocol leaves the browser (docs/design.md §1.3, §8).
+ * Nothing in this protocol leaves the browser (docs/architecture.md §2.2, §8).
  */
 
 /**
  * Compute backend for the OCR engine. `webgpu` is preferred for speed; `wasm`
- * is the universal fallback when WebGPU is unavailable (docs/design.md §2.2).
+ * is the universal fallback when WebGPU is unavailable (docs/architecture.md §4.2).
  */
 export type OcrBackend = 'webgpu' | 'wasm';
 
@@ -87,8 +87,8 @@ export interface OcrErrorPayload {
  * Local URLs of the three OCR model assets the `ppu-paddle-ocr` binding needs:
  * the PP-OCRv6 detection + recognition ONNX models and the character dictionary.
  * These point at on-device, same-origin assets under `models/ocr/` — never a
- * remote CDN — so both the image and the model stay local (docs/design.md §1.3,
- * §8). The service worker caches `models/**` on first use (docs/design.md §6.3).
+ * remote CDN — so both the image and the model stay local (docs/architecture.md §2.2,
+ * §8.1). The service worker caches `models/**` on first use (docs/architecture.md §8.6).
  */
 export interface OcrModelUrls {
   detection: string;
@@ -99,7 +99,7 @@ export interface OcrModelUrls {
 /**
  * On-device asset locations, relative to the app's deploy base. The model files
  * *and* the ONNX Runtime WASM are served same-origin under `models/**` (never a
- * remote CDN), so both image and model stay local (docs/design.md §1.3, §8).
+ * remote CDN), so both image and model stay local (docs/architecture.md §2.2, §8).
  */
 const OCR_ASSET_PATHS = {
   detection: 'models/ocr/det.onnx',

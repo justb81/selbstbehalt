@@ -3,7 +3,7 @@
 # Hardening & Deployment Security
 
 Practical guide to the deployment-security pieces from
-[`docs/design.md`](design.md) §7.2 and §8 (issue #31): the CSP/security
+[`docs/architecture.md`](architecture.md) §7.3 and §8.1 (issue #31): the CSP/security
 headers the app ships with, how to put it behind an HTTPS reverse proxy with
 HTTP Basic Auth, and when (and how) to use the optional `X-API-Key`. See
 [`SECURITY.md`](../SECURITY.md) for the condensed pre-deployment checklist and
@@ -19,7 +19,7 @@ adds.
   `include`d by every `location` in [`nginx.conf`](../apps/frontend/nginx.conf)):
   a strict `Content-Security-Policy` (no third-party scripts/styles/connects —
   everything is `'self'`, matching the "no CDN, no third-party dependencies"
-  rule in `CLAUDE.md`/§8.2), plus `Strict-Transport-Security`,
+  rule in `CLAUDE.md`/§8.1), plus `Strict-Transport-Security`,
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and
   `Permissions-Policy`. The file documents, directive by directive, exactly
   which app feature needs each relaxation from a maximally strict policy
@@ -56,7 +56,7 @@ this change — that's an OCR-correctness concern rather than a CSP one.
 
 ## Reverse proxy: HTTPS + HTTP Basic Auth
 
-HTTPS is mandatory (§7.2) — even for a LAN-only deployment, use a self-signed
+HTTPS is mandatory (§7.3) — even for a LAN-only deployment, use a self-signed
 certificate rather than plain HTTP, since HTTP Basic Auth credentials are only
 as safe as the transport they travel over. Three ready-to-use examples, any
 one of which sits in front of the unmodified
@@ -77,7 +77,7 @@ one of which sits in front of the unmodified
   port-forwarding and an untrusted certificate.
 
 All three examples route only the **frontend** container (the default
-single-origin setup from §7.2): its own nginx proxies `/api` to the backend
+single-origin setup from §7.3): its own nginx proxies `/api` to the backend
 over the Compose network, so one Basic Auth prompt covers the whole app,
 including the API, and there is no CORS to configure. Each example's README
 covers generating the Basic Auth credentials and its TLS options in detail.

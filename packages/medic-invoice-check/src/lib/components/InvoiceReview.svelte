@@ -251,7 +251,7 @@
   /**
    * Page images of the current scan, with the recognised lines mapped onto them
    * (issue #27). Memory-only: never persisted or sent to the API, and dropped
-   * with the component (docs/design.md §8.2).
+   * with the component (docs/architecture.md §8.1).
    */
   let scanPreview = $state<ScanPreview | null>(null);
   /** Recognised line the preview highlights — the row the user is checking. */

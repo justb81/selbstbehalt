@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Dashboard (docs/design.md §6.1, issue #23): overview of open invoices,
+  Dashboard (docs/architecture.md §5.2, issue #23): overview of open invoices,
   pending actions, year stats and per-person Selbstbehalt/BRE status. Reworked
   for UX consistency in issue #261 — see that issue for the full rationale
   (KPI-tile baselines, one merged card per person, compact-mode legends, error/
@@ -106,7 +106,7 @@
       );
       insuredPersons = personLists.flat();
 
-      // Positions roll-up per person (design §5.2.1, #239) for the Selbstbehalt radar.
+      // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
       const rollups = await Promise.all(
         insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
       );

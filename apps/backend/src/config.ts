@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Structured configuration sourced from environment variables (§7). Parsing is
+// Structured configuration sourced from environment variables (§5.4). Parsing is
 // centralised here so the rest of the app receives a validated, typed `Config`
 // and never touches `process.env` directly.
 
 import { z } from 'zod';
 
 const configSchema = z.object({
-  /** HTTP port the Hono server listens on (§2.1: 8080). */
+  /** HTTP port the Hono server listens on (§5.1: 8080). */
   PORT: z.coerce.number().int().positive().default(8080),
 
   /**
@@ -19,7 +19,7 @@ const configSchema = z.object({
 
   /**
    * Optional `X-API-Key` shared secret. When empty/unset the API-key check is
-   * disabled (pure home-network operation behind a reverse proxy — §7.2).
+   * disabled (pure home-network operation behind a reverse proxy — §7.3).
    */
   API_KEY: z
     .string()

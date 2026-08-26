@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  SelbstbehaltRadar (docs/design.md §5.2, issue #234): a forward-looking Ampel for
+  SelbstbehaltRadar (docs/architecture.md §8.5, issue #234): a forward-looking Ampel for
   the current Leistungsjahr — a thermometer filled to R_Y with two markers (the
   Selbstbehalt line S and the Einreich-Schwelle S + NPV) plus a traffic-light badge
   and plain-text hint. The parent computes the radar via `computeSelbstbehaltRadar`

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Cropping a frame to the region that actually carries text (docs/design.md §4.1).
+ * Cropping a frame to the region that actually carries text (docs/architecture.md §6.1).
  *
  * The detector scales every frame down to a fixed longest-edge budget before
  * inference (`DETECTION_MAX_SIDE_LENGTH` in `./engine`). On a phone photo of an
@@ -12,7 +12,7 @@
  *
  * The geometry lives here as pure functions so it is testable without inference
  * or a canvas. The detection pass that supplies the quads is
- * {@link OcrEngine.detect} (`./engine`); see the note in §4.1 of the design doc
+ * {@link OcrEngine.detect} (`./engine`); see the note in §6.1 of the architecture doc
  * on why enabling this in the default pipeline is gated on a measurement rather
  * than on the argument above.
  */

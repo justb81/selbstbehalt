@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Optional `X-API-Key` authentication (§7.2). The primary auth story is
+// Optional `X-API-Key` authentication (§7.3). The primary auth story is
 // reverse-proxy HTTP Basic Auth (see #31); this middleware adds a single shared
 // secret for external access via VPN/Tailscale. When no key is configured the
 // middleware is a transparent pass-through (pure home-network operation).

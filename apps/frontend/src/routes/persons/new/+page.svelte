@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Neue Person anlegen (docs/design.md §3.1, issue #35).
+  Neue Person anlegen (docs/architecture.md §5.5, issue #35).
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';

@@ -24,7 +24,14 @@
 
 ---
 
-> **Status:** Early development. The complete technical and functional specification lives in [`docs/design.md`](docs/design.md) (German) and is the single source of truth. Application code is still being scaffolded.
+> **Status:** Actively developed and self-hostable today — the frontend, backend and
+> on-device invoice check are in place and published as versioned container images on
+> GHCR (see [Running with Docker](#running-with-docker-self-hosting)), with a
+> [live demo](#live-demo) of the invoice check. Open work is tracked in the
+> [issues](https://github.com/justb81/selbstbehalt/issues) and in
+> [`docs/roadmap.md`](docs/roadmap.md). The complete technical and functional
+> specification lives in [`docs/architecture.md`](docs/architecture.md) (German) and is the single
+> source of truth.
 
 ## What it does
 
@@ -32,7 +39,7 @@ Privately insured people in Germany juggle several administrative tasks for whic
 
 - **Manage contracts** — keep multiple PKV contracts (full coverage, supplementary tariffs, Beihilfe) in one place.
 - **Capture & check invoices** — scan doctor invoices, parse the line items against the GOÄ/GOZ/GOT fee schedules, and flag every rule violation those fee schedules define: Steigerungsfaktor (multiplier) limits (§5 GOÄ), excluded/duplicate code combinations, missing base services, Höchstwert amount caps, frequency limits, and more.
-- **Günstigerprüfung** — decide, per invoice, whether to **submit it to the insurer** or **self-pay** to preserve your Beitragsrückerstattung (BRE, premium refund) — comparing the net reimbursement against the present value of the refund you'd forfeit by breaking your claim-free streak.
+- **Günstigerprüfung** — decide, per insured person and benefit year, whether to **submit that year's invoices to the insurer** or **self-pay** to preserve your Beitragsrückerstattung (BRE, premium refund) — comparing the net reimbursement against the present value of the refund you'd forfeit by breaking your claim-free streak.
 
 ## Live demo
 
@@ -60,17 +67,23 @@ screenshot, model, or asset is loaded from a third party at runtime (see
 
 ## Design principles
 
-- **Privacy by design** — sensitive health data (invoice images, diagnoses) never leaves your device unencrypted. OCR runs entirely client-side in the browser.
-- **Offline-first** — core data is available without an active server connection.
-- **Minimal server** — the backend is only a persistent database and REST API. No AI/LLM workloads server-side (~128 MB RAM, no GPU).
-- **DSGVO-compliant** — full self-hostability means no transfer of Art. 9 health data to third parties.
+- **Privacy by design** — invoice images and OCR never leave your device.
+- **Offline-first** — core data is available without a server connection.
+- **Minimal server** — a database and REST API, nothing else; no server-side AI.
+- **DSGVO-compliant** — self-hosting means no Art. 9 health data goes to third parties.
+
+These are binding constraints, not aspirations. They are spelled out — with what
+follows from each — in [`docs/architecture.md`](docs/architecture.md) §2.2 and §8.1.
 
 ## Architecture
 
-A pnpm monorepo with two workspaces:
+A pnpm monorepo with five workspaces:
 
-- **`apps/frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable. OCR runs in a Web Worker via `ppu-paddle-ocr` (PP-OCRv6 on ONNX Runtime) with WebGPU + WASM fallback.
+- **`apps/frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable.
 - **`apps/backend/`** — Hono (TypeScript) REST API on port 8080, backed by SQLite via Drizzle ORM.
+- **`apps/goae-waechter/`** — the standalone, backend-free GOÄ-Wächter demo (see [Live demo](#live-demo)).
+- **`packages/medic-invoice-check/`** — the shared scan-and-check engine: on-device OCR in a Web Worker via `ppu-paddle-ocr` (PP-OCRv6 on ONNX Runtime, WebGPU + WASM fallback), the GOÄ/GOZ/GOT parser and rule validation, and the scan/review UI.
+- **`packages/shared/`** — Zod schemas, types and domain helpers used by all of the above.
 
 Deployed via Docker Compose, intended for a home network (Proxmox LXC / NAS) with optional VPN access.
 
@@ -80,7 +93,7 @@ Browser PWA  ──(JSON metadata only, no images)──>  REST API  ──>  SQ
    └── Camera → client-side OCR → GOÄ parser → Günstigerprüfung
 ```
 
-See [`docs/design.md`](docs/design.md) for the full data model, REST surface, OCR pipeline, and the Günstigerprüfung formula.
+See [`docs/architecture.md`](docs/architecture.md) — the architecture documentation, structured along the twelve [arc42](https://arc42.org/) chapters — for the full data model, REST surface, OCR pipeline, and the Günstigerprüfung formula.
 
 ## Getting started (development)
 
@@ -97,10 +110,14 @@ pnpm test           # run unit/component tests (test:coverage for coverage)
 pnpm test:e2e       # run Playwright end-to-end tests (frontend)
 ```
 
-The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo:
+The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo — see
+[Architecture](#architecture) for what each workspace holds:
 
 - [`apps/frontend/`](apps/frontend/) — SvelteKit (Svelte 5, TypeScript) PWA
 - [`apps/backend/`](apps/backend/) — Hono REST API + SQLite
+- [`apps/goae-waechter/`](apps/goae-waechter/) — standalone GOÄ-Wächter demo PWA
+- [`packages/medic-invoice-check/`](packages/medic-invoice-check/) — OCR + GOÄ/GOZ/GOT check engine
+- [`packages/shared/`](packages/shared/) — Zod schemas, types, domain helpers
 
 Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `apps/frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
 
@@ -146,7 +163,7 @@ automatically. Two workflows run on every push to `main` and every pull request
     on any high/critical advisory in a production dependency (`pnpm audit` locally).
   - **License compliance** — [`scripts/check-licenses.mjs`](scripts/check-licenses.mjs)
     enforces an OSI-compatible allowlist over all production dependencies
-    (`pnpm licenses:check` locally); see [`docs/design.md`](docs/design.md) §10.
+    (`pnpm licenses:check` locally); see [`docs/architecture.md`](docs/architecture.md) §11.
   - **SBOM** — a [CycloneDX](https://cyclonedx.org/) SBOM (`sbom.cdx.json`) is
     generated per build and uploaded as the `sbom-cyclonedx` artifact.
 

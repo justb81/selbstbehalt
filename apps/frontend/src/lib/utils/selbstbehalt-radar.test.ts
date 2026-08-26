@@ -17,7 +17,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * Ladder from design §5.2.5: B(0)=0, B(1)=200, B(2)=350, B(3)=500; nMax=3.
+ * Ladder from architecture §8.5.5: B(0)=0, B(1)=200, B(2)=350, B(3)=500; nMax=3.
  * With streak start 2022-07-01 and asOf 2024-07-01 → s=2, so the potential NPV is
  * the worked-example ≈750.21 € and the submit threshold is S + 750.21.
  */

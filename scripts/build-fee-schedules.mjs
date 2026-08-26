@@ -154,7 +154,7 @@ function goaeCategory(ziffer) {
 
 // GOZ Abschnitte A–J with their numeric ranges (Gebührenverzeichnis für
 // zahnärztliche Leistungen). Used for both section metadata and the
-// `benefitCategory` mapping onto a tariff's `included_benefits` areas (§3.2):
+// `benefitCategory` mapping onto a tariff's `included_benefits` areas (§5.5):
 // prosthetics (F) and implantology (J) are Zahnersatz, orthodontics (G) is
 // Kieferorthopädie, everything else is Zahnbehandlung.
 const GOZ_SECTIONS = [

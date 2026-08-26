@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Typed main-thread client for the OCR Web Worker (docs/design.md §4.2, issue #24).
+ * Typed main-thread client for the OCR Web Worker (docs/architecture.md §8.2, issue #24).
  *
  * Wraps the worker behind a promise-based API: `init` resolves with the chosen
  * backend, `recognize` resolves with the recognised lines, and progress is
@@ -10,7 +10,7 @@
  * managed here so callers never touch `postMessage` directly.
  *
  * **Privacy:** image pixels travel only into the worker (in-process), never to
- * the network (docs/design.md §1.3, §8).
+ * the network (docs/architecture.md §2.2, §8.1).
  */
 import type {
   OcrBackend,

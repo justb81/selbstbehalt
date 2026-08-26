@@ -9,7 +9,7 @@ import { contractTypeSchema } from '../enums.js';
  * A Hauptvertrag (Versicherungsschein): insurer, contract number and the
  * Versicherungsnehmer (`policyholder_id`). The tariff-specific values — tariff,
  * premium, Selbstbehalt, BRE structure, benefits — live per versicherte Person
- * in `insured_persons` (§3.2), so they are not part of the contract itself.
+ * in `insured_persons` (§5.5), so they are not part of the contract itself.
  */
 export const contractCreateSchema = z
   .object({

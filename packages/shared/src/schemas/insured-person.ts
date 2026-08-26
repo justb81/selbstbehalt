@@ -39,7 +39,7 @@ export const breStructureSchema = z
 
 /**
  * A versicherte Person on a contract — the link between `persons` and
- * `contracts` that carries the individual cover (§3.2 `insured_persons`). Each
+ * `contracts` that carries the individual cover (§5.5 `insured_persons`). Each
  * one has its own Krankenversichertennummer (`kvnr`), tariff, premium,
  * Selbstbehalt and BRE structure.
  */

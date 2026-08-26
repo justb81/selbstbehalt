@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  InvoicePagePreview (docs/design.md §4.1): the scanned page as the user sees it,
+  InvoicePagePreview (docs/architecture.md §6.1): the scanned page as the user sees it,
   with every recognised text line outlined on top and the active line — the one
   behind the position row being reviewed — highlighted.
 
@@ -18,7 +18,7 @@
   not a fallback: it is keyboard-reachable and announces each line's text.
 
   Privacy: the pixels live in memory for the duration of the review and are never
-  persisted or uploaded (docs/design.md §1.3, §8.2). This component only draws
+  persisted or uploaded (docs/architecture.md §2.2, §8.1). This component only draws
   what it is handed.
 -->
 <script lang="ts">

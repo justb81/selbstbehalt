@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Kosten-vs-Erstattungen-Diagramm der Jahresauswertung (docs/design.md §6.1, issue #28).
+  Kosten-vs-Erstattungen-Diagramm der Jahresauswertung (docs/architecture.md §5.2, issue #28).
   Gruppierte Balken je Jahr aus YearStats (#13): Gesamtkosten, Erstattet, Selbst getragen.
 -->
 <script lang="ts">

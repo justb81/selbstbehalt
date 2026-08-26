@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Scan-flow orchestration (docs/design.md §4.1, issue #26) — the pure glue that
+ * Scan-flow orchestration (docs/architecture.md §6.1, issue #26) — the pure glue that
  * turns recognised OCR lines into a reviewable, savable invoice:
  *
  *   OCR lines  →  joined text  →  GOÄ/GOZ/GOT parser (#16)  →  ScanResult
@@ -14,7 +14,7 @@
  * **Privacy by design:** only recognised text and structured metadata travel
  * through these helpers — never the image. The {@link InvoiceCreatePayload} this
  * builds carries no image; `ocr_raw` is saved by default on every scanned
- * invoice and can be opted out via the UI (docs/design.md §8.1/§8.2).
+ * invoice and can be opted out via the UI (docs/architecture.md §8.1).
  */
 import {
   invoiceCreatePayloadSchema,
@@ -267,7 +267,7 @@ export function toReviewPositions(scan: ScanResult): ReviewPosition[] {
 
 /**
  * Serialises a confirmed {@link ReviewState} into the `POST /api/invoices` body
- * (§7.1). The total is recomputed from the (possibly edited) lines so it always
+ * (§5.4). The total is recomputed from the (possibly edited) lines so it always
  * matches what is saved. Validates against the shared schema so a malformed
  * payload fails here, before the request, with a Zod error.
  */

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Typed fetch wrapper around the backend REST API (docs/design.md §7.1). Every
+// Typed fetch wrapper around the backend REST API (docs/architecture.md §5.4). Every
 // response is parsed through a shared Zod schema (@selbstbehalt/shared, #10), so
 // the data the UI receives is validated and fully typed. Errors are normalised
 // to `ApiError`.
@@ -18,7 +18,7 @@ export interface ApiClientOptions {
    */
   baseUrl: string | (() => string);
   /**
-   * Optional `X-API-Key` for external/VPN access (§7.2). A function is
+   * Optional `X-API-Key` for external/VPN access (§7.3). A function is
    * resolved per request so a changed setting takes effect immediately.
    */
   apiKey?: string | (() => string | undefined);

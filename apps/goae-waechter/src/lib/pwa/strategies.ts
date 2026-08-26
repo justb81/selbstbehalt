@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Pure caching primitives for the service worker (docs/design.md §6.3), reused
+ * Pure caching primitives for the service worker (docs/architecture.md §8.6), reused
  * from apps/frontend's implementation of the same strategies. GOÄ-Wächter has no
  * backend (issue #170), so unlike apps/frontend there is no Network-First REST
  * strategy here — only Cache First, for the app shell and, into a dedicated

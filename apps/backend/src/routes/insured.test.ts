@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Integration tests for the versicherte-Personen endpoints (§7.1): nested
+// Integration tests for the versicherte-Personen endpoints (§5.4): nested
 // list/create under a contract, the item operations at /api/insured/:id, the
 // bre_structure JSON round-trip, validation/404s, and the cascade on delete.
 

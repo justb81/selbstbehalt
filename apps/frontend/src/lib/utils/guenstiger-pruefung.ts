@@ -5,7 +5,7 @@
  * of the app: **should a doctor's bill be submitted to the insurer, or self-paid
  * to preserve the premium-refund (Beitragsrückerstattung, BRE) streak?**
  *
- * One of the two domain-critical algorithms (see docs/design.md §5, CLAUDE.md).
+ * One of the two domain-critical algorithms (see docs/architecture.md §8.4/§8.5, CLAUDE.md).
  * Engine redesign (issue #140): the decision now falls **per versicherter Person
  * × Leistungsjahr** instead of per invoice. The Selbstbehalt (deductible) is
  * an annual figure applied once to the full year's eligible amount; the BRE loss
@@ -15,16 +15,16 @@
  * Pure and deterministic — no hidden `Date.now()`; `asOf` and every other
  * parameter are injectable for fully reproducible results in tests.
  *
- * ## Decision rule (design §5.2.3)
+ * ## Decision rule (architecture §8.5.3)
  *
  * ```
  *   max(0, R_Y − S)  >  NPV(ΔBRE)
  * ```
  *
  * No tax benefit (§33 EStG) is netted in here — intentionally out of scope,
- * see design §5.2.4 ("Steuervorteil — bewusst nicht berücksichtigt").
+ * see architecture §8.5.4 ("Steuervorteil — bewusst nicht berücksichtigt").
  *
- * ## When the BRE streak actually breaks (design §5.2.1, point 2)
+ * ## When the BRE streak actually breaks (architecture §8.5.1, point 2)
  *
  * Submitting an invoice does **not** break the premium-refund streak on its own.
  * The streak breaks only once the **cumulative reimbursement for the year exceeds
@@ -63,11 +63,11 @@ import {
   type InvoiceStatus,
 } from '@selbstbehalt/shared';
 
-/** Default annual discount rate for the NPV of the forfeited BRE (design §5.2.2). */
+/** Default annual discount rate for the NPV of the forfeited BRE (architecture §8.5.2). */
 export const DEFAULT_DISCOUNT_RATE = 0.03;
-/** Default probability of remaining claim-free in a future year (design §5.2.2). */
+/** Default probability of remaining claim-free in a future year (architecture §8.5.2). */
 export const DEFAULT_CLAIM_FREE_PROBABILITY = 0.7;
-/** Default BRE payout month — July (design §5.2.4). Configurable per contract in a future issue. */
+/** Default BRE payout month — July (architecture §8.5.4). Configurable per contract in a future issue. */
 export const DEFAULT_PAYOUT_MONTH = 7;
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ export interface GCP_YearAggregate {
   /** Service year (Leistungsjahr Y). */
   year: number;
   /**
-   * Relevant amount R_Y for year Y (design §5.2.1): actual refund for reimbursed
+   * Relevant amount R_Y for year Y (architecture §8.5.1): actual refund for reimbursed
    * (`submission = erstattet`) invoices, `eligible_amount` estimate otherwise.
    */
   R_Y: number;
@@ -106,7 +106,7 @@ export interface GCP_YearAggregate {
 /**
  * Aggregate invoice positions by service year (Leistungsjahr = `treatment_date` year).
  *
- * Rules (design §5.2.1):
+ * Rules (architecture §8.5.1):
  * - Skips unreviewed invoices (`review = neu`).
  * - Reimbursed invoices (`submission = erstattet`) contribute `refund_amount` per
  *   position (actual outflow); all other reviewed invoices contribute
@@ -148,7 +148,7 @@ export function aggregateByYear(invoices: GCP_InvoiceData[]): GCP_YearAggregate[
 // Engine types
 // ---------------------------------------------------------------------------
 
-/** Inputs for {@link calculateGCP}. Mirrors `GCP_YearInput` in design §5.3. */
+/** Inputs for {@link calculateGCP}. Mirrors `GCP_YearInput` in architecture §8.5.6. */
 export interface GCP_YearInput {
   /** Service year (Leistungsjahr Y). */
   year: number;
@@ -184,7 +184,7 @@ export interface GCP_YearInput {
   asOf?: DateInput;
 }
 
-/** One term of the NPV(ΔBRE) sum, for UI transparency (design §5.3). */
+/** One term of the NPV(ΔBRE) sum, for UI transparency (architecture §8.5.6). */
 export interface GCP_LadderTerm {
   /** Term index: 0 = immediate BRE for year Y; ≥1 = recovery transient (issue #141). */
   j: number;
@@ -198,7 +198,7 @@ export interface GCP_LadderTerm {
   discounted: number;
 }
 
-/** Result of {@link calculateGCP}. Mirrors `GCP_Result` in design §5.3. */
+/** Result of {@link calculateGCP}. Mirrors `GCP_Result` in architecture §8.5.6. */
 export interface GCP_Result {
   /** `'einreichen'` (submit) or `'selbst_zahlen'` (self-pay). */
   recommendation: 'einreichen' | 'selbst_zahlen';
@@ -362,7 +362,7 @@ export interface GCP_LadderNPVInput {
 
 /**
  * Present value of the BRE stream forfeited by breaking the streak in year Y —
- * the full multi-year NPV(ΔBRE) sum (design §5.2.4, issues #140 + #141):
+ * the full multi-year NPV(ΔBRE) sum (architecture §8.5.4, issues #140 + #141):
  *
  *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
  *
@@ -432,10 +432,10 @@ export function calculateBRELadderNPV(input: GCP_LadderNPVInput): {
  * The BRE loss (NPV) is charged only when submitting would actually break the
  * streak: the year's reimbursable sum must cross the Selbstbehalt (`R_Y > S`) and
  * the streak must not already be broken by realised reimbursements. Below the
- * deductible submitting is inconsequential, so NPV(ΔBRE) = 0 (design §5.2.1).
+ * deductible submitting is inconsequential, so NPV(ΔBRE) = 0 (architecture §8.5.1).
  *
  * When a loss is at stake, it is the full multi-year NPV(ΔBRE) sum
- * (design §5.2.4, issues #140 + #141):
+ * (architecture §8.5.4, issues #140 + #141):
  *   NPV(ΔBRE) = Σ_{j=0}^{nMax−1} [B(min(s+1+j,nMax)) − B(min(j,nMax))] · p^j / (1+i/12)^τ_j
  *
  * @throws RangeError if `discountRate ≤ −1`, `claimFreeProbability` outside [0, 1],
@@ -472,7 +472,7 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
 
   // The streak is already, irrevocably gone only once the *realised* reimbursements
   // for the year exceed the Selbstbehalt — a smaller refund keeps the year
-  // leistungsfrei (design §5.2.1, point 2).
+  // leistungsfrei (architecture §8.5.1, point 2).
   const alreadyBroken = alreadyReimbursed > selbstbehalt;
   // Submitting everything triggers a payout (and therefore risks the streak) only
   // when the year's reimbursable sum exceeds the deductible. Below it, submitting
@@ -486,7 +486,7 @@ export function calculateGCP(input: GCP_YearInput): GCP_Result {
     // Only here is a BRE loss actually at stake: submitting would cross the
     // deductible and break an intact streak. Delegate to the shared ladder-NPV
     // helper so the verdict and the Selbstbehalt radar (issue #234) share one
-    // implementation of the multi-year sum (design §5.2.4, issues #140 + #141).
+    // implementation of the multi-year sum (architecture §8.5.4, issues #140 + #141).
     const ladder = calculateBRELadderNPV({
       year,
       breStructure,

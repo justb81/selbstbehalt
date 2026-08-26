@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * GOÄ/GOZ/GOT invoice structure parser & validator — one of the two
- * domain-critical algorithms (see docs/design.md §4.3, CLAUDE.md).
+ * domain-critical algorithms (see docs/architecture.md §8.3, CLAUDE.md).
  *
  * Pure, deterministic, **no LLM**. The parser is the consumer side of the
  * `fee-schedule/v1` format (see docs/data-format.md, `../data/fee-schedule`):
@@ -147,7 +147,7 @@ export interface ParsedPosition {
   category: FeeCategory | null;
   /**
    * Tariff benefit area from the entry — the schedule-derivable default the
-   * Erstattungs-Engine groups by (§3.2 `included_benefits`). `null` when the
+   * Erstattungs-Engine groups by (§5.5 `included_benefits`). `null` when the
    * Ziffer is unknown; for GOÄ the engine may still override ambulant→stationär
    * from the invoice context. See {@link FeeEntry.benefitCategory}.
    */

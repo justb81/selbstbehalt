@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungserfassung (docs/design.md §6.1, issues #22/#26/#109): thin wrapper
+  Rechnungserfassung (docs/architecture.md §5.2, issues #22/#26/#109): thin wrapper
   around InvoiceForm. OCR scanning and form state live in the shared component.
 -->
 <script lang="ts">

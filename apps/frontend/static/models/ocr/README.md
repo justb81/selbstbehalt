@@ -3,16 +3,16 @@
 
 # On-device PP-OCRv6 models
 
-The client-side OCR pipeline (`docs/design.md` §4, issue #27) runs **PP-OCRv6**
+The client-side OCR pipeline (`docs/architecture.md` §8.2, issue #27) runs **PP-OCRv6**
 through the [`ppu-paddle-ocr`](https://github.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr)
 binding on ONNX Runtime (WebGPU, with an automatic WASM fallback). The binding's
 built-in defaults would fetch the model files from a third-party GitHub host at
 runtime — which the project's privacy rules forbid (no external CDN; invoice
-images and the model both stay on-device, `docs/design.md` §1.3/§8).
+images and the model both stay on-device, `docs/architecture.md` §2.2/§8.1).
 
 To honour that, the engine is **always** pointed at the three files below, served
 same-origin from `/models/ocr/`. The service worker caches `/models/**` on first
-use (the “Cache After First Load” strategy, `docs/design.md` §6.3), so after the
+use (the “Cache After First Load” strategy, `docs/architecture.md` §8.6), so after the
 initial visit OCR works fully offline.
 
 **Why `.onnx`, not `.ort`.** The upstream repo also publishes PP-OCRv6 in the

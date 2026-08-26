@@ -65,7 +65,7 @@ const pages: Array<{ name: string; Component: Component<Record<string, never>>; 
     { name: 'Einstellungen', Component: Settings, heading: 'Einstellungen' },
   ];
 
-describe('route pages (§6.1)', () => {
+describe('route pages (§5.2)', () => {
   it.each(pages)('$name renders its level-1 heading', ({ Component, heading }) => {
     render(Component);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();

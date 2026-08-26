@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  OCRScanner (docs/design.md §4.1/§6.2, issue #26): captures an invoice frame —
+  OCRScanner (docs/architecture.md §6.1/§5.2, issue #26): captures an invoice frame —
   from the camera, a file/PDF upload, or a drag-and-drop — preprocesses it,
   runs client-side OCR with live progress, parses it against a fee schedule
   guessed from the recognised text (issues #183/#224 — see `detectProviderType`
@@ -19,10 +19,10 @@
 
   Privacy by design: the frame is recognised on-device and only the parsed
   text/metadata leaves this component — never the image — and nothing is uploaded
-  here (docs/design.md §1.3, §8). A downscaled copy of each page is handed to the
+  here (docs/architecture.md §2.2, §8.1). A downscaled copy of each page is handed to the
   parent alongside the result so the review screen can show what was read; it
   lives in memory only, is never persisted, and the parent drops it when the
-  invoice is saved or abandoned (docs/design.md §8.2).
+  invoice is saved or abandoned (docs/architecture.md §8.1).
 
   The capture/preprocess/recognise steps are injectable via `deps` so the flow
   is unit-testable without a real camera, worker or DOM.
@@ -104,7 +104,7 @@
     /**
      * Called with the parsed result once a frame has been recognised, plus the
      * in-memory page previews the review screen draws the recognised lines on
-     * (docs/design.md §4.1). The preview holds pixels — it is never persisted or
+     * (docs/architecture.md §6.1). The preview holds pixels — it is never persisted or
      * uploaded, and the caller must drop it when the scan is saved or abandoned.
      */
     onScanned: (result: ScanResult, preview: ScanPreview) => void;
@@ -193,7 +193,7 @@
    * For multi-page documents every page's lines are recognised/read in order
    * and concatenated before parsing, so the full document is treated as one
    * invoice. Frames are discarded as soon as recognition finishes
-   * (Datenminimierung §8.2).
+   * (Datenminimierung §8.1).
    */
   /**
    * Preview snapshots of the image pages, in page order, built by
@@ -456,7 +456,7 @@
   }
 
   // Release the camera if the component is torn down (navigate-away) before the
-  // user captures or cancels — the LED must not stay on (privacy, §8) — and drop
+  // user captures or cancels — the LED must not stay on (privacy, §8.1) — and drop
   // any sheets shot but not yet recognised, so frames never outlive the view.
   onDestroy(() => {
     capturedPages = [];

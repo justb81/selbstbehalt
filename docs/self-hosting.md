@@ -6,7 +6,7 @@ A complete walkthrough for running **selbstbehalt** on your own hardware — a
 Proxmox LXC, a NAS (Synology/Unraid/TrueNAS with Docker support), or any Linux
 box with Docker. It complements the shorter [README](../README.md#running-with-docker-self-hosting)
 quickstart with configuration reference, remote-access options, backup, and
-troubleshooting. See [`docs/design.md`](design.md) §2.3/§7/§7.3 for the
+troubleshooting. See [`docs/architecture.md`](architecture.md) §7.1/§5.4/§7.2 for the
 underlying design and [`docs/hardening.md`](hardening.md) for the security
 deep-dive (CSP, reverse proxy, `X-API-Key`).
 
@@ -29,7 +29,7 @@ deep-dive (CSP, reverse proxy, `X-API-Key`).
   templates and NAS Docker add-ons (Synology Container Manager, Unraid's
   Docker tab, TrueNAS apps) are all fine.
 - **~1 vCore / 256 MB RAM / a few GB disk** — the backend alone stays around
-  128–256 MB RAM (§2.3); the frontend is a static nginx serving a PWA.
+  128–256 MB RAM (§7.1); the frontend is a static nginx serving a PWA.
 - A way to reach the host: same LAN, or a VPN (see
   [Remote access](#remote-access-vpn--tailscale)) if you want it reachable
   away from home. **No public port-forwarding is required or recommended.**
@@ -117,7 +117,7 @@ unprivileged `node` user — no manual `chown` needed.
 
 ## Reverse proxy & HTTPS
 
-**HTTPS is mandatory** (§7.2), even on a LAN-only deployment — use a
+**HTTPS is mandatory** (§7.3), even on a LAN-only deployment — use a
 self-signed certificate rather than plain HTTP, since HTTP Basic Auth
 credentials are only as safe as the transport they travel over.
 
@@ -234,7 +234,7 @@ check the host directory isn't mounted read-only).
 
 **Do I need a GPU for OCR?** No. OCR (PP-OCRv6 via `ppu-paddle-ocr` on ONNX
 Runtime) runs **in the visiting browser**, not on the server — the backend
-never runs any AI/ML workload (§2.3, §8). It tries WebGPU first and falls
+never runs any AI/ML workload (§7.1, §8.1). It tries WebGPU first and falls
 back to WASM automatically if the browser/device doesn't support WebGPU
 (e.g. older Safari, some mobile browsers, or a browser with WebGPU disabled).
 Both paths run fully offline — no data or model requests leave the device at
@@ -244,7 +244,7 @@ inference time beyond the initial model download from your own server
 **OCR result looks wrong / misses positions.** Doctor invoices are usually
 typewritten or letterhead-printed, and PP-OCRv6 handles that well.
 **Handwritten** invoices or annotations are a known, documented limitation
-(design doc §10: "OCR Handschrift — Limitiert") — recognition quality drops
+(architecture doc §11: "OCR Handschrift — Limitiert") — recognition quality drops
 significantly on handwriting, and there is currently no automatic fallback
 beyond manual correction in the review step. Always check the parsed line
 items against the original invoice image in the review screen before

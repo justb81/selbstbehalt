@@ -37,7 +37,7 @@ export default defineConfig({
         branches: 60,
         // The domain-critical GOÄ/GOZ/GOT parser is pure and deterministic and
         // must stay well covered — this mirrors the gate apps/frontend enforced
-        // on lib/utils before the extraction (docs/design.md §4).
+        // on lib/utils before the extraction (docs/architecture.md §8.2).
         'src/lib/utils/**': {
           statements: 90,
           branches: 90,

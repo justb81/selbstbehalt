@@ -5,7 +5,7 @@
 
 An example [Caddy](https://caddyserver.com/) setup that terminates HTTPS and
 gates the whole app behind HTTP Basic Auth, per
-[`docs/design.md` §7.2](../../../docs/design.md). It layers on top of the base
+[`docs/architecture.md` §7.3](../../../docs/architecture.md). It layers on top of the base
 [`docker-compose.yml`](../../../docker-compose.yml) as a
 [Compose override](https://docs.docker.com/compose/multiple-compose-files/merge/)
 — the base file is unmodified. Prefer label-driven routing? See
@@ -28,7 +28,7 @@ Only the **frontend** is routed (the default single-origin setup): its own
 nginx proxies `/api` to the backend over the Compose network, so this one Basic
 Auth also protects the API and there is no CORS to configure. If you instead
 run the backend on its own public origin, see
-[`docs/design.md` §7.2](../../../docs/design.md) and the
+[`docs/architecture.md` §7.3](../../../docs/architecture.md) and the
 [X-API-Key section of the README](../../../README.md#external-access-x-api-key--vpntailscale)
 — Basic Auth is not sent cross-origin by the SPA.
 
@@ -136,7 +136,7 @@ docker compose -f docker-compose.yml \
 ## Notes
 
 - Plain HTTP (`:80`) always redirects to HTTPS — that is Caddy's default and
-  matches [`docs/design.md` §7.2](../../../docs/design.md) ("HTTPS: Pflicht").
+  matches [`docs/architecture.md` §7.3](../../../docs/architecture.md) ("HTTPS: Pflicht").
 - Certificates and the ACME account key live in the named volume `caddy_data`,
   not in the working tree, so no key material can be committed by accident.
   `docker compose down` keeps it; only `down -v` wipes it, which forces a

@@ -15,7 +15,7 @@
  *
  * The file never touches the network or IndexedDB — it round-trips through
  * Cache Storage only, and is deleted as soon as the client consumes it
- * (docs/design.md §1.3/§8: invoice files never leave the device).
+ * (docs/architecture.md §2.2/§8.1: invoice files never leave the device).
  */
 
 /** Manifest `share_target.action` path the service worker intercepts. */
