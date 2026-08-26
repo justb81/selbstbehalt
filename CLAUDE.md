@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -105,6 +107,7 @@ where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible
 - Validate API payloads and forms with Zod.
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
+- **SPDX headers are gated in CI** — every first-party file opens with `SPDX-FileCopyrightText: 2026 Bastian Rang and contributors` followed by `SPDX-License-Identifier: Apache-2.0`, in the comment syntax of its language. `pnpm headers:check` verifies it (`--fix` inserts what is missing) and `.github/workflows/headers.yml` runs it on **every** change (no `paths-ignore`, unlike `ci.yml`). Vendored code (`**/components/ui/**`, `.agents/**`), generated artifacts, the `data/input/` fee-schedule XML and comment-less formats (JSON, images) are excluded with a per-entry reason in `scripts/check-spdx-headers.mjs` — never widen that list without one, and never put our copyright on third-party code.
 - Keep the GOÄ/GOZ lookup tables as static, versioned JSON, regenerated reproducibly from the official source XML under `data/input/`. They are maintained exclusively by the maintainer (@justb81); errors can be reported as issues, and external PRs (code, data, or otherwise) are welcome but must be reviewed and merged by the maintainer.
 
 ## Working notes (verified gotchas)

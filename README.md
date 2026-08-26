@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <p align="center">
   <img src="assets/selbstbehalt-logo.svg" alt="selbstbehalt logo" width="120" />
 </p>
@@ -155,13 +157,34 @@ processing overview — lives in
 
 ### License headers
 
-Source files carry an [SPDX](https://spdx.dev/) short-form identifier as the first line (the full text lives in [`LICENSE`](LICENSE)):
+Apache-2.0 keeps the copyright notice _out_ of the license text — § 4(c) obliges
+redistributors to preserve the notices found in the original, and the appendix of
+[`LICENSE`](LICENSE) is only a template for file headers. Every first-party file
+therefore states both halves itself, as adjacent [SPDX](https://spdx.dev/)
+short-form lines at the top (the full license text lives in [`LICENSE`](LICENSE)):
 
 ```ts
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 ```
 
-Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->` for HTML/Svelte markup, etc.).
+Use the comment syntax of the respective language (`#` for YAML/shell, `<!-- -->`
+for HTML/Svelte markup, `/* */` for CSS, etc.). Where a file must open with
+something else — a shebang, a `# syntax=` directive, a doctype, a
+`/// <reference>` block — the header follows directly below it.
+
+[`scripts/check-spdx-headers.mjs`](scripts/check-spdx-headers.mjs) enforces the
+pair in CI ([`headers.yml`](.github/workflows/headers.yml)); run `pnpm
+headers:check` locally, or `pnpm headers:check --fix` to insert what is missing.
+Three groups are deliberately out of scope, each listed with its reason in the
+script's `EXCLUDES`: vendored third-party code (see
+[Third-party components](#third-party-components)), generated artifacts (Drizzle
+migrations, the fee-schedule tables, `CHANGELOG.md`, the lockfile), the official
+fee-schedule XML under [`data/input/`](data/input/) (amtliche Werke, § 5 UrhG),
+and formats that cannot carry a comment at all (JSON, images). Claiming
+copyright over any of those would be a false assertion, so full
+[REUSE](https://reuse.software/) conformance — which would need a `REUSE.toml`
+for the JSON and binary files — is not a goal.
 
 ## Running with Docker (self-hosting)
 
@@ -246,3 +269,21 @@ than hand-editing the generated tables. Found a vulnerability? See
 ## License
 
 [Apache License 2.0](LICENSE).
+
+Copyright 2026 Bastian Rang and contributors. The same notice lives in
+[`NOTICE`](NOTICE), which § 4(d) of the license requires downstream distributions
+to reproduce; it is kept to that one line for exactly that reason.
+
+### Third-party components
+
+The UI primitives under `src/lib/components/ui/` are
+[shadcn-svelte](https://shadcn-svelte.com/) components, added and updated by its
+CLI (see the `ui` alias in each app's `components.json`), and the agent skill
+under [`.agents/skills/shadcn/`](.agents/skills/shadcn/) is vendored from
+[shadcn/ui](https://github.com/shadcn-ui/ui) (pinned in
+[`skills-lock.json`](skills-lock.json)). Both remain under their own upstream
+licenses and therefore carry no header of ours — including the locally renamed
+and trimmed variants, which are derivatives rather than original work. The
+license terms of all redistributed npm dependencies are enforced by
+[`scripts/check-licenses.mjs`](scripts/check-licenses.mjs) (see
+[Security & supply-chain automation](#security--supply-chain-automation)).
