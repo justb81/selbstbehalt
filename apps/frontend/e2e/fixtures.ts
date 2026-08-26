@@ -11,6 +11,7 @@ export const INSURED_ID = '10000000-0000-4000-8000-000000000003';
 export const INVOICE_ID = '10000000-0000-4000-8000-000000000004';
 const POSITION_OK_ID = '10000000-0000-4000-8000-000000000005';
 const POSITION_FLAGGED_ID = '10000000-0000-4000-8000-000000000006';
+const SUBMISSION_ID = '10000000-0000-4000-8000-000000000007';
 
 export const PERSON = {
   id: PERSON_ID,
@@ -105,6 +106,20 @@ export const INVOICE_LIST_ITEM = {
 
 export const INVOICE = { ...INVOICE_LIST_ITEM, positions: POSITIONS };
 
+/** The three derived status tracks of the invoice DTO (see CLAUDE.md). */
+export type InvoiceStatusFixture = typeof INVOICE_LIST_ITEM.status;
+
+// `GET /api/invoices/:id/submission` — only reached once the invoice is
+// `eingereicht`, where /invoices/:id/submit doubles as the correction form (#230).
+export const SUBMISSION = {
+  id: SUBMISSION_ID,
+  invoice_id: INVOICE_ID,
+  submitted_at: '2026-03-20T10:00:00.000Z',
+  submitted_via: 'post',
+  expected_refund: 54.89,
+  refund_date: null,
+};
+
 export const BRE_HISTORY = {
   insured_person_id: INSURED_ID,
   years: [
@@ -113,15 +128,28 @@ export const BRE_HISTORY = {
   ],
 };
 
-/** Wires up read-only mocks for the backend the covered routes call. */
+/**
+ * Wires up read-only mocks for the backend the covered routes call.
+ *
+ * `invoiceStatus` patches the fixture invoice's derived status tracks, for
+ * routes that only render past a given state — e.g. /invoices/:id/submit needs
+ * `review: 'geprüft'` for its form and `submission: 'eingereicht'` for the
+ * correction mode.
+ */
 export async function mockBackend(
   page: Page,
-  { populated }: { populated: boolean },
+  {
+    populated,
+    invoiceStatus,
+  }: { populated: boolean; invoiceStatus?: Partial<InvoiceStatusFixture> },
 ): Promise<void> {
   const persons = populated ? [PERSON] : [];
   const contracts = populated ? [CONTRACT] : [];
   const insured = populated ? [INSURED] : [];
-  const invoices = populated ? [INVOICE_LIST_ITEM] : [];
+  const status = { ...INVOICE.status, ...invoiceStatus };
+  const invoiceListItem = { ...INVOICE_LIST_ITEM, status };
+  const invoice = { ...INVOICE, status };
+  const invoices = populated ? [invoiceListItem] : [];
 
   await page.route('**/api/persons', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: persons }) : route.fallback(),
@@ -148,11 +176,14 @@ export async function mockBackend(
     return route.fallback();
   });
   await page.route('**/api/invoices/*', (route) =>
-    route.request().method() === 'GET' ? route.fulfill({ json: INVOICE }) : route.fallback(),
+    route.request().method() === 'GET' ? route.fulfill({ json: invoice }) : route.fallback(),
   );
   // The invoice detail page's status-flow loads the event log on mount.
   await page.route('**/api/invoices/*/events', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: [] }) : route.fallback(),
+  );
+  await page.route('**/api/invoices/*/submission', (route) =>
+    route.request().method() === 'GET' ? route.fulfill({ json: SUBMISSION }) : route.fallback(),
   );
   await page.route('**/api/stats/year/*', (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
