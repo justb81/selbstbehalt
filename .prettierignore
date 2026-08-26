@@ -26,7 +26,7 @@ apps/backend/src/db/migrations/
 data/
 
 # On-device OCR assets fetched/copied at build time (git-ignored vendor binaries
-# + their emscripten glue): PP-OCRv5 models and the ONNX Runtime WASM. Populated
+# + their emscripten glue): PP-OCRv6 models and the ONNX Runtime WASM. Populated
 # by `pnpm ocr:models` / `scripts/copy-ort-wasm.mjs`, never hand-formatted.
 apps/frontend/static/models/ocr/*.onnx
 apps/frontend/static/models/ocr/dict.txt

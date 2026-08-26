@@ -42,9 +42,13 @@ pnpm typecheck      # type-check every workspace package
 
 Copy [`.env.example`](.env.example) to `.env` and adjust it for your setup.
 
-This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with two
-packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA) and
-[`apps/backend/`](apps/backend/) (Hono REST API + SQLite). See [`README.md`](README.md) and
+This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with five
+packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA),
+[`apps/backend/`](apps/backend/) (Hono REST API + SQLite),
+[`apps/goae-waechter/`](apps/goae-waechter/) (the standalone GOÄ-Wächter demo),
+[`packages/medic-invoice-check/`](packages/medic-invoice-check/) (on-device OCR +
+GOÄ/GOZ/GOT check engine) and [`packages/shared/`](packages/shared/) (Zod schemas,
+types, domain helpers). See [`README.md`](README.md) and
 [`docs/design.md`](docs/design.md) for the architecture.
 
 ## Branch & commit conventions

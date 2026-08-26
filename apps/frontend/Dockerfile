@@ -56,7 +56,7 @@ RUN pnpm --filter @selbstbehalt/shared build
 
 # On-device OCR assets, baked into the served bundle so nothing is fetched from a
 # CDN at runtime (CLAUDE.md privacy constraint; docs/design.md §1.3/§8):
-#   - PP-OCRv5 models via `pnpm ocr:models` (needs curl + network at build time;
+#   - PP-OCRv6 models via `pnpm ocr:models` (needs curl + network at build time;
 #     see apps/frontend/static/models/ocr/README.md),
 #   - the ONNX Runtime WASM, copied from node_modules by the frontend build.
 RUN apt-get update \

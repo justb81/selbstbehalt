@@ -6,12 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-The monorepo scaffolding and most of the Phase 0/1 foundation are in place. Implemented so far:
+Phases 0–3 of `docs/roadmap.md` are substantially done — the app is self-hostable and released as container images. Implemented so far:
 
 - **`packages/shared/`** — the cross-package source of truth: Zod schemas + inferred types for every entity, shared enums, and the BRE ladder helpers.
-- **`packages/medic-invoice-check/`** (`@selbstbehalt/medic-invoice-check`) — the framework-light, backend-free scan-and-check engine shared by `apps/frontend` and the planned GOÄ-Wächter demo (issues #166/#169): the on-device OCR pipeline (**PP-OCRv6 via `ppu-paddle-ocr`**, ONNX Runtime, Web Worker, WebGPU/WASM — verified in a real browser, issue #317 — behind an injectable engine seam bundled into a worker-only chunk), a PDF text-layer-first path (`ocr/pdf.ts` — `pdfjs` `getTextContent()` per page, with a quality heuristic falling back to rasterise-+-OCR only for pages whose text layer is missing or unusable, issue #278), the capture-quality gate (`ocr/preprocess.ts` metrics + `ocr/quality.ts` thresholds — a non-blocking pre-OCR warning on blurred/dark/glare-struck frames plus live hints in the camera preview, issues #279/#281), the GOÄ/GOZ/GOT fee-schedule data + parser (full rule validation — §5 Steigerungsfaktor limits, plus the cross-Ziffer constraint model: exclusions, required base services, Höchstwert amount caps, frequency/duration/age limits), and the reusable scan + review UI (`OCRScanner`, `InvoiceReview` — reduced Rechnungskopf + GOÄ/GOZ position table with hints/warnings, no tariff-dependent `eligible_amount`).
+- **`packages/medic-invoice-check/`** (`@selbstbehalt/medic-invoice-check`) — the framework-light, backend-free scan-and-check engine shared by `apps/frontend` and the deployed GOÄ-Wächter demo (`apps/goae-waechter`, published to GitHub Pages — see `docs/deploy-goae-waechter.md`): the on-device OCR pipeline (**PP-OCRv6 via `ppu-paddle-ocr`**, ONNX Runtime, Web Worker, WebGPU/WASM — verified in a real browser, issue #317 — behind an injectable engine seam bundled into a worker-only chunk), a PDF text-layer-first path (`ocr/pdf.ts` — `pdfjs` `getTextContent()` per page, with a quality heuristic falling back to rasterise-+-OCR only for pages whose text layer is missing or unusable, issue #278), the capture-quality gate (`ocr/preprocess.ts` metrics + `ocr/quality.ts` thresholds — a non-blocking pre-OCR warning on blurred/dark/glare-struck frames plus live hints in the camera preview, issues #279/#281), the GOÄ/GOZ/GOT fee-schedule data + parser (full rule validation — §5 Steigerungsfaktor limits, plus the cross-Ziffer constraint model: exclusions, required base services, Höchstwert amount caps, frequency/duration/age limits), and the reusable scan + review UI (`OCRScanner`, `InvoiceReview` — reduced Rechnungskopf + GOÄ/GOZ position table with hints/warnings, no tariff-dependent `eligible_amount`).
 - **`apps/backend/`** — Hono REST API on SQLite via Drizzle: DB schema + migrations, and the `contracts`, `insured`, `invoices`, `stats` and backup (export/import) routes, with API-key auth middleware.
-- **`apps/frontend/`** — SvelteKit app shell + typed API client, the Günstigerprüfung engine, the tariff-based Erstattungs-Engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). The invoice capture/review UI comes from `@selbstbehalt/medic-invoice-check`; `InvoiceForm` wraps `InvoiceReview` with person selection, notes, the `eligible_amount` reimbursement, and saving. Most other UI pages (contracts/invoices/dashboard/settings) are still thin. The OCR models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). See `docs/roadmap.md` and the open GitHub issues.
+- **`apps/frontend/`** — SvelteKit app shell + typed API client, the Günstigerprüfung engine, the tariff-based Erstattungs-Engine, the `/stats` Jahresauswertung (year selector, Kosten-vs-Erstattungen and BRE-Verlauf charts via `layerchart`, no CDN — issue #28), and the PWA layer (web app manifest + icons, service worker with the §6.3 caching strategies, and an offline write-queue replayed on reconnect — via `vite-plugin-pwa`). The invoice capture/review UI comes from `@selbstbehalt/medic-invoice-check`; `InvoiceForm` wraps `InvoiceReview` with person selection, notes, the `eligible_amount` reimbursement, and saving. The contracts/invoices/insured/persons/dashboard/settings pages are in place (issues #20–#23, #133, #134). The OCR models and the ONNX-Runtime WASM are served on-device under `/models/**` (`pnpm ocr:models` + `scripts/copy-ort-wasm.mjs`, baked into the Docker build; never a CDN at runtime). See `docs/roadmap.md` and the open GitHub issues.
 
 Reference material:
 
@@ -38,9 +38,9 @@ Run from the repo root (pnpm workspaces); each fans out to the packages:
 
 The domain is German and insurance-specific. Keep entity/field names in German where the design doc uses them (e.g. `selbstbehalt`, `bre_structure`, `eligible_amount`); UI text is German (`de-DE`).
 
-## Architecture (planned)
+## Architecture
 
-Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, and `packages/shared/` (shared Zod schemas, types and domain helpers).
+Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, `apps/goae-waechter/` (the deployed standalone GOÄ-Wächter demo), `packages/medic-invoice-check/` (the shared scan-and-check engine) and `packages/shared/` (shared Zod schemas, types and domain helpers).
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
@@ -58,21 +58,11 @@ These come from §1.3 and §8 of the design doc and override convenience:
 
 ## Data model
 
-Entity relationships (see `docs/design.md` §3 for full SQLite/Drizzle schemas):
-
-```
-Person (1) ── (n) Vertrag (contract, as Versicherungsnehmer / policyholder)
-Vertrag (1) ── (n) VersichertePerson (insured person on the contract, own KVNR)
-Person (1) ── (n) VersichertePerson (a person may be insured on several contracts)
-VersichertePerson (1) ── (n) Rechnung (invoice)
-Rechnung (1) ── (n) Rechnungsposition (invoice line / GOÄ code)
-Rechnung (1) ── (1) Einreichung (submission, optional)
-VersichertePerson (1) ── (n) BRE-Periode (premium-refund period)
-```
+The entity relationships and the full SQLite/Drizzle schemas live in `docs/design.md` §3 — that is the one place they are drawn. In short:
 
 A `contract` (Hauptvertrag) holds only insurer/contract number and its `policyholder_id`. Each insured person sits in `insured_persons` and carries its own `kvnr` (Krankenversichertennummer), `tariff_name`, `monthly_premium`, `self_retention`, `bre_structure`, and `included_benefits`. Invoices and BRE periods reference the **insured person**, not the contract.
 
-Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_positions`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
+Tables: `persons`, `contracts`, `insured_persons`, `invoices`, `invoice_positions`, `invoice_status_events`, `submissions`, `bre_periods`. IDs are UUIDs (TEXT PK). Money is stored as `REAL` in EUR. `bre_structure` and `included_benefits` are JSON stored as TEXT.
 
 ## Two domain-critical algorithms
 
@@ -92,12 +82,12 @@ A violation of any of these is flagged (`is_valid = false`, with `flag_reason`).
 Decides **einreichen (submit)** vs **selbst_zahlen (self-pay)**. Submitting is worthwhile when:
 
 ```
-R − S  >  NPV(ΔBRE) + Steuervorteil(R)
+max(0, R_Y − S)  >  NPV(ΔBRE)
 ```
 
-where `R` = reimbursable amount, `S` = remaining annual Selbstbehalt (deductible), `NPV(ΔBRE)` = present value of the premium-refund lost by breaking the leistungsfrei (claim-free) streak, discounted to today (default rate 3% p.a.), and `Steuervorteil` = tax saving from self-paying. See §5 of the design doc for the reference implementation and the breakdown fields the UI expects.
+per insured person × Leistungsjahr, where `R_Y` = the year's reimbursable amount, `S` = the annual Selbstbehalt (deductible), and `NPV(ΔBRE)` = present value of the premium-refund lost by breaking the leistungsfrei (claim-free) streak, discounted to today (default rate 3% p.a.). There is **no tax term**: a §33-EStG Steuervorteil is deliberately out of scope (design doc §5.2.4, issue #64 closed as not planned) — do not reintroduce it. See §5 of the design doc for the reference implementation and the breakdown fields the UI expects.
 
-## Backend REST surface (planned)
+## Backend REST surface
 
 `/api/persons`, `/api/contracts`, `/api/contracts/:id/insured` + `/api/insured/:id`, `/api/invoices` (full CRUD), plus `/api/invoices/:id/submit`, `/api/invoices/:id/refund`, `/api/stats/year/:year`, `/api/stats/bre/:insuredPersonId`, the positions roll-up per Leistungsjahr `/api/stats/positions/:insuredPersonId` (#239 — `R_Y = eligible_amount + refund_amount`, `alreadyReimbursed = refund_amount`; feeds the Günstigerprüfung KPIs), and `/api/export/db` + `/api/import/db` for SQLite backup/restore. Auth is intentionally minimal (reverse-proxy Basic Auth, or optional `X-API-Key` for VPN access) — see §7.2.
 

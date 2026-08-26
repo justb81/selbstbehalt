@@ -2,11 +2,18 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # UI-Handover – PKV-Manager (selbstbehalt)
 
-> **Zweck dieses Dokuments:** Übergabe des UI-Entwurfs an die Frontend-Entwicklung.
-> Beschreibt die in der interaktiven Vorlage umgesetzten Screens, das visuelle System,
-> die Komponenten und den Abbildungsgrad gegenüber [`docs/design.md`](./design.md).
-> Bezugs-Issues: **#20** (Einstellungen), **#21** (Vertragsverwaltung), **#22** (Rechnungs-UI),
-> **#23** (Dashboard) sowie die Stammdaten-/CRUD-Flows (Personen, Vertrag-Wizard).
+> **Historisches Übergabedokument.** Es hält den UI-Entwurf fest, mit dem der
+> Klickprototyp an die Frontend-Entwicklung übergeben wurde (Bezugs-Issues **#20**
+> Einstellungen, **#21** Vertragsverwaltung, **#22** Rechnungs-UI, **#23** Dashboard
+> sowie die Stammdaten-/CRUD-Flows). Es beschreibt damit einen **abgeschlossenen
+> Entwurfsstand**, nicht den heutigen Zustand der Anwendung: die Screens sind
+> inzwischen umgesetzt und teils weiterentwickelt (u. a. „versicherte Person als
+> Knoten", #134, und die Navigationsstruktur, #133).
+>
+> Maßgeblich für Architektur, Datenmodell, Routen, Status- und Erstattungslogik ist
+> **allein** [`docs/design.md`](./design.md). Dieses Dokument bleibt als Referenz für
+> **Layout, visuelles System, Zustände, Interaktionen und Copy** erhalten; wo es von
+> der Spezifikation abweicht, gilt die Spezifikation.
 
 Die Vorlage ist ein **High-Fidelity-Klickprototyp** (eigenständige HTML/Design-Component).
 Sie ist **keine** SvelteKit-Implementierung, sondern die verbindliche Referenz für Layout,
@@ -39,7 +46,7 @@ Die Vorlage definiert die Tokens als CSS-Custom-Properties am Wurzel-Container.
 | `--accent-ink` | `#1f6b40` | Akzenttext |
 | `--accent-soft` | `#e3f0e7` | Akzent-Badge |
 | `--warn` / `--warn-soft` | `#a9760f` / `#f5ecd6` | §5-Warnung, „eingereicht", Beihilfe-Badge |
-| `--danger` / `--danger-soft` | `#b03a2b` / `#f5e1dc` | Löschen, „abgelehnt" |
+| `--danger` / `--danger-soft` | `#b03a2b` / `#f5e1dc` | Löschen, Fehler- und Warnzustände |
 | `--gold` | `#b08a3e` | Selbstbehalt-Fortschritt, BRE-Kennzahl |
 
 ### 1.2 Typografie
@@ -130,7 +137,9 @@ damit beide Geräteframes unabhängig im Canvas funktionieren).
   Rechnungsbetrag.
 - **Positionen** (GOÄ/GOZ) mit §5-Prüfung: markierte Zeilen (Faktor > Regelhöchstsatz) hervorgehoben,
   Sammelhinweis bei Auffälligkeiten, „Erstattungsfähig (Erstattungs-Engine)".
-- **GCPCard** (siehe §5).
+- **GCPCard** (siehe §5). Umgesetzt liegt das maßgebliche Verdikt je Leistungsjahr auf
+  `/insured/[id]`; die Rechnung zeigt nur die Marginalanzeige (`GCPContributionCard`) —
+  siehe `design.md` §6.1.
 - Aktionen **Einreichen** / **Selbst zahlen** ändern Status + Entscheidung (Toast).
 
 ### 3.7 Rechnung erfassen (`#22`/`#26`/§4 OCR, Route `/invoices/new`)
@@ -210,21 +219,28 @@ Diskontrate aus den Einstellungen).
 |---|---|
 | `ContractCard` | Vertragskarte (Liste) inkl. versicherte Personen |
 | `BRETracker` | BRE-Fortschritt + Staffelstufen (Detail, Dashboard, Wizard-Schritt 3) |
-| `InvoiceBadge` | Status-Badges (neu/geprüft/eingereicht/erstattet/abgelehnt/selbst_gezahlt) |
-| `GCPCard` | Günstigerprüfungs-Karte im Rechnungsdetail |
+| `InvoiceBadge` | Status-Badges. Der Prototyp zeigte eine flache Status-Liste (u. a. „abgelehnt", „selbst_gezahlt"); umgesetzt sind stattdessen die drei abgeleiteten Tracks aus `design.md` §3.2 — Prüfung (neu/geprüft), Zahlung (offen/bezahlt) und Einreichung (nicht_eingereicht/eingereicht/erstattet) |
+| `GCPCard` | Günstigerprüfungs-Karte, im Prototyp im Rechnungsdetail. Umgesetzt auf `/insured/[id]` (Verdikt je Leistungsjahr); im Rechnungsdetail steht die `GCPContributionCard` (`design.md` §6.1) |
 | `OCRScanner` | Scan-Schaltfläche in `/invoices/new` (OCR-Lauf gemockt) |
 
 ---
 
-## 8. Offene Punkte / bewusst nicht umgesetzt
+## 8. Abbildungsgrad des Prototyps (Stand der Übergabe)
 
-- **OCR live** (PaddleOCR/WebGPU) – Scan-Flow ist gemockt (`design.md` §4, Issues #24–#26).
-- **Echte API/Persistenz** – alle Daten In-Memory; keine REST-Aufrufe (Issues #11–#14).
-- **Leistungs-Editor im Wizard** deckt Satz/Wartezeit/Jahreslimit/Beihilfe ab; die vollständige
-  **`tiers`/`annual_staffel`**-Pflege (mehrstufige Schwellen, Zahnstaffel) wird angezeigt,
-  aber im Schnell-Editor noch nicht bearbeitet.
-- **§33-EStG-Steuervorteil** wird absichtlich nicht berechnet (Issue #64 geschlossen, „won't do") — siehe `design.md` §5.2.4.
-- **Stats-Seite** (`/stats`) noch nicht entworfen (Issue #28).
+Was der Klickprototyp bewusst **nicht** abbildete. Bis auf den letzten Punkt ist das
+inzwischen alles umgesetzt — die Liste dokumentiert den Übergabestand, keine offenen
+Aufgaben:
+
+- **OCR live** (PP-OCRv6/WebGPU) – Scan-Flow war gemockt (`design.md` §4, Issues #24–#26).
+  Umgesetzt.
+- **Echte API/Persistenz** – alle Daten In-Memory, keine REST-Aufrufe (Issues #11–#14).
+  Umgesetzt.
+- **Stats-Seite** (`/stats`) war noch nicht entworfen (Issue #28). Umgesetzt.
+- **Leistungs-Editor im Wizard** deckte Satz/Wartezeit/Jahreslimit/Beihilfe ab; die
+  vollständige **`tiers`/`annual_staffel`**-Pflege (mehrstufige Schwellen, Zahnstaffel)
+  wurde angezeigt, aber im Schnell-Editor nicht bearbeitet.
+- **§33-EStG-Steuervorteil** wird absichtlich nicht berechnet (Issue #64 geschlossen,
+  „won't do") — siehe `design.md` §5.2.4. Gilt unverändert.
 
 ---
 
