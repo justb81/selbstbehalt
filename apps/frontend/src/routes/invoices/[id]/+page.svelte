@@ -12,6 +12,7 @@
   import { onMount } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
+  import { loadInvoiceHistory } from '$lib/api/invoice-form-data';
   import {
     BENEFIT_CATEGORY_LABELS,
     formatDate,
@@ -20,12 +21,18 @@
     roundCents,
     type InsuredPerson,
     type InvoiceWithPositions,
+    type Person,
   } from '@selbstbehalt/shared';
   import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
   import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
   import { resolveBenefitCategory } from '$lib/utils/benefit-category';
   import { computeErstattung } from '$lib/utils/erstattungs-engine';
   import { refundStatus } from '$lib/utils/position-refund';
+  import {
+    aggregatePriorClaims,
+    patientAgeAt,
+    referenceLeistungsjahr,
+  } from '$lib/utils/prior-claims';
   import { isNonReimbursable } from '$lib/utils/reimbursability';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
@@ -63,6 +70,8 @@
 
   let invoice = $state<InvoiceWithPositions | null>(null);
   let insuredPerson = $state<InsuredPerson | null>(null);
+  /** The natural person behind the cover — only `birth_date` is needed (age-bound limits). */
+  let person = $state<Person | null>(null);
   let allPersonInvoices = $state<InvoiceWithPositions[]>([]);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
@@ -76,10 +85,11 @@
 
       const ip = await api.insured.get(inv.insured_person_id);
       insuredPerson = ip;
+      person = await api.persons.get(ip.person_id);
 
-      // Load all invoices for this person to compute accurate total R_Y per service year.
-      const invList = await api.invoices.list({ insured_person_id: ip.id });
-      allPersonInvoices = await Promise.all(invList.map((i) => api.invoices.get(i.id)));
+      // Load all invoices for this person: they carry both the total R_Y per service
+      // year and the prior claims a cross-invoice tariff cap is measured against.
+      allPersonInvoices = await loadInvoiceHistory(ip.id);
     } catch (e) {
       loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
@@ -124,6 +134,15 @@
       benefits: insuredPerson.included_benefits,
       invoiceDate: inv.invoice_date,
       coverageStart: insuredPerson.start_date,
+      // Caps that span invoices (jahr/lebenslang limits, Zahnstaffel) are shared with
+      // the person's other invoices; this one must not be measured on its own (#370).
+      priorClaims: aggregatePriorClaims({
+        invoices: allPersonInvoices,
+        excludeInvoiceId: inv.id,
+        year: referenceLeistungsjahr(inv.positions, inv.invoice_date),
+        coverageStart: insuredPerson.start_date,
+      }),
+      patientAge: patientAgeAt(person?.birth_date, inv.invoice_date),
     });
   });
 

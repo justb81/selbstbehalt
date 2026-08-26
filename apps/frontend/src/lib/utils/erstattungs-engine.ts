@@ -26,9 +26,10 @@
  *  3. **Beihilfe** — with `beihilfe_satz > 0` the tariff only covers the residual
  *     quota `100 % − beihilfe_satz` (the Beihilfe carries the rest separately).
  *  4. **Summengrenzen (`limits`)** — cap per `behandlung` / `jahr` /
- *     `lebenslang`, optionally age-bound.
+ *     `lebenslang`, optionally age-bound; the `jahr` and `lebenslang` caps net of
+ *     the matching {@link ErstattungInput.priorClaims} window.
  *  5. **Aufbaujahres-Staffel (`annual_staffel`)** — cap at the cumulative limit
- *     of the relevant policy year, net of `priorClaimsByCategory`.
+ *     of the relevant policy year, net of `priorClaims.annual_staffel`.
  *
  * The result's `eligibleAmount` feeds the Günstigerprüfung as `erstattungsBetrag`
  * (= `R`); the `byCategory` breakdown explains how each category got there.
@@ -67,6 +68,28 @@ export interface ErstattungPosition {
   treatmentDate?: DateInput;
 }
 
+/**
+ * The window a cap is measured over — the counterpart of a `limits` scope that
+ * reaches beyond a single invoice, plus the Aufbaujahres-Staffel:
+ *
+ * - `jahr` — the invoice's Leistungsjahr (the `jahr` limit scope),
+ * - `lebenslang` — the person's whole invoice history (the `lebenslang` scope),
+ * - `annual_staffel` — everything since the coverage start, the window the
+ *   Zahnstaffel's cumulative cap runs over.
+ *
+ * `behandlung`-scoped limits need no window: they only ever see this invoice.
+ */
+export type PriorClaimWindow = 'jahr' | 'lebenslang' | 'annual_staffel';
+
+/**
+ * Already-used volume in EUR per {@link PriorClaimWindow} and category, aggregated
+ * from the insured person's other invoices (`utils/prior-claims.ts`). A missing
+ * window or category counts as 0.
+ */
+export type PriorClaims = Partial<
+  Record<PriorClaimWindow, Partial<Record<BenefitCategory, number>>>
+>;
+
 /** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in architecture §8.4. */
 export interface ErstattungInput {
   /** Checked invoice positions (from the GOÄ parser). */
@@ -84,10 +107,11 @@ export interface ErstattungInput {
    */
   patientAge?: number;
   /**
-   * Already-used volume per category in EUR — consumed by the `jahr` /
-   * `lebenslang` limits and the `annual_staffel` cumulative cap. Defaults to 0.
+   * Volume the person's *other* invoices already used up, per category and per
+   * window — a cap that spans invoices is otherwise measured against this one
+   * alone (issue #370). Missing entries count as 0.
    */
-  priorClaimsByCategory?: Partial<Record<BenefitCategory, number>>;
+  priorClaims?: PriorClaims;
 }
 
 /** Which rule, if any, bound a category's reimbursement (architecture §8.4). */
@@ -147,6 +171,13 @@ function applyTiers(amount: number, tiers: BenefitTier[]): number {
   }
   return eligible;
 }
+
+/** German wording for a `limits` scope, used in the per-category `note`. */
+const LIMIT_SCOPE_LABELS: Record<BenefitLimit['scope'], string> = {
+  behandlung: 'je Behandlung',
+  jahr: 'im Leistungsjahr',
+  lebenslang: 'lebenslang',
+};
 
 /** Whether an age-bound `limit` applies to the given patient age. */
 function limitAppliesToAge(limit: BenefitLimit, patientAge: number | undefined): boolean {
@@ -225,7 +256,6 @@ function computeCategory(
 
   // 4. Summengrenzen.
   if (benefit.limits) {
-    const prior = input.priorClaimsByCategory?.[category] ?? 0;
     for (const limit of benefit.limits) {
       if (limit.max_amount === null) continue; // unlimited carve-out
       if (!limitAppliesToAge(limit, input.patientAge)) {
@@ -235,12 +265,20 @@ function computeCategory(
         }
         continue;
       }
-      // behandlung = per case (this invoice); jahr/lebenslang net of prior claims.
-      const available = limit.scope === 'behandlung' ? limit.max_amount : limit.max_amount - prior;
+      // behandlung = per case, so this invoice is the only claimant. The jahr and
+      // lebenslang caps are shared with the person's other invoices: subtract what
+      // those already used up in the matching window (issue #370).
+      const prior =
+        limit.scope === 'behandlung' ? 0 : (input.priorClaims?.[limit.scope]?.[category] ?? 0);
+      const available = limit.max_amount - prior;
       if (eligible > available) {
         eligible = available;
         cappedBy = 'limit';
-        notes.push(`gedeckelt auf ${available} € (${limit.scope})`);
+        notes.push(
+          prior > 0
+            ? `gedeckelt auf ${roundCents(available)} € (${limit.max_amount} € ${LIMIT_SCOPE_LABELS[limit.scope]}, davon ${roundCents(prior)} € bereits verbraucht)`
+            : `gedeckelt auf ${available} € (${LIMIT_SCOPE_LABELS[limit.scope]})`,
+        );
       }
     }
   }
@@ -254,12 +292,16 @@ function computeCategory(
       differenceInYears(toCalendarDate(input.invoiceDate), toCalendarDate(input.coverageStart)) + 1;
     const cap = annualCap(benefit.annual_staffel, policyYear);
     if (cap !== null) {
-      const prior = input.priorClaimsByCategory?.[category] ?? 0;
+      const prior = input.priorClaims?.annual_staffel?.[category] ?? 0;
       const available = cap - prior;
       if (eligible > available) {
         eligible = available;
         cappedBy = 'annual_staffel';
-        notes.push(`Aufbaujahr ${policyYear}: kumuliertes Limit ${cap} €`);
+        notes.push(
+          prior > 0
+            ? `Aufbaujahr ${policyYear}: kumuliertes Limit ${cap} €, davon ${roundCents(prior)} € bereits verbraucht`
+            : `Aufbaujahr ${policyYear}: kumuliertes Limit ${cap} €`,
+        );
       }
     }
   }
