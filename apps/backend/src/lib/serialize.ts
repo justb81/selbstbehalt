@@ -120,12 +120,20 @@ export function toContractUpdate(input: ContractUpdate): Partial<ContractInsert>
 
 // ── Insured persons (versicherte Personen) ───────────────────────────────────
 
-export function serializeInsuredPerson(row: InsuredPersonRow): InsuredPerson {
+/**
+ * A versicherte Person plus the display name joined from `persons` — the row
+ * shape the insured endpoints read (#358). The name is not stored on
+ * `insured_persons`; it always comes from the join.
+ */
+export type InsuredPersonRowWithName = InsuredPersonRow & { personName: string };
+
+export function serializeInsuredPerson(row: InsuredPersonRowWithName): InsuredPerson {
   return {
     id: row.id,
     created_at: row.createdAt,
     contract_id: row.contractId,
     person_id: row.personId,
+    person_name: row.personName,
     kvnr: row.kvnr,
     tariff_name: row.tariffName,
     monthly_premium: row.monthlyPremium,

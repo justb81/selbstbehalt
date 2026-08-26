@@ -40,7 +40,9 @@ test('Versicherte Person: Roll-up je Leistungsjahr über zwei Jahre', async ({ p
   const { insured, invoice, selfPaidAmount } = await scenarios.staffel_zwei_leistungsjahre(seed);
 
   await page.goto(`/insured/${insured.id}`);
-  await expect(page.getByRole('heading', { level: 1, name: 'ZahnStaffel' })).toBeVisible();
+  // The heading names the person; her tariff sits in the badge row (#358).
+  await expect(page.getByRole('heading', { level: 1, name: 'Miriam Kraus' })).toBeVisible();
+  await expect(page.getByText('Tarif: ZahnStaffel')).toBeVisible();
   await expect(page.getByText('Selbstbehalt: 400,00')).toBeVisible();
 
   // The invoice's positions fall into two Leistungsjahre, so the Günstigerprüfung

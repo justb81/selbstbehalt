@@ -14,6 +14,7 @@
   import {
     formatDate,
     formatEur,
+    insuredPersonLabel,
     type InsuredPerson,
     type Invoice,
     type PositionYearRollup,
@@ -124,7 +125,7 @@
   // belongs to exactly one insured person, but the row itself only showed
   // provider/date/amount, invisible in multi-person households.
   const insuredLabelById = $derived(
-    new Map(insuredPersons.map((ip) => [ip.id, ip.tariff_name ?? ip.kvnr ?? 'Versicherte Person'])),
+    new Map(insuredPersons.map((ip) => [ip.id, insuredPersonLabel(ip)])),
   );
 
   // Forward-looking Selbstbehalt/Einreich-Ampel per person for the current year (#234).
