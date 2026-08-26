@@ -28,7 +28,18 @@ export default defineConfig({
     // test hooks they rely on (e.g. the scan flow's `__selbstbehaltStubScan`).
     {
       name: 'chromium',
-      testIgnore: ['**/pwa.spec.ts', '**/csp.spec.ts'],
+      testIgnore: ['**/pwa.spec.ts', '**/csp.spec.ts', '**/integration/**'],
+      use: { ...chrome, baseURL: DEV_URL },
+    },
+    // Integration profile (issue #378): the same dev server, but the specs under
+    // e2e/integration/ talk to a **real** backend instead of `page.route()` mocks.
+    // Each Playwright worker spawns its own `apps/backend` process against an
+    // in-memory SQLite with the real migrations, and the browser is pointed at it
+    // through the app's own `settings.apiUrl` — see e2e/integration/backend.ts for
+    // why that beats a single backend in `webServer`.
+    {
+      name: 'integration',
+      testMatch: ['**/integration/**/*.spec.ts'],
       use: { ...chrome, baseURL: DEV_URL },
     },
     // The PWA checks need a real build: the service worker is only emitted and

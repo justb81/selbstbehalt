@@ -121,6 +121,14 @@ The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo — se
 
 Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `apps/frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
 
+#### E2E profiles
+
+`pnpm test:e2e` runs three Playwright projects side by side:
+
+- **`chromium`** — the fast, fully mocked specs. Backend responses come from `page.route()` fixtures (`apps/frontend/e2e/fixtures.ts`), so they are deterministic and need no server.
+- **`pwa`** — the checks that require a production build (service worker, manifest, CSP), served by `vite preview`.
+- **`integration`** — the specs under `apps/frontend/e2e/integration/`, which run against a **real backend**. Every Playwright worker spawns its own `apps/backend` process against an in-memory SQLite with the real migrations, and the browser is pointed at it via the app's own `settings.apiUrl`. Preconditions are named seed scenarios (empty, baseline, family with two contracts, over the Selbstbehalt threshold, Staffel across two Leistungsjahre) built through the REST API, so the client↔server contract — strict Zod response schemas, derived invoice status, server-side amount roll-ups — is exercised end-to-end. See [`e2e/integration/backend.ts`](apps/frontend/e2e/integration/backend.ts).
+
 ### Git hooks
 
 [husky](https://typicode.github.io/husky/) installs hooks on `pnpm install` (via the `prepare` script):
