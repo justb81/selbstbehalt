@@ -29,11 +29,12 @@ const CONTRACT = {
   created_at: NOW,
 };
 
-function insured(id: string, personId: string) {
+function insured(id: string, personId: string, personName: string) {
   return {
     id,
     contract_id: CONTRACT_ID,
     person_id: personId,
+    person_name: personName,
     kvnr: null,
     tariff_name: null,
     monthly_premium: 450,
@@ -93,7 +94,9 @@ async function mock(page: Page): Promise<void> {
   );
   await page.route('**/api/contracts/*/insured', (r) =>
     r.request().method() === 'GET'
-      ? r.fulfill({ json: [insured(IP_A, P_ALICE), insured(IP_B, P_BOB)] })
+      ? r.fulfill({
+          json: [insured(IP_A, P_ALICE, ALICE.name), insured(IP_B, P_BOB, BOB.name)],
+        })
       : r.fallback(),
   );
   await page.route('**/api/invoices*', (route) => {

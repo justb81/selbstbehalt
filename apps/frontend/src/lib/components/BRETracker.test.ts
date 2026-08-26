@@ -9,6 +9,7 @@ import type { InsuredPerson } from '@selbstbehalt/shared';
 const BASE_PERSON: InsuredPerson = {
   id: 'ip-1',
   person_id: 'p-1',
+  person_name: 'Anna Muster',
   contract_id: 'c-1',
   kvnr: 'A123456789',
   tariff_name: 'Komfort',
@@ -55,19 +56,29 @@ const PERSON_BELOW_NEXT_LEVEL: InsuredPerson = {
 };
 
 describe('BRETracker', () => {
-  it('shows the tariff name as the label', () => {
+  it('shows the person name as the label, not her tariff (#358)', () => {
     render(BRETracker, { props: { insuredPerson: BASE_PERSON } });
+    expect(screen.getByText('Anna Muster')).toBeInTheDocument();
+    expect(screen.queryByText('Komfort')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the tariff name when the row carries no name', () => {
+    render(BRETracker, { props: { insuredPerson: { ...BASE_PERSON, person_name: '' } } });
     expect(screen.getByText('Komfort')).toBeInTheDocument();
   });
 
-  it('falls back to KVNR when no tariff name', () => {
-    render(BRETracker, { props: { insuredPerson: { ...BASE_PERSON, tariff_name: null } } });
+  it('falls back to KVNR when neither name nor tariff', () => {
+    render(BRETracker, {
+      props: { insuredPerson: { ...BASE_PERSON, person_name: '', tariff_name: null } },
+    });
     expect(screen.getByText('A123456789')).toBeInTheDocument();
   });
 
-  it('falls back to generic label when neither tariff nor KVNR', () => {
+  it('falls back to generic label when neither name, tariff nor KVNR', () => {
     render(BRETracker, {
-      props: { insuredPerson: { ...BASE_PERSON, tariff_name: null, kvnr: null } },
+      props: {
+        insuredPerson: { ...BASE_PERSON, person_name: '', tariff_name: null, kvnr: null },
+      },
     });
     expect(screen.getByText('Versicherte Person')).toBeInTheDocument();
   });
@@ -118,7 +129,7 @@ describe('BRETracker — bare variant', () => {
     render(BRETracker, { props: { insuredPerson: PERSON_WITH_BRE, bare: true } });
     expect(screen.getByText(/Jahr.*leistungsfrei/)).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    expect(screen.queryByText('Komfort')).not.toBeInTheDocument();
+    expect(screen.queryByText('Anna Muster')).not.toBeInTheDocument();
   });
 
   it('ignores href when bare is set', () => {

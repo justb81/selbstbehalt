@@ -13,6 +13,7 @@
     getCurrentStreakYears,
     getNextLevel,
     getProjectedBRE,
+    insuredPersonLabel,
     type InsuredPerson,
   } from '@selbstbehalt/shared';
   import { Progress } from '$lib/components/ui/progress';
@@ -58,7 +59,7 @@
       : 'BRE-Staffel: höchste Stufe erreicht',
   );
 
-  const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
+  const label = $derived(insuredPersonLabel(insuredPerson));
 
   const cardClass = $derived(
     cn(

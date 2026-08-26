@@ -11,7 +11,7 @@
   detail, insured list) — this component only serves the dashboard merge.
 -->
 <script lang="ts">
-  import type { InsuredPerson } from '@selbstbehalt/shared';
+  import { insuredPersonLabel, type InsuredPerson } from '@selbstbehalt/shared';
   import type { SBRadar } from '$lib/utils/selbstbehalt-radar';
   import SelbstbehaltRadar from './SelbstbehaltRadar.svelte';
   import BRETracker from './BRETracker.svelte';
@@ -27,7 +27,7 @@
     href: string;
   } = $props();
 
-  const label = $derived(insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person');
+  const label = $derived(insuredPersonLabel(insuredPerson));
 
   // Kept as a const so the link stays on one line — the eslint-disable for the
   // pre-resolved href must sit directly above the <a>.

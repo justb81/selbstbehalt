@@ -39,10 +39,11 @@ function person(id: string, name: string): Person {
   return { id, name, birth_date: null, created_at: '2025-01-01T00:00:00Z' };
 }
 
-function insured(id: string, personId: string): InsuredPerson {
+function insured(id: string, personId: string, personName = 'Anna Muster'): InsuredPerson {
   return {
     id,
     person_id: personId,
+    person_name: personName,
     contract_id: 'c-1',
     kvnr: null,
     tariff_name: null,
