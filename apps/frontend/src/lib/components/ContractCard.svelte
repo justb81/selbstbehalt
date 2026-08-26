@@ -1,6 +1,6 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Contract summary card (docs/design.md §6.2, issue #21). -->
+<!-- Contract summary card (docs/architecture.md §5.2, issue #21). -->
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { type Contract, type ContractType } from '@selbstbehalt/shared';

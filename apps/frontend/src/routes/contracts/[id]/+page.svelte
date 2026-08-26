@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Contract detail (docs/design.md §6.1, issue #21): shows contract info,
+  Contract detail (docs/architecture.md §5.2, issue #21): shows contract info,
   manages insured persons, and renders a BRETracker per person.
 -->
 <script lang="ts">

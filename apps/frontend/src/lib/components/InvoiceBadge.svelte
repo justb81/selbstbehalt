@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Status badge for a single lifecycle-track value (docs/design.md §6.2, issue #22/#142).
+  Status badge for a single lifecycle-track value (docs/architecture.md §5.2, issue #22/#142).
 
   Besides the seven real event values it renders one **display-only** value,
   `nicht_erstattungsfaehig`: an invoice the tariff reimburses nothing for is shown as

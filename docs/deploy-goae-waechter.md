@@ -8,7 +8,7 @@ published to **GitHub Pages** via GitHub Actions. It is a fully static,
 backend-free build, so nothing but the compiled `apps/goae-waechter/build/`
 directory is served — no server, no database, no CDN (the on-device OCR models
 and ONNX-Runtime WASM are baked into the bundle and served same-origin; see
-CLAUDE.md §1.3/§8).
+CLAUDE.md §2.2/§8).
 
 ## How it deploys
 

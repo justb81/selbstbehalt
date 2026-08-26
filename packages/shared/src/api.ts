@@ -76,7 +76,7 @@ export type BREHistory = z.infer<typeof breHistorySchema>;
 
 /**
  * One Leistungsjahr on an insured person's positions roll-up (see #239). Amounts
- * are split by the §5.2.1 status rule: `refund_amount` sums only positions on
+ * are split by the §8.5.1 status rule: `refund_amount` sums only positions on
  * `erstattet` invoices, `eligible_amount` only positions on `geprüft`/`bezahlt`/
  * `eingereicht` invoices, and `charged_amount` sums across all of those (i.e.
  * everything except `neu`). Summing `eligible_amount + refund_amount` yields the

@@ -16,11 +16,11 @@ const STORAGE_KEY = 'selbstbehalt:settings';
 export interface Settings {
   /** Override for the backend base URL; empty → fall back to env/default. */
   apiUrl: string;
-  /** Optional X-API-Key for VPN/external access (§7.2). */
+  /** Optional X-API-Key for VPN/external access (§7.3). */
   apiKey: string;
-  /** Jährliche Diskontrate ≥ 0 (z.B. 0.03 = 3 %) für den BRE-NPV (design §5.1). */
+  /** Jährliche Diskontrate ≥ 0 (z.B. 0.03 = 3 %) für den BRE-NPV (architecture §8.4). */
   discountRate: number;
-  /** Wahrscheinlichkeit 0–1, in einem künftigen Jahr leistungsfrei zu bleiben (design §5.2.2). */
+  /** Wahrscheinlichkeit 0–1, in einem künftigen Jahr leistungsfrei zu bleiben (architecture §8.5.2). */
   claimFreeProbability: number;
   /**
    * Standard-Zahlungsfrist in Tagen: prefills the Zahlungsziel in der

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Capture-quality policy (docs/design.md §4.1, §10, issues #279/#281).
+ * Capture-quality policy (docs/architecture.md §6.1, §11, issues #279/#281).
  *
  * Turns the raw readings from `./preprocess`' {@link measureImageQuality} into a
  * verdict a human can act on: is this frame worth running OCR over, and if not,
@@ -21,7 +21,7 @@
  *
  * Everything here is pure and deterministic — no canvas, DOM, network or clock
  * — so the whole policy is unit-testable and no pixel leaves the device
- * (docs/design.md §1.3, §8).
+ * (docs/architecture.md §2.2, §8.1).
  */
 import { measureImageQuality, type ImageQualityMetrics } from './preprocess';
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Typed resource methods over the fetch wrapper. One function per REST endpoint
-// in docs/design.md §7.1, each parsing its response through the shared Zod
+// in docs/architecture.md §5.4, each parsing its response through the shared Zod
 // schemas so callers get validated, fully-typed data.
 
 import {

@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Versicherte Person — Detailansicht (docs/design.md §6.1, issue #134):
+  Versicherte Person — Detailansicht (docs/architecture.md §5.2, issue #134):
   Zentraler Knoten für eine versicherte Person: KVNR, Tarif, Selbstbehalt,
   BRE-Staffel, Günstigerprüfungs-Verdikt je Leistungsjahr und Rechnungsliste.
 -->
@@ -88,7 +88,7 @@
     gcp: GCP_Result | null;
   }
 
-  // Positions rolled up per Leistungsjahr (design §5.2.1) — the single source shared
+  // Positions rolled up per Leistungsjahr (architecture §8.5.1) — the single source shared
   // by the per-year verdicts and the current-year radar (no double aggregation).
   const aggregates = $derived(
     insuredPerson

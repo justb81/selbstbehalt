@@ -23,7 +23,7 @@ function stubRequester() {
 }
 
 describe('createResources', () => {
-  it('maps contract methods to the §7.1 endpoints with the right verbs', async () => {
+  it('maps contract methods to the §5.4 endpoints with the right verbs', async () => {
     const { request, calls } = stubRequester();
     const { contracts } = createResources(request);
 

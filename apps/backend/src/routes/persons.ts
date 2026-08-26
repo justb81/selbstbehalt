@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// `/api/persons` CRUD (§7.1, issue #35). Persons are the identity layer:
+// `/api/persons` CRUD (§5.4, issue #35). Persons are the identity layer:
 // a person may be Versicherungsnehmer on one or more contracts and/or a
 // versicherte Person on one or more contracts. The person row itself carries
 // only name and optional birth date; relationships live in `contracts` and

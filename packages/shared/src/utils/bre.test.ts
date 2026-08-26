@@ -10,7 +10,7 @@ import {
   projectedBREForStreak,
 } from './bre.js';
 
-/** The three-tier ladder from docs/design.md §3.2 (1/2/3 years → 1/2/3 months, 100 %). */
+/** The three-tier ladder from docs/architecture.md §5.5 (1/2/3 years → 1/2/3 months, 100 %). */
 function ladder(currentStreakStart: string | null): BREStructure {
   return {
     type: 'staffel',

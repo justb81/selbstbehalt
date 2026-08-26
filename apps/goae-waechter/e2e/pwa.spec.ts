@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// PWA acceptance checks (docs/design.md §6.3, issue #170): the app is
+// PWA acceptance checks (docs/architecture.md §8.6, issue #170): the app is
 // installable (linked manifest with the required fields + icons), the service
 // worker registers and precaches the shell, and the app shell loads offline.
 import { expect, test } from '@playwright/test';
 
-test('exposes an installable web app manifest per §6.3', async ({ page }) => {
+test('exposes an installable web app manifest per §8.6', async ({ page }) => {
   await page.goto('/');
 
   const href = await page.getAttribute('link[rel="manifest"]', 'href');

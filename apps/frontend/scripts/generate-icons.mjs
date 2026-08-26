@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Rasterises the brand mark (static/favicon.svg) into the PNG launcher icons the
-// Web App Manifest references (docs/design.md §6.3, issue #27). Run on demand —
+// Web App Manifest references (docs/architecture.md §8.6, issue #27). Run on demand —
 // the generated PNGs are committed, so this is not part of the build:
 //
 //   node scripts/generate-icons.mjs

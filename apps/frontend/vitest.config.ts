@@ -52,7 +52,7 @@ export default defineConfig({
         // below.
         branches: 50,
         // The domain-critical helpers (GOÄ parser, Günstigerprüfung; see
-        // docs/design.md §5) live under lib/utils and must stay well covered.
+        // docs/architecture.md §8.4/§8.5) live under lib/utils and must stay well covered.
         'src/lib/utils/**': {
           statements: 90,
           branches: 90,

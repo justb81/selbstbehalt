@@ -19,7 +19,7 @@ import { brePeriodCreateSchema } from './bre-period.js';
 const UUID = '3f9a8c2e-1d4b-4c6a-9e2f-7b1c0d5e6a7f';
 
 describe('enums', () => {
-  it('expose the values from §3.2', () => {
+  it('expose the values from §5.5', () => {
     expect(reviewStatusValues).toContain('geprüft');
     expect(paymentStatusValues).toContain('bezahlt');
     expect(submissionStatusValues).toContain('eingereicht');

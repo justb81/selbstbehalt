@@ -258,7 +258,7 @@
         goae_category: p.goae_category,
         benefit_category: benefitCategories[i]!,
         quantity: p.quantity,
-        // Positions without a date fall back to the invoice date (§3.2 Issue #139).
+        // Positions without a date fall back to the invoice date (§5.5 Issue #139).
         treatment_date: p.treatment_date || invoiceDate,
         description: p.description.trim() || null,
         multiplier: nonSchedule ? 1 : p.multiplier,

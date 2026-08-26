@@ -11,7 +11,7 @@
  * of the (model-downloading) PaddleOCR binding.
  *
  * **Privacy:** the image is transferred into the worker and recognised
- * on-device; it never reaches the network (docs/design.md §1.3, §8).
+ * on-device; it never reaches the network (docs/architecture.md §2.2, §8.1).
  */
 import { filesToAllPages } from './capture';
 import { OcrClient } from './ocr-client';

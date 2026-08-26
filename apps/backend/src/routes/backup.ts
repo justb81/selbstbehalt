@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // `/api/export/db` + `/api/import/db` — database backup, restore and data
-// portability (§7.1, §8.2 Art. 20 DSGVO, issue #14).
+// portability (§5.4, §8.1 Art. 20 DSGVO, issue #14).
 //
 //   - GET  /export/db   streams a consistent snapshot of the SQLite database as
 //                       a download (`better-sqlite3` `serialize()`).

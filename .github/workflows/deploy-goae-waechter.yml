@@ -59,7 +59,7 @@ jobs:
       # On-device PP-OCRv5 models (not committed to git — see
       # apps/goae-waechter/static/models/ocr/README.md). Fetched here exactly as
       # apps/frontend's Docker build does, so they are baked into the published
-      # bundle and served same-origin — never a runtime CDN (CLAUDE.md §1.3/§8).
+      # bundle and served same-origin — never a runtime CDN (docs/architecture.md §2.2/§8.1).
       - name: Fetch OCR models
         run: pnpm ocr:models
 

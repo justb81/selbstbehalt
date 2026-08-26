@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-/** Entity identifier — a UUID stored as TEXT (see §3.2). */
+/** Entity identifier — a UUID stored as TEXT (see §5.5). */
 export const uuid = z.string().uuid({ message: 'Muss eine gültige UUID sein' });
 
 /**

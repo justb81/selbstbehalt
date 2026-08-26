@@ -1,10 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
-name: License headers
+name: Docs & license gate
 
 # Deliberately without `paths-ignore`: CI skips docs-, asset- and licence-only
-# changes, so a new file added there would slip past the gate. This workflow is
-# cheap enough (plain Node, no install) to run on every change instead.
+# changes, so a new file added there — or a stale reference into the architecture
+# doc — would slip past the gate. Both checks here are plain Node with no install,
+# cheap enough to run on every change instead.
 on:
   push:
     branches: [main]
@@ -21,7 +22,7 @@ permissions:
 
 jobs:
   headers:
-    name: SPDX copyright + license header
+    name: SPDX headers + architecture-doc references
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,3 +36,8 @@ jobs:
       # its license. The script has no dependencies, so no `pnpm install` here.
       - name: Check SPDX headers
         run: node scripts/check-spdx-headers.mjs
+
+      # Verifies that every §-reference into docs/architecture.md still resolves and
+      # that no file points at its former name. Also dependency-free.
+      - name: Check architecture-doc references
+        run: node scripts/check-doc-refs.mjs

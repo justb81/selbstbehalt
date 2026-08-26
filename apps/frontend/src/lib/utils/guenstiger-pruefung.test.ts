@@ -420,7 +420,7 @@ describe('calculateGCP — τ₀ discounting', () => {
 });
 
 // ---------------------------------------------------------------------------
-// calculateGCP — streak-break threshold (design §5.2.1, point 2)
+// calculateGCP — streak-break threshold (architecture §8.5.1, point 2)
 // ---------------------------------------------------------------------------
 
 describe('calculateGCP — streak breaks only above the Selbstbehalt', () => {
@@ -654,7 +654,7 @@ describe('calculateGCP — input validation', () => {
   });
 });
 
-describe('calculateGCP — acceptance criteria (design §5.2 / issue #140)', () => {
+describe('calculateGCP — acceptance criteria (architecture §8.5 / issue #140)', () => {
   it('Selbstbehalt goes in once per year (not per invoice)', () => {
     // Two invoices, same year, combined R_Y = 800; S = 500 → refundAfterDeductible = 300
     const result = calculateGCP(
@@ -706,11 +706,11 @@ describe('exported constants', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Multi-year NPV (issue #141, design §5.2.4 + §5.2.5)
+// Multi-year NPV (issue #141, architecture §8.5.4 + §8.5.5)
 // ---------------------------------------------------------------------------
 
 /**
- * Ladder matching design §5.2.5 reference example:
+ * Ladder matching architecture §8.5.5 reference example:
  *   B(0)=0, B(1)=200, B(2)=350, B(3)=500; nMax=3.
  */
 function ladderDesign525(currentStreakStart: string | null): BREStructure {
@@ -725,8 +725,8 @@ function ladderDesign525(currentStreakStart: string | null): BREStructure {
   };
 }
 
-describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
-  it('reproduces design §5.2.5 example: B=[0,200,350,500], s=2, i=3%, p=0.7, τ_j=12*(j+1) → ≈751€', () => {
+describe('calculateGCP — multi-year NPV (issue #141, architecture §8.5.4)', () => {
+  it('reproduces architecture §8.5.5 example: B=[0,200,350,500], s=2, i=3%, p=0.7, τ_j=12*(j+1) → ≈751€', () => {
     // s=2 (streak started 2022-07-01, asOf=2024-07-01 → exactly 2 years)
     // payoutMonth=7, year=2024, asOf=2024-07-01 → τ_0=12, τ_1=24, τ_2=36
     const result = calculateGCP({
@@ -743,7 +743,7 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
     });
     // Three terms: j=0 (gap=500), j=1 (gap=300), j=2 (gap=150)
     expect(result.breakdown.ladderTerms).toHaveLength(3);
-    // Exact NPV ≈ 750.21 € with per-cent rounding; design §5.2.5 says "≈751€" (unrounded).
+    // Exact NPV ≈ 750.21 € with per-cent rounding; architecture §8.5.5 says "≈751€" (unrounded).
     expect(result.breakdown.lostBREValue_NPV).toBeCloseTo(750.21, 0);
   });
 
@@ -856,8 +856,8 @@ describe('calculateGCP — multi-year NPV (issue #141, design §5.2.4)', () => {
 // ---------------------------------------------------------------------------
 
 describe('calculateBRELadderNPV', () => {
-  it('reproduces the design §5.2.5 example independently of any Selbstbehalt: ≈751 €', () => {
-    // Same fixture as the calculateGCP §5.2.5 test — the helper computes the loss
+  it('reproduces the architecture §8.5.5 example independently of any Selbstbehalt: ≈751 €', () => {
+    // Same fixture as the calculateGCP §8.5.5 test — the helper computes the loss
     // directly, with no R_Y / deductible gating.
     const { npv, ladderTerms } = calculateBRELadderNPV({
       year: 2024,

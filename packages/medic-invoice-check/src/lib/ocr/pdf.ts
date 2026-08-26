@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * PDF → {@link ImageData} rendering, plus text-layer extraction, for the OCR
- * pipeline (docs/design.md §4.1, issues #25/#278). Many invoices arrive as a
+ * pipeline (docs/architecture.md §6.1, issues #25/#278). Many invoices arrive as a
  * PDF: a "digitally born" one (practice/billing software, "print to PDF")
  * carries a real text layer that `pdfjs` reads via `getTextContent()` in
  * milliseconds, deterministically and without OCR; a scanned one has no
@@ -14,7 +14,7 @@
  * `pdfjs-dist` is heavy and DOM/worker-bound, so it is loaded through an
  * injectable lazy import and kept behind this seam — the orchestration is
  * unit-testable with a fake renderer, and no PDF bytes ever leave the device
- * (docs/design.md §1.3, §8).
+ * (docs/architecture.md §2.2, §8.1).
  *
  * The pdf.js worker is created through Vite's worker pipeline (`?worker`) and
  * handed to pdf.js as a pre-created `PDFWorker` port — the same first-class

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Public surface of the client-side OCR pipeline (docs/design.md §4, issues
+ * Public surface of the client-side OCR pipeline (docs/architecture.md §8.2, issues
  * #24/#25): image capture, preprocessing, the typed worker client, and the
  * shared types. The scan flow (#26) composes these.
  */

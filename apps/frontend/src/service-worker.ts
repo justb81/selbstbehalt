@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Service worker implementing the offline-first caching contract from
- * docs/design.md §6.3 (issue #27):
+ * docs/architecture.md §8.6 (issue #27):
  *
  *   - App shell + bundled GOÄ/GOZ tables → Cache First
  *   - REST API reads                     → Network First (offline read cache)

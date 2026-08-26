@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  BRE-Verlauf-Diagramm der Jahresauswertung (docs/design.md §6.1, issue #28).
+  BRE-Verlauf-Diagramm der Jahresauswertung (docs/architecture.md §5.2, issue #28).
   Linienverlauf je Jahr aus BREHistory (#13): tatsächlich gebuchte vs. aus der
   Staffel prognostizierte Beitragsrückerstattung. `projected_bre` ist nullable
   (keine bre_structure hinterlegt), daher überspringt die gestrichelte Linie

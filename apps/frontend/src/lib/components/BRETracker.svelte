@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  BRETracker (docs/design.md §6.2, issue #21): shows the BRE ladder progress for
+  BRETracker (docs/architecture.md §5.2, issue #21): shows the BRE ladder progress for
   one insured person — current streak, projected refund and the next milestone.
   In compact mode an optional href turns the card into a navigation link. `bare`
   renders just the streak/progress body with no card wrapper or name header — for

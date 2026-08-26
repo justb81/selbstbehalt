@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Scan previews — the captured page kept around long enough for the review
- * screen to show it (docs/design.md §4.1).
+ * screen to show it (docs/architecture.md §6.1).
  *
  * The OCR pipeline already knows *where* every recognised line sits: the
  * PaddleOCR adapter unions each line's region boxes into a quad and puts it on
@@ -15,7 +15,7 @@
  * **Privacy by design:** a preview is an in-memory {@link ImageData} and nothing
  * more. It is never persisted, never uploaded, and carries no identity of its
  * own; the review screen drops it when the scan is saved or abandoned
- * (docs/design.md §1.3, §8.2). Deliberately *not* a blob/object URL — those
+ * (docs/architecture.md §2.2, §8.1). Deliberately *not* a blob/object URL — those
  * outlive their creator unless revoked, which is a leak waiting to happen for
  * health data.
  */

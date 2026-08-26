@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Personenverwaltung-Liste (docs/design.md §3.1, issue #35).
+  Personenverwaltung-Liste (docs/architecture.md §5.5, issue #35).
   Shows all persons; each can be Versicherungsnehmer and/or versicherte Person.
 -->
 <script lang="ts">

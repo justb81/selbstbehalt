@@ -28,7 +28,7 @@ services:
       - --providers.file.watch=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      # Plain HTTP is always redirected — HTTPS is mandatory (docs/design.md §7.2).
+      # Plain HTTP is always redirected — HTTPS is mandatory (docs/architecture.md §7.3).
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       # Option A: Let's Encrypt. Only takes effect for routers that set
@@ -47,7 +47,7 @@ services:
       - ./htpasswd:/etc/traefik/htpasswd:ro
     restart: unless-stopped
 
-  # The frontend is the only routed service (§7.2 single-origin default): its
+  # The frontend is the only routed service (§7.3 single-origin default): its
   # nginx proxies /api to the backend over the Compose network, so Basic Auth
   # here also covers the API and there is no CORS to configure.
   frontend:

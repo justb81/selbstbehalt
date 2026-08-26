@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Implementierungs-Roadmap
 
-Dieser Plan ist aus [`docs/design.md`](./design.md) abgeleitet und als Satz von GitHub-Issues
+Dieser Plan ist aus [`docs/architecture.md`](./architecture.md) abgeleitet und als Satz von GitHub-Issues
 hinterlegt. Jedes Issue ist eigenständig umsetzbar; Abhängigkeiten sind sowohl im jeweiligen
 Issue als auch im Graphen unten dokumentiert. Übergeordnete Übersicht: **Issue #40** (Meta).
 
@@ -63,7 +63,7 @@ Die Spalte spiegelt den GitHub-Issue-Status wider und wird mit jedem umgesetzten
 Die Günstigerprüfung wurde von **pro Rechnung** auf **pro versicherter Person × Leistungsjahr**
 umgestellt (Selbstbehalt als Jahresgröße, BRE-Verlust einmal pro Jahr und erst bei tatsächlicher
 Erstattung, Leistungsjahr = `treatment_date` der Position; BRE-Verlust als Differenz zweier
-abgezinster Ströme inkl. Mehrjahres-Wiederaufstieg). Siehe `docs/design.md` §3.2 + §5. Der Umbau
+abgezinster Ströme inkl. Mehrjahres-Wiederaufstieg). Siehe `docs/architecture.md` §5.5 + §8.4/§8.5. Der Umbau
 lief **strikt sequentiell, ohne inkonsistenten Zwischenstand**, und ist abgeschlossen; offen sind
 nur noch die beiden nicht blockierenden Folge-Issues #144 und #145.
 
@@ -106,7 +106,7 @@ Empfohlene Reihenfolge: **#139 → #140 → #141 → #142 → #134**, danach #14
 | #134 | Versicherte Person als Knoten: IA-Neuordnung + Günstigerprüfung-Verdikt je Leistungsjahr (Redesign 5/5, ehem. #143) | #133, #23, #28, #140, #141, #142 | ✅ |
 
 Zu #317: die `.ort`-Hürde ist browserverifiziert geklärt und der Wechsel auf PP-OCRv6-tiny
-(`.onnx`) ist umgesetzt (PR #327, siehe `docs/design.md` §4.2). Offen bleibt nur der
+(`.onnx`) ist umgesetzt (PR #327, siehe `docs/architecture.md` §8.2). Offen bleibt nur der
 Qualitätsvergleich an echten deutschen Arztrechnungen — der läuft aus Datenschutzgründen
 lokal beim Maintainer, deshalb bleibt das Issue offen.
 
@@ -177,6 +177,6 @@ Auslagenersatz (#82/#83/#84): pro Position Bezeichnung, Anzahl, Basis (Einzelpre
 der Position durch die generische Erstattungs-Engine (#66) — Apotheke → `ambulant`, Sanitätshaus →
 `hilfsmittel`, pro Position umstellbar. Damit sind auch generell nicht erstattungsfähige Belege
 erfassbar: fehlt im Tarif der passende Baustein, ergibt die Engine 0 €, die Kosten bleiben aber in
-Gesamtkosten und „Selbst getragen" (§3.2/§5.1). Die Beleg-OCR für Apotheken-/Hilfsmittel-Belege (#85,
+Gesamtkosten und „Selbst getragen" (§5.5/§8.4). Die Beleg-OCR für Apotheken-/Hilfsmittel-Belege (#85,
 PZN/HMV) bleibt offen. Der Strang ist als **Phase 4 (Erweiterung)** eingeordnet — bewusst nach dem
-GOÄ-MVP, da er über die im Design-Dokument dokumentierte MVP-Scope hinausgeht.
+GOÄ-MVP, da er über die in der Architekturdokumentation dokumentierte MVP-Scope hinausgeht.

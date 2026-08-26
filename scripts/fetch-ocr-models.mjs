@@ -3,9 +3,9 @@
 //
 // Downloads the on-device PP-OCRv6 model assets into every app's
 // static/models/ocr/ (apps/frontend and apps/goae-waechter — issue #170) so the
-// OCR pipeline (docs/design.md §4, issue #27) can run client-side without ever
+// OCR pipeline (docs/architecture.md §8.2, issue #27) can run client-side without ever
 // fetching a model from a third-party CDN at runtime (CLAUDE.md privacy
-// constraint; §1.3/§8). The files are large binaries and are git-ignored —
+// constraint; §2.2/§8.1). The files are large binaries and are git-ignored —
 // re-run this script to (re)populate them.
 //
 // Source: the ppu-paddle-ocr model release repo. We pick the PP-OCRv6 *tiny*
@@ -14,7 +14,7 @@
 // Web session on the WebGPU/JSEP execution provider, `ResolveKernelTypeStr
 // Failed to find op_id: com.ms.internal.nhwc:Conv:1`, verified in a real
 // browser against onnxruntime-web 1.27; `.onnx` loads fine on both WebGPU and
-// WASM, see docs/design.md §4.2 and issue #317) plus its matching tiny
+// WASM, see docs/architecture.md §8.2 and issue #317) plus its matching tiny
 // dictionary, which cover German (Latin-script) invoices — all three
 // dictionaries in the repo (v5-latin, v6-tiny, v6-small/medium) include the
 // full German alphabet plus `€ § %`. Binaries live behind Git LFS, so they are

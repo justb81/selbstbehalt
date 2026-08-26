@@ -6,11 +6,11 @@
  * reimbursable amount `R` (`eligible_amount`). It closes the gap between the
  * GOÄ parser (#16) and the Günstigerprüfung (#18, which takes `R` as given).
  *
- * One input per design §5.1. Pure and deterministic — both the invoice date and
+ * One input per architecture §8.4. Pure and deterministic — both the invoice date and
  * the coverage start are injected, so there is no hidden `Date.now()` and
  * results are fully reproducible in tests.
  *
- * ## Per-category pipeline (design §5.1)
+ * ## Per-category pipeline (architecture §8.4)
  *
  * Positions are grouped by their {@link BenefitCategory}; for each group the
  * matching `included_benefits` block is applied in order. A category with **no**
@@ -62,12 +62,12 @@ export interface ErstattungPosition {
    * Leistungsdatum (ISO YYYY-MM-DD) for this position. When set, it is used
    * for the waiting-period check in place of `ErstattungInput.invoiceDate`,
    * enabling correct per-position treatment across different Leistungsjahre
-   * (§2.3, Issue #139).
+   * (§7.1, Issue #139).
    */
   treatmentDate?: DateInput;
 }
 
-/** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in design §5.1. */
+/** Inputs for {@link computeErstattung}. Mirrors `ErstattungInput` in architecture §8.4. */
 export interface ErstattungInput {
   /** Checked invoice positions (from the GOÄ parser). */
   positions: ErstattungPosition[];
@@ -90,7 +90,7 @@ export interface ErstattungInput {
   priorClaimsByCategory?: Partial<Record<BenefitCategory, number>>;
 }
 
-/** Which rule, if any, bound a category's reimbursement (design §5.1). */
+/** Which rule, if any, bound a category's reimbursement (architecture §8.4). */
 export type CappedBy = 'tier' | 'beihilfe' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
 
 /** Per-category reimbursement breakdown — sums to {@link ErstattungResult.eligibleAmount}. */
@@ -116,7 +116,7 @@ export interface ErstattungByPosition {
   eligible_amount: number;
 }
 
-/** Output of {@link computeErstattung}. Mirrors `ErstattungResult` in design §5.1. */
+/** Output of {@link computeErstattung}. Mirrors `ErstattungResult` in architecture §8.4. */
 export interface ErstattungResult {
   /** `R` — the total reimbursable amount in EUR. */
   eligibleAmount: number;
@@ -171,7 +171,7 @@ function annualCap(staffel: AnnualStaffelEntry[], policyYear: number): number | 
 }
 
 /**
- * Apply the full §5.1 pipeline to one category group. The waiting-period check
+ * Apply the full §8.4 pipeline to one category group. The waiting-period check
  * is handled per-position by {@link computeErstattung} before this is called.
  */
 function computeCategory(
@@ -269,7 +269,7 @@ function computeCategory(
 
 /**
  * Compute the reimbursable amount `R` from a tariff's `included_benefits` and the
- * checked invoice positions (design §5.1). Positions are grouped by
+ * checked invoice positions (architecture §8.4). Positions are grouped by
  * {@link BenefitCategory}; each group runs the five-step pipeline.
  *
  * Per-position waiting-period check: each position's `treatmentDate` (or the

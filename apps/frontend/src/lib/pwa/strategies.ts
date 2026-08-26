@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Pure caching primitives for the service worker (docs/design.md §6.3, issue
+ * Pure caching primitives for the service worker (docs/architecture.md §8.6, issue
  * #27). Keeping the request classification and the cache strategies here — free
  * of any service-worker globals — lets them be unit-tested with fake caches and
  * `fetch`, while `src/service-worker.ts` stays a thin wiring layer.
  *
- * The three §6.3 strategies map to:
+ * The three §8.6 strategies map to:
  *   - {@link cacheFirst} — app shell + bundled GOÄ tables (and, into a dedicated
  *     never-evicted cache, the on-device OCR models = "Cache After First Load").
  *   - {@link networkFirst} — REST API reads (fresh when online, last-known when
@@ -25,7 +25,7 @@ export interface ClassifyContext {
   apiPathPrefix: string;
   /**
    * Explicit backend origin, when the REST API lives on its own origin
-   * (docs/design.md §7.3). Requests to it are classified as `api`; any *other*
+   * (docs/architecture.md §7.2). Requests to it are classified as `api`; any *other*
    * cross-origin request is left untouched. Omit when the backend is reached
    * same-origin via {@link ClassifyContext.apiPathPrefix}.
    */
@@ -63,7 +63,7 @@ export function classifyRequest(
     return ctx.apiOrigin && parsed.origin === ctx.apiOrigin ? 'api' : null;
   }
 
-  // Same-origin REST reads (e.g. a reverse-proxied `/api/`, docs/design.md §7.2).
+  // Same-origin REST reads (e.g. a reverse-proxied `/api/`, docs/architecture.md §7.3).
   if (parsed.pathname.startsWith(ctx.apiPathPrefix)) return 'api';
 
   // Same-origin, on-device OCR models: large and immutable, cached for good.

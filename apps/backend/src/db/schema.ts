@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Drizzle ORM schema — the persistent data model from docs/design.md §3.2.
+// Drizzle ORM schema — the persistent data model from docs/architecture.md §5.5.
 //
-// Conventions (per §3.2 and CLAUDE.md):
+// Conventions (per §5.5 and CLAUDE.md):
 //   - UUID TEXT primary keys, generated app-side via `crypto.randomUUID()`.
 //   - Money is REAL (EUR).
 //   - `bre_structure` / `included_benefits` are JSON stored as TEXT.

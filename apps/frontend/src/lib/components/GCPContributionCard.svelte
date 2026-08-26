@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  GCPContributionCard (docs/design.md §6.2, issue #134 Teil B):
+  GCPContributionCard (docs/architecture.md §5.2, issue #134 Teil B):
   Shows how this invoice's positions contribute to the Günstigerprüfung verdict
   per affected service year. Links to the full year verdict on the insured person's page.
   Replaces the standalone GCPCard on the invoice detail page.

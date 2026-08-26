@@ -6,7 +6,7 @@ import { isoDate, isoDateTime, money, uuid } from '../common.js';
 import { submissionChannelSchema } from '../enums.js';
 
 /**
- * Client-supplied fields of a submission (§3.2 `submissions`). `invoice_id` is
+ * Client-supplied fields of a submission (§5.5 `submissions`). `invoice_id` is
  * intentionally absent: the submission is always created under the
  * `/api/invoices/:id/submit` path, so the parent invoice comes from the route.
  *

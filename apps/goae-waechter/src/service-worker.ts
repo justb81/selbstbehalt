@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Service worker implementing the offline-first caching contract from
- * docs/design.md §6.3, reusing apps/frontend's strategies for GOÄ-Wächter
+ * docs/architecture.md §8.6, reusing apps/frontend's strategies for GOÄ-Wächter
  * (issue #170), a standalone demo with no backend and no offline write-queue:
  *
  *   - App shell + bundled GOÄ/GOZ/GOT tables → Cache First

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Client-side image preprocessing for OCR (docs/design.md §4.1, issues #25/#279).
+ * Client-side image preprocessing for OCR (docs/architecture.md §6.1, issues #25/#279).
  *
  * Pure, deterministic pixel transforms — grayscale, contrast enhancement and an
  * optional perspective (homography) correction — that raise OCR quality before
@@ -9,7 +9,7 @@
  * metrics that judge whether a frame is worth recognising at all (#279).
  * Everything runs on plain {@link ImageData} buffers in memory; no canvas, DOM
  * or network is touched, so these functions are fully unit-testable and never
- * move pixels off-device (docs/design.md §1.3, §8).
+ * move pixels off-device (docs/architecture.md §2.2, §8.1).
  *
  * This module measures; it does not decide. The thresholds that turn these
  * numbers into user-facing advice live in `./quality`.

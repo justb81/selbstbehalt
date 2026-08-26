@@ -101,7 +101,7 @@ describe('entity chain', () => {
       })
       .returning()
       .get();
-    // DEFAULT from §3.2.
+    // DEFAULT from §5.5.
     expect(invoice.selfPaidAmount).toBe(0);
     // Lifecycle state is derived (no status column); the view falls back to the
     // ground state of every track when the invoice has no events yet.

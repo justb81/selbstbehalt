@@ -30,7 +30,7 @@
 > [live demo](#live-demo) of the invoice check. Open work is tracked in the
 > [issues](https://github.com/justb81/selbstbehalt/issues) and in
 > [`docs/roadmap.md`](docs/roadmap.md). The complete technical and functional
-> specification lives in [`docs/design.md`](docs/design.md) (German) and is the single
+> specification lives in [`docs/architecture.md`](docs/architecture.md) (German) and is the single
 > source of truth.
 
 ## What it does
@@ -73,7 +73,7 @@ screenshot, model, or asset is loaded from a third party at runtime (see
 - **DSGVO-compliant** — self-hosting means no Art. 9 health data goes to third parties.
 
 These are binding constraints, not aspirations. They are spelled out — with what
-follows from each — in [`docs/design.md`](docs/design.md) §1.3 and §8.
+follows from each — in [`docs/architecture.md`](docs/architecture.md) §2.2 and §8.1.
 
 ## Architecture
 
@@ -93,7 +93,7 @@ Browser PWA  ──(JSON metadata only, no images)──>  REST API  ──>  SQ
    └── Camera → client-side OCR → GOÄ parser → Günstigerprüfung
 ```
 
-See [`docs/design.md`](docs/design.md) for the full data model, REST surface, OCR pipeline, and the Günstigerprüfung formula.
+See [`docs/architecture.md`](docs/architecture.md) — the architecture documentation, structured along the twelve [arc42](https://arc42.org/) chapters — for the full data model, REST surface, OCR pipeline, and the Günstigerprüfung formula.
 
 ## Getting started (development)
 
@@ -155,7 +155,7 @@ automatically. Two workflows run on every push to `main` and every pull request
     on any high/critical advisory in a production dependency (`pnpm audit` locally).
   - **License compliance** — [`scripts/check-licenses.mjs`](scripts/check-licenses.mjs)
     enforces an OSI-compatible allowlist over all production dependencies
-    (`pnpm licenses:check` locally); see [`docs/design.md`](docs/design.md) §10.
+    (`pnpm licenses:check` locally); see [`docs/architecture.md`](docs/architecture.md) §11.
   - **SBOM** — a [CycloneDX](https://cyclonedx.org/) SBOM (`sbom.cdx.json`) is
     generated per build and uploaded as the `sbom-cyclonedx` artifact.
 

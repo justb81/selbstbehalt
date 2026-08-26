@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// `/api/contracts` CRUD (§7.1, issue #11). A contract is the Hauptvertrag
+// `/api/contracts` CRUD (§5.4, issue #11). A contract is the Hauptvertrag
 // (Vollversicherung / Zusatztarif / Beihilfe): insurer, contract number and the
 // Versicherungsnehmer (`policyholder_id`). The tariff-specific cover — tariff,
 // Selbstbehalt, BRE structure, benefits — lives per versicherte Person in
@@ -83,7 +83,7 @@ export function createContractsRoute(db: Database) {
       const id = c.req.param('id');
       // Deleting a contract cascades to its insured persons and, through them,
       // to their invoices, positions, submissions and BRE periods (FK ON DELETE
-      // CASCADE, §3.2) — the defined behaviour for dependent records.
+      // CASCADE, §5.5) — the defined behaviour for dependent records.
       const deleted = db.delete(contracts).where(eq(contracts.id, id)).returning().get();
       if (!deleted) throw new HTTPException(404, { message: 'Vertrag nicht gefunden' });
       return c.body(null, 204);

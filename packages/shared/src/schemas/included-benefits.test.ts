@@ -8,7 +8,7 @@ import {
   type IncludedBenefits,
 } from './included-benefits.js';
 
-/** The KFO example verbatim from docs/design.md §3.2. */
+/** The KFO example verbatim from docs/architecture.md §5.5. */
 const KFO_EXAMPLE: IncludedBenefits = {
   benefits: [
     {
@@ -33,7 +33,7 @@ const KFO_EXAMPLE: IncludedBenefits = {
 };
 
 describe('includedBenefitsSchema', () => {
-  it('parses the §3.2 KFO example and exposes it typed', () => {
+  it('parses the §5.5 KFO example and exposes it typed', () => {
     const parsed = includedBenefitsSchema.parse(KFO_EXAMPLE);
     const kfo = parsed.benefits[0]!;
     expect(kfo.category).toBe('kieferorthopaedie');

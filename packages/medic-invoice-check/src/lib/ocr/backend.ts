@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Compute-backend selection for the OCR engine (docs/design.md §2.2, issue #24).
+ * Compute-backend selection for the OCR engine (docs/architecture.md §4.2, issue #24).
  *
  * WebGPU is preferred for speed; when it is unavailable — older browsers, no
  * adapter, a locked-down context — we fall back to the universal WASM backend.

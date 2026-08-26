@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 # docker-compose.yml — selbstbehalt (PKV Manager) self-hosting stack.
-# See docs/design.md §7.3. Before the first run, copy the env template and
+# See docs/architecture.md §7.2. Before the first run, copy the env template and
 # adjust it for your host:
 #
 #     cp .env.example .env
@@ -24,7 +24,7 @@ services:
       # SQLite file on the mounted volume; survives container restarts.
       DATABASE_PATH: /app/db/pkv.sqlite
       PORT: '8080'
-      # Optional X-API-Key for external/VPN access; empty → disabled (§7.2).
+      # Optional X-API-Key for external/VPN access; empty → disabled (§7.3).
       API_KEY: ${PKV_API_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
     volumes:

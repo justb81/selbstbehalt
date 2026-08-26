@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// `/api/stats` aggregation endpoints (§7.1, issues #13 and #239). These are
+// `/api/stats` aggregation endpoints (§5.4, issues #13 and #239). These are
 // read-only roll-ups that drive the dashboard (#23) and the statistics page
 // (#28):
 //   - `GET /year/:year`                 calendar-year totals (costs, refunds, BRE)
 //   - `GET /bre/:insuredPersonId`       an insured person's premium-refund ladder
-//   - `GET /positions/:insuredPersonId` positions-by-Leistungsjahr roll-up (§5.2.1)
+//   - `GET /positions/:insuredPersonId` positions-by-Leistungsjahr roll-up (§8.5.1)
 //   - `GET /reductions?group_by=...`    Kürzungs-/Ablehnungs-Roll-up (erstattet)
 //   - `GET /validations`                Beanstandungen + Steigerungsfaktor-Verteilung
 //
@@ -185,7 +185,7 @@ export function createStatsRoute(db: Database) {
         .get();
       if (!insured) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
 
-      // §5.2.1 status rule: reimbursed (`submission = erstattet`) positions contribute
+      // §8.5.1 status rule: reimbursed (`submission = erstattet`) positions contribute
       // `refund_amount` (actual), all other reviewed positions contribute
       // `eligible_amount` (estimate); unreviewed (`review = neu`) invoices are excluded
       // entirely — `charged_amount` sums the rest.

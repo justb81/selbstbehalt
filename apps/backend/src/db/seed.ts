@@ -8,7 +8,7 @@
 //
 // Invoice 1 (geprüft): one compliant + one flagged GOÄ position, not yet submitted.
 // Invoice 2 (erstattet): GOZ positions from two Leistungsjahre (2024 + 2025) — the
-// canonical multi-year scenario from Issue #139 §2.3. Fully reimbursed.
+// canonical multi-year scenario from Issue #139 §7.1. Fully reimbursed.
 //
 // NEVER run this against a production database — it deletes existing rows.
 
@@ -178,7 +178,7 @@ export function seed(handle: DbHandle): void {
         baseAmount: 24.95,
         chargedAmount: 49.9,
         treatmentDate: '2026-06-01',
-        eligibleAmount: 49.9, // pauschal 100 % (§5.1)
+        eligibleAmount: 49.9, // pauschal 100 % (§8.4)
         isValid: true,
       },
     ])
@@ -196,7 +196,7 @@ export function seed(handle: DbHandle): void {
     ])
     .run();
 
-  // ── Invoice 2: erstattet — Positionen aus zwei Leistungsjahren (§2.3) ──────
+  // ── Invoice 2: erstattet — Positionen aus zwei Leistungsjahren (§7.1) ──────
   // GOZ-Rechnung mit Leistungen aus 2024 und 2025. Zeigt, dass das Leistungsdatum
   // je Position die BRE-Jahreszuordnung bestimmt (Issue #139).
   // eligible_amount = 40.92 + 496.0 = 536.92

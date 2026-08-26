@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  GCPCard — Günstigerprüfungs-Ergebniskarte (docs/design.md §5.3, issue #22).
+  GCPCard — Günstigerprüfungs-Ergebniskarte (docs/architecture.md §8.5.6, issue #22).
   Shows the decision (submit vs. self-pay), the full breakdown, an explanation
   and action buttons. The parent page owns the API calls; this component only
   renders the result and calls back.

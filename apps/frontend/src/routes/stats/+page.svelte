@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Jahresauswertung (docs/design.md §6.1, issue #28):
+  Jahresauswertung (docs/architecture.md §5.2, issue #28):
   Vollständige Jahresanalyse — Kosten, Erstattungen, BRE-Jahresverlauf.
   Das Dashboard zeigt offene Aktionen und BRE-Schnellstatus; diese Seite liefert
   die detaillierte Jahresanalyse über die Stats-API (#13). Der CSV/PDF-Export
@@ -104,7 +104,7 @@
       personOptions = flat.map((entry) => ({ id: entry.person.id, label: entry.label }));
       selectedPersonId = personOptions[0]?.id ?? '';
 
-      // Positions roll-up per person (design §5.2.1, #239) for the Selbstbehalt radar.
+      // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
       const rollups = await Promise.all(
         insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
       );

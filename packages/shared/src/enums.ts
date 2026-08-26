@@ -103,11 +103,11 @@ export function trackForStatusValue(value: InvoiceStatusEventValue): StatusTrack
  *   is only in the attached Eigenlabor-/Materialbeleg).
  *
  * The category governs the **amount arithmetic** only. Reimbursement is decided
- * exclusively by the position's `benefit_category` running through the §5.1 tariff
+ * exclusively by the position's `benefit_category` running through the §8.4 tariff
  * pipeline — for the non-fee-schedule categories too. `Arznei-/Hilfsmittel` takes it
  * from the provider default (Apotheke → `ambulant`, Sanitätshaus → `hilfsmittel`) or
  * the user's pick; `Auslagenersatz` and `Material-/Laborkosten` derive it from the
- * invoice's honorar positions (see design §5.1).
+ * invoice's honorar positions (see architecture §8.4).
  */
 export const goaeCategoryValues = [
   'GOÄ',
@@ -124,9 +124,9 @@ export type GoaeCategory = z.infer<typeof goaeCategorySchema>;
  * The non-fee-schedule position categories: no Ziffer/Steigerungsfaktor, amount is
  * `quantity × base_amount` (Anzahl × Basis). This governs the **amount arithmetic**
  * and the review UI (hidden Ziffer/Faktor fields, Betrag = Anzahl × Basis) only — it
- * says nothing about the reimbursement, which always runs the §5.1 tariff pipeline
+ * says nothing about the reimbursement, which always runs the §8.4 tariff pipeline
  * under the position's `benefit_category`. See {@link goaeCategoryValues} and design
- * §3.2/§5.1.
+ * §5.5/§8.4.
  */
 export const nonScheduleGoaeCategoryValues = [
   'Auslagenersatz',
@@ -139,7 +139,7 @@ export type NonScheduleGoaeCategory = (typeof nonScheduleGoaeCategoryValues)[num
  * Whether `cat` is a non-fee-schedule category (Auslagenersatz, Arznei-/Hilfsmittel
  * or Material-/Laborkosten): billed as `quantity × base_amount`, no
  * Ziffer/Steigerungsfaktor. Governs amount arithmetic and the review UI only — the
- * reimbursement of these positions runs the same §5.1 tariff pipeline as any other.
+ * reimbursement of these positions runs the same §8.4 tariff pipeline as any other.
  */
 export function isNonScheduleCategory(
   cat: GoaeCategory | null | undefined,
@@ -156,7 +156,7 @@ export type SubmissionChannel = z.infer<typeof submissionChannelSchema>;
 
 /**
  * Benefit area a tariff reimbursement rule applies to (a `category` entry in
- * `insured_persons.included_benefits`). See §3.2 `included_benefits`.
+ * `insured_persons.included_benefits`). See §5.5 `included_benefits`.
  */
 export const benefitCategoryValues = [
   'ambulant',
@@ -175,7 +175,7 @@ export type BenefitCategory = z.infer<typeof benefitCategorySchema>;
 /**
  * Scope a benefit `limit` caps spending over (a `limits[].scope` entry in
  * `insured_persons.included_benefits`): per treatment case, per policy year, or
- * lifelong. See §3.2 `included_benefits`.
+ * lifelong. See §5.5 `included_benefits`.
  */
 export const benefitLimitScopeValues = ['behandlung', 'jahr', 'lebenslang'] as const;
 export const benefitLimitScopeSchema = z.enum(benefitLimitScopeValues);

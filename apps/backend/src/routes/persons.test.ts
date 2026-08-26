@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Integration tests for the /api/persons endpoints (§7.1) with a focus on the
+// Integration tests for the /api/persons endpoints (§5.4) with a focus on the
 // DSGVO right to erasure (Art. 17): deleting a person is the identity-root
 // erasure path, so it must cascade down *both* relationships — the contracts
 // they hold (policyholder_id) and the insured-person rows they occupy on any

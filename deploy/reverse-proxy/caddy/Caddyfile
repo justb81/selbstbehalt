@@ -16,7 +16,7 @@
 
 {$DOMAIN} {
 	# selbstbehalt handles Art. 9 DSGVO health data — gate the whole app
-	# (docs/design.md §7.2). The frontend's own nginx proxies /api to the
+	# (docs/architecture.md §7.3). The frontend's own nginx proxies /api to the
 	# backend over the Compose network, so this also covers the API.
 	#
 	# The credentials live in an untracked file next to this one: Caddy has no

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// Versicherte-Personen endpoints (§7.1). A contract (Hauptvertrag) covers one or
+// Versicherte-Personen endpoints (§5.4). A contract (Hauptvertrag) covers one or
 // more insured persons, each with its own Krankenversichertennummer (KVNR),
 // tariff, premium, Selbstbehalt and BRE structure. Listing and creation are
 // nested under their contract; item operations live at `/api/insured/:id`.
@@ -39,7 +39,7 @@ function findInsured(db: Database, id: string) {
 }
 
 // A person may be insured only once per contract (unique index on
-// (contract_id, person_id), §3.2). Reject a colliding pair with a clear 409
+// (contract_id, person_id), §5.5). Reject a colliding pair with a clear 409
 // instead of letting the DB raise an opaque constraint error. `exceptId` skips
 // the row being updated so a no-op PUT does not collide with itself.
 function assertNoDuplicateInsured(
@@ -134,7 +134,7 @@ export function createInsuredRoute(db: Database) {
     })
     .delete('/insured/:id', (c) => {
       // Cascades to the insured person's invoices (and their positions and
-      // submissions) and BRE periods (FK ON DELETE CASCADE, §3.2).
+      // submissions) and BRE periods (FK ON DELETE CASCADE, §5.5).
       const deleted = db
         .delete(insuredPersons)
         .where(eq(insuredPersons.id, c.req.param('id')))

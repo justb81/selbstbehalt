@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Neuer Vertrag (docs/design.md §6.1, issue #21): Form for creating a new contract.
+  Neuer Vertrag (docs/architecture.md §5.2, issue #21): Form for creating a new contract.
   After creation the user is redirected to the detail page to add insured persons.
 -->
 <script lang="ts">

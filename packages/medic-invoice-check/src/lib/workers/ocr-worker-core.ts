@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Transport-agnostic core of the OCR Web Worker (docs/design.md §4.2, issue #24).
+ * Transport-agnostic core of the OCR Web Worker (docs/architecture.md §8.2, issue #24).
  *
  * The actual worker entry (`ocr.worker.ts`) is a thin shell that wires this
  * core to the real `self` global. Keeping the message handling here — with the

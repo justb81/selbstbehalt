@@ -38,11 +38,11 @@ export function createApp({ db, config }: AppDeps) {
       origin: config.corsOrigins === '*' ? '*' : config.corsOrigins,
     }),
   );
-  // Security headers (§8, issue #31). The API is JSON-only, so the CSP locks
+  // Security headers (§8.1, issue #31). The API is JSON-only, so the CSP locks
   // everything down rather than allowlisting resource types. Cross-Origin-
   // Resource-Policy is relaxed to 'cross-origin' (the default 'same-origin'
   // would silently block the documented separate-origin + CORS_ORIGINS +
-  // X-API-Key deployment, §7.2, regardless of what CORS allows) — access
+  // X-API-Key deployment, §7.3, regardless of what CORS allows) — access
   // control stays with CORS_ORIGINS and the API-key/reverse-proxy auth below,
   // not with CORP. In the default single-origin setup the frontend's nginx
   // proxies /api/ verbatim and does not add a second, conflicting header set

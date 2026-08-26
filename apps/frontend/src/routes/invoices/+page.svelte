@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Rechnungsarchiv (docs/design.md §6.1, issue #22): the full invoice list with
+  Rechnungsarchiv (docs/architecture.md §5.2, issue #22): the full invoice list with
   Person/Status/Art filters and search via the shared InvoiceList component.
 -->
 <script lang="ts">

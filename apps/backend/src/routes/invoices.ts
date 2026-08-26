@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
-// `/api/invoices` CRUD plus the lifecycle endpoints (§7.1, issue #12/#139/#142).
+// `/api/invoices` CRUD plus the lifecycle endpoints (§5.4, issue #12/#139/#142).
 //
 // The lifecycle is modelled as three INDEPENDENT tracks whose current value is
 // derived from the append-only `invoice_status_events` log (latest event per track,

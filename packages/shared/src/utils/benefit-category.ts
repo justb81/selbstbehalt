@@ -6,7 +6,7 @@
  * the German display labels for both. Kept in `@selbstbehalt/shared` so both the
  * scan/review UI (`@selbstbehalt/medic-invoice-check`'s `InvoiceReview`, the
  * per-position picker) and the reimbursement wiring in `apps/frontend` derive and
- * label categories the same way, without duplicating the mapping. See design §5.1.
+ * label categories the same way, without duplicating the mapping. See architecture §8.4.
  */
 import type { BenefitCategory, ProviderType } from '../enums.js';
 

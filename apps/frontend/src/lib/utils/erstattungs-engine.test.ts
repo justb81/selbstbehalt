@@ -5,7 +5,7 @@ import type { IncludedBenefits } from '@selbstbehalt/shared';
 
 import { computeErstattung, type ErstattungInput } from './erstattungs-engine';
 
-/** The KFO benefit verbatim from docs/design.md §3.2. */
+/** The KFO benefit verbatim from docs/architecture.md §5.5. */
 const KFO_BENEFITS: IncludedBenefits = {
   benefits: [
     {
@@ -40,7 +40,7 @@ function input(overrides: Partial<ErstattungInput>): ErstattungInput {
 }
 
 describe('computeErstattung — Schwellen-Staffel (tiers)', () => {
-  it('splits the §3.2 KFO example into tranches (500 @ 100 %, rest @ 70 %)', () => {
+  it('splits the §5.5 KFO example into tranches (500 @ 100 %, rest @ 70 %)', () => {
     // coverage long enough that the annual_staffel cap is already unlimited (year ≥ 5).
     const result = computeErstattung(
       input({

@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-  Versicherte Personen — Listenansicht (docs/design.md §6.1, issue #134):
+  Versicherte Personen — Listenansicht (docs/architecture.md §5.2, issue #134):
   Alle versicherten Personen über alle Verträge, gruppiert nach Vertrag.
   Zentraler Einstieg: BRE-Staffel und Günstigerprüfung je Person unter /insured/[id].
 -->

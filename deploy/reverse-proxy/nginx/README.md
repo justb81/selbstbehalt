@@ -5,7 +5,7 @@
 
 A standalone [nginx](https://nginx.org/) reverse proxy that terminates HTTPS
 and gates the app behind HTTP Basic Auth, per
-[`docs/design.md` §7.2](../../../docs/design.md). It layers on top of the base
+[`docs/architecture.md` §7.3](../../../docs/architecture.md). It layers on top of the base
 [`docker-compose.yml`](../../../docker-compose.yml) as a
 [Compose override](https://docs.docker.com/compose/multiple-compose-files/merge/)
 — the base file is unmodified. Prefer Traefik's automatic TLS/routing? See
@@ -98,7 +98,7 @@ credentials from step 1, then loads the app.
 ## Notes
 
 - Plain HTTP (`:80`) always redirects to HTTPS except for the ACME challenge
-  path — see [`docs/design.md` §7.2](../../../docs/design.md) ("HTTPS:
+  path — see [`docs/architecture.md` §7.3](../../../docs/architecture.md) ("HTTPS:
   Pflicht").
 - `crossorigin="use-credentials"` on the app's manifest link (`app.html`)
   already makes the browser send the stored Basic Auth when fetching the

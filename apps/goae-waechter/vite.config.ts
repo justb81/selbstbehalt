@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     sveltekit(),
-    // PWA layer (docs/design.md §6.3), reusing the same `injectManifest` setup as
+    // PWA layer (docs/architecture.md §8.6), reusing the same `injectManifest` setup as
     // apps/frontend: a hand-written service worker (src/service-worker.ts) gets
     // the precache manifest injected, no Workbox runtime is bundled, so nothing
     // is fetched from a CDN at runtime (CLAUDE.md privacy constraint).

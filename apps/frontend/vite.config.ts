@@ -22,9 +22,9 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     sveltekit(),
-    // PWA layer (docs/design.md §6.3, issue #27). `injectManifest` lets us ship a
+    // PWA layer (docs/architecture.md §8.6, issue #27). `injectManifest` lets us ship a
     // hand-written service worker (src/service-worker.ts) that implements the
-    // three caching strategies from §6.3 — Workbox is not pulled into the SW
+    // three caching strategies from §8.6 — Workbox is not pulled into the SW
     // runtime, only the precache manifest (`self.__WB_MANIFEST`) is injected, so
     // nothing is fetched from a CDN at runtime (CLAUDE.md privacy constraint).
     SvelteKitPWA({
