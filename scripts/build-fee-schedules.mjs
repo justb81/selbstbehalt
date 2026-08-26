@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Generates the static fee-schedule lookup tables (packages/medic-invoice-check/src/lib/data/

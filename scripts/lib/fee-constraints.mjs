@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Turns the legal prose of the GOÄ/GOZ/GOT "Allgemeine Bestimmungen" and inline

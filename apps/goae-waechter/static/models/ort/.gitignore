@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
 # ONNX Runtime Web WASM assets. Copied from the installed onnxruntime-web
 # package by `scripts/copy-ort-wasm.mjs` (run automatically by the app's
 # build), not committed to git. Served same-origin under /models/ort/ so

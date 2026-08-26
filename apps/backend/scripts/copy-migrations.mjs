@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // tsc only emits .js/.d.ts — it does not copy the drizzle-kit-generated SQL

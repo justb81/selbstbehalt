@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Scan-flow orchestration (docs/design.md §4.1, issue #26) — the pure glue that

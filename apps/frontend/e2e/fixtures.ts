@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Shared read-only backend mocks for e2e specs that need a populated app without
 // a live backend (this e2e project only starts the frontend dev/preview servers).

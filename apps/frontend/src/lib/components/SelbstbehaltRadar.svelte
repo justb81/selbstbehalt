@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   SelbstbehaltRadar (docs/design.md §5.2, issue #234): a forward-looking Ampel for

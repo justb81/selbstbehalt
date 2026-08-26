@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Offline write-queue (docs/design.md §1.3 offline-first, §6.3; issue #27).

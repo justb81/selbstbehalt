@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // `/api/invoices` CRUD plus the lifecycle endpoints (§7.1, issue #12/#139/#142).

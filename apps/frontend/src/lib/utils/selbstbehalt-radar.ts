@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Selbstbehalt-Ausschöpfung & Günstigerprüfungs-Schwellen-Radar (issue #234).

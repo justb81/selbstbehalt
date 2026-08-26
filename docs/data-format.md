@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Gebührenordnungs-Datenformat (GOÄ / GOZ / GOT)
 
 > **Zweck:** Definition des generischen, versionierten JSON-Formats für die

@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
 ## Summary
@@ -19,7 +20,7 @@
 - [ ] Updated affected docs — no stale references left behind (README,
       [docs/self-hosting.md](../docs/self-hosting.md),
       [docs/design.md](../docs/design.md) as applicable)
-- [ ] Source files carry the SPDX license header
+- [ ] Source files carry the SPDX copyright + license header (`pnpm headers:check`)
 - [ ] I did **not** hand-edit the generated `goae.json` / `goz.json` / `got.json`
       tables (data errors are reported as issues, not edited in PRs — see
       [CONTRIBUTING](../CONTRIBUTING.md#fee-schedule-data-goägozgot))

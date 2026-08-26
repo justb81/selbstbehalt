@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
+name: License headers
+
+# Deliberately without `paths-ignore`: CI skips docs-, asset- and licence-only
+# changes, so a new file added there would slip past the gate. This workflow is
+# cheap enough (plain Node, no install) to run on every change instead.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (e.g. force-pushes to a PR branch).
+concurrency:
+  group: headers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  headers:
+    name: SPDX copyright + license header
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # Verifies that every first-party file names both its copyright holder and
+      # its license. The script has no dependencies, so no `pnpm install` here.
+      - name: Check SPDX headers
+        run: node scripts/check-spdx-headers.mjs

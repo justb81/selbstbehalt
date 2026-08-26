@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Structured `insured_persons.included_benefits` (stored as JSON TEXT, §3.2).

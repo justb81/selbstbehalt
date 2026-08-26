@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Caddy reverse proxy for selbstbehalt: HTTPS + HTTP Basic Auth in front of the

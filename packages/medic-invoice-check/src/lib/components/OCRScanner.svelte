@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   OCRScanner (docs/design.md §4.1/§6.2, issue #26): captures an invoice frame —

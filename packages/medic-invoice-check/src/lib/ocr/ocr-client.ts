@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Typed main-thread client for the OCR Web Worker (docs/design.md §4.2, issue #24).

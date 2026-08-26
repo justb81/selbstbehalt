@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // GOÄ-Wächter is a fully client-rendered SPA: it has no backend at all (issue

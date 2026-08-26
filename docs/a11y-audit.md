@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Accessibility audit (issue #29)
 
 Status snapshot of the Phase 3 polish pass: automated axe-core coverage added

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
 # GOÄ-Wächter is a public demo (issue #166/#170) — unlike apps/frontend (a
 # private, self-hosted app), it is meant to be found and crawled.
 User-agent: *

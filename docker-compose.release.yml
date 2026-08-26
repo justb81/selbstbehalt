@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
 # docker-compose.release.yml — selbstbehalt (PKV Manager), pre-built images.
 #
 # Unlike docker-compose.yml (which builds both services locally), this file

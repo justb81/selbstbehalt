@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Backend image for selbstbehalt (Hono + SQLite). Multi-stage: a build stage

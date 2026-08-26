@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Ambient types for the Vite build environment this package is compiled in:
 // `import.meta.env` and the `?worker`/`?url` import suffixes used by the OCR

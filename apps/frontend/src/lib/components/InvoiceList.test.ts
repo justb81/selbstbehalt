@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';

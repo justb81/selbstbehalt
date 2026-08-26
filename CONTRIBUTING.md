@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Contributing to selbstbehalt
 
 Thanks for your interest in improving **selbstbehalt**! This is a privacy-first,
@@ -73,9 +76,22 @@ pnpm build
   stay well-covered.
 - **Docs** — update affected docs in the same change. Don't leave stale
   references behind (see the change policy in [`CLAUDE.md`](CLAUDE.md)).
-- **License headers** — source files carry an SPDX identifier as their first
-  line: `// SPDX-License-Identifier: Apache-2.0` (use the comment syntax of the
-  respective language).
+- **License headers** — source files name both their copyright holder and their
+  license, as two adjacent SPDX lines at the top (use the comment syntax of the
+  respective language):
+
+  ```ts
+  // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+  // SPDX-License-Identifier: Apache-2.0
+  ```
+
+  `pnpm headers:check` verifies this (and `--fix` inserts what is missing); CI
+  runs it on every change. Vendored, generated and comment-less files are
+  excluded with a documented reason in
+  [`scripts/check-spdx-headers.mjs`](scripts/check-spdx-headers.mjs) — notably
+  the shadcn-svelte components under `src/lib/components/ui/`, which stay under
+  their own upstream license. Contributing does not require adding your own
+  copyright line: `and contributors` covers it.
 
 ## Privacy constraints (non-negotiable)
 
