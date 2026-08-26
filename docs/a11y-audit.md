@@ -16,14 +16,49 @@ has no live backend):
 - Dashboard (`/`) — empty and populated
 - Invoices list (`/invoices`) — empty and populated
 - Invoice detail (`/invoices/:id`) — including the delete-confirmation dialog
-- Invoice create form (`/invoices/new`) — including the OCR scanner panel open
+- Invoice create form (`/invoices/new`) — including the OCR scanner panel open,
+  and again after a scan (page preview + parsed position rows)
 - Invoice edit form (`/invoices/:id/edit`)
+- Invoice submit form (`/invoices/:id/submit`) — all three bodies the route
+  renders off the derived status tracks: the "not submittable" explanation, the
+  submission form, and the correction form for an already-`eingereicht` invoice
 - Scan route redirect (`/invoices/scan`)
 - Contracts list and detail (`/contracts`, `/contracts/:id`)
+- Contract create form (`/contracts/new`) — both Versicherungsnehmer branches
+  (pick an existing person / create one inline) and the no-persons-yet state
 - Persons list and detail (`/persons`, `/persons/:id`)
+- Person create form (`/persons/new`)
 - Insured list and detail (`/insured`, `/insured/:id`)
+- Auswertung (`/stats`) — empty and populated (both `layerchart` charts rendered)
 - Settings (`/settings`)
-- Keyboard: the skip-link is the first `Tab` stop and moves focus to `#main-content`
+- Form **error** states (issue #379) — `/persons/new`, `/contracts/new` and
+  `/invoices/new` submitted so their validation `role="alert"` renders: that text
+  exists in no other DOM state, so a pristine-form scan never covers it
+- The mobile bottom nav's open "Mehr" overflow sheet, at a 390×844 viewport
+  (`sm:hidden`, so it is absent from every desktop-viewport scan above)
+
+### Keyboard and focus
+
+axe validates static ARIA; a broken focus flow is invisible to it, and for
+keyboard and screen-reader users that flow is what decides whether a dialog can
+be escaped or a field reached at all. The same spec therefore drives the browser
+by keyboard (issue #379):
+
+- The skip-link is the first `Tab` stop and moves focus to `#main-content`
+- Delete confirmation (`alertdialog` on `/invoices/:id`): opening moves focus
+  into the dialog, `Tab` cycles inside it rather than escaping to the page
+  behind, `Escape` closes it, and focus returns to the "Löschen" button that
+  opened it
+- Invoice form: every labelled Rechnungskopf field (`Rechnungsdatum`,
+  `Zahlungsziel`, `Rechnungsnummer`, `Leistungserbringer`, `Art`,
+  `Rechnungsbetrag`, `Notizen`) is reachable by `Tab`, in the order it is read.
+  The assertion filters the tab sequence rather than pinning it whole — the OCR
+  scanner's own controls sit in between and are not its subject — and collapses
+  consecutive repeats, because Chromium exposes a `<input type="date">`'s
+  day/month/year segments as three `Tab` stops on one host element
+- Mobile bottom nav: the "Mehr" trigger is reachable by `Tab`, `Enter` opens the
+  sheet and moves focus into it, every overflow section inside is reachable by
+  `Tab`, `Escape` closes it and focus returns to the trigger
 
 `apps/frontend/e2e/responsive.spec.ts` checks 360×800 and 390×844 viewports (common
 small-Android widths) for page-level horizontal overflow and that the mobile
@@ -48,6 +83,7 @@ hypothetical ones):
 | **Flagged-position warning text contrast 4.36:1** — `text-warning` on the row's `bg-warning/10` tint | `InvoiceForm.svelte`, `invoices/[id]/+page.svelte` (also unified from ad-hoc `amber-*`/`yellow-*` Tailwind classes to the shared `--warning` token for consistency) | Reduced the tint to `bg-warning/5` |
 | **`svelte-sonner`'s built-in `richColors` light-theme text tokens fail AA** — as low as 3.1:1 for the warning toast, 4.25–4.36:1 for success/info/error | `app.css` (only `--success` and `--warning` were actually reachable via current `toast.success`/`toast.warning` calls; `--info`/`--error` fixed proactively since they share the same vendor defaults) | High-specificity override (`:root [data-sonner-toaster][data-sonner-theme='light']`) darkening all four `*-text` tokens to ≥5:1 against their paired backgrounds |
 | One `toFixed(2)` + manual `€` suffix bypassing the shared de-DE currency formatter | `InvoiceForm.svelte` (fee-schedule info dialog base amount) | Switched to the already-imported `formatEur()` |
+| **Three form controls with no programmatic label** — axe `label` (WCAG 2.0 A, 1.3.1/4.1.2) on the `datetime-local` input and `select-name` on the Einreichungsweg `<select>`; the Erwartete-Erstattung number input escaped a violation only because its `placeholder="optional"` stood in as an accessible name. Found by the scan this route was previously missing (issue #379) | `invoices/[id]/submit/+page.svelte` — three `<Label>`s rendered with neither `for` nor a nested control | Gave each control an `id` and each `<Label>` the matching `for` |
 
 Currency/date formatting was otherwise already centralized
 (`@selbstbehalt/shared`'s `formatEur`/`formatDate`) and consistently used — no
@@ -86,10 +122,17 @@ CHROME_PATH=<path-to-chrome> pnpm dlx lighthouse@13.4.0 http://localhost:4173/ \
   responsive viewport checks found no layout breakage from them; left as-is
   to avoid disrupting the dense table/form layouts for a "nice-to-have"
   ergonomics improvement rather than a compliance requirement.
-- Automated coverage targets the 12 primary routes/flows enumerated above.
-  The remaining routes (e.g. `/persons/new`, `/contracts/new`'s deeper form
-  states) share the same primitives (shadcn/ui, `LoadingState`/`ErrorState`/`EmptyState`)
-  and are lower risk, but weren't individually scanned.
+- Automated coverage now spans every route the app has, in the states
+  enumerated above (issue #379 closed the last three gaps: `/invoices/:id/submit`,
+  `/contracts/new` and `/persons/new`). What remains unscanned are
+  *transient* states rather than routes — the `LoadingState` skeletons and the
+  `ErrorState` retry panels, which every route reaches through the same three
+  shared components and which the populated/empty scans already cover the
+  primitives of.
+- Screen-reader behaviour is not asserted. The keyboard tests above cover the
+  focus flows a screen-reader user depends on, but announcement order, live-region
+  politeness and rotor navigation still need a manual NVDA/VoiceOver pass; there
+  is no CI-runnable substitute.
 
 ## Web Push — deferred
 

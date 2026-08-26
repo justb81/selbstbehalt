@@ -1788,10 +1788,14 @@ gekennzeichnet.
 - **Sprache:** durchgehend `de-DE`; Fachbegriffe bleiben deutsch und werden in
   Kapitel 12 definiert. Die begriffliche Trennung Person / Versicherungsnehmer /
   versicherte Person ist verbindlich für UI-Labels (Kapitel 5.2).
-- **Barrierefreiheit:** Zielniveau WCAG 2.1 AA. `axe` läuft im E2E-Test über die
-  Hauptrouten (`e2e/a11y.spec.ts`) und schlägt Verstöße fehl; jede
-  Fortschrittsanzeige braucht ein `aria-label`. Befund, behobene Verstöße und die
-  bewusst akzeptierten Abweichungen stehen im
+- **Barrierefreiheit:** Zielniveau WCAG 2.1 AA. `axe` läuft im E2E-Test über alle
+  Routen und ihre Zustände — leer, befüllt, Formular-Fehlerzustand, offener Dialog
+  bzw. offenes Sheet (`e2e/a11y.spec.ts`) — und schlägt Verstöße fehl; jede
+  Fortschrittsanzeige braucht ein `aria-label`. Weil `axe` nur statisches ARIA
+  prüft und kaputte Fokus-Flüsse nicht sieht, steuert derselbe Spec zusätzlich per
+  Tastatur: Skip-Link, Focus-Trap/Escape/Fokus-Rückgabe des `alertdialog`,
+  Tab-Reihenfolge der Formularfelder und das „Mehr"-Sheet der Bottom-Navigation.
+  Befund, behobene Verstöße und die bewusst akzeptierten Abweichungen stehen im
   [`a11y-audit.md`](./a11y-audit.md).
 - **Erkennbarkeit vor Bequemlichkeit:** Beanstandungen, Nicht-Erstattungsfähigkeit
   und Fälligkeiten werden benannt und begründet, nicht bloß eingefärbt — sonst ist
@@ -1891,7 +1895,7 @@ Qualität
 | Q10 | Funktionale Eignung | Dieselben Rechnungsdaten werden mit demselben Stichtag zweimal bewertet. | Identisches Ergebnis — kein verstecktes `Date.now()`, keine Zufallsgröße. | injizierbarer `asOf` (8.8), Tests mit festem Stichtag |
 | Q11 | Funktionale Eignung | Eine Position gehört zu einem Leistungsbereich, für den der Tarif keinen Baustein hat. | `eligible_amount = 0` mit Begründung; die Kosten bleiben in der Gesamtsumme und im selbst getragenen Anteil, das Jahr wird nicht verfälscht. | Erstattungs-Engine (8.4), Unit-Tests |
 | Q12 | Benutzbarkeit | Der Nutzer zweifelt eine erkannte Position an. | Die Seitenvorschau hebt die Quellzeile am Bild hervor. | `InvoicePagePreview` (5.3, 6.1) |
-| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße. | `e2e/a11y.spec.ts` über alle Hauptrouten, [`a11y-audit.md`](./a11y-audit.md) |
+| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests, [`a11y-audit.md`](./a11y-audit.md) |
 | Q14 | Benutzbarkeit | Ein Domänen-Helfer unter `src/lib/utils/**` wird ergänzt. | Die Abdeckung bleibt ≥ 90 % in allen vier Maßen. | v8-Schranke in der Vitest-Konfiguration, CI |
 
 ***
