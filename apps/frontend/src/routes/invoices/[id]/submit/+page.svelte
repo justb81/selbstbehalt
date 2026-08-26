@@ -166,13 +166,13 @@
             </p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div class="space-y-1">
-                <Label>Eingereicht am</Label>
-                <Input type="datetime-local" bind:value={submittedAt} />
+                <Label for="submitted-at">Eingereicht am</Label>
+                <Input id="submitted-at" type="datetime-local" bind:value={submittedAt} />
               </div>
 
               <div class="space-y-1">
-                <Label>Einreichungsweg</Label>
-                <select bind:value={submittedVia} class={selectClass}>
+                <Label for="submitted-via">Einreichungsweg</Label>
+                <select id="submitted-via" bind:value={submittedVia} class={selectClass}>
                   {#each submissionChannelValues as ch (ch)}
                     <option value={ch}>{CHANNEL_LABELS[ch]}</option>
                   {/each}
@@ -180,8 +180,9 @@
               </div>
 
               <div class="space-y-1">
-                <Label>Erwartete Erstattung (€)</Label>
+                <Label for="expected-refund">Erwartete Erstattung (€)</Label>
                 <Input
+                  id="expected-refund"
                   type="number"
                   value={expectedRefund ?? ''}
                   oninput={(e) => {
