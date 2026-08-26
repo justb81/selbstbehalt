@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Cropping a frame to the region that actually carries text (docs/design.md §4.1).

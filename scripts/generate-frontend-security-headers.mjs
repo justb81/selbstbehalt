@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Substitutes the `__SVELTEKIT_INIT_SCRIPT_CSP_HASHES__` placeholder in

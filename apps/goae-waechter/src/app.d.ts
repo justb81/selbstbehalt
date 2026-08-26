@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // SvelteKit ambient type declarations. The `App` namespace lets us type the

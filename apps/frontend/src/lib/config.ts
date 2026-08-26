@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Deploy-time configuration. The backend base URL is supplied via the

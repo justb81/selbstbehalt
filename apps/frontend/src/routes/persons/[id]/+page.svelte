@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Personendetail (docs/design.md §3.1, issue #35): name and birth date,

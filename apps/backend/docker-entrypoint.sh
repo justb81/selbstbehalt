@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Container entrypoint. Bind-mounted host directories (./data/db, ./data/files)

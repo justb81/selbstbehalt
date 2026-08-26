@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * IndexedDB-backed {@link QueueStore} for the offline write-queue (issue #27).

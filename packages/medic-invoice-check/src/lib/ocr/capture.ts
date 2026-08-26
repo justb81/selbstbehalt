@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Image capture for the OCR pipeline (docs/design.md §4.1, §2.1, issue #25).

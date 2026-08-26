@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   PWA status surface: a small inline banner for the update-reload hint and the

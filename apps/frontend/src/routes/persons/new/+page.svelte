@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Neue Person anlegen (docs/design.md §3.1, issue #35).

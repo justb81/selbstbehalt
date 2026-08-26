@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Privacy-by-Design & DSGVO review — threat model + data-flow audit (issue #32)
 
 A whole-system privacy/security review against the non-negotiable design

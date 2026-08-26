@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * PaddleOCR engine adapter (docs/design.md §4.2, issues #24/#27).

@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Accessibility regression coverage (issue #29): axe-core scans of the core
 // flows plus a keyboard/skip-link check. Runs against the dev server like

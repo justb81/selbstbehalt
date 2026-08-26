@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # On-device ONNX Runtime Web WASM assets
 
 Same setup as `apps/frontend` (see `apps/frontend/static/models/ort/README.md`) —

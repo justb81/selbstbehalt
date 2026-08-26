@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
 # On-device PP-OCRv6 model assets (issue #27). These are large binaries fetched
 # by `pnpm ocr:models` (scripts/fetch-ocr-models.mjs) and are NOT committed to
 # git — same policy as the other maintainer-curated build inputs. The app serves

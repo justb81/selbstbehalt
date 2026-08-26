@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # PKV Manager – Design-Dokument
 
 > **Zweck dieses Dokuments:** Vollständige technische und fachliche Spezifikation für einen selbst-gehosteten PKV-Verwaltungs-Manager als Progressive Web App (PWA). Dieses Dokument dient als Entwicklungsbasis für einen AI-Coding-Agenten.

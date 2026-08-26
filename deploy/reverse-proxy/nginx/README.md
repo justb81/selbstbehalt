@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # nginx reverse proxy (HTTPS + Basic Auth)
 
 A standalone [nginx](https://nginx.org/) reverse proxy that terminates HTTPS

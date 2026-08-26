@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # UI-Handover – PKV-Manager (selbstbehalt)
 
 > **Zweck dieses Dokuments:** Übergabe des UI-Entwurfs an die Frontend-Entwicklung.

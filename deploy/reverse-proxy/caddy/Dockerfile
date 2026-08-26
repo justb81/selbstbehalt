@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Only needed for Option C (DNS-01) — Options A and B run the stock

@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Rechnungsbearbeitung (issue #119): edit a saved invoice's header fields and

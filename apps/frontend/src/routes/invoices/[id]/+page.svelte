@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Rechnungsdetail (docs/design.md §6.1, issue #22, issue #134, issue #142): invoice with

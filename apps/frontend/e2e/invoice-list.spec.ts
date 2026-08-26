@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Verifies the shared InvoiceList on the Rechnungsarchiv: Person tabs, the
 // provider-type column, and the whole row being a link to the detail.

@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   Einstellungs-Seite (docs/design.md §6.1, issue #20): Server-URL, X-API-Key,

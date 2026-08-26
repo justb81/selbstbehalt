@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Caddy reverse proxy (HTTPS + Basic Auth)
 
 An example [Caddy](https://caddyserver.com/) setup that terminates HTTPS and

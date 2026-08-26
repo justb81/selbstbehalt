@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Flat ESLint config shared across the whole monorepo (frontend + backend).
 // Keeping a single root config is the DRY source of truth required by issue #3.

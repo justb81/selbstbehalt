@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // `/api/persons` CRUD (§7.1, issue #35). Persons are the identity layer:

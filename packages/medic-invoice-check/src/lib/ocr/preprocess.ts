@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Client-side image preprocessing for OCR (docs/design.md §4.1, issues #25/#279).

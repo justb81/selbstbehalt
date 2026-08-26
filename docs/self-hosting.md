@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Self-hosting guide
 
 A complete walkthrough for running **selbstbehalt** on your own hardware — a

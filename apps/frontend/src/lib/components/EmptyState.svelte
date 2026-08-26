@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Reusable "no data" panel; pairs with LoadingState/ErrorState for a single feedback pattern. -->
 <script lang="ts">

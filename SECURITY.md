@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Security Policy
 
 selbstbehalt handles sensitive personal and health-related data (Art. 9 DSGVO).

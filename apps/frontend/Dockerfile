@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Frontend image for selbstbehalt (SvelteKit PWA, adapter-static). Multi-stage:

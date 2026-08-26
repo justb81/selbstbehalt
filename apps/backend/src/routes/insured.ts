@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Versicherte-Personen endpoints (§7.1). A contract (Hauptvertrag) covers one or

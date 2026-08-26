@@ -1,3 +1,4 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
   GCPCard — Günstigerprüfungs-Ergebniskarte (docs/design.md §5.3, issue #22).

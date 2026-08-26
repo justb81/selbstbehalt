@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
 # docker-compose.yml — selbstbehalt (PKV Manager) self-hosting stack.
 # See docs/design.md §7.3. Before the first run, copy the env template and
 # adjust it for your host:

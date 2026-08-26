@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Implementierungs-Roadmap
 
 Dieser Plan ist aus [`docs/design.md`](./design.md) abgeleitet und als Satz von GitHub-Issues

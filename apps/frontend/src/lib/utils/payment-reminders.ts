@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // Fälligkeits-Kennzeichnung für Rechnungen (issue #288) — marries the user's

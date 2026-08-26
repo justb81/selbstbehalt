@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 //
 // `/api/stats` aggregation endpoints (§7.1, issues #13 and #239). These are

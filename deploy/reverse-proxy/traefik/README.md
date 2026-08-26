@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Traefik reverse proxy (HTTPS + Basic Auth)
 
 An example [Traefik](https://doc.traefik.io/traefik/) setup that terminates
