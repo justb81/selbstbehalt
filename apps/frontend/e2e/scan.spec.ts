@@ -60,6 +60,22 @@ async function mockApi(page: Page): Promise<{ getPostedInvoice: () => unknown }>
     }),
   );
 
+  // The capture form resolves the versicherte Personen (with the natural person's
+  // birth date, for age-bound limits) and the selected person's invoice history —
+  // the volume a cross-invoice tariff cap is measured against (issue #370).
+  await page.route('**/api/persons', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: [
+            { id: PERSON_ID, name: 'Max Mustermann', birth_date: '1980-05-04', created_at: NOW },
+          ],
+        })
+      : route.fallback(),
+  );
+
+  // Only the *list* call carries a query string; the POST below has none.
+  await page.route('**/api/invoices?*', (route) => route.fulfill({ json: [] }));
+
   await page.route('**/api/invoices', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     postedInvoice = route.request().postDataJSON();

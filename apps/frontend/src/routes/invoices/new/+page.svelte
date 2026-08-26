@@ -10,15 +10,17 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
-  import { insuredPersonLabel, type InsuredPerson } from '@selbstbehalt/shared';
+  import {
+    loadInsuredOptions,
+    loadInvoiceHistory,
+    type InsuredOption,
+  } from '$lib/api/invoice-form-data';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import { consumeSharedFile, SHARE_CACHE_NAME } from '$lib/pwa/share-target';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
-
-  type InsuredOption = { id: string; label: string; insuredPerson: InsuredPerson };
 
   let insuredOptions = $state<InsuredOption[]>([]);
   let loadingPersons = $state(true);
@@ -28,18 +30,7 @@
     loadingPersons = true;
     loadError = null;
     try {
-      const contracts = await api.contracts.list();
-      const lists = await Promise.all(
-        contracts.map(async (c) => {
-          const persons = await api.insured.list(c.id);
-          return persons.map((ip) => ({
-            id: ip.id,
-            label: `${insuredPersonLabel(ip)} · ${c.insurer_name}`,
-            insuredPerson: ip,
-          }));
-        }),
-      );
-      insuredOptions = lists.flat();
+      insuredOptions = await loadInsuredOptions();
     } catch {
       loadError = 'Versicherte Personen konnten nicht geladen werden.';
     } finally {
@@ -120,6 +111,7 @@
       {saving}
       {formError}
       {sharedFile}
+      invoiceHistory={loadInvoiceHistory}
       onSave={handleSave}
     >
       {#snippet cancel()}

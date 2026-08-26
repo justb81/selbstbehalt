@@ -15,10 +15,11 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
-    insuredPersonLabel,
-    type InsuredPerson,
-    type InvoiceWithPositions,
-  } from '@selbstbehalt/shared';
+    loadInsuredOptions,
+    loadInvoiceHistory,
+    type InsuredOption,
+  } from '$lib/api/invoice-form-data';
+  import type { InvoiceWithPositions } from '@selbstbehalt/shared';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
@@ -29,8 +30,6 @@
 
   const invoiceId = $derived(page.params.id as string);
 
-  type InsuredOption = { id: string; label: string; insuredPerson: InsuredPerson };
-
   let invoice = $state<InvoiceWithPositions | null>(null);
   let insuredOptions = $state<InsuredOption[]>([]);
   let loading = $state(true);
@@ -40,22 +39,9 @@
     loading = true;
     loadError = null;
     try {
-      const [inv, contracts] = await Promise.all([
-        api.invoices.get(invoiceId),
-        api.contracts.list(),
-      ]);
+      const [inv, options] = await Promise.all([api.invoices.get(invoiceId), loadInsuredOptions()]);
       invoice = inv;
-      const lists = await Promise.all(
-        contracts.map(async (c) => {
-          const persons = await api.insured.list(c.id);
-          return persons.map((ip) => ({
-            id: ip.id,
-            label: `${insuredPersonLabel(ip)} · ${c.insurer_name}`,
-            insuredPerson: ip,
-          }));
-        }),
-      );
-      insuredOptions = lists.flat();
+      insuredOptions = options;
     } catch (e) {
       loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
@@ -141,6 +127,7 @@
       {insuredOptions}
       {saving}
       {formError}
+      invoiceHistory={loadInvoiceHistory}
       onSave={handleSave}
     >
       {#snippet cancel()}

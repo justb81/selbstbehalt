@@ -97,12 +97,70 @@ describe('computeErstattung — Summengrenzen (limits)', () => {
       input({
         positions: [{ category: 'heilmittel', chargedAmount: 500 }],
         benefits,
-        priorClaimsByCategory: { heilmittel: 400 },
+        priorClaims: { jahr: { heilmittel: 400 } },
       }),
     );
     // 600 annual limit − 400 already used = 200 left.
     expect(result.eligibleAmount).toBe(200);
     expect(result.byCategory[0]?.cappedBy).toBe('limit');
+    expect(result.byCategory[0]?.note).toContain('400 € bereits verbraucht');
+  });
+
+  it('reads each limit scope from its own prior-claims window', () => {
+    // Same category, two caps: the yearly one has 500 € left, the lifelong one 100 €.
+    const benefits: IncludedBenefits = {
+      benefits: [
+        {
+          category: 'heilmittel',
+          limits: [
+            { scope: 'jahr', max_amount: 600 },
+            { scope: 'lebenslang', max_amount: 5000 },
+          ],
+        },
+      ],
+    };
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'heilmittel', chargedAmount: 500 }],
+        benefits,
+        priorClaims: { jahr: { heilmittel: 100 }, lebenslang: { heilmittel: 4900 } },
+      }),
+    );
+    // The lifelong window is the binding one: 5000 − 4900 = 100.
+    expect(result.eligibleAmount).toBe(100);
+    expect(result.byCategory[0]?.cappedBy).toBe('limit');
+  });
+
+  it('leaves a per-treatment limit untouched by prior claims', () => {
+    const benefits: IncludedBenefits = {
+      benefits: [{ category: 'heilmittel', limits: [{ scope: 'behandlung', max_amount: 600 }] }],
+    };
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'heilmittel', chargedAmount: 900 }],
+        benefits,
+        priorClaims: { jahr: { heilmittel: 400 }, lebenslang: { heilmittel: 400 } },
+      }),
+    );
+    // A behandlung cap applies per case — earlier invoices do not consume it.
+    expect(result.eligibleAmount).toBe(600);
+    expect(result.byCategory[0]?.note).toContain('je Behandlung');
+  });
+
+  it('never turns a fully-used limit into a negative amount', () => {
+    const benefits: IncludedBenefits = {
+      benefits: [{ category: 'hilfsmittel', limits: [{ scope: 'jahr', max_amount: 300 }] }],
+    };
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'hilfsmittel', chargedAmount: 250 }],
+        benefits,
+        priorClaims: { jahr: { hilfsmittel: 400 } },
+      }),
+    );
+    expect(result.eligibleAmount).toBe(0);
+    expect(result.byPosition[0]?.eligible_amount).toBe(0);
+    expect(result.byCategory[0]?.note).toContain('Nicht erstattungsfähig');
   });
 
   it('applies an age-bound limit only inside the age range', () => {
@@ -192,11 +250,26 @@ describe('computeErstattung — Aufbaujahres-Staffel (annual_staffel)', () => {
         benefits: ZAHN_BENEFITS,
         invoiceDate: '2024-06-01',
         coverageStart: '2024-01-01',
-        priorClaimsByCategory: { zahnersatz: 800 },
+        priorClaims: { annual_staffel: { zahnersatz: 800 } },
       }),
     );
     // 1000 cap − 800 already used = 200 left.
     expect(result.eligibleAmount).toBe(200);
+    expect(result.byCategory[0]?.note).toContain('800 € bereits verbraucht');
+  });
+
+  it('ignores the jahr window for the cumulative cap', () => {
+    const result = computeErstattung(
+      input({
+        positions: [{ category: 'zahnersatz', chargedAmount: 2000 }],
+        benefits: ZAHN_BENEFITS,
+        invoiceDate: '2024-06-01',
+        coverageStart: '2024-01-01',
+        // The Zahnstaffel accumulates since the coverage start, not per Leistungsjahr.
+        priorClaims: { jahr: { zahnersatz: 800 }, annual_staffel: {} },
+      }),
+    );
+    expect(result.eligibleAmount).toBe(1000);
   });
 
   it('counts policy years from the coverage anniversary, not the calendar year', () => {

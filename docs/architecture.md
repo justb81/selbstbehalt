@@ -1492,8 +1492,12 @@ interface ErstattungInput {
   invoiceDate: Date | string;       // für Wartezeit-/Aufbaujahres-Prüfung (injizierbar)
   coverageStart: Date | string;     // Beginn des Versicherungsschutzes der Person (insured_persons.start_date)
   patientAge?: number;              // Alter bei Leistungsdatum (treatment_date), für altersabhängige limits
-  priorClaimsByCategory?: Partial<Record<BenefitCategory, number>>;  // bereits ausgeschöpfte Staffel-/Jahresvolumina
+  priorClaims?: PriorClaims;        // je Fenster bereits ausgeschöpfte Volumina der übrigen Rechnungen
 }
+
+// Fenster, über das eine rechnungsübergreifende Grenze gemessen wird
+type PriorClaimWindow = 'jahr' | 'lebenslang' | 'annual_staffel';
+type PriorClaims = Partial<Record<PriorClaimWindow, Partial<Record<BenefitCategory, number>>>>;
 
 interface ErstattungResult {
   eligibleAmount: number;           // R — Summe der erstattungsfähigen Beträge
@@ -1502,7 +1506,7 @@ interface ErstattungResult {
     chargedAmount: number;
     eligibleAmount: number;
     appliedPct: number;             // effektiver Erstattungssatz nach Staffel/Restquote
-    cappedBy: 'tier' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
+    cappedBy: 'tier' | 'beihilfe' | 'limit' | 'annual_staffel' | 'waiting_period' | null;
     note?: string;                  // erklärender Text für die UI
   }>;
 }
@@ -1527,18 +1531,38 @@ je Kategorie-Gruppe:
    in Tranchen aufteilen und je Tranche mit `pct` erstatten.
 3. **Beihilfe berücksichtigen** — bei `beihilfe_satz > 0` deckt der Tarif nur die Restquote
    (`100 % − beihilfe_satz`); die Beihilfe trägt den Rest separat.
-4. **Summengrenzen (`limits`) kappen** — pro `behandlung`/`jahr`/`lebenslang` und ggf. Alter.
+4. **Summengrenzen (`limits`) kappen** — pro `behandlung`/`jahr`/`lebenslang` und ggf. Alter;
+   `jahr`/`lebenslang` abzüglich des jeweiligen Fensters aus `priorClaims`.
 5. **Aufbaujahres-Staffel (`annual_staffel`) kappen** — kumuliertes Limit des relevanten
-   Policenjahres unter Berücksichtigung von `priorClaimsByCategory`.
+   Policenjahres abzüglich `priorClaims.annual_staffel`.
+
+**Rechnungsübergreifende Grenzen (`priorClaims`).** `jahr`-/`lebenslang`-Limits und die
+Aufbaujahres-Staffel laufen über mehrere Rechnungen; ohne Vorbelastung würde jede Rechnung so
+gerechnet, als wäre nie etwas erstattet worden (Issue #370). `priorClaims` liefert deshalb je
+Fenster und Kategorie das bereits verbrauchte Volumen — aggregiert aus den **übrigen** Rechnungen
+derselben versicherten Person (`apps/frontend/src/lib/utils/prior-claims.ts`, gespeist aus den
+geladenen Rechnungen mit Positionen; die gerade berechnete Rechnung wird ausgeschlossen, damit sie
+ihre eigene Grenze nicht verbraucht):
+
+| Fenster | gezählte Positionen | Regel |
+|---|---|---|
+| `jahr` | `treatment_date` im Leistungsjahr der Rechnung | Scope `jahr` |
+| `lebenslang` | gesamte Historie | Scope `lebenslang` |
+| `annual_staffel` | `treatment_date` ab `coverageStart` | kumuliertes Staffel-Limit |
+
+Je Position zählt der realisierte `refund_amount`, sobald der Versicherer erstattet hat
+(`submission = erstattet`), sonst die Schätzung `eligible_amount` — dieselbe Regel wie in
+`aggregateByYear` (§8.5.1). Ungeprüfte Rechnungen (`review = neu`) bleiben außen vor. Das
+`patientAge` altersabhängiger `limits` wird aus `persons.birth_date` zum Rechnungsdatum
+abgeleitet; ist kein Geburtsdatum hinterlegt, überspringt die Engine diese Grenzen weiterhin
+mit einem Hinweis.
 
 **Attribution je Position:** Die Engine kappt zwar je Kategorie-Gruppe, muss die erstattungsfähige
 Summe aber **auf die einzelnen Positionen zurückverteilen** (→ `invoice_positions.eligible_amount`),
 weil die Günstigerprüfung pro **Leistungsjahr** aggregiert (§8.5) und Positionen derselben Kategorie
 in unterschiedliche Leistungsjahre fallen können. Verteilungsregel: **anteilig nach
-`charged_amount`** innerhalb der Kategorie. Da `annual_staffel`/`jahr`-Limits ohnehin policenjahres-
-bezogen sind, wird `priorClaimsByCategory` aus den bereits erfassten Positionen des relevanten Jahres
-gespeist. Altersabhängige `limits` beziehen sich auf das **`treatment_date`** der Position, nicht auf
-das Rechnungsdatum.
+`charged_amount`** innerhalb der Kategorie. Altersabhängige `limits` beziehen sich auf das
+**`treatment_date`** der Position, nicht auf das Rechnungsdatum.
 
 Das Ergebnis (`eligibleAmount` gesamt bzw. je Position) fließt als `erstattungsBetrag` (= $$R$$) in
 die Günstigerprüfung (§8.5/§8.5.6) ein — dort aggregiert pro versicherter Person und Leistungsjahr.
@@ -1931,7 +1955,7 @@ Qualität
 
 | Thema | Stand | Anmerkung |
 |---|---|---|
-| Jahres-/Lebenszeit-Limits und Zahnstaffel | ⚠️ bekannt fehlerhaft | `computeErstattung` erhält `priorClaimsByCategory`/`patientAge` nicht, rechnet je Rechnung also mit „bisher erstattet = 0" (Issue #370) |
+| Rechnungsübergreifende Grenzen bei jahresübergreifenden Rechnungen | ⚠️ eingeschränkt | `priorClaims.jahr` wird gegen **ein** Referenz-Leistungsjahr je Rechnung gemessen (das Jahr mit dem größten Betragsanteil); eine Rechnung, deren Positionen über einen Jahreswechsel verteilt sind, verbraucht das Jahreslimit daher nur eines der beiden Jahre (Issue #391) |
 | E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium; die Baseline arbeitet gegen Mocks statt gegen ein echtes Backend mit Seed-Szenarien (Issues #353, #378) |
 | Doku-Prüfung in CI | ⚠️ teilweise | `ci.yml` überspringt Doku-Änderungen bewusst (`paths-ignore`); geprüft werden SPDX-Kopfzeilen und die §-Verweise auf dieses Dokument (`pnpm docs:check`) — Rechtschreibung und externe Links nicht |
 | Architekturentscheidungen als ADR-Dateien | ⬜ offen | Kapitel 9 ist das Log; die Ausarbeitung je Entscheidung ist Issue #375 |

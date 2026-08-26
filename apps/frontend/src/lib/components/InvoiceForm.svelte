@@ -17,6 +17,7 @@
 -->
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   import {
     BENEFIT_CATEGORY_LABELS,
     formatEur,
@@ -37,6 +38,12 @@
   import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
   import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
   import { resolveBenefitCategory } from '$lib/utils/benefit-category';
+  import {
+    aggregatePriorClaims,
+    patientAgeAt,
+    referenceLeistungsjahr,
+    type PriorClaimsInvoice,
+  } from '$lib/utils/prior-claims';
   import { Button } from '$lib/components/ui/button';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
@@ -80,11 +87,22 @@
     saving = false,
     formError = null,
     sharedFile = null,
+    invoiceHistory = undefined,
     onSave,
   }: {
     mode: 'create' | 'edit';
     initialData?: InvoiceWithPositions;
-    insuredOptions: { id: string; label: string; insuredPerson?: InsuredPerson }[];
+    /**
+     * Selectable versicherte Personen. `birthDate` is the natural person's
+     * `persons.birth_date` — it feeds the Erstattungs-Engine's age-bound limits and
+     * may legitimately be absent (the engine then skips them with a note).
+     */
+    insuredOptions: {
+      id: string;
+      label: string;
+      insuredPerson?: InsuredPerson;
+      birthDate?: string | null;
+    }[];
     /** Snippet rendered next to the submit button — typically a cancel link from the parent. */
     cancel?: Snippet;
     disabled?: boolean;
@@ -92,6 +110,13 @@
     formError?: string | null;
     /** A file handed in from the PWA share target (issue #158); scanned automatically by the always-visible scanner. */
     sharedFile?: File | null;
+    /**
+     * Loads the selected person's already-captured invoices (positions included), so
+     * the Erstattungs-Engine can measure a cap that spans invoices against what they
+     * already used up (issue #370). Without it the form computes as if nothing had
+     * been reimbursed yet.
+     */
+    invoiceHistory?: (insuredPersonId: string) => Promise<PriorClaimsInvoice[]>;
     onSave: (payload: FormPayload) => void;
   } = $props();
 
@@ -190,9 +215,39 @@
     return positions.map((p) => resolveBenefitCategory(p, honorarPositions, providerType));
   });
 
-  const selectedInsuredPerson = $derived(
-    insuredOptions.find((o) => o.id === insuredPersonId)?.insuredPerson,
-  );
+  const selectedOption = $derived(insuredOptions.find((o) => o.id === insuredPersonId));
+  const selectedInsuredPerson = $derived(selectedOption?.insuredPerson);
+
+  /**
+   * The selected person's other invoices — the volume they already used up of a
+   * `jahr`/`lebenslang` limit or the Zahnstaffel (issue #370). Loaded per person and
+   * memoised, since the selection can change while capturing. A failed load leaves the
+   * list empty: capturing must not be blocked, the estimate is then simply uncapped.
+   */
+  const historyCache = new SvelteMap<string, PriorClaimsInvoice[]>();
+  let history = $state<PriorClaimsInvoice[]>([]);
+
+  $effect(() => {
+    const personId = insuredPersonId;
+    const load = invoiceHistory;
+    const cached = personId ? historyCache.get(personId) : undefined;
+    if (cached) {
+      history = cached;
+      return;
+    }
+    history = [];
+    if (!load || !personId) return;
+    let stale = false;
+    void load(personId)
+      .then((invoices) => {
+        historyCache.set(personId, invoices);
+        if (!stale) history = invoices;
+      })
+      .catch(() => undefined);
+    return () => {
+      stale = true;
+    };
+  });
 
   /**
    * The reimbursement breakdown for the current positions, or `null` when the tariff
@@ -213,6 +268,21 @@
       benefits: selectedInsuredPerson.included_benefits,
       invoiceDate,
       coverageStart: selectedInsuredPerson.start_date,
+      priorClaims: aggregatePriorClaims({
+        invoices: history,
+        // In edit mode the invoice is part of the loaded history: it must not consume
+        // its own cap.
+        excludeInvoiceId: initialData?.id ?? null,
+        year: referenceLeistungsjahr(
+          positions.map((p) => ({
+            treatment_date: p.treatment_date,
+            charged_amount: p.charged_amount,
+          })),
+          invoiceDate,
+        ),
+        coverageStart: selectedInsuredPerson.start_date,
+      }),
+      patientAge: patientAgeAt(selectedOption?.birthDate, invoiceDate),
     });
   });
 

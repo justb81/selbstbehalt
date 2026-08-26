@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -387,5 +387,153 @@ describe('InvoiceForm — generally non-reimbursable invoices', () => {
     const payload = onSave.mock.calls[0]![0];
     expect(payload.positions[0]!.benefit_category).toBe('ambulant');
     expect(payload.positions[0]!.eligible_amount).toBe(SAMPLE_INVOICE.positions[0]!.charged_amount);
+  });
+});
+
+describe('InvoiceForm — caps that span invoices (issue #370)', () => {
+  /** Tarif: Hilfsmittel gedeckelt auf 300 € pro Leistungsjahr, KFO nur bis 18. */
+  const GEDECKELTER_TARIF = [
+    {
+      id: 'ip-1',
+      label: 'TestAG · Komfort',
+      insuredPerson: {
+        start_date: '2020-01-01',
+        included_benefits: {
+          benefits: [
+            {
+              category: 'hilfsmittel' as const,
+              limits: [{ scope: 'jahr' as const, max_amount: 300 }],
+            },
+            {
+              category: 'kieferorthopaedie' as const,
+              limits: [{ scope: 'behandlung' as const, max_amount: 20, age_max: 18 }],
+            },
+          ],
+        },
+      } as never,
+      birthDate: '2015-06-01',
+    },
+  ];
+
+  /** A 250-€ Sanitätshaus invoice — `hilfsmittel`, so the 300-€ yearly cap applies. */
+  const HILFSMITTEL_INVOICE: InvoiceWithPositions = {
+    ...SAMPLE_INVOICE,
+    id: 'inv-2',
+    provider_name: 'Sanitätshaus Meier',
+    provider_type: 'sanitaetshaus',
+    total_amount: 250,
+    positions: [
+      {
+        ...SAMPLE_INVOICE.positions[0]!,
+        id: 'pos-2',
+        goae_category: 'Arznei-/Hilfsmittel',
+        goae_number: '',
+        benefit_category: 'hilfsmittel',
+        quantity: 1,
+        base_amount: 250,
+        charged_amount: 250,
+        treatment_date: '2025-03-14',
+      },
+    ],
+  };
+
+  /** An earlier invoice of the same person that already used 250 € of the yearly cap. */
+  const EARLIER_INVOICE = {
+    id: 'inv-1',
+    provider_type: 'sanitaetshaus' as const,
+    status: { review: 'geprüft' as const, submission: 'nicht_eingereicht' as const },
+    positions: [
+      {
+        goae_category: 'Arznei-/Hilfsmittel' as const,
+        benefit_category: 'hilfsmittel' as const,
+        treatment_date: '2025-01-10',
+        charged_amount: 250,
+        eligible_amount: 250,
+      },
+    ],
+  };
+
+  it('leaves only the rest of the yearly limit for the invoice being captured', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    const invoiceHistory = vi.fn(async () => [EARLIER_INVOICE, { ...HILFSMITTEL_INVOICE }]);
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: HILFSMITTEL_INVOICE,
+        insuredOptions: GEDECKELTER_TARIF,
+        invoiceHistory,
+        onSave,
+      },
+    });
+
+    await waitFor(() => expect(invoiceHistory).toHaveBeenCalledWith('ip-1'));
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    // 300 € yearly cap − 250 € already used by inv-1 = 50 €. The invoice itself is in
+    // the loaded history and must not consume its own cap.
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.positions[0]!.eligible_amount).toBe(50);
+  });
+
+  it('computes without prior claims when no history loader is given', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: HILFSMITTEL_INVOICE,
+        insuredOptions: GEDECKELTER_TARIF,
+        onSave,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBe(250);
+  });
+
+  it('keeps capturing possible when the history cannot be loaded', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    const invoiceHistory = vi.fn(async () => {
+      throw new Error('offline');
+    });
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: HILFSMITTEL_INVOICE,
+        insuredOptions: GEDECKELTER_TARIF,
+        invoiceHistory,
+        onSave,
+      },
+    });
+
+    await waitFor(() => expect(invoiceHistory).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    // Uncapped estimate rather than a blocked form.
+    expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBe(250);
+  });
+
+  it("applies an age-bound limit from the person's birth date", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn<(p: FormPayload) => void>();
+    const kfoInvoice: InvoiceWithPositions = {
+      ...HILFSMITTEL_INVOICE,
+      provider_type: 'kieferorthopaede',
+      positions: [{ ...HILFSMITTEL_INVOICE.positions[0]!, benefit_category: 'kieferorthopaedie' }],
+    };
+    render(InvoiceForm, {
+      props: {
+        mode: 'edit',
+        initialData: kfoInvoice,
+        insuredOptions: GEDECKELTER_TARIF,
+        onSave,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    // Patient was 9 on 2025-03-15, so the age_max: 18 cap of 20 € binds — without the
+    // birth date the engine would have skipped it and reimbursed the full 250 €.
+    expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBe(20);
   });
 });
