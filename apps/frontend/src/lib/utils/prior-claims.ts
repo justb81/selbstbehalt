@@ -148,6 +148,10 @@ function add(
  * year), which is the invoice's own Leistungsjahr for everything but a rare
  * year-straddling invoice; with no dated position at all, fall back to the
  * invoice date.
+ *
+ * A year-straddling invoice is therefore measured against one year's limit only —
+ * the known limitation tracked in issue #391 (architecture §11.2), which needs the
+ * engine to cap per category *and* year rather than per category alone.
  */
 export function referenceLeistungsjahr(
   positions: Array<{ treatment_date?: string | null; charged_amount: number }>,

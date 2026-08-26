@@ -1938,7 +1938,7 @@ Qualität
 
 | Thema | Stand | Anmerkung |
 |---|---|---|
-| Rechnungsübergreifende Grenzen bei jahresübergreifenden Rechnungen | ⚠️ eingeschränkt | `priorClaims.jahr` wird gegen **ein** Referenz-Leistungsjahr je Rechnung gemessen (das Jahr mit dem größten Betragsanteil); eine Rechnung, deren Positionen über einen Jahreswechsel verteilt sind, verbraucht das Jahreslimit daher nur eines der beiden Jahre |
+| Rechnungsübergreifende Grenzen bei jahresübergreifenden Rechnungen | ⚠️ eingeschränkt | `priorClaims.jahr` wird gegen **ein** Referenz-Leistungsjahr je Rechnung gemessen (das Jahr mit dem größten Betragsanteil); eine Rechnung, deren Positionen über einen Jahreswechsel verteilt sind, verbraucht das Jahreslimit daher nur eines der beiden Jahre (Issue #391) |
 | E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium; die Baseline arbeitet gegen Mocks statt gegen ein echtes Backend mit Seed-Szenarien (Issues #353, #378) |
 | Doku-Prüfung in CI | ⚠️ teilweise | `ci.yml` überspringt Doku-Änderungen bewusst (`paths-ignore`); geprüft werden SPDX-Kopfzeilen und die §-Verweise auf dieses Dokument (`pnpm docs:check`) — Rechtschreibung und externe Links nicht |
 | Architekturentscheidungen als ADR-Dateien | ⬜ offen | Kapitel 9 ist das Log; die Ausarbeitung je Entscheidung ist Issue #375 |
