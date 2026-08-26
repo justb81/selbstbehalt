@@ -58,6 +58,8 @@ describe('POST /api/contracts/:id/insured', () => {
     expect(body.id).toMatch(/[0-9a-f-]{36}/);
     expect(body.contract_id).toBe(contractId);
     expect(body.kvnr).toBe('A123456789');
+    // The display name is joined from `persons` (#358).
+    expect(body.person_name).toBe('Erika Mustermann');
     // DB DEFAULT applied for the omitted Selbstbehalt.
     expect(body.self_retention).toBe(0);
   });
@@ -123,7 +125,24 @@ describe('GET /api/contracts/:id/insured', () => {
 
     const res = await app.request(`/api/contracts/${contractId}/insured`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toHaveLength(2);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    expect(body.map((ip: { person_name: string }) => ip.person_name).sort()).toEqual([
+      'Erika Mustermann',
+      'Lena',
+    ]);
+  });
+
+  it('names a person whose row carries neither tariff nor KVNR (#358)', async () => {
+    const bare = handle.db.insert(persons).values({ name: 'Noah' }).returning().get().id;
+    await json('POST', `/api/contracts/${contractId}/insured`, {
+      person_id: bare,
+      monthly_premium: 120,
+    });
+
+    const body = await (await app.request(`/api/contracts/${contractId}/insured`)).json();
+    const row = body.find((ip: { person_id: string }) => ip.person_id === bare);
+    expect(row).toMatchObject({ person_name: 'Noah', tariff_name: null, kvnr: null });
   });
 });
 
@@ -136,7 +155,10 @@ describe('GET/PUT/DELETE /api/insured/:id', () => {
     const created = await create();
     const res = await app.request(`/api/insured/${created.id}`);
     expect(res.status).toBe(200);
-    expect((await res.json()).id).toBe(created.id);
+    expect(await res.json()).toMatchObject({
+      id: created.id,
+      person_name: 'Erika Mustermann',
+    });
   });
 
   it('returns 404 for an unknown insured person', async () => {
@@ -155,6 +177,21 @@ describe('GET/PUT/DELETE /api/insured/:id', () => {
     expect(body.monthly_premium).toBe(500);
     expect(body.self_retention).toBe(600);
     expect(body.kvnr).toBe('A123456789');
+    expect(body.person_name).toBe('Erika Mustermann');
+  });
+
+  it('follows the display name when the row is re-pointed at another person', async () => {
+    const created = await create();
+    const other = handle.db.insert(persons).values({ name: 'Lena' }).returning().get().id;
+    const res = await json('PUT', `/api/insured/${created.id}`, { person_id: other });
+    expect(res.status).toBe(200);
+    expect((await res.json()).person_name).toBe('Lena');
+  });
+
+  it('rejects a PUT that tries to write the joined person_name with 400', async () => {
+    const created = await create();
+    const res = await json('PUT', `/api/insured/${created.id}`, { person_name: 'Falscher Name' });
+    expect(res.status).toBe(400);
   });
 
   it('rejects a PUT that collides with another (contract, person) pair with 409', async () => {

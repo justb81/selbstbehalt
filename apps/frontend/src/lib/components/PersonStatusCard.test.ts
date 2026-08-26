@@ -10,6 +10,7 @@ import PersonStatusCard from './PersonStatusCard.svelte';
 const INSURED_PERSON: InsuredPerson = {
   id: 'ip-1',
   person_id: 'p-1',
+  person_name: 'Anna Muster',
   contract_id: 'c-1',
   kvnr: 'A123456789',
   tariff_name: 'Komfort',
@@ -51,7 +52,7 @@ describe('PersonStatusCard', () => {
 
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/insured/ip-1');
-    expect(screen.getByText('Komfort')).toBeInTheDocument();
+    expect(screen.getByText('Anna Muster')).toBeInTheDocument();
     expect(screen.getByText('Unter Selbstbehalt')).toBeInTheDocument();
     expect(screen.getByText(/Jahr.*leistungsfrei/)).toBeInTheDocument();
   });
@@ -66,7 +67,7 @@ describe('PersonStatusCard', () => {
   it('falls back to KVNR/generic label like the standalone components', () => {
     render(PersonStatusCard, {
       props: {
-        insuredPerson: { ...INSURED_PERSON, tariff_name: null },
+        insuredPerson: { ...INSURED_PERSON, person_name: '', tariff_name: null },
         radar: radar(),
         href: '/insured/ip-1',
       },

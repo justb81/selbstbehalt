@@ -17,6 +17,7 @@
     BENEFIT_CATEGORY_LABELS,
     formatDate,
     formatEur,
+    insuredPersonLabel,
     resolvePaymentDueDate,
     roundCents,
     type InsuredPerson,
@@ -380,7 +381,7 @@
               href={resolve('/insured/[id]', { id: insuredPerson.id })}
               class="text-lg font-semibold hover:text-primary hover:underline transition-colors"
             >
-              {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Unbekannt'}
+              {insuredPersonLabel(insuredPerson)}
             </a>
           </CardContent>
         </Card>
@@ -399,7 +400,7 @@
       <GCPContributionCard
         {contributions}
         insuredPersonId={insuredPerson.id}
-        insuredLabel={insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
+        insuredLabel={insuredPersonLabel(insuredPerson)}
       />
     {:else if invoice.status.review === 'neu'}
       <div

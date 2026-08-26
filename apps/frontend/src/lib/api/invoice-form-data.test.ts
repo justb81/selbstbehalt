@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe('loadInsuredOptions', () => {
-  it('labels every insured person and attaches the natural person’s birth date', async () => {
+  it('labels every insured person by name and attaches her birth date', async () => {
     contracts.mockResolvedValue([
       { id: 'c-1', insurer_name: 'TestAG' },
       { id: 'c-2', insurer_name: 'Zusatz eG' },
@@ -40,8 +40,8 @@ describe('loadInsuredOptions', () => {
     insuredList.mockImplementation(async (contractId: string) =>
       contractId === 'c-1'
         ? [
-            { id: 'ip-1', person_id: 'p-1', tariff_name: 'Komfort' },
-            { id: 'ip-2', person_id: 'p-2', tariff_name: null, kvnr: 'A123' },
+            { id: 'ip-1', person_id: 'p-1', person_name: 'Anna', tariff_name: 'Komfort' },
+            { id: 'ip-2', person_id: 'p-2', person_name: 'Ben', tariff_name: null, kvnr: 'A123' },
           ]
         : [{ id: 'ip-3', person_id: 'p-3', tariff_name: null, kvnr: null }],
     );
@@ -51,20 +51,31 @@ describe('loadInsuredOptions', () => {
     expect(options).toEqual([
       {
         id: 'ip-1',
-        label: 'TestAG · Komfort',
-        insuredPerson: { id: 'ip-1', person_id: 'p-1', tariff_name: 'Komfort' },
+        label: 'Anna · TestAG',
+        insuredPerson: {
+          id: 'ip-1',
+          person_id: 'p-1',
+          person_name: 'Anna',
+          tariff_name: 'Komfort',
+        },
         birthDate: '1985-04-01',
       },
       {
         id: 'ip-2',
-        label: 'TestAG · A123',
-        insuredPerson: { id: 'ip-2', person_id: 'p-2', tariff_name: null, kvnr: 'A123' },
+        label: 'Ben · TestAG',
+        insuredPerson: {
+          id: 'ip-2',
+          person_id: 'p-2',
+          person_name: 'Ben',
+          tariff_name: null,
+          kvnr: 'A123',
+        },
         birthDate: null,
       },
       {
         id: 'ip-3',
-        // No tariff and no KVNR: the generic fallback label.
-        label: 'Zusatz eG · Tarif',
+        // No joined name, no tariff, no KVNR: insuredPersonLabel's generic fallback.
+        label: 'Versicherte Person · Zusatz eG',
         insuredPerson: { id: 'ip-3', person_id: 'p-3', tariff_name: null, kvnr: null },
         // Unknown person → no birth date, so age-bound limits stay skipped.
         birthDate: null,

@@ -64,6 +64,11 @@ export const insuredPersonSchema = insuredPersonCreateSchema.extend({
   ...auditFields,
   // Always present when read back (DB default applied).
   self_retention: money,
+  // Read-only display name joined from `persons` (§5.4): the versicherte Person
+  // is a person first, so every view that names her can say who she is instead
+  // of falling back to tariff or KVNR (#358). Never accepted on write — the
+  // name lives in `persons` and is edited there.
+  person_name: z.string(),
 });
 
 export const insuredPersonUpdateSchema = insuredPersonCreateSchema.partial();

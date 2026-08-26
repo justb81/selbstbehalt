@@ -5,15 +5,20 @@
 // page (/invoices/new), the edit page (/invoices/[id]/edit) and the detail view,
 // which all assemble the same two things:
 //
-//   - the selectable versicherte Personen, each with its tariff and the natural
-//     person's birth date (age-bound `limits`, §8.4), and
+//   - the selectable versicherte Personen, each labelled via `insuredPersonLabel`
+//     (#358) and carrying the natural person's birth date (age-bound `limits`,
+//     §8.4), and
 //   - the person's already-captured invoices *with positions*, the volume a tariff
 //     cap that spans invoices is measured against (issue #370).
 //
 // Kept next to the typed client rather than in lib/utils, which holds pure domain
 // helpers with no I/O.
 
-import type { InsuredPerson, InvoiceWithPositions } from '@selbstbehalt/shared';
+import {
+  insuredPersonLabel,
+  type InsuredPerson,
+  type InvoiceWithPositions,
+} from '@selbstbehalt/shared';
 
 import { api } from './index.js';
 
@@ -26,7 +31,7 @@ export interface InsuredOption {
   birthDate: string | null;
 }
 
-/** Every versicherte Person across all contracts, labelled `Versicherer · Tarif`. */
+/** Every versicherte Person across all contracts, labelled `Name · Versicherer` (#358). */
 export async function loadInsuredOptions(): Promise<InsuredOption[]> {
   const [contracts, persons] = await Promise.all([api.contracts.list(), api.persons.list()]);
   const birthDates = new Map(persons.map((p) => [p.id, p.birth_date ?? null]));
@@ -35,7 +40,7 @@ export async function loadInsuredOptions(): Promise<InsuredOption[]> {
       const insured = await api.insured.list(contract.id);
       return insured.map((ip) => ({
         id: ip.id,
-        label: `${contract.insurer_name} · ${ip.tariff_name ?? ip.kvnr ?? 'Tarif'}`,
+        label: `${insuredPersonLabel(ip)} · ${contract.insurer_name}`,
         insuredPerson: ip,
         birthDate: birthDates.get(ip.person_id) ?? null,
       }));
