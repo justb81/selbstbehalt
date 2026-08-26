@@ -43,6 +43,32 @@ const SETTINGS_STORAGE_KEY = 'selbstbehalt:settings';
 
 const STARTUP_TIMEOUT_MS = 60_000;
 
+/**
+ * Bounds a single `/api/health` probe. Without it a probe can hang forever: on a
+ * port collision *something* is listening on the port but never speaks HTTP, and
+ * an unbounded `fetch` then parks there — so neither the child's exit code nor
+ * the deadline below is ever re-examined again.
+ */
+const PROBE_TIMEOUT_MS = 2_000;
+
+/**
+ * Playwright budgets a worker fixture separately from the test, and its default
+ * is 30 s — which would cut the startup budget above short and report a bare
+ * "Fixture timeout" instead of the backend output captured for exactly that
+ * moment. Give the fixture the room its own deadline needs, plus slack for the
+ * retries below.
+ */
+const FIXTURE_TIMEOUT_MS = STARTUP_TIMEOUT_MS + 15_000;
+
+/**
+ * `reserveFreePort` has to release the port again before the backend can bind
+ * it, so two workers starting in the same moment can be handed the same one —
+ * and the backend listens on `0.0.0.0`, which is a wider claim than the probe's
+ * `127.0.0.1`. The loser dies with `EADDRINUSE`; retry it on a fresh port
+ * instead of failing the worker.
+ */
+const PORT_ATTEMPTS = 5;
+
 /** A backend process owned by one Playwright worker. */
 export interface Backend {
   /** Origin the backend listens on, e.g. `http://127.0.0.1:39481`. */
@@ -75,10 +101,12 @@ async function waitForHealth(baseUrl: string, child: ChildProcess, log: () => st
       );
     }
     try {
-      const response = await fetch(`${baseUrl}/api/health`);
+      const response = await fetch(`${baseUrl}/api/health`, {
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      });
       if (response.ok) return;
     } catch {
-      // Not listening yet — keep polling.
+      // Not listening yet, or listening without answering — keep polling.
     }
     if (Date.now() > deadline) {
       throw new Error(`Backend did not become healthy within ${STARTUP_TIMEOUT_MS} ms:\n${log()}`);
@@ -87,8 +115,26 @@ async function waitForHealth(baseUrl: string, child: ChildProcess, log: () => st
   }
 }
 
-/** Start one backend process against an in-memory database. */
-async function startBackend(): Promise<{ backend: Backend; stop: () => Promise<void> }> {
+/** SIGTERM the process, escalate to SIGKILL, and resolve once it is really gone. */
+async function killBackend(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null) return;
+  await new Promise<void>((resolve) => {
+    const kill = setTimeout(() => child.kill('SIGKILL'), 5_000);
+    child.once('exit', () => {
+      clearTimeout(kill);
+      resolve();
+    });
+    child.kill('SIGTERM');
+  });
+}
+
+/** Did the child lose the race for its reserved port? Then a retry can win it. */
+function isPortCollision(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('EADDRINUSE');
+}
+
+/** Start one backend process against an in-memory database, once. */
+async function spawnBackend(): Promise<{ backend: Backend; stop: () => Promise<void> }> {
   const port = await reserveFreePort();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -118,21 +164,27 @@ async function startBackend(): Promise<{ backend: Backend; stop: () => Promise<v
   child.stdout.on('data', capture);
   child.stderr.on('data', capture);
 
-  await waitForHealth(baseUrl, child, () => output.join(''));
+  try {
+    await waitForHealth(baseUrl, child, () => output.join(''));
+  } catch (error) {
+    // Never leave the process behind: one that came up but stayed unhealthy
+    // would outlive the worker and keep holding its port.
+    await killBackend(child);
+    throw error;
+  }
 
-  const stop = async (): Promise<void> => {
-    if (child.exitCode !== null) return;
-    await new Promise<void>((resolve) => {
-      const kill = setTimeout(() => child.kill('SIGKILL'), 5_000);
-      child.once('exit', () => {
-        clearTimeout(kill);
-        resolve();
-      });
-      child.kill('SIGTERM');
-    });
-  };
+  return { backend: { baseUrl }, stop: () => killBackend(child) };
+}
 
-  return { backend: { baseUrl }, stop };
+/** Start the worker's backend, retrying a lost port race on a fresh port. */
+async function startBackend(): Promise<{ backend: Backend; stop: () => Promise<void> }> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await spawnBackend();
+    } catch (error) {
+      if (attempt >= PORT_ATTEMPTS || !isPortCollision(error)) throw error;
+    }
+  }
 }
 
 /** Throw with the server's own error body instead of a bare status code. */
@@ -253,7 +305,7 @@ export const test = base.extend<IntegrationTestFixtures, IntegrationWorkerFixtur
       await use(backend);
       await stop();
     },
-    { scope: 'worker' },
+    { scope: 'worker', timeout: FIXTURE_TIMEOUT_MS },
   ],
 
   // `auto` so every test in this project starts from an empty database, whether
