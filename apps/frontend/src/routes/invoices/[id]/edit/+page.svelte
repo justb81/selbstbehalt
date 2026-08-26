@@ -14,7 +14,11 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
-  import type { InsuredPerson, InvoiceWithPositions } from '@selbstbehalt/shared';
+  import {
+    insuredPersonLabel,
+    type InsuredPerson,
+    type InvoiceWithPositions,
+  } from '@selbstbehalt/shared';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
   import InvoiceForm from '$lib/components/InvoiceForm.svelte';
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
@@ -46,7 +50,7 @@
           const persons = await api.insured.list(c.id);
           return persons.map((ip) => ({
             id: ip.id,
-            label: `${c.insurer_name} · ${ip.tariff_name ?? ip.kvnr ?? 'Tarif'}`,
+            label: `${insuredPersonLabel(ip)} · ${c.insurer_name}`,
             insuredPerson: ip,
           }));
         }),

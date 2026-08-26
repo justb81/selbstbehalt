@@ -17,7 +17,7 @@ import {
   insuredPersonUpdateSchema,
   type InsuredPerson,
 } from '@selbstbehalt/shared';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, getTableColumns, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -34,8 +34,27 @@ import { parseJsonBody } from '../lib/validation.js';
 // The nested create takes its contract from the path, so the body omits it.
 const nestedCreateSchema = insuredPersonCreateSchema.omit({ contract_id: true });
 
+// Every read joins `persons` for the display name: a versicherte Person is a
+// person first, and without the name no view can say who a row belongs to —
+// tariff and KVNR are contract data, identical for siblings on one tariff
+// (#358). `person_id` is NOT NULL with a FK, so the inner join never drops a
+// row and the name is always present.
+function selectInsuredWithName(db: Database) {
+  return db
+    .select({ ...getTableColumns(insuredPersons), personName: persons.name })
+    .from(insuredPersons)
+    .innerJoin(persons, eq(insuredPersons.personId, persons.id));
+}
+
 function findInsured(db: Database, id: string) {
-  return db.select().from(insuredPersons).where(eq(insuredPersons.id, id)).get();
+  return selectInsuredWithName(db).where(eq(insuredPersons.id, id)).get();
+}
+
+// Name for a row just written back — the insert/update returns the
+// `insured_persons` row only, so the join is done separately.
+function personNameOf(db: Database, personId: string): string {
+  return db.select({ name: persons.name }).from(persons).where(eq(persons.id, personId)).get()!
+    .name;
 }
 
 // A person may be insured only once per contract (unique index on
@@ -66,11 +85,7 @@ export function createInsuredRoute(db: Database) {
     .get('/contracts/:contractId/insured', (c) => {
       const contractId = c.req.param('contractId');
       assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
-      const rows = db
-        .select()
-        .from(insuredPersons)
-        .where(eq(insuredPersons.contractId, contractId))
-        .all();
+      const rows = selectInsuredWithName(db).where(eq(insuredPersons.contractId, contractId)).all();
       const body: InsuredPerson[] = rows.map(serializeInsuredPerson);
       return c.json(body);
     })
@@ -85,7 +100,10 @@ export function createInsuredRoute(db: Database) {
         .values(toInsuredPersonInsert({ ...input, contract_id: contractId }))
         .returning()
         .get();
-      return c.json(serializeInsuredPerson(row), 201);
+      return c.json(
+        serializeInsuredPerson({ ...row, personName: personNameOf(db, row.personId) }),
+        201,
+      );
     })
     .get('/insured/:id', (c) => {
       const row = requireRow(
@@ -121,13 +139,16 @@ export function createInsuredRoute(db: Database) {
       const changes = toInsuredPersonUpdate(input);
       const row = updateOrReturn(
         changes,
-        () =>
-          db
+        () => {
+          const updated = db
             .update(insuredPersons)
             .set(changes)
             .where(eq(insuredPersons.id, id))
             .returning()
-            .get()!,
+            .get()!;
+          // Re-pointing the row at another person changes the display name too.
+          return { ...updated, personName: personNameOf(db, updated.personId) };
+        },
         existing,
       );
       return c.json(serializeInsuredPerson(row));

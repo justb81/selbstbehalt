@@ -35,6 +35,7 @@ export const INSURED = {
   id: INSURED_ID,
   contract_id: CONTRACT_ID,
   person_id: PERSON_ID,
+  person_name: PERSON.name,
   kvnr: 'A123456789',
   tariff_name: 'PrivatComfort',
   monthly_premium: 450,

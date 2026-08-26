@@ -9,7 +9,12 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { api } from '$lib/api';
-  import { formatEur, type Contract, type InsuredPerson } from '@selbstbehalt/shared';
+  import {
+    formatEur,
+    insuredPersonLabel,
+    type Contract,
+    type InsuredPerson,
+  } from '@selbstbehalt/shared';
   import BRETracker from '$lib/components/BRETracker.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
@@ -90,14 +95,19 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {#each group.insuredPersons as ip (ip.id)}
               <div class="space-y-2">
-                <div class="flex items-center justify-between gap-2 px-1">
-                  <a
-                    href={resolve('/insured/[id]', { id: ip.id })}
-                    class="font-medium text-sm hover:text-primary hover:underline transition-colors"
-                  >
-                    {ip.tariff_name ?? ip.kvnr ?? 'Versicherte Person'}
-                  </a>
-                  <span class="text-xs text-muted-foreground tabular-nums">
+                <div class="flex items-baseline justify-between gap-2 px-1">
+                  <div class="flex items-baseline gap-2 min-w-0">
+                    <a
+                      href={resolve('/insured/[id]', { id: ip.id })}
+                      class="font-medium text-sm hover:text-primary hover:underline transition-colors"
+                    >
+                      {insuredPersonLabel(ip)}
+                    </a>
+                    {#if ip.tariff_name}
+                      <span class="text-xs text-muted-foreground truncate">{ip.tariff_name}</span>
+                    {/if}
+                  </div>
+                  <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                     {formatEur(ip.monthly_premium)} / Monat
                   </span>
                 </div>

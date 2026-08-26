@@ -49,6 +49,7 @@ async function mockApi(page: Page): Promise<{ getPostedInvoice: () => unknown }>
           id: INSURED_ID,
           contract_id: CONTRACT_ID,
           person_id: PERSON_ID,
+          person_name: 'Max Mustermann',
           kvnr: 'A123456789',
           tariff_name: 'PrivatComfort',
           monthly_premium: 450,
@@ -120,7 +121,7 @@ test('scan → parse → save files a metadata-only invoice', async ({ page }) =
 
   // shadcn Select is not a native <select> — open the trigger, then click the option.
   await page.getByLabel('Versicherte Person').click();
-  await page.getByRole('option', { name: 'AOK · PrivatComfort' }).click();
+  await page.getByRole('option', { name: 'Max Mustermann · AOK' }).click();
   await page.getByRole('button', { name: 'Rechnung speichern' }).click();
 
   // Lands on the invoice detail (where the Günstigerprüfung lives).

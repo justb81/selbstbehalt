@@ -21,9 +21,9 @@ function kpi(page: Page, description: string): Locator {
     .first();
 }
 
-/** The per-person Selbstbehalt/BRE card, addressed by its tariff name. */
-function personCard(page: Page, tariff: string): Locator {
-  return page.locator('a[href^="/insured/"]').filter({ hasText: tariff });
+/** The per-person Selbstbehalt/BRE card, addressed by the person's name. */
+function personCard(page: Page, person: string): Locator {
+  return page.locator('a[href^="/insured/"]').filter({ hasText: person });
 }
 
 const CASES: ScenarioName[] = [
@@ -50,8 +50,8 @@ for (const name of CASES) {
       await expect(kpi(page, `Jahr ${CURRENT_YEAR}`)).toHaveText(String(dashboard.yearInvoices));
       await expect(kpi(page, 'Verträge')).toHaveText(String(dashboard.contracts));
 
-      for (const { tariff, ampel } of dashboard.personCards) {
-        await expect(personCard(page, tariff)).toContainText(ampel);
+      for (const { person, ampel } of dashboard.personCards) {
+        await expect(personCard(page, person)).toContainText(ampel);
       }
       await expect(page.locator('a[href^="/insured/"]')).toHaveCount(dashboard.personCards.length);
 

@@ -13,6 +13,7 @@
   import {
     formatDate,
     formatEur,
+    insuredPersonLabel,
     type Contract,
     type InsuredPerson,
     type InvoiceWithPositions,
@@ -67,13 +68,10 @@
 
   onMount(load);
 
-  // Feed the real tariff name into the global breadcrumb once it has loaded.
+  // Feed the person's name into the global breadcrumb once it has loaded.
   $effect(() => {
     if (insuredPerson) {
-      setBreadcrumbEntity(
-        insuredId,
-        insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person',
-      );
+      setBreadcrumbEntity(insuredId, insuredPersonLabel(insuredPerson));
     }
   });
 
@@ -152,9 +150,7 @@
 
 <svelte:head>
   <title>
-    {insuredPerson
-      ? `${insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'} · Versicherte`
-      : 'Versicherte Person'} · selbstbehalt
+    {insuredPerson ? `${insuredPersonLabel(insuredPerson)} · Versicherte` : 'Versicherte Person'} · selbstbehalt
   </title>
 </svelte:head>
 
@@ -165,12 +161,13 @@
     <ErrorState title="Fehler" message={loadError} onRetry={load} />
   {:else if insuredPerson}
     <!-- Header -->
-    <h1 class="text-2xl font-bold tracking-tight">
-      {insuredPerson.tariff_name ?? insuredPerson.kvnr ?? 'Versicherte Person'}
-    </h1>
+    <h1 class="text-2xl font-bold tracking-tight">{insuredPersonLabel(insuredPerson)}</h1>
 
     <!-- Key facts -->
     <div class="flex flex-wrap gap-3 text-sm">
+      {#if insuredPerson.tariff_name}
+        <Badge variant="secondary">Tarif: {insuredPerson.tariff_name}</Badge>
+      {/if}
       {#if insuredPerson.kvnr}
         <Badge variant="secondary">KVNR: {insuredPerson.kvnr}</Badge>
       {/if}

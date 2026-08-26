@@ -48,10 +48,10 @@ export interface DashboardFacts {
   pendingSubmissions: number;
   /** "Jahr <CURRENT_YEAR>" tile. */
   yearInvoices: number;
-  /** One entry per versicherte Person, keyed by the tariff name shown on the card. */
-  personCards: { tariff: string; ampel: AmpelLabel }[];
+  /** One entry per versicherte Person, keyed by the person name shown on the card. */
+  personCards: { person: string; ampel: AmpelLabel }[];
   /**
-   * Tariff of the card that must sort first (most actionable, issue #261). Only
+   * Name on the card that must sort first (most actionable, issue #261). Only
    * set where the Ampel priorities actually differ.
    */
   firstCard?: string;
@@ -177,7 +177,7 @@ async function seedBaseline(api: SeedApi) {
     openInvoices: 1,
     pendingSubmissions: 0,
     yearInvoices: 1,
-    personCards: [{ tariff: 'BasisKomfort', ampel: 'Unter Selbstbehalt' }],
+    personCards: [{ person: 'Max Mustermann', ampel: 'Unter Selbstbehalt' }],
   };
 
   return { person, contract, insured, invoice, dashboard };
@@ -308,11 +308,11 @@ async function seedFamilieZweiVertraege(api: SeedApi) {
     pendingSubmissions: 1,
     yearInvoices: 3,
     personCards: [
-      { tariff: 'PartnerBasis', ampel: 'Einreichen lohnt' },
-      { tariff: 'FamilieKomfort', ampel: 'Unter Selbstbehalt' },
-      { tariff: 'KinderSelect', ampel: 'Unter Selbstbehalt' },
+      { person: 'Jonas Mustermann', ampel: 'Einreichen lohnt' },
+      { person: 'Erika Mustermann', ampel: 'Unter Selbstbehalt' },
+      { person: 'Lena Mustermann', ampel: 'Unter Selbstbehalt' },
     ],
-    firstCard: 'PartnerBasis',
+    firstCard: 'Jonas Mustermann',
   };
 
   return {
@@ -374,7 +374,7 @@ async function seedSbErreicht(api: SeedApi) {
     openInvoices: 1,
     pendingSubmissions: 0,
     yearInvoices: 1,
-    personCards: [{ tariff: 'PremiumSchwelle', ampel: 'SB erreicht' }],
+    personCards: [{ person: 'Sofia Reiter', ampel: 'SB erreicht' }],
   };
 
   return { person, contract, insured, invoice, dashboard };
@@ -445,7 +445,7 @@ async function seedUeberSchwelle(api: SeedApi) {
     openInvoices: 2,
     pendingSubmissions: 0,
     yearInvoices: 2,
-    personCards: [{ tariff: 'SchwelleGerissen', ampel: 'Einreichen lohnt' }],
+    personCards: [{ person: 'Tobias Frank', ampel: 'Einreichen lohnt' }],
   };
 
   return {
@@ -560,7 +560,7 @@ async function seedStaffelZweiLeistungsjahre(api: SeedApi) {
     openInvoices: 0,
     pendingSubmissions: 0,
     yearInvoices: 1,
-    personCards: [{ tariff: 'ZahnStaffel', ampel: 'Staffel gerissen' }],
+    personCards: [{ person: 'Miriam Kraus', ampel: 'Staffel gerissen' }],
   };
 
   return {

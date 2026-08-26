@@ -174,11 +174,14 @@ test.describe('axe: core flows', () => {
 
     await mockBackend(page, { populated: true });
     await page.goto('/insured');
+    // The person is named by her name; the tariff is the secondary line (#358).
+    await expect(page.getByText(PERSON.name).first()).toBeVisible();
     await expect(page.getByText(INSURED.tariff_name).first()).toBeVisible();
     await expectNoViolations(page);
 
     await page.goto(`/insured/${INSURED_ID}`);
-    await expect(page.getByText(INSURED.tariff_name).first()).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: PERSON.name })).toBeVisible();
+    await expect(page.getByText(`Tarif: ${INSURED.tariff_name}`)).toBeVisible();
     await expectNoViolations(page);
   });
 

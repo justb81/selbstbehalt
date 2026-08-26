@@ -102,6 +102,7 @@ describe('insured-person mapping', () => {
       id: ID,
       contractId: ID,
       personId: ID,
+      personName: 'Anna Muster',
       kvnr: 'A123456789',
       tariffName: 'Komfort',
       monthlyPremium: 452.3,
@@ -122,6 +123,7 @@ describe('insured-person mapping', () => {
       id: ID,
       contract_id: ID,
       person_id: ID,
+      person_name: 'Anna Muster',
       kvnr: 'A123456789',
       self_retention: 600,
       created_at: NOW,
@@ -134,6 +136,7 @@ describe('insured-person mapping', () => {
       id: ID,
       contractId: ID,
       personId: ID,
+      personName: 'Ben Muster',
       kvnr: null,
       tariffName: null,
       monthlyPremium: 100,
@@ -147,6 +150,9 @@ describe('insured-person mapping', () => {
     });
     expect(result.kvnr).toBeNull();
     expect(result.bre_structure).toBeNull();
+    // The name comes from the join, not from `insured_persons` — it stays put
+    // even when every nullable column of the row is empty (#358).
+    expect(result.person_name).toBe('Ben Muster');
   });
 
   it('maps a create payload to insert values', () => {

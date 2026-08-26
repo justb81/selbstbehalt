@@ -17,6 +17,7 @@
     includedBenefitsSchema,
     formatDate,
     formatEur,
+    insuredPersonLabel,
     type BRELevel,
     type BREStructure,
     type BenefitCategory,
@@ -648,10 +649,10 @@
                     href={resolve('/insured/[id]', { id: ip.id })}
                     class="font-semibold hover:text-primary hover:underline transition-colors"
                   >
-                    {ip.tariff_name ?? 'Tarif nicht angegeben'}
+                    {insuredPersonLabel(ip)}
                   </a>
                   <p class="text-sm text-muted-foreground">
-                    {personName(ip.person_id)}{#if ip.kvnr}
+                    {ip.tariff_name ?? 'Tarif nicht angegeben'}{#if ip.kvnr}
                       · KVNR: {ip.kvnr}{/if}
                   </p>
                 </div>

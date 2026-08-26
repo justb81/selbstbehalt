@@ -13,6 +13,7 @@
   import { api, ApiError } from '$lib/api';
   import {
     formatEur,
+    insuredPersonLabel,
     type BREHistory,
     type InsuredPerson,
     type PositionYearRollup,
@@ -95,7 +96,7 @@
           const persons = await api.insured.list(contract.id);
           return persons.map((person: InsuredPerson) => ({
             person,
-            label: `${contract.insurer_name} · ${person.tariff_name ?? person.kvnr ?? 'Tarif'}`,
+            label: `${insuredPersonLabel(person)} · ${contract.insurer_name}`,
           }));
         }),
       );
@@ -154,11 +155,7 @@
         ?.years.find((y) => y.year === currentYear);
       return {
         ip,
-        label:
-          personOptions.find((o) => o.id === ip.id)?.label ??
-          ip.tariff_name ??
-          ip.kvnr ??
-          'Versicherte Person',
+        label: personOptions.find((o) => o.id === ip.id)?.label ?? insuredPersonLabel(ip),
         radar: computeSelbstbehaltRadar({
           year: currentYear,
           R_Y: row ? row.eligible_amount + row.refund_amount : 0,

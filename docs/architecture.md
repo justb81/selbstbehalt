@@ -516,6 +516,16 @@ GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup
 POST   /api/import/db                 → Datenbank-Wiederherstellung
 ```
 
+Die Lese-Antworten der drei `insured`-Routen (`GET /api/contracts/:id/insured`,
+`GET /api/insured/:id` sowie die Rückgaben von `POST`/`PUT`) tragen zusätzlich zu den Spalten aus
+`insured_persons` das Feld **`person_name`** — der Anzeigename der Person, per Join aus `persons`.
+Eine versicherte Person ist zuerst eine Person; Tarifname und KVNR sind Vertragsdaten und für
+Geschwister im selben Tarif identisch, taugen also nicht als Benennung (Issues #351, #358). Das
+Feld ist ausschließlich lesend: geschrieben wird der Name über `/api/persons/:id`, die
+Create-/Update-Schemata weisen ihn zurück. Die UI benennt eine versicherte Person nirgends selbst,
+sondern über `insuredPersonLabel(...)` aus `packages/shared` (Name → Tarif → KVNR → „Versicherte
+Person").
+
 Authentifizierung und Zugangsschutz sind Betriebsthemen und stehen in Kapitel 7.3.
 
 ### 5.5 Baustein `packages/shared` und das Datenmodell
@@ -582,6 +592,9 @@ created_at            DATETIME
 Eine versicherte Person auf einem Vertrag — die Verknüpfung von `persons` und `contracts`, die den
 individuellen Versicherungsschutz trägt. Jeder Eintrag hat eine eigene KVNR und eigene Tarif-,
 Beitrags-, Selbstbehalt- und BRE-Werte.
+
+Der Anzeigename steht **nicht** hier, sondern in `persons` — die Lese-DTOs joinen ihn als
+`person_name` dazu (siehe 5.4).
 
 ```sql
 id                    TEXT PRIMARY KEY

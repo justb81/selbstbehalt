@@ -10,7 +10,11 @@ import {
 } from '../enums.js';
 import { personCreateSchema, personUpdateSchema } from './person.js';
 import { contractCreateSchema } from './contract.js';
-import { insuredPersonCreateSchema, breStructureSchema } from './insured-person.js';
+import {
+  insuredPersonCreateSchema,
+  insuredPersonSchema,
+  breStructureSchema,
+} from './insured-person.js';
 import { invoiceCreateSchema, invoiceSchema } from './invoice.js';
 import { invoicePositionCreateSchema, invoicePositionSchema } from './invoice-position.js';
 import { submissionCreateSchema } from './submission.js';
@@ -97,6 +101,22 @@ describe('insuredPersonCreateSchema', () => {
     expect(insuredPersonCreateSchema.safeParse({ ...base, self_retension: 600 }).success).toBe(
       false,
     );
+  });
+
+  it('carries the joined person_name only on the read schema (#358)', () => {
+    // The name lives in `persons`; the read DTO always carries it, writes never
+    // accept it.
+    expect(insuredPersonCreateSchema.safeParse({ ...base, person_name: 'Erika' }).success).toBe(
+      false,
+    );
+    const read = {
+      ...base,
+      id: UUID,
+      created_at: '2026-01-01T00:00:00.000Z',
+      self_retention: 0,
+    };
+    expect(insuredPersonSchema.safeParse(read).success).toBe(false);
+    expect(insuredPersonSchema.safeParse({ ...read, person_name: 'Erika' }).success).toBe(true);
   });
 
   it('rejects an unknown key inside a nested included_benefits block', () => {
