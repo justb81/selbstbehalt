@@ -130,6 +130,23 @@ export const BRE_HISTORY = {
 };
 
 /**
+ * Simulates an unreachable backend: every request whose **pathname** starts with
+ * `prefix` is aborted, everything else falls through to the handlers registered
+ * before it.
+ *
+ * Matching the pathname instead of a `**\/api\/**` glob is deliberate. Under
+ * `vite dev` the app's own modules are served from their source paths, so that
+ * glob also aborts `/src/lib/api/index.ts` — which breaks the app shell itself
+ * ("Internal Error") instead of only the backend, and tests the wrong thing.
+ */
+export async function abortApi(page: Page, prefix = '/api/'): Promise<void> {
+  await page.route('**/*', (route) => {
+    const { pathname } = new URL(route.request().url());
+    return pathname.startsWith(prefix) ? route.abort('failed') : route.fallback();
+  });
+}
+
+/**
  * Wires up read-only mocks for the backend the covered routes call.
  *
  * `invoiceStatus` patches the fixture invoice's derived status tracks, for
@@ -151,6 +168,15 @@ export async function mockBackend(
   const invoiceListItem = { ...INVOICE_LIST_ITEM, status };
   const invoice = { ...INVOICE, status };
   const invoices = populated ? [invoiceListItem] : [];
+
+  // Reachability probe (#381): the "Server nicht erreichbar" retry calls it, and
+  // the dev server would otherwise proxy it to a dead backend (a 500, which the
+  // reachability rules correctly read as "the server answered").
+  await page.route('**/api/health', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { status: 'ok', service: 'selbstbehalt-backend', db: 'up' } })
+      : route.fallback(),
+  );
 
   await page.route('**/api/persons', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: persons }) : route.fallback(),
