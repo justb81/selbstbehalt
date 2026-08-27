@@ -16,6 +16,9 @@ export default tseslint.config(
       '**/dist/**',
       '**/build/**',
       '**/.svelte-kit/**',
+      // Staging dir `svelte-check --tsgo` writes the TS it feeds to the native
+      // (Go) compiler into — generated, not project source.
+      '**/.svelte-check/**',
       '**/coverage/**',
       '**/node_modules/**',
       '**/playwright-report/**',
