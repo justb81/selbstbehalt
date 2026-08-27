@@ -9,10 +9,15 @@
 
   let {
     contract,
-    insuredCount = 0,
+    insuredCount = null,
   }: {
     contract: Contract;
-    insuredCount?: number;
+    /**
+     * Number of insured persons on this contract, or `null` when it could not be
+     * determined. `null` renders as "—", never as `0` — an unknown count must not
+     * read as an empty contract (issue #396).
+     */
+    insuredCount?: number | null;
   } = $props();
 
   const TYPE_LABELS: Record<ContractType, string> = {
@@ -38,10 +43,16 @@
     <CardFooter
       class="flex justify-between items-center gap-2 flex-wrap text-sm text-muted-foreground"
     >
-      <span class="font-medium">
-        {insuredCount}
-        {insuredCount === 1 ? 'versicherte Person' : 'versicherte Personen'}
-      </span>
+      {#if insuredCount === null}
+        <span class="font-medium">
+          Versicherte: —<span class="sr-only"> nicht verfügbar</span>
+        </span>
+      {:else}
+        <span class="font-medium">
+          {insuredCount}
+          {insuredCount === 1 ? 'versicherte Person' : 'versicherte Personen'}
+        </span>
+      {/if}
       {#if contract.end_date}
         <span>bis {contract.end_date}</span>
       {:else}

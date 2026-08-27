@@ -20,27 +20,40 @@
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
+  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
 
   interface ContractGroup {
     contract: Contract;
-    insuredPersons: InsuredPerson[];
+    /** `null` = nicht geladen, `[]` = wirklich keine — nie dasselbe (issue #396). */
+    insuredPersons: InsuredPerson[] | null;
   }
 
   let groups = $state<ContractGroup[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let groupWarning = $state<string | null>(null);
 
   async function load() {
     loading = true;
     error = null;
+    groupWarning = null;
     try {
       const contracts = await api.contracts.list();
-      const insuredLists = await Promise.all(
-        contracts.map((c) => api.insured.list(c.id).catch(() => [])),
-      );
+      // Früher `.catch(() => [])` plus ein `.filter(länge > 0)`: ein
+      // gescheiterter Lookup ließ den **ganzen Vertrag** aus der Liste fallen,
+      // und beim einzigen Vertrag behauptete die Seite, es gäbe keine
+      // versicherten Personen (issue #396).
+      const settled = await Promise.allSettled(contracts.map((c) => api.insured.list(c.id)));
+      const insuredLists = settledValues(settled);
       groups = contracts
-        .map((c, i) => ({ contract: c, insuredPersons: insuredLists[i]! }))
-        .filter((g) => g.insuredPersons.length > 0);
+        .map((c, i) => ({ contract: c, insuredPersons: insuredLists[i] ?? null }))
+        // Nur wirklich leere Verträge fliegen raus; gescheiterte bleiben sichtbar.
+        .filter((g) => g.insuredPersons === null || g.insuredPersons.length > 0);
+      groupWarning = partialFailureMessage(
+        insuredLists.filter((l) => l === null).length,
+        insuredLists.length,
+        'Versicherte je Vertrag',
+      );
     } catch {
       error = 'Versicherte Personen konnten nicht geladen werden.';
     } finally {
@@ -65,7 +78,7 @@
     <LoadingState label="Versicherte werden geladen …" />
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
-  {:else if groups.length === 0}
+  {:else if groups.length === 0 && !groupWarning}
     <EmptyState message="Noch keine versicherten Personen vorhanden.">
       {#snippet action()}
         <p class="text-sm text-muted-foreground">
@@ -77,6 +90,9 @@
       {/snippet}
     </EmptyState>
   {:else}
+    {#if groupWarning}
+      <ErrorState title="Unvollständig geladen" message={groupWarning} onRetry={load} />
+    {/if}
     <div class="space-y-8">
       {#each groups as group (group.contract.id)}
         <div class="space-y-3">
@@ -87,38 +103,48 @@
             >
               {group.contract.insurer_name}
             </a>
-            <Badge variant="secondary" class="text-xs"
-              >{group.insuredPersons.length}
-              {group.insuredPersons.length === 1 ? 'Person' : 'Personen'}</Badge
-            >
+            {#if group.insuredPersons === null}
+              <Badge variant="secondary" class="text-xs"
+                >—<span class="sr-only"> Anzahl nicht verfügbar</span></Badge
+              >
+            {:else}
+              <Badge variant="secondary" class="text-xs"
+                >{group.insuredPersons.length}
+                {group.insuredPersons.length === 1 ? 'Person' : 'Personen'}</Badge
+              >
+            {/if}
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {#each group.insuredPersons as ip (ip.id)}
-              <div class="space-y-2">
-                <div class="flex items-baseline justify-between gap-2 px-1">
-                  <div class="flex items-baseline gap-2 min-w-0">
-                    <a
-                      href={resolve('/insured/[id]', { id: ip.id })}
-                      class="font-medium text-sm hover:text-primary hover:underline transition-colors"
-                    >
-                      {insuredPersonLabel(ip)}
-                    </a>
-                    {#if ip.tariff_name}
-                      <span class="text-xs text-muted-foreground truncate">{ip.tariff_name}</span>
-                    {/if}
+          {#if group.insuredPersons === null}
+            <EmptyState compact message="Versicherte Personen konnten nicht geladen werden." />
+          {:else}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {#each group.insuredPersons as ip (ip.id)}
+                <div class="space-y-2">
+                  <div class="flex items-baseline justify-between gap-2 px-1">
+                    <div class="flex items-baseline gap-2 min-w-0">
+                      <a
+                        href={resolve('/insured/[id]', { id: ip.id })}
+                        class="font-medium text-sm hover:text-primary hover:underline transition-colors"
+                      >
+                        {insuredPersonLabel(ip)}
+                      </a>
+                      {#if ip.tariff_name}
+                        <span class="text-xs text-muted-foreground truncate">{ip.tariff_name}</span>
+                      {/if}
+                    </div>
+                    <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                      {formatEur(ip.monthly_premium)} / Monat
+                    </span>
                   </div>
-                  <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                    {formatEur(ip.monthly_premium)} / Monat
-                  </span>
+                  <BRETracker
+                    insuredPerson={ip}
+                    compact={true}
+                    href={resolve('/insured/[id]', { id: ip.id })}
+                  />
                 </div>
-                <BRETracker
-                  insuredPerson={ip}
-                  compact={true}
-                  href={resolve('/insured/[id]', { id: ip.id })}
-                />
-              </div>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/each}
     </div>

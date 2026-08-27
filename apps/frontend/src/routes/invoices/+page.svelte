@@ -21,6 +21,7 @@
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
   import { Button } from '$lib/components/ui/button';
 
   let invoices = $state<Invoice[]>([]);
@@ -28,6 +29,7 @@
   let insuredPersons = $state<InsuredPerson[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let filterWarning = $state<string | null>(null);
 
   // Deep-link filters, e.g. the dashboard's "Ausstehende Einreichungen" tile
   // linking to `?submission=eingereicht` (issue #261), or `?payment=offen`.
@@ -45,6 +47,7 @@
   async function load() {
     loading = true;
     error = null;
+    filterWarning = null;
     try {
       const [invoiceList, personList, contractList] = await Promise.all([
         api.invoices.list(),
@@ -54,9 +57,19 @@
       invoices = invoiceList;
       persons = personList;
       // No "list all insured" endpoint — gather them per contract for the
-      // invoice → person mapping the Person filter needs.
-      const insuredLists = await Promise.all(contractList.map((c) => api.insured.list(c.id)));
-      insuredPersons = insuredLists.flat();
+      // invoice → person mapping the Person filter needs. Settled and outside
+      // the spine: this feeds the *filter dropdown* only, and a `Promise.all`
+      // here used to take the whole archive down with it — "Rechnungen konnten
+      // nicht geladen werden.", with the invoices already sitting in state
+      // (issue #396).
+      const settled = await Promise.allSettled(contractList.map((c) => api.insured.list(c.id)));
+      const lists = settledValues(settled);
+      insuredPersons = lists.flatMap((list) => list ?? []);
+      filterWarning = partialFailureMessage(
+        lists.filter((l) => l === null).length,
+        lists.length,
+        'Personen-Filter',
+      );
     } catch {
       error = 'Rechnungen konnten nicht geladen werden.';
     } finally {
@@ -80,6 +93,9 @@
   {:else if error}
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else}
+    {#if filterWarning}
+      <ErrorState title="Filter unvollständig" message={filterWarning} onRetry={load} />
+    {/if}
     <InvoiceList
       {invoices}
       {persons}
