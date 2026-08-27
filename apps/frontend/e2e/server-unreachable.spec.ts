@@ -84,4 +84,51 @@ test.describe('Backend nicht erreichbar', () => {
     await expect(page.getByText('Offline – Änderungen werden gespeichert.')).toBeVisible();
     await expect(page.getByText('Server nicht erreichbar')).toHaveCount(0);
   });
+
+  // Issue #396 — dasselbe Muster außerhalb von /stats. Das Prefix trifft
+  // `GET /api/contracts/:id/insured`, aber nicht `GET /api/contracts`: die
+  // Liste lädt, nur der Detail-Lookup fällt aus.
+  test('/contracts erfindet keinen Versicherten-Zähler', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/contracts/');
+
+    await page.goto('/contracts');
+    await expect(page.getByRole('heading', { level: 1, name: 'Verträge' })).toBeVisible();
+
+    // Die Karte ist da (der Vertrag lädt), aber der Zähler ist unbekannt.
+    await expect(page.getByText('AOK')).toBeVisible();
+    await expect(page.getByText('0 versicherte Personen')).toHaveCount(0);
+    await expect(page.getByText('Versicherte: —')).toBeVisible();
+    await expect(
+      page.getByText('Versicherten-Zähler: 1 von 1 konnten nicht geladen werden.'),
+    ).toBeVisible();
+  });
+
+  test('/insured lässt keinen Vertrag verschwinden', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/contracts/');
+
+    await page.goto('/insured');
+    await expect(page.getByRole('heading', { level: 1, name: 'Versicherte' })).toBeVisible();
+
+    // Der Vertrag bleibt gelistet …
+    await expect(page.getByText('AOK')).toBeVisible();
+    await expect(
+      page.getByText('Versicherte Personen konnten nicht geladen werden.'),
+    ).toBeVisible();
+    // … und die Seite behauptet nicht, es gäbe keine.
+    await expect(page.getByText('Noch keine versicherten Personen vorhanden.')).toHaveCount(0);
+  });
+
+  test('/invoices behält das Archiv, wenn nur der Personen-Filter scheitert', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/contracts/');
+
+    await page.goto('/invoices');
+    await expect(page.getByRole('heading', { level: 1, name: 'Rechnungen' })).toBeVisible();
+
+    // Die Rechnung ist geladen — nur das Filter-Dropdown ist unvollständig.
+    await expect(page.getByText('Praxis Dr. med. Mustermann')).toBeVisible();
+    await expect(page.getByText('Rechnungen konnten nicht geladen werden.')).toHaveCount(0);
+  });
 });

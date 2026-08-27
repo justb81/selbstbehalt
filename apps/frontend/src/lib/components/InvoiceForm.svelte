@@ -55,6 +55,7 @@
     SelectValue,
   } from '$lib/components/ui/select';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import ErrorState from '$lib/components/ErrorState.svelte';
 
   // ---------------------------------------------------------------------------
   // Types
@@ -221,11 +222,37 @@
   /**
    * The selected person's other invoices — the volume they already used up of a
    * `jahr`/`lebenslang` limit or the Zahnstaffel (issue #370). Loaded per person and
-   * memoised, since the selection can change while capturing. A failed load leaves the
-   * list empty: capturing must not be blocked, the estimate is then simply uncapped.
+   * memoised, since the selection can change while capturing.
+   *
+   * A failed load must not block capturing — but it must not be silent either: an
+   * empty history makes every cross-invoice cap (`jahr`/`lebenslang`, Zahnstaffel,
+   * #370) look unused, so `computeErstattung` returns an **overstated** amount that
+   * would be saved as `eligible_amount`. While the history is missing the estimate
+   * is therefore reported as *unknown* (`null`) rather than as a wrong number —
+   * the same rule the model already holds for `eligible_amount` (issue #396).
    */
   const historyCache = new SvelteMap<string, PriorClaimsInvoice[]>();
   let history = $state<PriorClaimsInvoice[]>([]);
+  let historyFailed = $state(false);
+  /** Guards against a slow load for a person the user has since switched away from. */
+  let historyToken = 0;
+
+  function loadHistory(
+    personId: string,
+    load: (insuredPersonId: string) => Promise<PriorClaimsInvoice[]>,
+  ) {
+    const token = ++historyToken;
+    history = [];
+    historyFailed = false;
+    void load(personId)
+      .then((invoices) => {
+        historyCache.set(personId, invoices);
+        if (token === historyToken) history = invoices;
+      })
+      .catch(() => {
+        if (token === historyToken) historyFailed = true;
+      });
+  }
 
   $effect(() => {
     const personId = insuredPersonId;
@@ -233,21 +260,18 @@
     const cached = personId ? historyCache.get(personId) : undefined;
     if (cached) {
       history = cached;
+      historyFailed = false;
       return;
     }
     history = [];
+    historyFailed = false;
     if (!load || !personId) return;
-    let stale = false;
-    void load(personId)
-      .then((invoices) => {
-        historyCache.set(personId, invoices);
-        if (!stale) history = invoices;
-      })
-      .catch(() => undefined);
-    return () => {
-      stale = true;
-    };
+    loadHistory(personId, load);
   });
+
+  function retryHistory() {
+    if (insuredPersonId && invoiceHistory) loadHistory(insuredPersonId, invoiceHistory);
+  }
 
   /**
    * The reimbursement breakdown for the current positions, or `null` when the tariff
@@ -258,6 +282,9 @@
   const erstattung = $derived.by(() => {
     if (!(selectedInsuredPerson?.included_benefits && selectedInsuredPerson.start_date))
       return null;
+    // Without the prior claims the caps look unused and the result would be too
+    // high — unknown, not overstated (issue #396).
+    if (historyFailed) return null;
     const erstattungPositions: ErstattungPosition[] = positions.map((p, i) => ({
       category: benefitCategories[i]!,
       chargedAmount: p.charged_amount,
@@ -403,6 +430,17 @@
     bind:positions
     bind:scanResult
   />
+
+  <!-- Ohne den Rechnungsverlauf sind die rechnungsübergreifenden Grenzen (#370)
+       nicht messbar; der Betrag bliebe ungedeckelt und damit zu hoch. Erfassen
+       bleibt möglich, die Erstattung gilt so lange als unbekannt (issue #396). -->
+  {#if historyFailed}
+    <ErrorState
+      title="Erstattung nicht berechenbar"
+      message="Der bisherige Rechnungsverlauf konnte nicht geladen werden. Ohne ihn lassen sich Jahres- und Lebenslang-Grenzen sowie die Zahnstaffel nicht anrechnen — die Rechnung kann erfasst werden, der Erstattungsbetrag bleibt aber offen."
+      onRetry={retryHistory}
+    />
+  {/if}
 
   <!-- Erstattung: what the tariff will cover, and why it is less than billed -->
   {#if erstattung && positions.length > 0}

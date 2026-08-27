@@ -301,6 +301,38 @@ test.describe('axe: core flows', () => {
     await expectNoViolations(page);
   });
 
+  // The toasts are the one surface that used to pick its own theme: sonner falls
+  // back to `prefers-color-scheme` when given none, so an OS dark preference put
+  // rich-color text on a dark toast in an otherwise light app — below AA, and
+  // invisible to every scan above, which all run under the default light
+  // preference. Scan the error toast under a dark preference too.
+  test('toasts meet contrast under an OS dark preference', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/contracts/');
+
+    await page.goto('/contracts');
+    await expect(page.getByText('Server nicht erreichbar')).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  // Issue #396: same class of route state on the list pages — an unknown count
+  // and a contract whose persons could not be loaded.
+  test('contracts and insured — unvollständig geladen', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/contracts/');
+
+    await page.goto('/contracts');
+    await expect(page.getByText('Versicherte: —')).toBeVisible();
+    await expectNoViolations(page);
+
+    await page.goto('/insured');
+    await expect(
+      page.getByText('Versicherte Personen konnten nicht geladen werden.'),
+    ).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   // Issue #381: the unreachable-backend state is a route state like any other —
   // a global toast, page-level error panels and "—" placeholders in the tiles.
   test('stats — Server nicht erreichbar', async ({ page }) => {

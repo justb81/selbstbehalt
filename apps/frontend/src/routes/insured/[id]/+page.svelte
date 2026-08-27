@@ -265,6 +265,16 @@
                   Im Vertrag konfigurieren.
                 </a>
               </div>
+            {:else}
+              <!-- Eine BRE-Staffel ist da, die Berechnung ist trotzdem
+                   fehlgeschlagen (siehe den catch bei calculateGCP). Ohne
+                   diesen Zweig fehlte der eigentliche Zweck der Seite
+                   kommentarlos (issue #396). -->
+              <div
+                class="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
+              >
+                Günstigerprüfung konnte für dieses Jahr nicht berechnet werden.
+              </div>
             {/if}
           </div>
         {/each}

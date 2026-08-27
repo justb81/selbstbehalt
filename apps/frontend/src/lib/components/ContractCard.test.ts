@@ -64,6 +64,19 @@ describe('ContractCard', () => {
     expect(screen.getByText(/3 versicherte Personen/)).toBeInTheDocument();
   });
 
+  // Issue #396: a lookup that failed must not read as an empty contract.
+  it('renders an unknown count as an em dash, never as 0', () => {
+    render(ContractCard, { props: { contract: BASE_CONTRACT, insuredCount: null } });
+    expect(screen.getByText(/Versicherte: —/)).toBeInTheDocument();
+    expect(screen.queryByText(/0 versicherte Personen/)).not.toBeInTheDocument();
+    expect(screen.getByText('nicht verfügbar')).toBeInTheDocument();
+  });
+
+  it('still renders a genuine zero as a zero', () => {
+    render(ContractCard, { props: { contract: BASE_CONTRACT, insuredCount: 0 } });
+    expect(screen.getByText(/0 versicherte Personen/)).toBeInTheDocument();
+  });
+
   it('links to the contract detail page', () => {
     render(ContractCard, { props: { contract: BASE_CONTRACT } });
     expect(screen.getByRole('link')).toHaveAttribute('href', '/contracts/c-1');
