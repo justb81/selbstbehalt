@@ -44,6 +44,7 @@
     failingPageNumbers,
     mergeQualityReports,
     QUALITY_OK_HINT,
+    type PageQualityReport,
     type QualityReport,
   } from '../ocr/quality';
   import { loadAllInvoicePages, recognizeInvoiceImage } from '../ocr/scan-ocr';
@@ -51,13 +52,21 @@
   import {
     buildScanPreview,
     createPagePreview,
+    createTextPagePreview,
     PREVIEW_MAX_PAGES,
+    type ImagePagePreview,
     type PageLineRange,
     type PagePreview,
     type ScanPreview,
   } from '../ocr/preview';
   import { SUPPORTED_INVOICE_SCHEDULES, loadFeeTable } from '../data/fee-tables';
-  import { isScanImagePage, type OcrProgress, type OcrResult, type ScanPage } from '../ocr/types';
+  import {
+    isScanImagePage,
+    type OcrProgress,
+    type OcrResult,
+    type ScanImagePage,
+    type ScanPage,
+  } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
   import InvoicePagePreview from './InvoicePagePreview.svelte';
   import { Button } from './ui/button';
@@ -151,12 +160,16 @@
 
   /** Pages parked by the quality gate, awaiting the user's call (issue #279). */
   let pendingPages: ScanPage[] = [];
-  /** Previews of {@link pendingPages}, so the warning can show the frame it faults. */
-  let pendingPreviews = $state<PagePreview[]>([]);
+  /**
+   * Previews of {@link pendingPages}, so the warning can show the frame it faults.
+   * Image pages only — a text-layer page has no frame to fault, and explaining
+   * that next to capture advice would be noise.
+   */
+  let pendingPreviews = $state<ImagePagePreview[]>([]);
   let pendingQuality = $state<QualityReport | null>(null);
-  /** 1-based numbers of the parked pages that failed, so the warning can name them. */
+  /** Document page numbers of the parked pages that failed, so the warning can name them. */
   let pendingFailingPages = $state<number[]>([]);
-  /** How many image pages were judged — the warning only names a sheet when >1. */
+  /** How many pages the parked document has — the warning only names a sheet when >1. */
   let pendingPageCount = $state(0);
   /** Which entry point produced {@link pendingPages} — drives the retake action. */
   let pendingSource = $state<'camera' | 'file'>('file');
@@ -196,40 +209,52 @@
    * (Datenminimierung §8.1).
    */
   /**
-   * Preview snapshots of the image pages, in page order, built by
-   * {@link processPages} *before* recognition — `recognize` transfers the pixel
-   * buffer to the worker, so a copy taken afterwards may already be detached.
-   * Shared by the quality warning (which shows the frame it is judging) and the
-   * review screen (which draws the recognised lines on it).
+   * `imagePreviews` are the snapshots of the rasterised pages, in page order,
+   * built by {@link processPages} *before* recognition — `recognize` transfers the
+   * pixel buffer to the worker, so a copy taken afterwards may already be
+   * detached. Shared by the quality warning (which shows the frame it is judging)
+   * and the review screen (which draws the recognised lines on it).
+   *
+   * The walk below is in **document** order and produces the preview entries and
+   * their line ranges together, so the two cannot drift apart. A text-layer page
+   * gets an entry too — it carries no pixels, but it is a page of the document,
+   * and without an entry its lines were attributed to nothing and silently
+   * dropped from the review screen (issue #362).
    */
-  async function runPages(pages: ScanPage[], previews: PagePreview[]): Promise<void> {
+  async function runPages(pages: ScanPage[], imagePreviews: ImagePagePreview[]): Promise<void> {
     phase = 'processing';
     error = null;
     progress = { phase: 'recognize', ratio: null, message: 'Bild wird vorverarbeitet …' };
     try {
       const tables = await Promise.all(SUPPORTED_INVOICE_SCHEDULES.map(loadFeeTable));
       const allResults: OcrResult[] = [];
+      const previews: PagePreview[] = [];
       const ranges: PageLineRange[] = [];
-      let imagePage = 0;
-      for (const page of pages) {
+      let imageIndex = 0;
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i]!;
+        const start = allResults.length;
         if (page.kind === 'text') {
-          // A text-layer page has no image, so it gets no preview — and
-          // deliberately no range either, so its lines are attributed to no page
-          // rather than bleeding into the previous one.
           allResults.push(...page.lines);
+          previews.push(createTextPagePreview(i + 1));
+          ranges.push({ start, end: allResults.length });
           continue;
         }
-        const preview = previews[imagePage];
-        imagePage += 1;
-        const start = allResults.length;
+        // `undefined` past PREVIEW_MAX_PAGES: the page is still recognised, it
+        // just gets no entry, hence no range — its lines belong to no page.
+        const imagePreview = imagePreviews[imageIndex];
+        imageIndex += 1;
         const prepared = preprocess(page.image);
         const results = await recognize(prepared, (p) => (progress = p));
         allResults.push(...results);
-        if (preview) ranges.push({ start, end: allResults.length });
+        if (imagePreview) {
+          previews.push(imagePreview);
+          ranges.push({ start, end: allResults.length });
+        }
       }
       onScanned(
         buildScanResult(allResults, tables),
-        buildScanPreview(previews, allResults, ranges),
+        buildScanPreview(previews, allResults, ranges, pages.length),
       );
       phase = 'idle';
       progress = null;
@@ -251,19 +276,29 @@
    * scan-PDF pages all arrive through this one funnel.
    */
   async function processPages(pages: ScanPage[], source: 'camera' | 'file'): Promise<void> {
-    const imagePages = pages.filter(isScanImagePage);
-    const reports = imagePages.map((page) => assessQuality(page.image));
+    // Pair with the document index *before* filtering: only rasterised pages are
+    // judged and previewed, so their position among themselves is not their page
+    // number in a PDF that also has text-layer pages (issue #362).
+    const imagePages = pages
+      .map((page, index) => ({ page, documentPage: index + 1 }))
+      .filter((entry): entry is { page: ScanImagePage; documentPage: number } =>
+        isScanImagePage(entry.page),
+      );
+    const reports: PageQualityReport[] = imagePages.map((entry) => ({
+      documentPage: entry.documentPage,
+      report: assessQuality(entry.page.image),
+    }));
     // Snapshot every image page up front, while the buffers are still intact.
     const previews = imagePages
       .slice(0, PREVIEW_MAX_PAGES)
-      .map((page) => createPagePreview(page.image));
-    const verdict = mergeQualityReports(reports);
+      .map((entry) => createPagePreview(entry.page.image, { documentPage: entry.documentPage }));
+    const verdict = mergeQualityReports(reports.map((entry) => entry.report));
     if (!verdict.ok) {
       pendingPages = pages;
       pendingPreviews = previews;
       pendingQuality = verdict;
       pendingFailingPages = failingPageNumbers(reports);
-      pendingPageCount = reports.length;
+      pendingPageCount = pages.length;
       pendingSource = source;
       error = null;
       phase = 'quality-warning';
@@ -497,9 +532,18 @@
         </AlertDescription>
       </Alert>
       <!-- Show the frame being faulted: "zu dunkel" is far easier to act on
-      when the shot is on screen next to the advice. -->
+      when the shot is on screen next to the advice. No line list here —
+      recognition has not run yet, so a count would read as "nothing was found"
+      when in fact nothing has been attempted (issue #362). -->
       {#if pendingPreviews.length > 0}
-        <InvoicePagePreview preview={{ pages: pendingPreviews, lines: [] }} />
+        <InvoicePagePreview
+          preview={{
+            pages: pendingPreviews,
+            lines: [],
+            documentPageCount: pendingPageCount,
+          }}
+          showRecognizedLines={false}
+        />
       {/if}
       <div class="flex flex-wrap gap-2">
         <Button type="button" variant="default" onclick={() => void confirmQuality()}>

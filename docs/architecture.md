@@ -374,7 +374,7 @@ aggregiert über alle Rechnungen der Person, §8.5). `/invoices/[id]` zeigt nur 
 | Komponente | Datei | Zweck |
 |---|---|---|
 | `OCRScanner` | `packages/medic-invoice-check/src/lib/components/OCRScanner.svelte` | Kamera-Aufnahme + PaddleOCR-Aufruf |
-| `InvoicePagePreview` | `packages/medic-invoice-check/src/lib/components/InvoicePagePreview.svelte` | Gescannte Seite mit eingezeichneten erkannten Textzeilen (§6.1); hebt die Quellzeile der geprüften Position hervor |
+| `InvoicePagePreview` | `packages/medic-invoice-check/src/lib/components/InvoicePagePreview.svelte` | Seitenvorschau je Dokumentseite (§6.1): gescannte Seite mit eingezeichneten erkannten Textzeilen, Textlayer-Seite als benannter Zustand ohne Bild; hebt in beiden Fällen die Quellzeile der geprüften Position hervor |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
 | `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position + „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
@@ -961,14 +961,36 @@ Zwei Fallstricke, die die Implementierung bestimmen:
   immer, da `downscale` sein Eingabebild unverändert zurückgibt, wenn es schon
   klein genug ist.
 - Die Seitenzuordnung nutzt **halboffene Zeilenbereiche** je Seite, nicht bloße
-  Startindizes: ein PDF kann Textlayer- und Scan-Seiten mischen, und eine reine
-  Offset-Liste kann die Lücke nicht ausdrücken — die Zeilen der Textlayer-Seite
-  würden der vorherigen Bildseite zugeschlagen.
+  Startindizes: nicht jede Seite bekommt einen Eintrag — eine Bildseite jenseits
+  von `PREVIEW_MAX_PAGES` wird erkannt, aber nicht mehr vorgehalten —, und eine
+  reine Offset-Liste kann diese Lücke nicht ausdrücken; ihre Zeilen würden der
+  vorherigen Seite zugeschlagen.
 
-Seiten mit brauchbarem Textlayer haben kein Bild und daher keine Vorschau; ihre
-Zeilen tragen ohnehin ein leeres Viereck. Dieselbe Komponente zeigt auch die
-Aufnahme, die die Qualitätswarnung (Schritt 2b) beanstandet — „zu dunkel" ist
-deutlich leichter zu befolgen, wenn das Foto daneben steht.
+**Seiten ohne Bild sind Seiten (Issue #362).** `PagePreview` ist eine
+diskriminierte Union: `kind: 'image'` trägt Pixel, `kind: 'text'` steht für eine
+aus dem PDF-Textlayer gelesene Seite und trägt nur ihre Seitennummer. Beide
+Varianten bekommen einen Eintrag und einen Zeilenbereich, damit die Zeilen einer
+Textlayer-Seite **ihr** zugeordnet und in der Liste gezeigt werden; ohne Eintrag
+verschwanden sie stillschweigend, und der Review-Screen zeigte für ein
+digital erzeugtes PDF — den *besseren* Pfad — eine leere Hülle mit „0 erkannten
+Textzeilen", also genau das Bild eines Fehlschlags. Rasterisiert wird eine
+Textlayer-Seite dafür weiterhin nicht: das würde den ganzen
+Geschwindigkeitsvorteil kosten. Statt eines leeren Canvas benennt die Komponente
+den Zustand („Kein Seitenbild nötig — direkt aus dem PDF gelesen"), und die
+Zeilenliste ist hier die vollständige Darstellung der Seite.
+
+Jeder Eintrag führt außerdem seine **Dokument-Seitennummer** mit, und
+`ScanPreview` die Gesamtseitenzahl: der Index in der Vorschauliste ist keine
+Seitennummer, sobald eine Seite keinen Eintrag hat (Textlayer bis Issue #362,
+`PREVIEW_MAX_PAGES` weiterhin). Der Pager nennt daher „Seite 2 von 2" statt
+„Seite 1 von 1", und eine Kürzung durch `PREVIEW_MAX_PAGES` wird als Hinweis
+sichtbar statt stillschweigend.
+
+Dieselbe Komponente zeigt auch die Aufnahme, die die Qualitätswarnung
+(Schritt 2b) beanstandet — „zu dunkel" ist deutlich leichter zu befolgen, wenn
+das Foto daneben steht. Dort ist die Zeilenliste per `showRecognizedLines={false}`
+abgeschaltet: die Erkennung ist noch nicht gelaufen, eine Null wäre also nicht
+„nichts gefunden", sondern „nichts versucht".
 
 **Mehrseitige Rechnungen.** Mehrseitigkeit ist nicht auf PDFs beschränkt: eine
 zweiseitige Papierrechnung darf als mehrere Fotos ausgewählt (`<input multiple>`,
@@ -983,7 +1005,10 @@ Nutzer gewählt. Die Seitenvorschau macht eine falsche Reihenfolge sichtbar.
 Weil `mergeQualityReports` die Einzelurteile bewusst zu einem zusammenfasst,
 behält der Scanner die Berichte je Seite und nennt über `failingPageNumbers` die
 beanstandete Seite („Betrifft Seite 2 von 2") — sonst müsste der Nutzer alle
-Blätter neu fotografieren.
+Blätter neu fotografieren. Jeder Bericht trägt dafür seine
+**Dokument**-Seitennummer (`PageQualityReport`): bewertet werden nur
+rasterisierte Seiten, in einem PDF mit Textlayer-Seiten ist der n-te Bericht also
+nicht das n-te Blatt (Issue #362).
 
 Die Entscheidung Textlayer-vs-OCR fällt **pro Seite**, nicht pro Dokument — ein
 mehrseitiges PDF kann digital erzeugte und gescannte Seiten mischen. Beide
@@ -997,6 +1022,17 @@ lokal, deterministisch, ohne Canvas/DOM/Netzwerk. Sie greifen quellenübergreife
 an genau einer Stelle (`OCRScanner`), also gleichermaßen für Kameraaufnahme,
 Bild-Upload und rasterisierte Scan-PDF-Seiten; Seiten mit brauchbarem Textlayer
 haben kein Bild und werden nicht bewertet.
+
+Eine **praktisch leere Seite** wird ausdrücklich nicht beanstandet
+(`isBlankPage`, Issue #362): ein Deckblatt oder das leere Schlussblatt eines PDFs
+bricht `minContrast` und — als durchgehend geclipptes Weiß — `maxClipped`, worauf
+die Warnung zu Aufnahmewinkel und dunklem Untergrund riet. Für eine digital
+erzeugte PDF-Seite ist dieser Rat nicht umsetzbar und für ein leeres Blatt
+gegenstandslos: darauf ist nichts zu erkennen und nichts zu verbessern, es ist
+also kein Aufnahmeproblem. Alle drei Messwerte müssen übereinstimmen (sehr hell,
+kontrastlos, fast vollständig geclippt) — ein wirklich schlechtes Foto ist dunkel
+oder verrauscht und verletzt mindestens einen davon, wird also weiterhin
+gemeldet.
 
 Helligkeit am oberen Ende und geclippte Pixel werden dabei **nicht** für sich
 genommen als Fehler gewertet: Scanner heben den Papierhintergrund routinemäßig
@@ -1970,7 +2006,7 @@ Qualität
 | Q9 | Funktionale Eignung | Eine Position wird mit einem Steigerungsfaktor über dem Regelhöchstsatz abgerechnet. | Beanstandung mit dem konkreten Grenzwert der Kategorie. | §5-Prüfung (8.3), Unit-Tests |
 | Q10 | Funktionale Eignung | Dieselben Rechnungsdaten werden mit demselben Stichtag zweimal bewertet. | Identisches Ergebnis — kein verstecktes `Date.now()`, keine Zufallsgröße. | injizierbarer `asOf` (8.8), Tests mit festem Stichtag |
 | Q11 | Funktionale Eignung | Eine Position gehört zu einem Leistungsbereich, für den der Tarif keinen Baustein hat. | `eligible_amount = 0` mit Begründung; die Kosten bleiben in der Gesamtsumme und im selbst getragenen Anteil, das Jahr wird nicht verfälscht. | Erstattungs-Engine (8.4), Unit-Tests |
-| Q12 | Benutzbarkeit | Der Nutzer zweifelt eine erkannte Position an. | Die Seitenvorschau hebt die Quellzeile am Bild hervor. | `InvoicePagePreview` (5.3, 6.1) |
+| Q12 | Benutzbarkeit | Der Nutzer zweifelt eine erkannte Position an. | Die Seitenvorschau hebt die Quellzeile hervor — am Bild, bei einer Textlayer-Seite in der Zeilenliste. | `InvoicePagePreview` (5.3, 6.1) |
 | Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests, [`a11y-audit.md`](./a11y-audit.md) |
 | Q14 | Benutzbarkeit | Ein Domänen-Helfer unter `src/lib/utils/**` wird ergänzt. | Die Abdeckung bleibt ≥ 90 % in allen vier Maßen. | v8-Schranke in der Vitest-Konfiguration, CI |
 

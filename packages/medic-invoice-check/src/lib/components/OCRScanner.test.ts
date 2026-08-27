@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ScanPreview } from '../ocr/preview';
 import { assessImageQuality, QUALITY_OK_HINT, type QualityReport } from '../ocr/quality';
 import { textToOcrResults } from '../ocr/scan-ocr';
 import type { ScanResult } from '../ocr/scan-flow';
@@ -68,6 +69,14 @@ function stubDeps(recognizeText = SAMPLE) {
     recognize: vi.fn(async () => textToOcrResults(recognizeText)),
     assessQuality: vi.fn(() => OK_QUALITY),
   };
+}
+
+/** Drops one file on the picker — what the pages actually are is up to `deps`. */
+async function uploadFile(): Promise<void> {
+  await userEvent.upload(
+    screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
+    new File(['x'], 'rechnung.png', { type: 'image/png' }),
+  );
 }
 
 describe('OCRScanner', () => {
@@ -288,13 +297,6 @@ describe('OCRScanner camera capture (issue #280)', () => {
 });
 
 describe('OCRScanner capture-quality gate (issue #279)', () => {
-  const uploadFile = async (): Promise<void> => {
-    await userEvent.upload(
-      screen.getByLabelText('Rechnungsdateien (Bilder oder PDFs)'),
-      new File(['x'], 'rechnung.png', { type: 'image/png' }),
-    );
-  };
-
   it('warns before recognising instead of burning an OCR run on an unusable frame', async () => {
     const onScanned = vi.fn();
     const deps = { ...stubDeps(), assessQuality: vi.fn(() => BAD_QUALITY) };
@@ -383,6 +385,97 @@ describe('OCRScanner capture-quality gate (issue #279)', () => {
 
     await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
     expect(assessQuality).not.toHaveBeenCalled();
+  });
+
+  // The pre-OCR warning showed a hardcoded empty line list, so it always claimed
+  // "Erkannte Textzeilen dieser Seite (0)" — recognition has not run at that
+  // point, so the count said "nothing found" about nothing attempted (#362).
+  it('shows no recognised-line count in the quality warning', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [{ kind: 'image', image: flatImage() }]),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => textToOcrResults(SAMPLE)),
+      assessQuality: vi.fn(() => BAD_QUALITY),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    await screen.findByText('Die Vorlage könnte für die Erkennung zu schlecht sein');
+    expect(screen.queryByText(/Textzeilen dieser Seite/)).not.toBeInTheDocument();
+  });
+
+  it('names the failing document page, not its position among the image pages', async () => {
+    const onScanned = vi.fn<(r: ScanResult) => void>();
+    const deps = {
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [
+        { kind: 'text', lines: textToOcrResults(SAMPLE) },
+        { kind: 'image', image: flatImage() },
+      ]),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => []),
+      assessQuality: vi.fn(() => BAD_QUALITY),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    await screen.findByText('Die Vorlage könnte für die Erkennung zu schlecht sein');
+    // Sheet 2 of 2 — it is the *only* image page, so counting those said "1 von 1".
+    expect(screen.getByText(/Betrifft Seite 2 von 2/)).toBeInTheDocument();
+  });
+});
+
+// The review screen draws the recognised lines on these, so a page missing from
+// the preview is a page the user cannot check a suspect Ziffer against (#362).
+describe('OCRScanner page previews (issue #362)', () => {
+  it('gives a text-layer page an entry of its own, carrying its lines', async () => {
+    const onScanned = vi.fn<(r: ScanResult, p: ScanPreview) => void>();
+    const lines = textToOcrResults(SAMPLE);
+    const deps = {
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [{ kind: 'text', lines }]),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => []),
+      assessQuality: vi.fn(() => OK_QUALITY),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    const preview = onScanned.mock.calls[0]?.[1] as ScanPreview;
+    expect(preview.pages).toEqual([{ kind: 'text', documentPage: 1 }]);
+    expect(preview.documentPageCount).toBe(1);
+    expect(preview.lines.map((l) => l.text)).toEqual(lines.map((l) => l.text));
+    expect(preview.lines.every((l) => l.pageIndex === 0)).toBe(true);
+  });
+
+  it('keeps both kinds of a mixed PDF in document order, with their own lines', async () => {
+    const onScanned = vi.fn<(r: ScanResult, p: ScanPreview) => void>();
+    const deps = {
+      filesToPages: vi.fn(async (): Promise<ScanPage[]> => [
+        { kind: 'text', lines: textToOcrResults('250  Blutentnahme  2,3  5,36') },
+        imagePage(),
+      ]),
+      preprocess: vi.fn((img: ImageData) => img),
+      recognize: vi.fn(async () => textToOcrResults('75  Bericht  3,5  26,53')),
+      assessQuality: vi.fn(() => OK_QUALITY),
+    };
+    render(OCRScanner, { props: { onScanned, deps } });
+
+    await uploadFile();
+
+    await waitFor(() => expect(onScanned).toHaveBeenCalledOnce());
+    const preview = onScanned.mock.calls[0]?.[1] as ScanPreview;
+    expect(preview.pages.map((p) => [p.kind, p.documentPage])).toEqual([
+      ['text', 1],
+      ['image', 2],
+    ]);
+    expect(preview.documentPageCount).toBe(2);
+    expect(preview.lines).toHaveLength(2);
+    expect(preview.lines[0]).toMatchObject({ pageIndex: 0, text: '250  Blutentnahme  2,3  5,36' });
+    expect(preview.lines[1]).toMatchObject({ pageIndex: 1, text: '75  Bericht  3,5  26,53' });
   });
 });
 

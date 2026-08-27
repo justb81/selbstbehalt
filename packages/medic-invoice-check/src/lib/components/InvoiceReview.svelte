@@ -66,7 +66,7 @@
   import type { FeeEntry, FeeScheduleId } from '../data/fee-schedule';
   import type { ReviewPositionRow } from './invoice-review-types';
   import InvoicePagePreview from './InvoicePagePreview.svelte';
-  import type { ScanPreview } from '../ocr/preview';
+  import { isImagePagePreview, type ScanPreview } from '../ocr/preview';
   import OCRScanner from './OCRScanner.svelte';
   import { Button } from './ui/button';
   import { Input } from './ui/input';
@@ -259,6 +259,12 @@
 
   const hasScan = $derived(scanResult !== null);
   const hasPreview = $derived((scanPreview?.pages.length ?? 0) > 0);
+  /**
+   * Whether any previewed page actually carries pixels. A PDF read from its text
+   * layer has pages but no images (#278), so the copy around the preview must not
+   * promise a picture that isn't there (#362).
+   */
+  const hasPageImage = $derived(scanPreview?.pages.some(isImagePagePreview) ?? false);
   const lowConfidence = $derived(
     scanResult !== null && scanResult.meanConfidence < DEFAULT_CONFIDENCE_THRESHOLD,
   );
@@ -651,10 +657,12 @@
 
   {#if hasPreview && scanPreview}
     <!-- The scanned page next to the parsed result, so a suspect Ziffer or
-    Betrag can be checked against the paper it came from. -->
+    Betrag can be checked against the paper it came from. For a PDF read from its
+    text layer there is no page image — the source is the text itself, and the
+    heading and footnote say so rather than claiming a picture (#362). -->
     <div class="flex flex-col gap-2">
       <p class="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
-        Gescannte Vorlage
+        {hasPageImage ? 'Gescannte Vorlage' : 'Rechnungstext aus dem PDF'}
       </p>
       <InvoicePagePreview
         preview={scanPreview}
@@ -662,7 +670,9 @@
         onLineSelect={(index) => (activeLineIndex = index)}
       />
       <p class="text-muted-foreground text-xs">
-        Nur zur Prüfung: das Bild bleibt auf diesem Gerät und wird beim Speichern verworfen.
+        {hasPageImage
+          ? 'Nur zur Prüfung: das Bild bleibt auf diesem Gerät und wird beim Speichern verworfen.'
+          : 'Nur zur Prüfung: der Text wurde direkt aus dem PDF gelesen und verlässt dieses Gerät nicht.'}
       </p>
     </div>
   {/if}

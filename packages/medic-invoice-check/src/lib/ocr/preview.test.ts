@@ -5,11 +5,14 @@ import { describe, expect, it } from 'vitest';
 import {
   buildScanPreview,
   createPagePreview,
+  createTextPagePreview,
   findPreviewLineIndex,
+  isImagePagePreview,
   pageIndexForLine,
   quadBounds,
   scaleQuadToPreview,
   PREVIEW_MAX_SIDE,
+  type ImagePagePreview,
   type PageLineRange,
 } from './preview';
 import type { OcrResult } from './types';
@@ -31,20 +34,26 @@ function line(text: string, points: Array<[number, number]>, confidence = 0.9): 
 
 describe('createPagePreview', () => {
   it('records the source dimensions the OCR coordinates refer to', () => {
-    const preview = createPagePreview(frame(2000, 1000));
+    const preview = createPagePreview(frame(2000, 1000), { documentPage: 1 });
     expect(preview.sourceWidth).toBe(2000);
     expect(preview.sourceHeight).toBe(1000);
   });
 
+  it('records the page kind and its place in the document', () => {
+    const preview = createPagePreview(frame(100, 100), { documentPage: 7 });
+    expect(preview.kind).toBe('image');
+    expect(preview.documentPage).toBe(7);
+  });
+
   it('downscales an oversized page to the preview cap', () => {
-    const preview = createPagePreview(frame(2048, 1024));
+    const preview = createPagePreview(frame(2048, 1024), { documentPage: 1 });
     expect(Math.max(preview.image.width, preview.image.height)).toBe(PREVIEW_MAX_SIDE);
     expect(preview.image.width).toBe(1024);
     expect(preview.image.height).toBe(512);
   });
 
   it('honours an explicit maxSide', () => {
-    const preview = createPagePreview(frame(800, 400), 200);
+    const preview = createPagePreview(frame(800, 400), { documentPage: 1, maxSide: 200 });
     expect(preview.image.width).toBe(200);
     expect(preview.image.height).toBe(100);
   });
@@ -54,7 +63,7 @@ describe('createPagePreview', () => {
   // alias the very ImageData whose buffer the OCR client transfers to the worker.
   it('owns its pixels even when the frame already fits', () => {
     const source = frame(64, 64, 200);
-    const preview = createPagePreview(source);
+    const preview = createPagePreview(source, { documentPage: 1 });
     expect(preview.image).not.toBe(source);
     expect(preview.image.data).not.toBe(source.data);
     expect(preview.image.data[0]).toBe(200);
@@ -65,9 +74,23 @@ describe('createPagePreview', () => {
   });
 });
 
+describe('createTextPagePreview', () => {
+  it('is a page number and nothing else — a text-layer page has no pixels', () => {
+    const preview = createTextPagePreview(3);
+    expect(preview).toEqual({ kind: 'text', documentPage: 3 });
+  });
+});
+
+describe('isImagePagePreview', () => {
+  it('narrows to the variant carrying pixels', () => {
+    expect(isImagePagePreview(createPagePreview(frame(10, 10), { documentPage: 1 }))).toBe(true);
+    expect(isImagePagePreview(createTextPagePreview(1))).toBe(false);
+  });
+});
+
 describe('scaleQuadToPreview', () => {
   it('maps source coordinates into preview pixels on both axes', () => {
-    const page = createPagePreview(frame(2000, 1000), 200); // → 200×100, scale 0.1
+    const page = createPagePreview(frame(2000, 1000), { documentPage: 1, maxSide: 200 }); // → 200×100, scale 0.1
     const points = scaleQuadToPreview(
       {
         points: [
@@ -88,12 +111,18 @@ describe('scaleQuadToPreview', () => {
   });
 
   it('passes an empty quad straight through', () => {
-    const page = createPagePreview(frame(100, 100));
+    const page = createPagePreview(frame(100, 100), { documentPage: 1 });
     expect(scaleQuadToPreview({ points: [] }, page)).toEqual([]);
   });
 
   it('yields an empty quad for a degenerate source size rather than Infinity', () => {
-    const page = { image: frame(10, 10), sourceWidth: 0, sourceHeight: 0 };
+    const page: ImagePagePreview = {
+      kind: 'image',
+      documentPage: 1,
+      image: frame(10, 10),
+      sourceWidth: 0,
+      sourceHeight: 0,
+    };
     expect(scaleQuadToPreview({ points: [[1, 1]] }, page)).toEqual([]);
   });
 });
@@ -152,9 +181,9 @@ describe('pageIndexForLine', () => {
     expect(pageIndexForLine(6, ranges)).toBe(1);
   });
 
-  // The reason ranges replaced bare start-offsets: lines 2..4 belong to a
-  // text-layer page sitting between two rasterised ones and must not be
-  // attributed to the preceding image page.
+  // The reason ranges replaced bare start-offsets: lines 2..4 belong to a page
+  // with no entry — an image page past PREVIEW_MAX_PAGES — and must not be
+  // attributed to the preceding page.
   it('returns -1 for a line in the gap between two previewable pages', () => {
     expect(pageIndexForLine(2, ranges)).toBe(-1);
     expect(pageIndexForLine(3, ranges)).toBe(-1);
@@ -170,8 +199,8 @@ describe('pageIndexForLine', () => {
 describe('buildScanPreview', () => {
   it('scales each line onto its own page', () => {
     const pages = [
-      createPagePreview(frame(1000, 1000), 100),
-      createPagePreview(frame(500, 500), 100),
+      createPagePreview(frame(1000, 1000), { documentPage: 1, maxSide: 100 }),
+      createPagePreview(frame(500, 500), { documentPage: 2, maxSide: 100 }),
     ];
     const lines = [
       line('Seite 1', [
@@ -187,10 +216,15 @@ describe('buildScanPreview', () => {
         [100, 150],
       ]),
     ];
-    const preview = buildScanPreview(pages, lines, [
-      { start: 0, end: 1 },
-      { start: 1, end: 2 },
-    ]);
+    const preview = buildScanPreview(
+      pages,
+      lines,
+      [
+        { start: 0, end: 1 },
+        { start: 1, end: 2 },
+      ],
+      2,
+    );
 
     expect(preview.lines).toHaveLength(2);
     // Page 1 shrank 10×, page 2 only 5× — the same source quad maps differently.
@@ -200,10 +234,52 @@ describe('buildScanPreview', () => {
     expect(preview.lines[1]?.pageIndex).toBe(1);
   });
 
-  it('drops lines that belong to no preview page and keeps the source index', () => {
-    const pages = [createPagePreview(frame(100, 100))];
+  // Issue #362: these lines used to be dropped, so a PDF read from its text
+  // layer reached the review screen looking like recognition had found nothing.
+  it('keeps a text-layer page‘s lines, with an empty quad', () => {
+    const pages = [createTextPagePreview(1)];
+    const lines = [line('Rechnungsdatum: 07.05.2026', []), line('1 Beratung 2,3 10,72', [])];
+    const preview = buildScanPreview(pages, lines, [{ start: 0, end: 2 }], 1);
+
+    expect(preview.lines).toHaveLength(2);
+    expect(preview.lines.map((l) => l.pageIndex)).toEqual([0, 0]);
+    expect(preview.lines.map((l) => l.points)).toEqual([[], []]);
+    expect(preview.lines[1]?.text).toBe('1 Beratung 2,3 10,72');
+  });
+
+  it('keeps both kinds in document order and scales only the image page', () => {
+    const pages = [
+      createTextPagePreview(1),
+      createPagePreview(frame(1000, 1000), { documentPage: 2, maxSide: 100 }),
+    ];
     const lines = [
-      line('text layer', []),
+      line('aus dem Textlayer', []),
+      line('gescannt', [
+        [100, 100],
+        [200, 100],
+        [200, 150],
+        [100, 150],
+      ]),
+    ];
+    const preview = buildScanPreview(
+      pages,
+      lines,
+      [
+        { start: 0, end: 1 },
+        { start: 1, end: 2 },
+      ],
+      2,
+    );
+
+    expect(preview.pages.map((p) => p.documentPage)).toEqual([1, 2]);
+    expect(preview.lines[0]?.points).toEqual([]);
+    expect(preview.lines[1]?.points[0]).toEqual([10, 10]);
+  });
+
+  it('drops lines that belong to no preview page and keeps the source index', () => {
+    const pages = [createPagePreview(frame(100, 100), { documentPage: 2 })];
+    const lines = [
+      line('page past the preview cap', []),
       line('scanned', [
         [10, 10],
         [20, 10],
@@ -211,16 +287,22 @@ describe('buildScanPreview', () => {
         [10, 20],
       ]),
     ];
-    // Only line 1 came from the rasterised page.
-    const preview = buildScanPreview(pages, lines, [{ start: 1, end: 2 }]);
+    // Only line 1 came from a page that got an entry.
+    const preview = buildScanPreview(pages, lines, [{ start: 1, end: 2 }], 2);
 
     expect(preview.lines).toHaveLength(1);
     expect(preview.lines[0]?.text).toBe('scanned');
     expect(preview.lines[0]?.sourceLineIndex).toBe(1);
   });
 
+  it('carries the document page count, which can exceed the entries kept', () => {
+    const pages = [createPagePreview(frame(10, 10), { documentPage: 1 })];
+    const preview = buildScanPreview(pages, [], [], 20);
+    expect(preview.documentPageCount).toBe(20);
+  });
+
   it('carries text and confidence per line', () => {
-    const pages = [createPagePreview(frame(100, 100))];
+    const pages = [createPagePreview(frame(100, 100), { documentPage: 1 })];
     const lines = [
       line(
         'Ziffer 1',
@@ -233,12 +315,12 @@ describe('buildScanPreview', () => {
         0.42,
       ),
     ];
-    const preview = buildScanPreview(pages, lines, [{ start: 0, end: 1 }]);
+    const preview = buildScanPreview(pages, lines, [{ start: 0, end: 1 }], 1);
     expect(preview.lines[0]).toMatchObject({ text: 'Ziffer 1', confidence: 0.42 });
   });
 
   it('yields no lines when there are no previewable pages', () => {
-    const preview = buildScanPreview([], [line('a', [])], []);
+    const preview = buildScanPreview([], [line('a', [])], [], 0);
     expect(preview.pages).toEqual([]);
     expect(preview.lines).toEqual([]);
   });
@@ -246,13 +328,23 @@ describe('buildScanPreview', () => {
 
 describe('findPreviewLineIndex', () => {
   it('maps a scan line index onto the preview line list', () => {
-    const pages = [createPagePreview(frame(100, 100))];
+    const pages = [createPagePreview(frame(100, 100), { documentPage: 2 })];
     const lines = [line('skipped', []), line('a', [[1, 1]]), line('b', [[2, 2]])];
-    const preview = buildScanPreview(pages, lines, [{ start: 1, end: 3 }]);
+    const preview = buildScanPreview(pages, lines, [{ start: 1, end: 3 }], 2);
 
     // Line 0 has no preview, so the preview list is offset by one.
     expect(findPreviewLineIndex(preview, 1)).toBe(0);
     expect(findPreviewLineIndex(preview, 2)).toBe(1);
     expect(findPreviewLineIndex(preview, 0)).toBe(-1);
+  });
+
+  it('resolves a line that lives on a text-layer page', () => {
+    const preview = buildScanPreview(
+      [createTextPagePreview(1)],
+      [line('a', []), line('b', [])],
+      [{ start: 0, end: 2 }],
+      1,
+    );
+    expect(findPreviewLineIndex(preview, 1)).toBe(1);
   });
 });

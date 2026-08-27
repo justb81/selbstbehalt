@@ -81,6 +81,54 @@ export const QUALITY_THRESHOLDS: QualityThresholds = {
   maxClipped: 0.5,
 };
 
+/** Readings above/below which a page counts as carrying no ink at all. */
+export interface BlankPageThresholds {
+  /** Minimum mean luma — a blank sheet is essentially paper-white throughout. */
+  minBrightness: number;
+  /** Maximum luma standard deviation; a blank sheet has virtually none. */
+  maxContrast: number;
+  /** Minimum share of clipped pixels — almost the whole page is at white. */
+  minClipped: number;
+}
+
+/**
+ * Default blank-page thresholds, measured on the reported case (issue #362): the
+ * trailing sheet of an invoice PDF read at `brightness 254.97`, `contrast 1.56`,
+ * `clipped 0.999`. A page with even a letterhead and a line of text sits far from
+ * all three at once, so the window is deliberately narrow — this must never
+ * swallow a real, faintly-scanned invoice page.
+ */
+export const BLANK_PAGE_THRESHOLDS: BlankPageThresholds = {
+  minBrightness: 250,
+  maxContrast: 5,
+  minClipped: 0.95,
+};
+
+/**
+ * True when the frame carries essentially no ink — a cover sheet, a stamp page,
+ * an empty trailing sheet of a PDF.
+ *
+ * Such a page breaches `minContrast` and (being clipped-white throughout)
+ * `maxClipped`, so the gate used to fault it and advise the user to change the
+ * camera angle and lay the invoice on a dark surface — advice that is impossible
+ * to act on for a digitally generated PDF page and pointless for a blank sheet
+ * either way (issue #362). There is nothing on it to recognise and nothing about
+ * it to improve, so it is not a capture problem.
+ *
+ * All three readings must agree: a genuinely bad photo is dark, or noisy, or
+ * unevenly lit, and fails at least one of them.
+ */
+export function isBlankPage(
+  metrics: ImageQualityMetrics,
+  thresholds: BlankPageThresholds = BLANK_PAGE_THRESHOLDS,
+): boolean {
+  return (
+    metrics.brightness >= thresholds.minBrightness &&
+    metrics.contrast <= thresholds.maxContrast &&
+    metrics.clipped >= thresholds.minClipped
+  );
+}
+
 /** Advice for each problem, in both registers. */
 const ISSUE_TEXTS: Record<QualityIssueCode, Omit<QualityIssue, 'code'>> = {
   too_dark: {
@@ -175,12 +223,16 @@ function issuesFor(metrics: ImageQualityMetrics, thresholds: QualityThresholds):
  * Judges one frame. Measures it (downscaling internally — pass an already-small
  * frame and {@link measureImageQuality} skips the resample) and reports every
  * threshold it breaches.
+ *
+ * A blank page ({@link isBlankPage}) passes: it breaches thresholds no advice can
+ * fix, and faulting it produced camera hints for empty PDF sheets (issue #362).
  */
 export function assessImageQuality(
   image: ImageData,
   thresholds: QualityThresholds = QUALITY_THRESHOLDS,
 ): QualityReport {
   const metrics = measureImageQuality(image);
+  if (isBlankPage(metrics)) return { ok: true, issues: [], metrics };
   const issues = issuesFor(metrics, thresholds);
   return { ok: issues.length === 0, issues, metrics };
 }
@@ -216,19 +268,29 @@ export function mergeQualityReports(reports: QualityReport[]): QualityReport {
 }
 
 /**
- * 1-based page numbers of the reports that failed, in page order.
+ * One page's verdict, tagged with where that page sat in the document.
+ *
+ * The tag is not redundant with the array index: only rasterised pages are
+ * judged, so in a PDF mixing text-layer and scanned pages the n-th report is not
+ * the n-th sheet — naming it by index told the user to re-shoot the wrong page
+ * (issue #362).
+ */
+export interface PageQualityReport {
+  /** 1-based page number in the scanned document. */
+  documentPage: number;
+  report: QualityReport;
+}
+
+/**
+ * Document page numbers of the reports that failed, in page order.
  *
  * {@link mergeQualityReports} deliberately collapses the per-page verdicts into
  * one, which loses *which* sheet was bad — unhelpful advice for a multi-page
  * document, where "unscharf" leaves the user re-shooting all of them. Callers
  * keep the individual reports and use this to name the offending pages.
  */
-export function failingPageNumbers(reports: QualityReport[]): number[] {
-  const failing: number[] = [];
-  reports.forEach((report, index) => {
-    if (!report.ok) failing.push(index + 1);
-  });
-  return failing;
+export function failingPageNumbers(reports: readonly PageQualityReport[]): number[] {
+  return reports.filter((entry) => !entry.report.ok).map((entry) => entry.documentPage);
 }
 
 /**
