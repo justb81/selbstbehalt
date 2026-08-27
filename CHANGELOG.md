@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.15.1](https://github.com/justb81/selbstbehalt/compare/v1.15.0...v1.15.1) (2026-08-27)
+
+### Bug Fixes
+
+- **frontend:** drop the redundant toast colour overrides ([#398](https://github.com/justb81/selbstbehalt/issues/398)) ([8383226](https://github.com/justb81/selbstbehalt/commit/838322631e8a25e03b537ad556c18b56c66f2f35)), closes [#396](https://github.com/justb81/selbstbehalt/issues/396)
+- **frontend:** report an unreachable server instead of faking a healthy page ([#394](https://github.com/justb81/selbstbehalt/issues/394)) ([c0f353e](https://github.com/justb81/selbstbehalt/commit/c0f353e88633cdebb23bb740e424222aeca19566))
+- **frontend:** stop swallowing read failures outside /stats ([#397](https://github.com/justb81/selbstbehalt/issues/397)) ([f52a869](https://github.com/justb81/selbstbehalt/commit/f52a869d86c73c47964e76fef83a06157e85ce9a))
+- **medic-invoice-check:** show text-layer pages in the scan preview ([#400](https://github.com/justb81/selbstbehalt/issues/400)) ([174b5b1](https://github.com/justb81/selbstbehalt/commit/174b5b1574dedad8a611be064c23a4fe7a23824a)), closes [#362](https://github.com/justb81/selbstbehalt/issues/362) [#278](https://github.com/justb81/selbstbehalt/issues/278)
+
 ## [1.15.0](https://github.com/justb81/selbstbehalt/compare/v1.14.0...v1.15.0) (2026-08-26)
 
 ### Features
