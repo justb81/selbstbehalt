@@ -16,17 +16,20 @@
   `prefers-color-scheme` on its own and rendered a dark toast on an otherwise
   light page. That disagreement also drove the rich-color text below onto the
   wrong background. When dark mode lands (a ModeWatcher plus the .dark class),
-  this goes back to `mode.current` and --error-text/--warning-text need a dark
-  counterpart.
+  this goes back to `mode.current` and app.css needs a
+  [data-sonner-theme='dark'] counterpart to the block described below.
 
-  --error-text / --warning-text override sonner's rich colors, which ship at
-  4.38:1 and 4.4:1 on their own light backgrounds — just under the WCAG AA 4.5:1
-  this repo enforces via e2e/a11y.spec.ts.
+  Pinning it also re-activates the AA-tuned rich-color tokens in app.css, whose
+  selector is keyed on [data-sonner-theme='light'] (issue #29): with no theme,
+  sonner emits data-sonner-theme="system" instead, that block stops matching, and
+  the toast falls back to sonner's own 4.38:1 error text — under the WCAG AA
+  4.5:1 this repo enforces via e2e/a11y.spec.ts. With the block applying again
+  the error text measures 5.8:1, so no colour is overridden here.
 -->
 <Sonner
   theme="light"
   class="toaster group"
-  style="--normal-bg: var(--color-popover); --normal-text: var(--color-popover-foreground); --normal-border: var(--color-border); --error-text: #991b1b; --warning-text: #92400e;"
+  style="--normal-bg: var(--color-popover); --normal-text: var(--color-popover-foreground); --normal-border: var(--color-border);"
   {...restProps}
 >
   {#snippet loadingIcon()}
