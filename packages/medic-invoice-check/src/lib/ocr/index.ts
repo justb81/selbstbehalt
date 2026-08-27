@@ -34,13 +34,22 @@ export type {
 } from './preprocess';
 export {
   assessImageQuality,
+  isBlankPage,
   mergeQualityReports,
   failingPageNumbers,
   pickSharpestFrame,
   QUALITY_THRESHOLDS,
+  BLANK_PAGE_THRESHOLDS,
   QUALITY_OK_HINT,
 } from './quality';
-export type { QualityIssue, QualityIssueCode, QualityReport, QualityThresholds } from './quality';
+export type {
+  QualityIssue,
+  QualityIssueCode,
+  QualityReport,
+  QualityThresholds,
+  BlankPageThresholds,
+  PageQualityReport,
+} from './quality';
 export {
   requestCameraStream,
   stopStream,
@@ -87,6 +96,8 @@ export {
 export type { CropRect } from './crop';
 export {
   createPagePreview,
+  createTextPagePreview,
+  isImagePagePreview,
   buildScanPreview,
   scaleQuadToPreview,
   quadBounds,
@@ -95,7 +106,16 @@ export {
   PREVIEW_MAX_SIDE,
   PREVIEW_MAX_PAGES,
 } from './preview';
-export type { PagePreview, PreviewLine, ScanPreview, QuadBounds, PageLineRange } from './preview';
+export type {
+  PagePreview,
+  ImagePagePreview,
+  TextPagePreview,
+  CreatePagePreviewOptions,
+  PreviewLine,
+  ScanPreview,
+  QuadBounds,
+  PageLineRange,
+} from './preview';
 export {
   buildScanResult,
   ocrResultsToText,

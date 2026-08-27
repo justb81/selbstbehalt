@@ -6,6 +6,7 @@ import type { ImageQualityMetrics } from './preprocess';
 import {
   assessImageQuality,
   failingPageNumbers,
+  isBlankPage,
   mergeQualityReports,
   pickSharpestFrame,
   QUALITY_THRESHOLDS,
@@ -190,16 +191,61 @@ describe('failingPageNumbers', () => {
   const metrics: ImageQualityMetrics = { sharpness: 0, brightness: 0, contrast: 0, clipped: 0 };
   const ok: QualityReport = { ok: true, issues: [], metrics };
   const bad: QualityReport = assessImageQuality(gray(4, 4, Array(16).fill(128)));
+  const at = (documentPage: number, report: QualityReport) => ({ documentPage, report });
 
-  it('names the failing pages, 1-based and in page order', () => {
-    expect(failingPageNumbers([ok, bad, ok, bad])).toEqual([2, 4]);
+  it('names the failing pages in page order', () => {
+    expect(failingPageNumbers([at(1, ok), at(2, bad), at(3, ok), at(4, bad)])).toEqual([2, 4]);
+  });
+
+  // Issue #362: only rasterised pages are judged, so in a PDF that also has
+  // text-layer pages the n-th report is not the n-th sheet — numbering by index
+  // sent the user off to re-shoot the wrong page.
+  it('names the document page, not the position among the judged pages', () => {
+    expect(failingPageNumbers([at(2, bad), at(5, bad)])).toEqual([2, 5]);
   });
 
   it('is empty when every page passes', () => {
-    expect(failingPageNumbers([ok, ok])).toEqual([]);
+    expect(failingPageNumbers([at(1, ok), at(2, ok)])).toEqual([]);
   });
 
   it('is empty for no pages at all (a text-layer-only PDF)', () => {
     expect(failingPageNumbers([])).toEqual([]);
+  });
+});
+
+describe('isBlankPage', () => {
+  // The readings measured on the sheet from issue #362 — the empty trailing page
+  // of an invoice PDF, which the gate used to fault as glare + low contrast.
+  const blank: ImageQualityMetrics = {
+    sharpness: 9.9,
+    brightness: 254.97,
+    contrast: 1.56,
+    clipped: 0.999,
+  };
+
+  it('recognises an empty sheet', () => {
+    expect(isBlankPage(blank)).toBe(true);
+  });
+
+  it('lets such a page pass the gate instead of advising camera technique', () => {
+    // A uniform white frame reproduces the same signature end to end.
+    const report = assessImageQuality(gray(4, 4, Array<number>(16).fill(255)));
+    expect(report.ok).toBe(true);
+    expect(report.issues).toEqual([]);
+  });
+
+  it('does not swallow a genuinely bad photo', () => {
+    // Dark, flat, nothing clipped — all three readings disagree with "blank".
+    expect(isBlankPage({ sharpness: 3, brightness: 20, contrast: 4, clipped: 0 })).toBe(false);
+    // Faint but inked: contrast alone rules it out.
+    expect(isBlankPage({ ...blank, contrast: 12 })).toBe(false);
+    // Bright and flat, but hardly anything at white — an overexposed grey shot.
+    expect(isBlankPage({ ...blank, clipped: 0.2 })).toBe(false);
+    const dark = assessImageQuality(gray(4, 4, Array<number>(16).fill(0)));
+    expect(dark.ok).toBe(false);
+  });
+
+  it('takes injectable thresholds', () => {
+    expect(isBlankPage(blank, { minBrightness: 255, maxContrast: 1, minClipped: 1 })).toBe(false);
   });
 });

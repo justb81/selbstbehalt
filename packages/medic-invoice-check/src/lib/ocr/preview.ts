@@ -33,15 +33,31 @@ import type { OcrBoundingBox, OcrResult } from './types';
 export const PREVIEW_MAX_SIDE = 1024;
 
 /**
- * How many preview pages are retained per scan. A 40-page PDF would otherwise
- * pin ~160 MB of RGBA for the duration of the review; past this count the
- * remaining pages are simply not previewed (recognition still covers all of
- * them, so nothing is lost from the parse).
+ * How many **rasterised** pages are retained per scan. A 40-page scan-PDF would
+ * otherwise pin ~160 MB of RGBA for the duration of the review; past this count
+ * the remaining image pages are simply not previewed (recognition still covers
+ * all of them, so nothing is lost from the parse).
+ *
+ * Text-layer pages are not counted against this: a {@link TextPagePreview} holds
+ * no pixels, so a 40-page digitally-born PDF gets all 40 entries.
  */
 export const PREVIEW_MAX_PAGES = 12;
 
+/** What both page kinds carry: where the page sat in the scanned document. */
+interface PagePreviewBase {
+  /**
+   * 1-based position of this page in the scanned document — every selected file
+   * flattened into one page sequence (`filesToAllPages`). Carried explicitly
+   * because the preview list is *not* the document: an image page past
+   * {@link PREVIEW_MAX_PAGES} gets no entry at all, so an index into
+   * {@link ScanPreview.pages} is not a page number (issue #362).
+   */
+  documentPage: number;
+}
+
 /** One rasterised page, kept for display alongside its original dimensions. */
-export interface PagePreview {
+export interface ImagePagePreview extends PagePreviewBase {
+  kind: 'image';
   /** Downscaled copy of the page, at most {@link PREVIEW_MAX_SIDE} on its long edge. */
   image: ImageData;
   /** Width of the frame OCR actually ran on — the coordinate space `bbox` uses. */
@@ -50,13 +66,39 @@ export interface PagePreview {
   sourceHeight: number;
 }
 
+/**
+ * A page read from a PDF's text layer (issue #278): lines but deliberately no
+ * pixels — rasterising it purely to have something to show would throw away the
+ * whole speed advantage of the text-layer path, which is the *better* path
+ * (exact text instead of OCR guesswork).
+ *
+ * It exists in the preview so its lines are attributed to **it** and listed,
+ * rather than silently dropped — without an entry the review screen showed a
+ * text-layer document as if recognition had found nothing (issue #362).
+ */
+export interface TextPagePreview extends PagePreviewBase {
+  kind: 'text';
+}
+
+/** One page of a scan, as the review screen shows it. */
+export type PagePreview = ImagePagePreview | TextPagePreview;
+
+/** Narrows a {@link PagePreview} to the variant carrying pixels (usable as a filter predicate). */
+export function isImagePagePreview(page: PagePreview): page is ImagePagePreview {
+  return page.kind === 'image';
+}
+
 /** A recognised line located on a specific preview page. */
 export interface PreviewLine {
   /** Index into {@link ScanPreview.pages}. */
   pageIndex: number;
   /** Index of this line in the scan's full `OcrResult[]` — the review screen's join key. */
   sourceLineIndex: number;
-  /** The line's quad, already scaled into that page's preview pixel space. */
+  /**
+   * The line's quad, already scaled into that page's preview pixel space. Empty
+   * for a line on a {@link TextPagePreview}: there is no image to place it on,
+   * and a PDF text-layer line carries no geometry to begin with.
+   */
   points: Array<[number, number]>;
   text: string;
   confidence: number;
@@ -64,8 +106,17 @@ export interface PreviewLine {
 
 /** Every previewable page of one scan, plus its recognised lines. */
 export interface ScanPreview {
+  /** The previewable pages, in document order. */
   pages: PagePreview[];
   lines: PreviewLine[];
+  /**
+   * Pages the scan covered in total, previewed or not, so the pager can name the
+   * page the user is looking at ("Seite 2 von 5") instead of its index in a list
+   * that may have skipped some. Not derivable from the entries: when the tail of
+   * a document is truncated by {@link PREVIEW_MAX_PAGES}, the highest
+   * {@link PagePreviewBase.documentPage} present is lower than the real count.
+   */
+  documentPageCount: number;
 }
 
 /** An axis-aligned rectangle in preview pixels. */
@@ -87,6 +138,14 @@ function cloneImageData(image: ImageData): ImageData {
   return makeImageData(new Uint8ClampedArray(image.data), image.width, image.height);
 }
 
+/** Where a page sat in the document, and how far its preview may be shrunk. */
+export interface CreatePagePreviewOptions {
+  /** 1-based page number in the scanned document (see {@link PagePreviewBase.documentPage}). */
+  documentPage: number;
+  /** Longest edge of the stored copy; defaults to {@link PREVIEW_MAX_SIDE}. */
+  maxSide?: number;
+}
+
 /**
  * Builds the preview for one rasterised page. Call this **before** the frame is
  * handed to `preprocess`/`recognize`: the recognition path transfers the pixel
@@ -95,14 +154,31 @@ function cloneImageData(image: ImageData): ImageData {
  * `sourceWidth`/`sourceHeight` record the dimensions the OCR coordinates refer
  * to, so {@link scaleQuadToPreview} can map between the two spaces regardless of
  * how far the preview was shrunk.
+ *
+ * `options` is an object rather than positional parameters so that a page number
+ * can never be mistaken for a `maxSide` (or the reverse) at a call site.
  */
-export function createPagePreview(image: ImageData, maxSide = PREVIEW_MAX_SIDE): PagePreview {
-  const scaled = downscale(image, maxSide);
+export function createPagePreview(
+  image: ImageData,
+  options: CreatePagePreviewOptions,
+): ImagePagePreview {
+  const scaled = downscale(image, options.maxSide ?? PREVIEW_MAX_SIDE);
   return {
+    kind: 'image',
+    documentPage: options.documentPage,
     image: scaled === image ? cloneImageData(image) : scaled,
     sourceWidth: image.width,
     sourceHeight: image.height,
   };
+}
+
+/**
+ * The preview entry for a page read from a PDF's text layer: a page number and
+ * nothing else, because there are no pixels to keep (see
+ * {@link TextPagePreview}).
+ */
+export function createTextPagePreview(documentPage: number): TextPagePreview {
+  return { kind: 'text', documentPage };
 }
 
 /**
@@ -113,7 +189,7 @@ export function createPagePreview(image: ImageData, maxSide = PREVIEW_MAX_SIDE):
  */
 export function scaleQuadToPreview(
   bbox: OcrBoundingBox,
-  page: PagePreview,
+  page: ImagePagePreview,
 ): Array<[number, number]> {
   if (page.sourceWidth <= 0 || page.sourceHeight <= 0) return [];
   const scaleX = page.image.width / page.sourceWidth;
@@ -148,10 +224,10 @@ export function quadBounds(points: ReadonlyArray<readonly [number, number]>): Qu
  * Half-open range `[start, end)` of line indices one preview page contributed.
  *
  * Explicit ranges rather than start-offsets alone: a document can interleave
- * previewable and non-previewable pages (a PDF whose page 1 has a usable text
- * layer and whose page 2 is a scan), and a bare offset list cannot express the
- * gap — every line of the text-layer page would be attributed to whichever
- * image page came before it.
+ * previewable and non-previewable pages — an image page past
+ * {@link PREVIEW_MAX_PAGES} still contributes lines but has no entry — and a bare
+ * offset list cannot express the gap, so those lines would be attributed to
+ * whichever page came before them.
  */
 export interface PageLineRange {
   start: number;
@@ -160,7 +236,8 @@ export interface PageLineRange {
 
 /**
  * Which preview page a recognised line came from, or `-1` when it belongs to
- * none (a PDF text-layer page contributes lines but no image).
+ * none — an image page beyond {@link PREVIEW_MAX_PAGES}, whose pixels were not
+ * kept and which therefore has no entry to attribute lines to.
  *
  * Attribution by range — rather than a page field on `OcrResult` — keeps the
  * engine's result contract untouched, which matters because two synthetic
@@ -176,11 +253,14 @@ export function pageIndexForLine(lineIndex: number, ranges: readonly PageLineRan
 }
 
 /**
- * Assembles the review-screen preview from the pages that had an image and the
+ * Assembles the review-screen preview from the pages that got an entry and the
  * lines recognition returned. `ranges` is parallel to `pages`.
  *
- * Lines belonging to no preview page are dropped — there is nothing to draw them
- * on — so `ScanPreview.lines` is **not** index-aligned with `lines`. Each entry
+ * A text-layer page's lines are kept even though it has no image to draw them
+ * on: they get an empty quad and are shown in the accessible line list, which is
+ * what the page's own recognised text *is* (issue #362). Only lines belonging to
+ * no page at all are dropped — an image page past {@link PREVIEW_MAX_PAGES} — so
+ * `ScanPreview.lines` is still **not** index-aligned with `lines`. Each entry
  * therefore carries its own text and confidence, and
  * {@link findPreviewLineIndex} maps a scan line index onto it.
  */
@@ -188,6 +268,7 @@ export function buildScanPreview(
   pages: PagePreview[],
   lines: readonly OcrResult[],
   ranges: readonly PageLineRange[],
+  documentPageCount: number,
 ): ScanPreview {
   const previewLines: PreviewLine[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -198,12 +279,12 @@ export function buildScanPreview(
     previewLines.push({
       pageIndex,
       sourceLineIndex: i,
-      points: scaleQuadToPreview(line.bbox, page),
+      points: page.kind === 'image' ? scaleQuadToPreview(line.bbox, page) : [],
       text: line.text,
       confidence: line.confidence,
     });
   }
-  return { pages, lines: previewLines };
+  return { pages, lines: previewLines, documentPageCount };
 }
 
 /**
