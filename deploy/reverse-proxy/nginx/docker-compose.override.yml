@@ -22,13 +22,18 @@ services:
       - '80:80'
       - '443:443'
     volumes:
-      - ./selbstbehalt.conf:/etc/nginx/conf.d/selbstbehalt.conf:ro
-      - ./htpasswd:/etc/nginx/.htpasswd:ro
+      # Relative paths in an override file resolve against the Compose *project
+      # directory* — the directory of the first `-f` file, i.e. the repo root —
+      # not against the file they are written in. Spelled out from the root so
+      # they land in this example's own directory, where the README creates
+      # them and .gitignore covers them.
+      - ./deploy/reverse-proxy/nginx/selbstbehalt.conf:/etc/nginx/conf.d/selbstbehalt.conf:ro
+      - ./deploy/reverse-proxy/nginx/htpasswd:/etc/nginx/.htpasswd:ro
       # Option B (self-signed LAN cert) — see README "Option B".
-      - ./certs:/etc/nginx/certs:ro
+      - ./deploy/reverse-proxy/nginx/certs:/etc/nginx/certs:ro
       # Option A (Let's Encrypt) — see README "Option A".
-      - ./certbot-etc:/etc/letsencrypt:ro
-      - ./certbot-webroot:/var/www/certbot:ro
+      - ./deploy/reverse-proxy/nginx/certbot-etc:/etc/letsencrypt:ro
+      - ./deploy/reverse-proxy/nginx/certbot-webroot:/var/www/certbot:ro
     depends_on:
       frontend:
         condition: service_healthy

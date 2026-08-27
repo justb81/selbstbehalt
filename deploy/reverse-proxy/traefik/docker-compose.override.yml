@@ -41,10 +41,15 @@ services:
       - '80:80'
       - '443:443'
     volumes:
+      # Relative paths in an override file resolve against the Compose *project
+      # directory* — the directory of the first `-f` file, i.e. the repo root —
+      # not against the file they are written in. Spelled out from the root so
+      # they land in this example's own directory, where the README creates
+      # them and .gitignore covers them.
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./letsencrypt:/letsencrypt
-      - ./dynamic:/etc/traefik/dynamic:ro
-      - ./htpasswd:/etc/traefik/htpasswd:ro
+      - ./deploy/reverse-proxy/traefik/letsencrypt:/letsencrypt
+      - ./deploy/reverse-proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./deploy/reverse-proxy/traefik/htpasswd:/etc/traefik/htpasswd:ro
     restart: unless-stopped
 
   # The frontend is the only routed service (§7.3 single-origin default): its
