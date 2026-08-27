@@ -56,8 +56,12 @@ test.describe('Backend nicht erreichbar', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
 
+    // Globaler Hinweis (Toast) …
     await expect(page.getByText('Server nicht erreichbar')).toBeVisible();
+    // … und auf der Seite selbst statt einer Wand aus Nullen.
+    await expect(page.getByText('Daten konnten nicht geladen werden')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Erneut versuchen' }).first()).toBeVisible();
+    await expect(page.getByText('Offene Rechnungen')).toHaveCount(0);
     // Kein „alles in Ordnung, nur nichts da"-Eindruck.
     await expect(page.getByText('Noch keine Rechnungen erfasst')).toHaveCount(0);
   });

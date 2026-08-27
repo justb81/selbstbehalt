@@ -10,7 +10,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError, serverStatus } from '$lib/api';
   import {
     formatEur,
     insuredPersonLabel,
@@ -21,6 +21,7 @@
   } from '@selbstbehalt/shared';
   import { settings } from '$lib/stores/settings';
   import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
+  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
   import CostsRefundsChart from '$lib/components/CostsRefundsChart.svelte';
   import BreProgressionChart from '$lib/components/BreProgressionChart.svelte';
   import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
@@ -28,6 +29,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   import {
     Card,
     CardContent,
@@ -53,7 +55,9 @@
   let hasInvoiceYears = $state(false);
   let personOptions = $state<PersonOption[]>([]);
   let insuredPersons = $state<InsuredPerson[]>([]);
-  let positionRollups = $state<PositionYearRollup[]>([]);
+  // `rollup: null` means "did not load" — kept apart from a loaded roll-up that
+  // simply has no row for the year, which genuinely is R_Y = 0 (issue #381).
+  let rollupResults = $state<{ id: string; rollup: PositionYearRollup | null }[]>([]);
   let availableYears = $state<number[]>([currentYear]);
 
   let selectedYear = $state(currentYear);
@@ -106,10 +110,14 @@
       selectedPersonId = personOptions[0]?.id ?? '';
 
       // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
-      const rollups = await Promise.all(
-        insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
+      // Settled, not `all`: one person's failure must not lose the others — and
+      // must not be swallowed either, or a missing roll-up renders as a green
+      // "Einreichen folgenlos" Ampel (issue #381).
+      const settled = await Promise.allSettled(
+        insuredPersons.map((ip) => api.stats.positions(ip.id)),
       );
-      positionRollups = rollups.filter((r): r is PositionYearRollup => r !== null);
+      const values = settledValues(settled);
+      rollupResults = insuredPersons.map((ip, i) => ({ id: ip.id, rollup: values[i] ?? null }));
     } catch (e) {
       loadError = e instanceof ApiError ? e.message : 'Daten konnten nicht geladen werden.';
     } finally {
@@ -120,11 +128,18 @@
   async function loadYearStats() {
     yearStatsLoading = true;
     yearStatsError = null;
+    const years = yearWindow;
     try {
-      yearStats = await Promise.all(yearWindow.map((year) => api.stats.year(year)));
-    } catch (e) {
-      yearStatsError =
-        e instanceof ApiError ? e.message : 'Jahresstatistik konnte nicht geladen werden.';
+      // `Promise.all` used to let a single failing year drop the whole window,
+      // which then rendered as four zeroed KPIs (issue #381).
+      const settled = await Promise.allSettled(years.map((year) => api.stats.year(year)));
+      const values = settledValues(settled);
+      yearStats = values.filter((v): v is YearStats => v !== null);
+      yearStatsError = partialFailureMessage(
+        values.length - yearStats.length,
+        values.length,
+        'Jahreswerte',
+      );
     } finally {
       yearStatsLoading = false;
     }
@@ -149,15 +164,18 @@
   // Forward-looking Selbstbehalt/Einreich-Ampel per person for the current Leistungsjahr
   // (issue #234) — always the current year, independent of the retrospective year selector.
   const personRadars = $derived(
-    insuredPersons.map((ip) => {
-      const row = positionRollups
-        .find((r) => r.insured_person_id === ip.id)
-        ?.years.find((y) => y.year === currentYear);
+    insuredPersons.flatMap((ip) => {
+      const rollup = rollupResults.find((r) => r.id === ip.id)?.rollup;
+      // No roll-up means the value is unknown, not zero — render nothing rather
+      // than a confident "nothing claimed yet" verdict (issue #381).
+      if (!rollup) return [];
+      const row = rollup.years.find((y) => y.year === currentYear);
       return {
         ip,
         label: personOptions.find((o) => o.id === ip.id)?.label ?? insuredPersonLabel(ip),
         radar: computeSelbstbehaltRadar({
           year: currentYear,
+          // Safe now: a missing row on a *loaded* roll-up genuinely is R_Y = 0.
           R_Y: row ? row.eligible_amount + row.refund_amount : 0,
           alreadyReimbursed: row?.refund_amount ?? 0,
           selbstbehalt: ip.self_retention,
@@ -170,6 +188,14 @@
     }),
   );
 
+  const rollupWarning = $derived(
+    partialFailureMessage(
+      rollupResults.filter((r) => r.rollup === null).length,
+      rollupResults.length,
+      'Selbstbehalt-Werte',
+    ),
+  );
+
   onMount(loadBase);
   $effect(() => {
     if (!loading) void loadYearStats();
@@ -177,9 +203,31 @@
   $effect(() => {
     if (!loading) void loadBreHistory();
   });
+
+  // Reload once the server comes back (issue #381) — otherwise dismissing the
+  // "Server nicht erreichbar" toast would leave the gaps on screen. A plain
+  // `let`, not `$state`: the effect must not re-run on its own write.
+  let lastRecovery = $serverStatus.recoveries;
+  $effect(() => {
+    const { recoveries } = $serverStatus;
+    if (recoveries === lastRecovery) return;
+    lastRecovery = recoveries;
+    // loadBase() re-arms the two effects above, so one call refreshes everything.
+    void loadBase();
+  });
 </script>
 
 <svelte:head><title>Auswertung · selbstbehalt</title></svelte:head>
+
+<!-- Eine Kennzahl. `unknown` rendert als „—" plus eine für Screenreader
+     ausgeschriebene Begründung — ein Gedankenstrich allein wird vorgelesen als
+     wäre da nichts, statt als „nicht verfügbar". -->
+{#snippet kpi(value: string, unknown: boolean, size = 'text-xl')}
+  <p class="{size} font-bold tabular-nums" class:text-muted-foreground={unknown}>
+    {value}
+    {#if unknown}<span class="sr-only">nicht verfügbar</span>{/if}
+  </p>
+{/snippet}
 
 <div class="container mx-auto max-w-5xl px-4 py-8 space-y-6">
   <div class="space-y-1">
@@ -223,49 +271,83 @@
       </Select>
     </div>
 
-    <!-- Jahres-Kennzahlen -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card>
-        <CardHeader class="pb-2">
-          <CardDescription>Rechnungen {selectedYear}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p class="text-2xl font-bold tabular-nums">{selectedYearStats?.invoice_count ?? 0}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader class="pb-2">
-          <CardDescription>Gesamtkosten</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p class="text-xl font-bold tabular-nums">
-            {formatEur(selectedYearStats?.total_amount ?? 0)}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader class="pb-2">
-          <CardDescription>Erstattet</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p class="text-xl font-bold tabular-nums">
-            {formatEur(selectedYearStats?.refund_amount ?? 0)}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader class="pb-2">
-          <CardDescription>BRE gebucht</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p class="text-xl font-bold tabular-nums">
-            {formatEur(selectedYearStats?.bre_amount ?? 0)}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <!-- Jahres-Kennzahlen. Die Kacheln hingen früher nur an `!loading` und
+         coalescten jeden fehlenden Wert per `?? 0` — ein Ladefehler stand damit
+         als „0,00 €" da, während der Hinweis darauf erst weit unten in der
+         Chart-Karte auftauchte (issue #381). -->
+    <section class="space-y-4" aria-labelledby="stats-kpi-heading">
+      <h2 id="stats-kpi-heading" class="sr-only">Jahres-Kennzahlen</h2>
+      {#if yearStatsError}
+        <ErrorState
+          title="Jahres-Kennzahlen unvollständig"
+          message={yearStatsError}
+          onRetry={loadYearStats}
+        />
+      {/if}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Rechnungen {selectedYear}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {#if yearStatsLoading}
+              <Skeleton class="h-8 w-14" />
+            {:else}
+              {@render kpi(
+                selectedYearStats ? String(selectedYearStats.invoice_count) : '—',
+                !selectedYearStats,
+                'text-2xl',
+              )}
+            {/if}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Gesamtkosten</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {#if yearStatsLoading}
+              <Skeleton class="h-7 w-24" />
+            {:else}
+              {@render kpi(formatEur(selectedYearStats?.total_amount), !selectedYearStats)}
+            {/if}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>Erstattet</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {#if yearStatsLoading}
+              <Skeleton class="h-7 w-24" />
+            {:else}
+              {@render kpi(formatEur(selectedYearStats?.refund_amount), !selectedYearStats)}
+            {/if}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader class="pb-2">
+            <CardDescription>BRE gebucht</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {#if yearStatsLoading}
+              <Skeleton class="h-7 w-24" />
+            {:else}
+              {@render kpi(formatEur(selectedYearStats?.bre_amount), !selectedYearStats)}
+            {/if}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
 
     <!-- Selbstbehalt-Ausschöpfung & Einreich-Ampel — laufendes Leistungsjahr (issue #234) -->
+    {#if rollupWarning}
+      <ErrorState
+        title="Selbstbehalt-Stand unvollständig"
+        message={rollupWarning}
+        onRetry={loadBase}
+      />
+    {/if}
     {#if personRadars.length > 0}
       <section class="space-y-3">
         <h2 class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -288,12 +370,17 @@
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <!-- Teilweise geladene Jahre werden gezeichnet; welche fehlen, sagt der
+             Hinweis über den Kennzahlen — mit dem einen Retry, statt dieselbe
+             Meldung zweimal auf der Seite zu führen. -->
         {#if yearStatsLoading}
           <LoadingState label="Kostenübersicht wird geladen …" />
-        {:else if yearStatsError}
-          <ErrorState message={yearStatsError} onRetry={loadYearStats} />
-        {:else}
+        {:else if yearStats.length > 0}
           <CostsRefundsChart data={yearStats} />
+        {:else if yearStatsError}
+          <EmptyState compact message="Kurve nicht verfügbar, solange die Jahreswerte fehlen." />
+        {:else}
+          <EmptyState compact message="Für diesen Zeitraum liegen keine Jahreswerte vor." />
         {/if}
       </CardContent>
     </Card>
