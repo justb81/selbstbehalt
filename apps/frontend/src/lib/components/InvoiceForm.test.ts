@@ -492,7 +492,11 @@ describe('InvoiceForm — caps that span invoices (issue #370)', () => {
     expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBe(250);
   });
 
-  it('keeps capturing possible when the history cannot be loaded', async () => {
+  // Issue #396: a failed history must not block capturing — but the uncapped
+  // estimate it used to fall back to was saved as if it were the real figure.
+  // Here the true amount is 50 € (300 € cap − 250 € already used); the old
+  // behaviour persisted 250 €, five times too much.
+  it('reports the amount as unknown when the history cannot be loaded', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn<(p: FormPayload) => void>();
     const invoiceHistory = vi.fn(async () => {
@@ -509,9 +513,13 @@ describe('InvoiceForm — caps that span invoices (issue #370)', () => {
     });
 
     await waitFor(() => expect(invoiceHistory).toHaveBeenCalled());
+    expect(await screen.findByText('Erstattung nicht berechenbar')).toBeInTheDocument();
+
+    // Capturing is still possible …
     await user.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
-    // Uncapped estimate rather than a blocked form.
-    expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBe(250);
+    expect(onSave).toHaveBeenCalled();
+    // … the reimbursement is simply unknown, not an overstated number.
+    expect(onSave.mock.calls[0]![0].positions[0]!.eligible_amount).toBeNull();
   });
 
   it("applies an age-bound limit from the person's birth date", async () => {
