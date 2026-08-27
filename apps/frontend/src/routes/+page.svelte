@@ -10,7 +10,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { api } from '$lib/api';
+  import { api, serverStatus } from '$lib/api';
   import {
     formatDate,
     formatEur,
@@ -22,25 +22,30 @@
   import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import { ampelPriority, computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
   import { summarizeDueInvoices } from '$lib/utils/payment-reminders';
+  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
   import PersonStatusCard from '$lib/components/PersonStatusCard.svelte';
   import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
   import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Skeleton } from '$lib/components/ui/skeleton';
 
   // ---- State ----
   let invoices = $state<Invoice[]>([]);
   let insuredPersons = $state<InsuredPerson[]>([]);
-  let positionRollups = $state<PositionYearRollup[]>([]);
+  // `rollup: null` = did not load, kept apart from a loaded roll-up with no row
+  // for the year (which genuinely is zero) — issue #381.
+  let rollupResults = $state<{ id: string; rollup: PositionYearRollup | null }[]>([]);
   let contractCount = $state(0);
   let yearInvoiceCount = $state(0);
   let totalAmount = $state(0);
   let eligibleAmount = $state(0);
   let loading = $state(true);
   let hasError = $state(false);
+  let insuredWarning = $state<string | null>(null);
+  let rollupWarning = $state<string | null>(null);
 
   // "Offen" = neither track has progressed yet (not paid and not submitted).
   const openInvoices = $derived(
@@ -86,11 +91,13 @@
   async function load() {
     loading = true;
     hasError = false;
+    insuredWarning = null;
+    rollupWarning = null;
     try {
-      const [contracts, invs] = await Promise.all([
-        api.contracts.list().catch(() => []),
-        api.invoices.list().catch(() => []),
-      ]);
+      // Contracts and invoices are the page's spine. They used to be caught into
+      // `[]`, which rendered a dead backend as "0 Verträge, keine Rechnungen" —
+      // and left `hasError` unreachable (issue #381). Let them reject.
+      const [contracts, invs] = await Promise.all([api.contracts.list(), api.invoices.list()]);
 
       contractCount = contracts.length;
       invoices = invs;
@@ -101,17 +108,28 @@
       totalAmount = yearInvoices.reduce((s, i) => s + i.total_amount, 0);
       eligibleAmount = yearInvoices.reduce((s, i) => s + (i.eligible_amount ?? 0), 0);
 
-      // Load insured persons for BRE tracking
-      const personLists = await Promise.all(
-        contracts.map((c) => api.insured.list(c.id).catch(() => [])),
+      // Insured persons per contract. Settled, not swallowed: one contract's
+      // failure must neither lose the other households nor pass unmentioned.
+      const insuredSettled = await Promise.allSettled(contracts.map((c) => api.insured.list(c.id)));
+      const insuredLists = settledValues(insuredSettled);
+      insuredPersons = insuredLists.flatMap((list) => list ?? []);
+      insuredWarning = partialFailureMessage(
+        insuredLists.filter((l) => l === null).length,
+        insuredLists.length,
+        'Versicherte Personen',
       );
-      insuredPersons = personLists.flat();
 
       // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
-      const rollups = await Promise.all(
-        insuredPersons.map((ip) => api.stats.positions(ip.id).catch(() => null)),
+      const rollupSettled = await Promise.allSettled(
+        insuredPersons.map((ip) => api.stats.positions(ip.id)),
       );
-      positionRollups = rollups.filter((r): r is PositionYearRollup => r !== null);
+      const rollups = settledValues(rollupSettled);
+      rollupResults = insuredPersons.map((ip, i) => ({ id: ip.id, rollup: rollups[i] ?? null }));
+      rollupWarning = partialFailureMessage(
+        rollups.filter((r) => r === null).length,
+        rollups.length,
+        'Selbstbehalt-Werte',
+      );
     } catch {
       hasError = true;
     } finally {
@@ -120,6 +138,17 @@
   }
 
   onMount(load);
+
+  // Reload once the server comes back (issue #381), so the retry in the global
+  // hint actually refreshes the page instead of only clearing the message. A
+  // plain `let`, not `$state`: the effect must not re-run on its own write.
+  let lastRecovery = $serverStatus.recoveries;
+  $effect(() => {
+    const { recoveries } = $serverStatus;
+    if (recoveries === lastRecovery) return;
+    lastRecovery = recoveries;
+    void load();
+  });
 
   // Insured person label for the open-invoices rows (#261) — every invoice
   // belongs to exactly one insured person, but the row itself only showed
@@ -130,14 +159,16 @@
 
   // Forward-looking Selbstbehalt/Einreich-Ampel per person for the current year (#234).
   const personRadars = $derived(
-    insuredPersons.map((ip) => {
-      const row = positionRollups
-        .find((r) => r.insured_person_id === ip.id)
-        ?.years.find((y) => y.year === year);
+    insuredPersons.flatMap((ip) => {
+      const rollup = rollupResults.find((r) => r.id === ip.id)?.rollup;
+      // Unknown is not zero: without a roll-up, no Ampel at all (issue #381).
+      if (!rollup) return [];
+      const row = rollup.years.find((y) => y.year === year);
       return {
         ip,
         radar: computeSelbstbehaltRadar({
           year,
+          // Safe now: a missing row on a *loaded* roll-up genuinely is R_Y = 0.
           R_Y: row ? row.eligible_amount + row.refund_amount : 0,
           alreadyReimbursed: row?.refund_amount ?? 0,
           selbstbehalt: ip.self_retention,
@@ -203,11 +234,22 @@
         <Skeleton class="h-28 rounded-xl" />
       </div>
     </div>
+  {:else if hasError}
+    <!-- Der Fehler ersetzt die Kacheln, statt über ihnen zu stehen: darunter
+         stünden sonst lauter Nullen, die wie ein echter Kontostand aussehen
+         (issue #381). Wer das Warum sucht, findet den globalen Hinweis
+         „Server nicht erreichbar" als Toast. -->
+    <ErrorState
+      title="Daten konnten nicht geladen werden"
+      message="Verträge und Rechnungen sind gerade nicht abrufbar. Bis dahin werden hier keine Zahlen angezeigt — sie wären nicht die echten."
+      onRetry={load}
+    />
   {:else}
-    {#if hasError}
-      <Alert variant="destructive">
-        <AlertDescription>Einige Daten konnten nicht geladen werden.</AlertDescription>
-      </Alert>
+    {#if insuredWarning}
+      <ErrorState title="Unvollständig geladen" message={insuredWarning} onRetry={load} />
+    {/if}
+    {#if rollupWarning}
+      <ErrorState title="Selbstbehalt-Stand unvollständig" message={rollupWarning} onRetry={load} />
     {/if}
 
     <!-- Stats tiles -->

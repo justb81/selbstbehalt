@@ -9,6 +9,11 @@ vi.mock('$app/state', () => ({
   page: { url: new URL('http://localhost/') },
 }));
 
+// PwaStatus reads the server-reachability state (#381) from $lib/api, which
+// resolves the backend base URL from $env/dynamic/public — stub it so the
+// import graph loads under vitest.
+vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
 import AppShell from './AppShell.svelte';
 
 const children = createRawSnippet(() => ({

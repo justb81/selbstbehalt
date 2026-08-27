@@ -24,6 +24,13 @@ export interface ApiClientOptions {
   apiKey?: string | (() => string | undefined);
   /** Injectable `fetch`, primarily for tests. Defaults to the global `fetch`. */
   fetch?: typeof globalThis.fetch;
+  /**
+   * Observes every response the network produced, before status handling and
+   * body parsing. The raw `Response` is otherwise consumed here and discarded,
+   * but its headers carry the service worker's stale marker (issue #381), which
+   * is the only way to tell a cache fallback from a live answer.
+   */
+  onResponse?: (response: Response) => void;
 }
 
 export type QueryValue = string | number | boolean | undefined | null;
@@ -109,6 +116,10 @@ export function createApiClient(options: ApiClientOptions) {
       const message = cause instanceof Error ? cause.message : 'Netzwerkfehler';
       throw new ApiError(`Verbindung zum Server fehlgeschlagen: ${message}`, 0, { cause });
     }
+
+    // Any answer at all — 2xx as much as 4xx/5xx — is evidence about the server;
+    // reported before the status branch below throws.
+    options.onResponse?.(response);
 
     if (!response.ok) {
       const message = await parseErrorMessage(

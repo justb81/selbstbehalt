@@ -83,6 +83,31 @@ export interface StrategyDeps {
   cacheName: string;
   openCache: (name: string) => Promise<CacheLike>;
   fetch: (request: Request) => Promise<Response>;
+  /** Clock for the cache timestamp; injectable so tests stay deterministic. */
+  now?: () => number;
+}
+
+/**
+ * Marks a response the SW served from the cache because the network failed
+ * (issue #381). Without it the page cannot tell a last-known copy from a fresh
+ * one: {@link networkFirst} hands back a plain 200, so `fetch` resolves and the
+ * app would report the server as reachable while showing stale data — the exact
+ * "looks healthy, isn't" failure the offline contract in docs/architecture.md
+ * §8.6 (quality scenario Q4) rules out.
+ */
+export const STALE_HEADER = 'X-Selbstbehalt-Stale';
+/** ISO timestamp of when the cached copy was stored, for a "Stand: …" hint. */
+export const CACHED_AT_HEADER = 'X-Selbstbehalt-Cached-At';
+
+/** Copy a response, adding headers. Body is streamed over, status is preserved. */
+function withHeaders(response: Response, extra: Record<string, string>): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(extra)) headers.set(name, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 export interface CacheFirstOptions {
@@ -132,16 +157,26 @@ function isCacheable(response: Response, options: CacheFirstOptions): boolean {
 /**
  * Network First: try the network and cache a successful response; on a network
  * failure fall back to the cached copy, or rethrow if there is none.
+ *
+ * The stored copy is stamped with {@link CACHED_AT_HEADER} and the fallback with
+ * {@link STALE_HEADER}, so the app can tell "last known state" from "current"
+ * (issue #381). The response handed back on the success path is untouched.
  */
 export async function networkFirst(request: Request, deps: StrategyDeps): Promise<Response> {
   const cache = await deps.openCache(deps.cacheName);
+  const now = deps.now ?? Date.now;
   try {
     const response = await deps.fetch(request);
-    if (response.ok && response.status !== 206) await cache.put(request, response.clone());
+    if (response.ok && response.status !== 206) {
+      const stamped = withHeaders(response.clone(), {
+        [CACHED_AT_HEADER]: new Date(now()).toISOString(),
+      });
+      await cache.put(request, stamped);
+    }
     return response;
   } catch (error) {
     const cached = await cache.match(request);
-    if (cached) return cached;
+    if (cached) return withHeaders(cached, { [STALE_HEADER]: '1' });
     throw error;
   }
 }

@@ -14,6 +14,27 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 /**
+ * Formats an ISO **timestamp** as a de-DE date and time, e.g. `16.03.2026, 09:30`.
+ * Empty/invalid → `—`.
+ *
+ * Unlike {@link formatDate} this goes through `Date`: a timestamp is an instant,
+ * so it must be rendered in the viewer's zone, whereas a stored `YYYY-MM-DD` is
+ * a calendar day that a zone conversion would shift by one.
+ */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const value = new Date(iso);
+  if (Number.isNaN(value.getTime())) return iso;
+  return value.toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
  * Formats a `Date` as the stored `YYYY-MM-DD` — the ISO counterpart to
  * {@link formatDate}. Reads the **local** calendar day (not the UTC instant), so
  * it round-trips with `toCalendarDate` regardless of time zone.

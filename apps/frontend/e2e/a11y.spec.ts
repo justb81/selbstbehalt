@@ -16,6 +16,7 @@ import {
   INSURED_ID,
   INVOICE,
   INVOICE_ID,
+  abortApi,
   mockBackend,
   PERSON,
   PERSON_ID,
@@ -297,6 +298,27 @@ test.describe('axe: core flows', () => {
     await page.goto('/stats');
     await expect(page.getByText('Kosten vs. Erstattungen', { exact: true })).toBeVisible();
     await expect(page.getByText('BRE-Verlauf', { exact: true })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  // Issue #381: the unreachable-backend state is a route state like any other —
+  // a global toast, page-level error panels and "—" placeholders in the tiles.
+  test('stats — Server nicht erreichbar', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page, '/api/stats/');
+
+    await page.goto('/stats');
+    await expect(page.getByText('Server nicht erreichbar')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Jahres-Kennzahlen' })).toContainText('—');
+    await expectNoViolations(page);
+  });
+
+  test('dashboard — Server nicht erreichbar', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await abortApi(page);
+
+    await page.goto('/');
+    await expect(page.getByText('Daten konnten nicht geladen werden')).toBeVisible();
     await expectNoViolations(page);
   });
 

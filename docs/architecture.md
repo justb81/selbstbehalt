@@ -1810,6 +1810,44 @@ Service Worker Strategie:
 - **API-Aufrufe** (REST): Network First mit Offline-Queue für Schreiboperationen
 - **OCR-Assets** unter `/models/**` (PP-OCRv6-tiny-Modelle ~6 MB + ONNX-Runtime-WASM unter `/models/ort/` ~38 MB): Cache After First Load. Beide werden zur Build-/Deploy-Zeit lokal bereitgestellt (`pnpm ocr:models` bzw. `scripts/copy-ort-wasm.mjs` im Frontend-Build), nicht von einem CDN.
 
+#### Server-Erreichbarkeit und gekennzeichnete Cache-Antworten
+
+„Gerät offline" und „Server nicht erreichbar" sind **zwei** Ereignisse. Der
+Browser meldet nur das erste (`navigator.onLine`); fällt allein das Backend aus,
+bleibt es `true`. Beides ist deshalb getrennt modelliert:
+
+- **`isOnline`** (`$lib/offline/sync.ts`) spiegelt `navigator.onLine` — hat das
+  Gerät überhaupt eine Verbindung.
+- **`serverStatus`** (`$lib/api/reachability.ts`) beantwortet, ob das Backend
+  geantwortet hat. Der Zustand wird passiv aus echtem Verkehr abgeleitet — kein
+  Poll, kein Timer — über eine Dekorator-Schicht um den API-Client
+  (`ApiRequester → ApiRequester`, dieselbe Form wie die Schreib-Queue):
+  ein Netzwerkfehler (`ApiError.status === 0`) und ein Gateway-Status
+  (502/503/504, der Reverse Proxy meldet das Backend hinter sich als tot) gelten
+  als *nicht erreichbar*, jede andere Antwort — 4xx und ein echtes 500 einer
+  Route eingeschlossen — beweist, dass das Backend antwortet.
+
+Damit das unter der installierten PWA ehrlich bleibt, **kennzeichnet der Service
+Worker Cache-Antworten**: `networkFirst` liefert einen Cache-Treffer sonst als
+schlichtes 200 aus, der `fetch` gelingt also, und am Ergebnis allein gemessen
+sähe ein toter Server erreichbar aus — eine `/api/health`-Probe aus dem Cache
+eingeschlossen. Der Fallback trägt darum `X-Selbstbehalt-Stale: 1`, die
+gespeicherte Kopie zusätzlich `X-Selbstbehalt-Cached-At` (ISO-Zeitstempel), und
+der API-Client reicht die Antwort über einen `onResponse`-Hook an den Store
+weiter. Angezeigt wird das als persistenter Toast „Server nicht erreichbar" mit
+„Stand: …" und Wiederholen-Knopf; ist das Gerät selbst offline, hat der
+bestehende Offline-Toast Vorrang, damit nie zwei Meldungen für dasselbe Ereignis
+nebeneinanderstehen.
+
+Daraus folgt die zweite Regel: **unbekannt wird nie als `0` gerendert.** Ein
+Wert, der nicht geladen werden konnte, erscheint als „—" (mit einer für
+Screenreader ausgeschriebenen Begründung), nicht als Null — dieselbe Trennung,
+die das Datenmodell für `eligible_amount` bereits kennt (Kapitel 5.5). Fächern
+Seiten über mehrere Ressourcen auf, geschieht das über `Promise.allSettled` und
+`$lib/utils/partial-load.ts`: die erfolgreichen Teile werden angezeigt, die
+fehlenden benannt — statt sie per `Promise.all` mit zu verlieren oder per
+`.catch(() => …)` zu verschlucken.
+
 Der Ablauf eines Schreibvorgangs ohne Verbindung steht in Kapitel 6.4. Push- bzw.
 Betriebssystem-Benachrichtigungen gibt es bewusst **nicht**: es existiert kein
 Server, der sie senden könnte, und ein Push-Dienst wäre ein Laufzeit-Dritter
@@ -1924,6 +1962,7 @@ Qualität
 | Q2 | Vertraulichkeit | Eine Seite versucht, eine Ressource von einer fremden Origin zu laden. | Der Ladevorgang wird durch die CSP verhindert. | CSP auf `'self'` ([`hardening.md`](./hardening.md)), im E2E-Test geprüft |
 | Q3 | Vertraulichkeit | Die OCR-Modelle werden benötigt. | Sie kommen von der eigenen Origin unter `/models/**`, nie von einem CDN. | `pnpm ocr:models` zur Build-Zeit, SHA-256-Pins in `models.sha256` |
 | Q4 | Verfügbarkeit | Das Gerät ist offline, der Nutzer öffnet die Rechnungsliste. | Der letzte bekannte Stand wird angezeigt, kenntlich als Offline-Zustand. | Service-Worker-Strategien (8.6), `e2e/pwa.spec.ts` |
+| Q4b | Verfügbarkeit | Nur der Server ist weg, das Gerät bleibt online. | Ein globaler Hinweis „Server nicht erreichbar" erscheint, Cache-Inhalte sind als solche datiert, und nicht geladene Kennzahlen stehen als „—" statt als `0`. | Erreichbarkeits-Store und Cache-Marker (8.6), `e2e/server-unreachable.spec.ts` |
 | Q5 | Verfügbarkeit | Das Gerät ist offline, der Nutzer schaltet einen Status. | Der Schreibvorgang wird eingereiht und bei Wiederverbindung in Reihenfolge abgespielt; er geht nicht verloren. | Offline-Queue (6.4), Unit-Tests der Queue |
 | Q6 | Betreibbarkeit | Der Compose-Stack läuft auf einem LXC-Container mit 256 MB RAM. | Backend und Frontend starten und bleiben lauffähig; kein GPU, kein Modell serverseitig. | Ressourcenprofil (7.1), Healthcheck im Compose |
 | Q7 | Betreibbarkeit | Der Betreiber will umziehen oder ein Backup zurückspielen. | Ein Dateiexport und ein Import genügen; der Roundtrip verliert keine Entität. | `GET/POST /api/{export,import}/db`, Roundtrip-Test |
