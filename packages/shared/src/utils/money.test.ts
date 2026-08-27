@@ -24,3 +24,14 @@ describe('formatEur', () => {
     expect(s).toContain('€');
   });
 });
+
+describe('formatEur — unknown vs. nothing', () => {
+  it('renders an unknown amount as an em dash', () => {
+    expect(formatEur(null)).toBe('—');
+    expect(formatEur(undefined)).toBe('—');
+  });
+
+  it('still renders a genuine zero as a zero', () => {
+    expect(formatEur(0)).toContain('0,00');
+  });
+});

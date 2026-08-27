@@ -3,10 +3,13 @@
 <!--
   PWA status surface (issue #27): shows the update reload hint, offline-ready
   confirmation, and offline / pending-writes status as toasts instead of inline
-  banners that were hidden behind the fixed app header.
+  banners that were hidden behind the fixed app header. Since issue #381 it also
+  carries the "server unreachable" notice.
 -->
 <script lang="ts">
   import { toast } from 'svelte-sonner';
+  import { formatDateTime } from '@selbstbehalt/shared';
+  import { api, serverStatus } from '$lib/api';
   import { isOnline, pendingWrites } from '$lib/offline/index.js';
   import {
     installAvailable,
@@ -65,6 +68,42 @@
       });
     } else {
       toast.dismiss('offline-status');
+    }
+  });
+
+  // Server nicht erreichbar (issue #381). Bewusst an `$isOnline` gekoppelt: ist
+  // das Gerät selbst offline, ist das die speziellere Diagnose und besitzt
+  // bereits den Toast darüber — sonst stünden zwei Meldungen für dasselbe
+  // Ereignis nebeneinander. `reachable === null` heißt „noch nichts angefragt"
+  // und darf nichts behaupten.
+  const serverDown = $derived($isOnline && $serverStatus.reachable === false);
+  const serverDownDescription = $derived(
+    $serverStatus.stale && $serverStatus.cachedAt
+      ? `Anzeige aus dem Zwischenspeicher — Stand: ${formatDateTime($serverStatus.cachedAt)}.`
+      : 'Angezeigte Werte können unvollständig oder veraltet sein.',
+  );
+
+  async function recheckServer() {
+    // Ergebnis wird von der Reachability-Schicht im API-Client verbucht; ein
+    // erfolgreicher Probe räumt den Toast von selbst ab und stößt über
+    // `recoveries` das Nachladen der Seiten an.
+    try {
+      await api.health();
+    } catch {
+      /* weiterhin nicht erreichbar — der Toast bleibt stehen */
+    }
+  }
+
+  $effect(() => {
+    if (serverDown) {
+      toast.error('Server nicht erreichbar', {
+        id: 'server-status',
+        duration: Infinity,
+        description: serverDownDescription,
+        action: { label: 'Erneut versuchen', onClick: () => void recheckServer() },
+      });
+    } else {
+      toast.dismiss('server-status');
     }
   });
 

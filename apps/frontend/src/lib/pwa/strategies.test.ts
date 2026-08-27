@@ -3,6 +3,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  CACHED_AT_HEADER,
+  STALE_HEADER,
   cacheFirst,
   classifyRequest,
   hashManifest,
@@ -29,8 +31,15 @@ function fakeCache(): CacheLike & { store: Map<string, Response> } {
   };
 }
 
+const CACHED_AT = Date.UTC(2026, 2, 15, 9, 30);
+
 function deps(cache: CacheLike, fetchImpl: StrategyDeps['fetch']): StrategyDeps {
-  return { cacheName: 'test', openCache: async () => cache, fetch: fetchImpl };
+  return {
+    cacheName: 'test',
+    openCache: async () => cache,
+    fetch: fetchImpl,
+    now: () => CACHED_AT,
+  };
 }
 
 describe('classifyRequest', () => {
@@ -146,6 +155,40 @@ describe('networkFirst', () => {
       }),
     );
     expect(await res.text()).toBe('stale');
+  });
+
+  // Issue #381: a cache fallback is a plain 200, so without a marker the app
+  // cannot tell it from a live answer and reports the server as reachable.
+  it('marks a cache fallback as stale, carrying over when it was stored', async () => {
+    const cache = fakeCache();
+    const req = new Request(`${SELF}/api/x`);
+    await networkFirst(
+      req,
+      deps(cache, async () => new Response('live')),
+    );
+
+    const res = await networkFirst(
+      req,
+      deps(cache, async () => {
+        throw new TypeError('offline');
+      }),
+    );
+
+    expect(res.headers.get(STALE_HEADER)).toBe('1');
+    expect(res.headers.get(CACHED_AT_HEADER)).toBe(new Date(CACHED_AT).toISOString());
+    expect(res.status).toBe(200);
+    // The marker must not cost the body — it is the data the page renders.
+    expect(await res.text()).toBe('live');
+  });
+
+  it('leaves a fresh response unmarked', async () => {
+    const cache = fakeCache();
+    const res = await networkFirst(
+      new Request(`${SELF}/api/x`),
+      deps(cache, async () => new Response('live')),
+    );
+    expect(res.headers.get(STALE_HEADER)).toBeNull();
+    expect(res.headers.get(CACHED_AT_HEADER)).toBeNull();
   });
 
   it('rethrows when offline and nothing is cached', async () => {

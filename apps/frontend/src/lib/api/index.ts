@@ -16,6 +16,7 @@ import {
 import { resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings.js';
 
 import { createApiClient } from './client.js';
+import { noteApiResponse, wrapWithReachability } from './reachability.js';
 import { createResources } from './resources.js';
 
 /** Build a fully-wired client (requester + typed resource namespaces). */
@@ -31,14 +32,22 @@ export function createApi(options: Parameters<typeof createApiClient>[0]) {
 export const offlineQueue = new OfflineQueue(createIndexedDbStore());
 
 /**
- * The raw, un-wrapped requester. Replay must go through this, NOT `api.request`:
- * replaying through the offline-wrapped requester would re-enqueue a duplicate
- * whenever a replay attempt itself fails offline. Used by `initOfflineSync`.
+ * The requester without the offline write-queue. Replay must go through this,
+ * NOT `api.request`: replaying through the offline-wrapped requester would
+ * re-enqueue a duplicate whenever a replay attempt itself fails offline. Used by
+ * `initOfflineSync`.
+ *
+ * Reachability tracking (#381) sits *inside* it, so a failed replay attempt is a
+ * first-class signal too — and so the whole app observes the server through one
+ * seam rather than each page guessing from its own errors.
  */
-export const offlineReplayRequester = createApiClient({
-  baseUrl: () => resolveApiBaseUrl(),
-  apiKey: () => resolveApiKey(),
-}).request;
+export const offlineReplayRequester = wrapWithReachability(
+  createApiClient({
+    baseUrl: () => resolveApiBaseUrl(),
+    apiKey: () => resolveApiKey(),
+    onResponse: noteApiResponse,
+  }).request,
+);
 
 /**
  * The app-wide client; base URL resolves per request from settings/env. In the
@@ -61,4 +70,5 @@ export { createResources, healthSchema } from './resources.js';
 export type { Health, Resources } from './resources.js';
 export type { ApiClientOptions, RequestOptions, QueryValue, ApiRequester } from './client.js';
 export { ApiError, isApiErrorBody } from './errors.js';
+export { serverStatus, resetServerStatus, type ServerStatus } from './reachability.js';
 export type { ApiErrorBody } from './errors.js';

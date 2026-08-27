@@ -184,3 +184,46 @@ describe('createApiClient', () => {
     await expect(request('/x', { method: 'DELETE' })).resolves.toBeUndefined();
   });
 });
+
+describe('onResponse', () => {
+  it('reports the raw response for a success and for an HTTP error', async () => {
+    const onResponse = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 'a', n: 1 }))
+      .mockResolvedValueOnce(
+        jsonResponse({ error: { status: 503, message: 'weg' } }, { status: 503 }),
+      );
+    const { request } = createApiClient({ baseUrl: 'http://api.test', fetch, onResponse });
+
+    await request('/api/thing', { schema });
+    await expect(request('/api/thing')).rejects.toThrow(ApiError);
+
+    expect(onResponse).toHaveBeenCalledTimes(2);
+    expect(onResponse.mock.calls[0]![0].status).toBe(200);
+    expect(onResponse.mock.calls[1]![0].status).toBe(503);
+  });
+
+  it('is not called when the request never reached the server', async () => {
+    const onResponse = vi.fn();
+    const fetch = vi.fn().mockRejectedValue(new TypeError('NetworkError'));
+    const { request } = createApiClient({ baseUrl: 'http://api.test', fetch, onResponse });
+
+    await expect(request('/api/thing')).rejects.toThrow('Verbindung zum Server fehlgeschlagen');
+    expect(onResponse).not.toHaveBeenCalled();
+  });
+
+  // The hook must not consume the body the caller still needs.
+  it('leaves the body readable for the schema parse', async () => {
+    const seen: Response[] = [];
+    const fetch = vi.fn().mockResolvedValue(jsonResponse({ id: 'a', n: 1 }));
+    const { request } = createApiClient({
+      baseUrl: 'http://api.test',
+      fetch,
+      onResponse: (r) => seen.push(r),
+    });
+
+    await expect(request('/api/thing', { schema })).resolves.toEqual({ id: 'a', n: 1 });
+    expect(seen).toHaveLength(1);
+  });
+});
