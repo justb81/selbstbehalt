@@ -219,6 +219,8 @@
   let refundNote = $state('');
   let refunding = $state(false);
   let refundError = $state<string | null>(null);
+  /** The stored refund date could not be read — saving would overwrite it (#396). */
+  let refundDateUnknown = $state(false);
 
   /** Default refund for one position: the stored amount when editing, else the estimate. */
   function defaultPositionRefund(
@@ -278,14 +280,24 @@
     refundDate = new Date().toISOString().slice(0, 10);
     refundNote = mode === 'edit' ? (events.find((e) => e.status === 'erstattet')?.note ?? '') : '';
     refundError = null;
+    refundDateUnknown = false;
     showRefundForm = true;
 
     if (mode === 'edit') {
       try {
         const submission = await api.invoices.getSubmission(invoice.id);
         if (submission.refund_date) refundDate = submission.refund_date;
-      } catch {
-        // No submission (shouldn't happen once erstattet) — keep today's date.
+      } catch (e) {
+        // Only a 404 genuinely means "there is no submission" (shouldn't happen
+        // once erstattet) — there the pre-filled today's date is a sane default.
+        // Every other failure leaves us not knowing the stored date, and saving
+        // would silently overwrite it with today (issue #396): blank the field
+        // and block the save until it could be read.
+        if (e instanceof ApiError && e.status === 404) return;
+        refundDate = '';
+        refundDateUnknown = true;
+        refundError =
+          'Das gespeicherte Erstattungsdatum konnte nicht geladen werden. Zum Schutz vor einem versehentlichen Überschreiben ist das Speichern gesperrt — bitte erneut versuchen.';
       }
     }
   }
@@ -630,7 +642,7 @@
         {/if}
 
         <div class="flex flex-wrap gap-2">
-          <Button onclick={submitRefund} disabled={refunding}>
+          <Button onclick={submitRefund} disabled={refunding || refundDateUnknown}>
             {refunding
               ? 'Wird gespeichert …'
               : refundFormMode === 'edit'
@@ -642,6 +654,7 @@
             onclick={() => {
               showRefundForm = false;
               refundError = null;
+              refundDateUnknown = false;
             }}
             disabled={refunding}
           >

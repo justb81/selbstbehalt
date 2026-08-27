@@ -16,7 +16,14 @@ vi.mock('$lib/api', () => ({
       getSubmission: vi.fn().mockRejectedValue(new Error('not found')),
     },
   },
-  ApiError: class ApiError extends Error {},
+  ApiError: class ApiError extends Error {
+    constructor(
+      message: string,
+      public readonly status: number = 0,
+    ) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock('$app/navigation', () => ({
@@ -31,7 +38,7 @@ vi.mock('$app/paths', () => ({
 }));
 
 import InvoiceStatusFlow from './InvoiceStatusFlow.svelte';
-import { api } from '$lib/api';
+import { api, ApiError } from '$lib/api';
 import { goto } from '$app/navigation';
 
 const GROUND: InvoiceStatus = {
@@ -364,6 +371,52 @@ describe('InvoiceStatusFlow — Einreichung / Erstattung track', () => {
     const input = await screen.findByLabelText(/Erstattungsbetrag für Kategorie Ambulant/);
     expect((input as HTMLInputElement).value).toBe('7.25');
     expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeInTheDocument();
+  });
+
+  // Issue #396: the date field is pre-filled with today before the stored date is
+  // fetched. A read failure other than 404 used to be swallowed, so the form
+  // offered today — and saving wrote it over the real refund date.
+  it('blocks saving when the stored refund date could not be read', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.invoices.getSubmission).mockRejectedValueOnce(new ApiError('Bad Gateway', 502));
+
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv(
+          { review: 'geprüft', submission: 'erstattet' },
+          { positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }] },
+        ),
+        onChanged: vi.fn(),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Erstattung bearbeiten' }));
+
+    const date = await screen.findByLabelText('Erstattungsdatum');
+    await waitFor(() => expect((date as HTMLInputElement).value).toBe(''));
+    expect(screen.getByText(/Speichern gesperrt/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeDisabled();
+  });
+
+  it('keeps the sane default when there genuinely is no submission (404)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.invoices.getSubmission).mockRejectedValueOnce(new ApiError('Not Found', 404));
+
+    render(InvoiceStatusFlow, {
+      props: {
+        invoice: inv(
+          { review: 'geprüft', submission: 'erstattet' },
+          { positions: [{ ...BASE_INVOICE.positions[0]!, refund_amount: 7.25 }] },
+        ),
+        onChanged: vi.fn(),
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Erstattung bearbeiten' }));
+
+    const date = await screen.findByLabelText('Erstattungsdatum');
+    expect((date as HTMLInputElement).value).not.toBe('');
+    expect(screen.getByRole('button', { name: 'Änderungen speichern' })).toBeEnabled();
   });
 });
 
