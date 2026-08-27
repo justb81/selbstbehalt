@@ -10,6 +10,11 @@ build/
 .svelte-kit/
 .output/
 *.tsbuildinfo
+# `svelte-check --tsgo` stages the TS files it hands to the native (Go) compiler
+# here. Under apps/* it lands inside the already-ignored .svelte-kit/, but
+# packages/medic-invoice-check has no .svelte-kit, so it would otherwise show up
+# as ~90 untracked generated files and fail eslint/prettier/headers:check.
+.svelte-check/
 # Generated at Docker build time by scripts/generate-frontend-security-headers.mjs
 # — the checked-in apps/frontend/security-headers.conf is only the template.
 apps/frontend/security-headers.generated.conf

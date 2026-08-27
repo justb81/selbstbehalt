@@ -4,6 +4,7 @@
 dist/
 build/
 .svelte-kit/
+.svelte-check/
 .output/
 coverage/
 playwright-report/

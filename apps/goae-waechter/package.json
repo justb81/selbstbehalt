@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo",
     "test": "svelte-kit sync && vitest run",
     "test:watch": "svelte-kit sync && vitest",
     "test:coverage": "svelte-kit sync && vitest run --coverage",

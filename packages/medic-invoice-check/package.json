@@ -18,11 +18,11 @@
     "src"
   ],
   "scripts": {
-    "build": "svelte-check --tsconfig ./tsconfig.json",
+    "build": "svelte-check --tsconfig ./tsconfig.json --tsgo",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json --tsgo",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
