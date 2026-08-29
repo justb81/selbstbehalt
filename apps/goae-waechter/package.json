@@ -23,7 +23,7 @@
     "@lucide/svelte": "^1.33.0",
     "@selbstbehalt/medic-invoice-check": "workspace:*",
     "@selbstbehalt/shared": "workspace:*",
-    "bits-ui": "^2.18.2",
+    "bits-ui": "^2.19.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
