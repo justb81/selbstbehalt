@@ -10,6 +10,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
+    CONTRACT_TYPE_LABELS,
     contractTypeValues,
     formatDate,
     todayIso,
@@ -21,12 +22,6 @@
   import { Label } from '@selbstbehalt/ui/label';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
-
-  const TYPE_LABELS: Record<ContractType, string> = {
-    vollversicherung: 'Vollversicherung',
-    zusatztarif: 'Zusatztarif',
-    beihilfe: 'Beihilfe',
-  };
 
   let persons = $state<Person[]>([]);
   let loadingPersons = $state(true);
@@ -145,7 +140,7 @@
                 class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {#each contractTypeValues as t (t)}
-                  <option value={t}>{TYPE_LABELS[t]}</option>
+                  <option value={t}>{CONTRACT_TYPE_LABELS[t]}</option>
                 {/each}
               </select>
             </div>

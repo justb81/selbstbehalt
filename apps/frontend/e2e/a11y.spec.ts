@@ -222,6 +222,31 @@ test.describe('axe: core flows', () => {
     await expectNoViolations(page);
   });
 
+  // The two forms behind the contract detail page (issue #465): the edit dialog
+  // and the insured-person form with all four repeaters unfolded.
+  test('contract detail — edit dialog and insured-person form', async ({ page }) => {
+    await mockBackend(page, { populated: true });
+    await page.goto(`/contracts/${CONTRACT_ID}`);
+
+    await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Vertrag bearbeiten' })).toBeVisible();
+    await expectNoViolations(page);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    await page.getByRole('button', { name: '+ Person hinzufügen' }).click();
+    await page.getByRole('checkbox', { name: 'BRE-Staffel konfigurieren' }).click();
+    await page.getByRole('checkbox', { name: 'Enthaltene Leistungen konfigurieren' }).click();
+    await page.getByRole('button', { name: /Leistungsbereich hinzufügen/ }).click();
+    for (const box of ['Erstattungsstaffel', 'Summengrenzen', 'Aufbaujahre (Zahnstaffel)']) {
+      await page.getByRole('checkbox', { name: box }).click();
+    }
+    await page.getByRole('button', { name: /Jahr hinzufügen/ }).click();
+    await page.getByRole('button', { name: /Grenze hinzufügen/ }).click();
+    await expect(page.getByRole('columnheader', { name: 'Bis (€)' })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   // Both branches of the Versicherungsnehmer block: pick an existing person, or
   // create one inline. Each swaps in a different labelled control.
   test('contract new form — person picker and inline-new-person branch', async ({ page }) => {
