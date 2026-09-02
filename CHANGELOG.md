@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.2](https://github.com/justb81/selbstbehalt/compare/v1.15.1...v1.15.2) (2026-09-02)
+
+### Bug Fixes
+
+- **backend:** block cross-site state-changing requests (CSRF) ([#435](https://github.com/justb81/selbstbehalt/issues/435)) ([9431a01](https://github.com/justb81/selbstbehalt/commit/9431a0140689c15293c25f61f0427fc22826a412)), closes [#404](https://github.com/justb81/selbstbehalt/issues/404)
+- **backend:** report only the backup file name on db import ([#424](https://github.com/justb81/selbstbehalt/issues/424)) ([f4fb5f7](https://github.com/justb81/selbstbehalt/commit/f4fb5f79c431901b12eaf4e1b78547f45efd4bcd)), closes [#411](https://github.com/justb81/selbstbehalt/issues/411)
+- **backend:** write initial review event inside the invoice transaction ([#423](https://github.com/justb81/selbstbehalt/issues/423)) ([6856215](https://github.com/justb81/selbstbehalt/commit/68562157eef0571c6fd19f1d912130f3ec41aff1)), closes [#412](https://github.com/justb81/selbstbehalt/issues/412)
+- **ci:** pin actions to commit shas and set least-privilege permissions ([#426](https://github.com/justb81/selbstbehalt/issues/426)) ([b350709](https://github.com/justb81/selbstbehalt/commit/b3507093b2906f932ef57c4ddd6a88af10126120)), closes [#420](https://github.com/justb81/selbstbehalt/issues/420) [#421](https://github.com/justb81/selbstbehalt/issues/421)
+- **frontend:** keep position cents in sync with the category amount ([#425](https://github.com/justb81/selbstbehalt/issues/425)) ([d932a98](https://github.com/justb81/selbstbehalt/commit/d932a987054cd09437e2126bc605cf6516b6fa7c)), closes [#409](https://github.com/justb81/selbstbehalt/issues/409)
+- **medic-invoice-check:** harden pdf.js against untrusted invoice PDFs ([#434](https://github.com/justb81/selbstbehalt/issues/434)) ([7355053](https://github.com/justb81/selbstbehalt/commit/73550536ea8db2e4001aaf06fd8caf9bcefda587)), closes [#415](https://github.com/justb81/selbstbehalt/issues/415)
+- **shared:** read "heute" from the local calendar day, not UTC ([#447](https://github.com/justb81/selbstbehalt/issues/447)) ([f24be36](https://github.com/justb81/selbstbehalt/commit/f24be364dda8714fb2f0201d029c558329b922ac)), closes [#440](https://github.com/justb81/selbstbehalt/issues/440)
+
 ## [1.15.1](https://github.com/justb81/selbstbehalt/compare/v1.15.0...v1.15.1) (2026-08-27)
 
 ### Bug Fixes
