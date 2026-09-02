@@ -5,13 +5,14 @@
 // creation, detail-with-positions, the filter query, and the two independent
 // lifecycle tracks (review / payment / submission) derived from the event log.
 
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { contracts, insuredPersons, invoicePositions, persons } from '../db/schema.js';
+import { contracts, insuredPersons, invoicePositions, persons, submissions } from '../db/schema.js';
 
 let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
@@ -445,6 +446,33 @@ describe('POST /api/invoices/:id/submit', () => {
   it('returns 404 when submitting an unknown invoice', async () => {
     const res = await json('POST', `/api/invoices/${crypto.randomUUID()}/submit`, {});
     expect(res.status).toBe(404);
+  });
+
+  // Regression for #407: guard and write run without an `await` between them
+  // (the body is parsed by the validator middleware *before* the handler), so
+  // two simultaneous submits — a double click, two tabs — are serialised and
+  // cannot both pass the `nicht_eingereicht` check.
+  it('serialises two simultaneous submits: one 201, one 409, one submission', async () => {
+    const { body } = await createInvoice();
+    await review(body.id);
+
+    const [first, second] = await Promise.all([
+      json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' }),
+      json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'post' }),
+    ]);
+    expect([first.status, second.status].sort()).toEqual([201, 409]);
+
+    const rows = handle.db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.invoiceId, body.id))
+      .all();
+    expect(rows).toHaveLength(1);
+
+    const events = await (await app.request(`/api/invoices/${body.id}/events`)).json();
+    expect(
+      events.filter((e: { track: string; status: string }) => e.status === 'eingereicht'),
+    ).toHaveLength(1);
   });
 });
 
