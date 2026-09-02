@@ -1,7 +1,6 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -68,8 +67,27 @@
     <DropdownMenu.Content align="end">
       <DropdownMenu.Group>
         {#each overflowItems as item (item.href)}
-          <DropdownMenu.Item onclick={() => goto(resolve(item.href))}>
-            {item.label}
+          {@const active = isActive(item.href, page.url.pathname)}
+          <!-- `child` statt `onclick` (issue #461): ein echter Anchor, damit
+               Mittelklick, „In neuem Tab öffnen", das Kontextmenü und der
+               SvelteKit-Prefetch funktionieren. Die von bits-ui gesetzte
+               `role="menuitem"` bleibt: `role="link"` in einem `role="menu"`
+               verletzt die ARIA-Pflichtkinder (axe `aria-required-children`). -->
+          <DropdownMenu.Item>
+            {#snippet child({ props })}
+              <a
+                {...props}
+                href={resolve(item.href)}
+                aria-current={active ? 'page' : undefined}
+                class={cn(
+                  props.class as string | undefined,
+                  'no-underline',
+                  active && 'text-primary font-semibold',
+                )}
+              >
+                {item.label}
+              </a>
+            {/snippet}
           </DropdownMenu.Item>
         {/each}
       </DropdownMenu.Group>

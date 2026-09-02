@@ -20,11 +20,16 @@
   // Route segment metadata for building human-readable breadcrumb trails. Only
   // sections with sub-routes need an entry; single-segment sections (stats,
   // settings) never render a trail so they are intentionally omitted.
-  const sectionMeta: Record<string, { label: string; entityFallback: string; newLabel: string }> = {
+  // `newLabel` is optional and only set for sections that actually have a
+  // `/new` route — `insured` has none (versicherte Personen are created inside
+  // `contracts/[id]`), so it carries no label to go stale (issue #461).
+  type SectionMeta = { label: string; entityFallback: string; newLabel?: string };
+
+  const sectionMeta: Record<string, SectionMeta> = {
     invoices: { label: 'Rechnungen', entityFallback: 'Rechnung', newLabel: 'Neue Rechnung' },
     contracts: { label: 'Verträge', entityFallback: 'Vertrag', newLabel: 'Neuer Vertrag' },
     persons: { label: 'Personen', entityFallback: 'Person', newLabel: 'Neue Person' },
-    insured: { label: 'Versicherte', entityFallback: 'Versicherte Person', newLabel: 'Neu' },
+    insured: { label: 'Versicherte', entityFallback: 'Versicherte Person' },
   };
 
   const actionLabels: Record<string, string> = {
@@ -46,8 +51,12 @@
     const crumbs: Crumb[] = [{ label: meta.label, href: `/${section}` }];
 
     if (id === 'new') {
-      crumbs.push({ label: meta.newLabel });
-      return crumbs;
+      // Without a `newLabel` the section has no `/new` route: fall through and
+      // let the id crumb render, rather than inventing an action label.
+      if (meta.newLabel !== undefined) {
+        crumbs.push({ label: meta.newLabel });
+        return crumbs;
+      }
     }
 
     // The real object name once the detail page has loaded it (keyed by the
