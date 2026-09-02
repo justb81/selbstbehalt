@@ -109,16 +109,15 @@
       totalAmount = yearInvoices.reduce((s, i) => s + i.total_amount, 0);
       eligibleAmount = yearInvoices.reduce((s, i) => s + (i.eligible_amount ?? 0), 0);
 
-      // Insured persons per contract. Settled, not swallowed: one contract's
-      // failure must neither lose the other households nor pass unmentioned.
-      const insuredSettled = await Promise.allSettled(contracts.map((c) => api.insured.list(c.id)));
-      const insuredLists = settledValues(insuredSettled);
-      insuredPersons = insuredLists.flatMap((list) => list ?? []);
-      insuredWarning = partialFailureMessage(
-        insuredLists.filter((l) => l === null).length,
-        insuredLists.length,
-        'Versicherte Personen',
-      );
+      // Every versicherte Person in one request (#463) — this used to fan out
+      // one `insured.list` per contract. Caught separately, not swallowed: the
+      // tiles above stay real, the gap gets named.
+      try {
+        insuredPersons = await api.insured.listAll();
+      } catch {
+        insuredPersons = [];
+        insuredWarning = 'Die versicherten Personen konnten nicht geladen werden.';
+      }
 
       // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
       const rollupSettled = await Promise.allSettled(
@@ -247,10 +246,15 @@
     />
   {:else}
     {#if insuredWarning}
-      <ErrorState title="Unvollständig geladen" message={insuredWarning} onRetry={load} />
+      <ErrorState variant="warning" message={insuredWarning} onRetry={load} />
     {/if}
     {#if rollupWarning}
-      <ErrorState title="Selbstbehalt-Stand unvollständig" message={rollupWarning} onRetry={load} />
+      <ErrorState
+        variant="warning"
+        title="Selbstbehalt-Stand unvollständig"
+        message={rollupWarning}
+        onRetry={load}
+      />
     {/if}
 
     <!-- Stats tiles -->

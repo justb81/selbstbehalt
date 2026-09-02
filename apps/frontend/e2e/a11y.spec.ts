@@ -338,7 +338,7 @@ test.describe('axe: core flows', () => {
   test('toasts meet contrast under an OS dark preference', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await mockBackend(page, { populated: true });
-    await abortApi(page, '/api/contracts/');
+    await abortApi(page, '/api/insured');
 
     await page.goto('/contracts');
     await expect(page.getByText('Server nicht erreichbar')).toBeVisible();
@@ -349,7 +349,7 @@ test.describe('axe: core flows', () => {
   // and a contract whose persons could not be loaded.
   test('contracts and insured — unvollständig geladen', async ({ page }) => {
     await mockBackend(page, { populated: true });
-    await abortApi(page, '/api/contracts/');
+    await abortApi(page, '/api/insured');
 
     await page.goto('/contracts');
     await expect(page.getByText('Versicherte: —')).toBeVisible();
@@ -357,7 +357,7 @@ test.describe('axe: core flows', () => {
 
     await page.goto('/insured');
     await expect(
-      page.getByText('Versicherte Personen konnten nicht geladen werden.'),
+      page.getByText('Die versicherten Personen konnten nicht geladen werden.'),
     ).toBeVisible();
     await expectNoViolations(page);
   });

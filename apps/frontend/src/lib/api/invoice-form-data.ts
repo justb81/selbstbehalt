@@ -33,27 +33,31 @@ export interface InsuredOption {
 
 /** Every versicherte Person across all contracts, labelled `Name · Versicherer` (#358). */
 export async function loadInsuredOptions(): Promise<InsuredOption[]> {
-  const [contracts, persons] = await Promise.all([api.contracts.list(), api.persons.list()]);
+  // Three flat reads — the versicherte Personen used to be gathered with one
+  // request per contract (#463); the insurer name is matched client-side.
+  const [contracts, persons, insured] = await Promise.all([
+    api.contracts.list(),
+    api.persons.list(),
+    api.insured.listAll(),
+  ]);
   const birthDates = new Map(persons.map((p) => [p.id, p.birth_date ?? null]));
-  const lists = await Promise.all(
-    contracts.map(async (contract) => {
-      const insured = await api.insured.list(contract.id);
-      return insured.map((ip) => ({
-        id: ip.id,
-        label: `${insuredPersonLabel(ip)} · ${contract.insurer_name}`,
-        insuredPerson: ip,
-        birthDate: birthDates.get(ip.person_id) ?? null,
-      }));
-    }),
-  );
-  return lists.flat();
+  const insurerById = new Map(contracts.map((c) => [c.id, c.insurer_name]));
+  return insured.map((ip) => {
+    const insurer = insurerById.get(ip.contract_id);
+    return {
+      id: ip.id,
+      label: insurer ? `${insuredPersonLabel(ip)} · ${insurer}` : insuredPersonLabel(ip),
+      insuredPerson: ip,
+      birthDate: birthDates.get(ip.person_id) ?? null,
+    };
+  });
 }
 
 /**
- * All invoices of one insured person, positions included. `GET /api/invoices` returns
- * the bare invoice shape, so each one is fetched individually.
+ * All invoices of one insured person, positions included — in a single request via
+ * `?include=positions` (#463). It used to be one `invoices.get` per invoice, because
+ * the plain list omits the line items the tariff caps are measured against.
  */
-export async function loadInvoiceHistory(insuredPersonId: string): Promise<InvoiceWithPositions[]> {
-  const list = await api.invoices.list({ insured_person_id: insuredPersonId });
-  return Promise.all(list.map((invoice) => api.invoices.get(invoice.id)));
+export function loadInvoiceHistory(insuredPersonId: string): Promise<InvoiceWithPositions[]> {
+  return api.invoices.listWithPositions({ insured_person_id: insuredPersonId });
 }

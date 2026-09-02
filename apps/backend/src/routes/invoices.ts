@@ -39,8 +39,9 @@ import {
   type InvoiceStatus,
   type InvoiceStatusEvent,
   type InvoiceWithPositions,
+  type InvoicePosition,
 } from '@selbstbehalt/shared';
-import { and, desc, eq, gte, lte, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, or, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -77,6 +78,10 @@ const listQuerySchema = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
   q: z.string().min(1).optional(),
+  // `positions` makes the list return `InvoiceWithPositions[]`. The Günstiger-
+  // prüfung and `aggregatePriorClaims` need the line items of *every* invoice of
+  // a person; without this the frontend fetched them one by one (N+1, #463).
+  include: z.enum(['positions']).optional(),
 });
 
 function findInvoice(db: Database, id: string) {
@@ -202,16 +207,39 @@ export function createInvoicesRoute(db: Database) {
         .innerJoin(invoiceCurrentStatus, eq(invoiceCurrentStatus.invoiceId, invoices.id))
         .where(and(...conditions))
         .all();
-      return c.json(
-        rows.map((r) =>
-          serializeInvoice(r.inv, {
-            review: r.review,
-            payment: r.payment,
-            submission: r.submission,
-            paid_on: r.paidOn ?? null,
-          }),
-        ),
+      const list = rows.map((r) =>
+        serializeInvoice(r.inv, {
+          review: r.review,
+          payment: r.payment,
+          submission: r.submission,
+          paid_on: r.paidOn ?? null,
+        }),
       );
+      if (f.include !== 'positions') return c.json(list);
+
+      // All line items of the listed invoices in ONE query, grouped by invoice —
+      // the point of the flag is that it stays a single round trip (#463).
+      const byInvoice = new Map<string, InvoicePosition[]>(list.map((invoice) => [invoice.id, []]));
+      if (list.length > 0) {
+        const positionRows = db
+          .select()
+          .from(invoicePositions)
+          .where(
+            inArray(
+              invoicePositions.invoiceId,
+              list.map((invoice) => invoice.id),
+            ),
+          )
+          .all();
+        for (const row of positionRows) {
+          byInvoice.get(row.invoiceId)?.push(serializePosition(row));
+        }
+      }
+      const withPositions: InvoiceWithPositions[] = list.map((invoice) => ({
+        ...invoice,
+        positions: byInvoice.get(invoice.id) ?? [],
+      }));
+      return c.json(withPositions);
     })
     .post('/', jsonBody(invoiceCreatePayloadSchema), (c) => {
       const input = c.req.valid('json');

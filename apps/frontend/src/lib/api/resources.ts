@@ -63,6 +63,7 @@ export type InsuredPersonCreateBody = Omit<InsuredPersonCreate, 'contract_id'>;
 const contractListSchema = z.array(contractSchema);
 const insuredPersonListSchema = z.array(insuredPersonSchema);
 const invoiceListSchema = z.array(invoiceSchema);
+const invoiceWithPositionsListSchema = z.array(invoiceWithPositionsSchema);
 const personListSchema = z.array(personSchema);
 
 const id = (value: string): string => encodeURIComponent(value);
@@ -98,6 +99,9 @@ export function createResources(request: ApiRequester) {
   };
 
   const insured = {
+    /** Every versicherte Person across all contracts in one request (#463). */
+    listAll: (filters?: { contract_id?: string }) =>
+      request('/api/insured', { query: filters, schema: insuredPersonListSchema }),
     list: (contractId: string) =>
       request(`/api/contracts/${id(contractId)}/insured`, { schema: insuredPersonListSchema }),
     create: (contractId: string, data: InsuredPersonCreateBody) =>
@@ -120,6 +124,16 @@ export function createResources(request: ApiRequester) {
   const invoices = {
     list: (filters?: Record<string, QueryValue>) =>
       request('/api/invoices', { query: filters, schema: invoiceListSchema }),
+    /**
+     * The same list, but with every invoice's line items — one request instead of
+     * a `get` per invoice (#463). Needed wherever positions drive the maths: the
+     * Günstigerprüfung and `aggregatePriorClaims`.
+     */
+    listWithPositions: (filters?: Record<string, QueryValue>) =>
+      request('/api/invoices', {
+        query: { ...filters, include: 'positions' },
+        schema: invoiceWithPositionsListSchema,
+      }),
     get: (invoiceId: string) =>
       request(`/api/invoices/${id(invoiceId)}`, { schema: invoiceWithPositionsSchema }),
     create: (data: InvoiceCreatePayload) =>

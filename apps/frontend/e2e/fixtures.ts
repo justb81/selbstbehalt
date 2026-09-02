@@ -196,11 +196,27 @@ export async function mockBackend(
   await page.route('**/api/insured/*', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: INSURED }) : route.fallback(),
   );
+  // Flat list across all contracts (#463). Registered *after* `**/api/insured/*`
+  // so it wins for the bare path; `*` never matches a `/`, so the two do not
+  // overlap and no fallback juggling is needed.
+  await page.route('**/api/insured*', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const url = new URL(route.request().url());
+    if (url.pathname !== '/api/insured') return route.fallback();
+    const contractId = url.searchParams.get('contract_id');
+    return route.fulfill({
+      json: contractId ? insured.filter((ip) => ip.contract_id === contractId) : insured,
+    });
+  });
   await page.route('**/api/invoices*', (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     const url = new URL(route.request().url());
-    if (url.pathname === '/api/invoices') return route.fulfill({ json: invoices });
-    return route.fallback();
+    if (url.pathname !== '/api/invoices') return route.fallback();
+    // `?include=positions` returns the list *with* line items in one request (#463).
+    if (url.searchParams.get('include') === 'positions') {
+      return route.fulfill({ json: populated ? [invoice] : [] });
+    }
+    return route.fulfill({ json: invoices });
   });
   await page.route('**/api/invoices/*', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: invoice }) : route.fallback(),

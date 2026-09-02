@@ -32,6 +32,7 @@
   import { Button } from '@selbstbehalt/ui/button';
   import { Separator } from '@selbstbehalt/ui/separator';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
+  import { partialFailureMessage, settledTuple } from '$lib/utils/partial-load';
 
   const insuredId = $derived(page.params.id as string);
 
@@ -41,24 +42,37 @@
   let invoices = $state<InvoiceWithPositions[]>([]);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
+  let partialWarning = $state<string | null>(null);
 
   async function load() {
     loading = true;
     loadError = null;
+    partialWarning = null;
     try {
+      // The versicherte Person is the spine — without it there is no page.
       const ip = await api.insured.get(insuredId);
       insuredPerson = ip;
 
-      const [c, persons, invList] = await Promise.all([
+      // The other three are independent: settled, not `all`, so a failing
+      // Vertrag or Personenliste no longer blanks the whole detail view
+      // (issue #381). `listWithPositions` fetches the invoices *with* their line
+      // items in one request — the GP aggregation needs positions, which used to
+      // mean an `invoices.get` per invoice (#463).
+      const settled = await Promise.allSettled([
         api.contracts.get(ip.contract_id),
         api.persons.list(),
-        api.invoices.list({ insured_person_id: ip.id }),
+        api.invoices.listWithPositions({ insured_person_id: ip.id }),
       ]);
+      const [c, persons, invList] = settledTuple(settled);
       contract = c;
-      policyholder = persons.find((p) => p.id === c.policyholder_id) ?? null;
-
-      // Load full invoice details (with positions) for GCP aggregation.
-      invoices = await Promise.all(invList.map((inv) => api.invoices.get(inv.id)));
+      policyholder =
+        c && persons ? (persons.find((p) => p.id === c.policyholder_id) ?? null) : null;
+      invoices = invList ?? [];
+      partialWarning = partialFailureMessage(
+        settled.filter((r) => r.status === 'rejected').length,
+        settled.length,
+        'Angaben zu dieser versicherten Person',
+      );
     } catch (e) {
       loadError = e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
     } finally {
@@ -162,6 +176,10 @@
   {:else if insuredPerson}
     <!-- Header -->
     <h1 class="text-2xl font-bold tracking-tight">{insuredPersonLabel(insuredPerson)}</h1>
+
+    {#if partialWarning}
+      <ErrorState variant="warning" message={partialWarning} onRetry={load} />
+    {/if}
 
     <!-- Key facts -->
     <div class="flex flex-wrap gap-3 text-sm">

@@ -6,6 +6,7 @@
 // tariff, premium, Selbstbehalt and BRE structure. Listing and creation are
 // nested under their contract; item operations live at `/api/insured/:id`.
 //
+//   GET    /api/insured                       (all, optional ?contract_id=)
 //   GET    /api/contracts/:contractId/insured
 //   POST   /api/contracts/:contractId/insured
 //   GET    /api/insured/:id
@@ -15,11 +16,13 @@
 import {
   insuredPersonCreateSchema,
   insuredPersonUpdateSchema,
+  uuid,
   type InsuredPerson,
 } from '@selbstbehalt/shared';
 import { and, eq, getTableColumns, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { contracts, insuredPersons, persons } from '../db/schema.js';
@@ -29,7 +32,9 @@ import {
   toInsuredPersonInsert,
   toInsuredPersonUpdate,
 } from '../lib/serialize.js';
-import { jsonBody } from '../lib/validation.js';
+import { jsonBody, queryParams } from '../lib/validation.js';
+
+const listQuerySchema = z.object({ contract_id: uuid.optional() });
 
 // The nested create takes its contract from the path, so the body omits it.
 const nestedCreateSchema = insuredPersonCreateSchema.omit({ contract_id: true });
@@ -81,87 +86,104 @@ function assertNoDuplicateInsured(
 }
 
 export function createInsuredRoute(db: Database) {
-  return new Hono()
-    .get('/contracts/:contractId/insured', (c) => {
-      const contractId = c.req.param('contractId');
-      assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
-      const rows = selectInsuredWithName(db).where(eq(insuredPersons.contractId, contractId)).all();
-      const body: InsuredPerson[] = rows.map(serializeInsuredPerson);
-      return c.json(body);
-    })
-    .post('/contracts/:contractId/insured', jsonBody(nestedCreateSchema), (c) => {
-      const contractId = c.req.param('contractId');
-      assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
-      const input = c.req.valid('json');
-      assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
-      assertNoDuplicateInsured(db, contractId, input.person_id);
-      const row = db
-        .insert(insuredPersons)
-        .values(toInsuredPersonInsert({ ...input, contract_id: contractId }))
-        .returning()
-        .get();
-      return c.json(
-        serializeInsuredPerson({ ...row, personName: personNameOf(db, row.personId) }),
-        201,
-      );
-    })
-    .get('/insured/:id', (c) => {
-      const row = requireRow(
-        () => findInsured(db, c.req.param('id')),
-        'Versicherte Person nicht gefunden',
-      );
-      return c.json(serializeInsuredPerson(row));
-    })
-    .put('/insured/:id', jsonBody(insuredPersonUpdateSchema), (c) => {
-      const id = c.req.param('id');
-      const existing = requireRow(() => findInsured(db, id), 'Versicherte Person nicht gefunden');
-      const input = c.req.valid('json');
-      if (input.contract_id !== undefined)
-        assertFkExists(
-          db,
-          contracts,
-          input.contract_id,
-          `Vertrag ${input.contract_id} existiert nicht`,
-        );
-      if (input.person_id !== undefined)
+  return (
+    new Hono()
+      // Flat list across all contracts — the household view every entry page needs.
+      // Without it each page fanned out with one request per contract (N+1, #463).
+      // Registered before `/insured/:id` so the bare path is never read as an id.
+      .get('/insured', queryParams(listQuerySchema), (c) => {
+        const { contract_id } = c.req.valid('query');
+        const query = selectInsuredWithName(db);
+        const rows = contract_id
+          ? query.where(eq(insuredPersons.contractId, contract_id)).all()
+          : query.all();
+        const body: InsuredPerson[] = rows.map(serializeInsuredPerson);
+        return c.json(body);
+      })
+      .get('/contracts/:contractId/insured', (c) => {
+        const contractId = c.req.param('contractId');
+        assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
+        const rows = selectInsuredWithName(db)
+          .where(eq(insuredPersons.contractId, contractId))
+          .all();
+        const body: InsuredPerson[] = rows.map(serializeInsuredPerson);
+        return c.json(body);
+      })
+      .post('/contracts/:contractId/insured', jsonBody(nestedCreateSchema), (c) => {
+        const contractId = c.req.param('contractId');
+        assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
+        const input = c.req.valid('json');
         assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
-      // Re-pointing the row at another contract/person must not collide with an
-      // existing (contract, person) pair.
-      if (input.contract_id !== undefined || input.person_id !== undefined) {
-        assertNoDuplicateInsured(
-          db,
-          input.contract_id ?? existing.contractId,
-          input.person_id ?? existing.personId,
-          id,
+        assertNoDuplicateInsured(db, contractId, input.person_id);
+        const row = db
+          .insert(insuredPersons)
+          .values(toInsuredPersonInsert({ ...input, contract_id: contractId }))
+          .returning()
+          .get();
+        return c.json(
+          serializeInsuredPerson({ ...row, personName: personNameOf(db, row.personId) }),
+          201,
         );
-      }
+      })
+      .get('/insured/:id', (c) => {
+        const row = requireRow(
+          () => findInsured(db, c.req.param('id')),
+          'Versicherte Person nicht gefunden',
+        );
+        return c.json(serializeInsuredPerson(row));
+      })
+      .put('/insured/:id', jsonBody(insuredPersonUpdateSchema), (c) => {
+        const id = c.req.param('id');
+        const existing = requireRow(() => findInsured(db, id), 'Versicherte Person nicht gefunden');
+        const input = c.req.valid('json');
+        if (input.contract_id !== undefined)
+          assertFkExists(
+            db,
+            contracts,
+            input.contract_id,
+            `Vertrag ${input.contract_id} existiert nicht`,
+          );
+        if (input.person_id !== undefined)
+          assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
+        // Re-pointing the row at another contract/person must not collide with an
+        // existing (contract, person) pair.
+        if (input.contract_id !== undefined || input.person_id !== undefined) {
+          assertNoDuplicateInsured(
+            db,
+            input.contract_id ?? existing.contractId,
+            input.person_id ?? existing.personId,
+            id,
+          );
+        }
 
-      const changes = toInsuredPersonUpdate(input);
-      const row = updateOrReturn(
-        changes,
-        () => {
-          const updated = db
-            .update(insuredPersons)
-            .set(changes)
-            .where(eq(insuredPersons.id, id))
-            .returning()
-            .get()!;
-          // Re-pointing the row at another person changes the display name too.
-          return { ...updated, personName: personNameOf(db, updated.personId) };
-        },
-        existing,
-      );
-      return c.json(serializeInsuredPerson(row));
-    })
-    .delete('/insured/:id', (c) => {
-      // Cascades to the insured person's invoices (and their positions and
-      // submissions) and BRE periods (FK ON DELETE CASCADE, §5.5).
-      const deleted = db
-        .delete(insuredPersons)
-        .where(eq(insuredPersons.id, c.req.param('id')))
-        .returning()
-        .get();
-      if (!deleted) throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
-      return c.body(null, 204);
-    });
+        const changes = toInsuredPersonUpdate(input);
+        const row = updateOrReturn(
+          changes,
+          () => {
+            const updated = db
+              .update(insuredPersons)
+              .set(changes)
+              .where(eq(insuredPersons.id, id))
+              .returning()
+              .get()!;
+            // Re-pointing the row at another person changes the display name too.
+            return { ...updated, personName: personNameOf(db, updated.personId) };
+          },
+          existing,
+        );
+        return c.json(serializeInsuredPerson(row));
+      })
+      .delete('/insured/:id', (c) => {
+        // Cascades to the insured person's invoices (and their positions and
+        // submissions) and BRE periods (FK ON DELETE CASCADE, §5.5).
+        const deleted = db
+          .delete(insuredPersons)
+          .where(eq(insuredPersons.id, c.req.param('id')))
+          .returning()
+          .get();
+        if (!deleted)
+          throw new HTTPException(404, { message: 'Versicherte Person nicht gefunden' });
+        return c.body(null, 204);
+      })
+  );
 }

@@ -24,7 +24,7 @@
   } from '@selbstbehalt/shared';
   import { settings } from '$lib/stores/settings';
   import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
-  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
+  import { partialFailureMessage, settledTuple, settledValues } from '$lib/utils/partial-load';
   import { readNumberParam, readParam, withParam } from '$lib/utils/url-state';
   import CostsRefundsChart from '$lib/components/CostsRefundsChart.svelte';
   import BreProgressionChart from '$lib/components/BreProgressionChart.svelte';
@@ -50,6 +50,7 @@
   // ---- Base data (contracts, invoices, insured persons) ----
   let loading = $state(true);
   let loadError = $state<string | null>(null);
+  let baseWarning = $state<string | null>(null);
   let hasInvoiceYears = $state(false);
   let personOptions = $state<PersonOption[]>([]);
   let insuredPersons = $state<InsuredPerson[]>([]);
@@ -106,39 +107,58 @@
   async function loadBase() {
     loading = true;
     loadError = null;
+    baseWarning = null;
     try {
-      const [contracts, invoices] = await Promise.all([api.contracts.list(), api.invoices.list()]);
+      // Settled, not `all`: the three base reads are independent, and a single
+      // failing one used to blank the entire page (issue #381). `insured.listAll()`
+      // replaces the former one-request-per-contract fan-out (#463) — the insurer
+      // name for the person label comes from the contracts, matched client-side.
+      const settled = await Promise.allSettled([
+        api.contracts.list(),
+        api.invoices.list(),
+        api.insured.listAll(),
+      ]);
+      const [contracts, invoices, insured] = settledTuple(settled);
+      if (contracts === null && invoices === null && insured === null) {
+        const failure = settled.find((r) => r.status === 'rejected');
+        const reason = failure?.status === 'rejected' ? failure.reason : undefined;
+        loadError =
+          reason instanceof ApiError ? reason.message : 'Daten konnten nicht geladen werden.';
+        return;
+      }
+      baseWarning = partialFailureMessage(
+        settled.filter((r) => r.status === 'rejected').length,
+        settled.length,
+        'Basisdaten',
+      );
 
-      const invoiceYears = invoices
+      const invoiceYears = (invoices ?? [])
         .map((invoice) => (invoice.invoice_date ? Number(invoice.invoice_date.slice(0, 4)) : NaN))
         .filter((year) => Number.isInteger(year));
       availableYears = Array.from(new Set([currentYear, ...invoiceYears])).sort((a, b) => a - b);
-      hasInvoiceYears = invoices.length > 0;
+      hasInvoiceYears = (invoices ?? []).length > 0;
 
-      const personLists = await Promise.all(
-        contracts.map(async (contract) => {
-          const persons = await api.insured.list(contract.id);
-          return persons.map((person: InsuredPerson) => ({
-            person,
-            label: `${insuredPersonLabel(person)} · ${contract.insurer_name}`,
-          }));
-        }),
-      );
-      const flat = personLists.flat();
-      insuredPersons = flat.map((entry) => entry.person);
-      personOptions = flat.map((entry) => ({ id: entry.person.id, label: entry.label }));
+      const insurerById = new Map((contracts ?? []).map((c) => [c.id, c.insurer_name]));
+      insuredPersons = insured ?? [];
+      personOptions = insuredPersons.map((person: InsuredPerson) => {
+        const insurer = insurerById.get(person.contract_id);
+        return {
+          id: person.id,
+          label: insurer
+            ? `${insuredPersonLabel(person)} · ${insurer}`
+            : insuredPersonLabel(person),
+        };
+      });
 
       // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
       // Settled, not `all`: one person's failure must not lose the others — and
       // must not be swallowed either, or a missing roll-up renders as a green
       // "Einreichen folgenlos" Ampel (issue #381).
-      const settled = await Promise.allSettled(
+      const rollupSettled = await Promise.allSettled(
         insuredPersons.map((ip) => api.stats.positions(ip.id)),
       );
-      const values = settledValues(settled);
+      const values = settledValues(rollupSettled);
       rollupResults = insuredPersons.map((ip, i) => ({ id: ip.id, rollup: values[i] ?? null }));
-    } catch (e) {
-      loadError = e instanceof ApiError ? e.message : 'Daten konnten nicht geladen werden.';
     } finally {
       loading = false;
     }
@@ -269,6 +289,9 @@
       {/snippet}
     </EmptyState>
   {:else}
+    {#if baseWarning}
+      <ErrorState variant="warning" message={baseWarning} onRetry={loadBase} />
+    {/if}
     <div class="flex items-center gap-3 flex-wrap">
       <span class="text-sm font-medium text-muted-foreground" id="stats-year-label">Jahr</span>
       <Select
@@ -298,10 +321,19 @@
       <h2 id="stats-kpi-heading" class="sr-only">Jahres-Kennzahlen</h2>
       {#if yearStatsError}
         <ErrorState
+          variant="warning"
           title="Jahres-Kennzahlen unvollständig"
           message={yearStatsError}
           onRetry={loadYearStats}
         />
+      {/if}
+      <!-- Die Skeletons unten sind stumm — ohne diese Live-Region wüsste ein
+           Screenreader nicht, dass hier gerade nachgeladen wird. Ein Idiom für
+           alle Ladezustände: Spinner/Skeleton plus `role="status"` (#463). -->
+      {#if yearStatsLoading}
+        <span class="sr-only" role="status" aria-live="polite">
+          Jahres-Kennzahlen werden geladen …
+        </span>
       {/if}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -310,7 +342,7 @@
           </CardHeader>
           <CardContent>
             {#if yearStatsLoading}
-              <Skeleton class="h-8 w-14" />
+              <Skeleton class="h-8 w-14" aria-hidden="true" />
             {:else}
               {@render kpi(
                 selectedYearStats ? String(selectedYearStats.invoice_count) : '—',
@@ -326,7 +358,7 @@
           </CardHeader>
           <CardContent>
             {#if yearStatsLoading}
-              <Skeleton class="h-7 w-24" />
+              <Skeleton class="h-7 w-24" aria-hidden="true" />
             {:else}
               {@render kpi(formatEur(selectedYearStats?.total_amount), !selectedYearStats)}
             {/if}
@@ -338,7 +370,7 @@
           </CardHeader>
           <CardContent>
             {#if yearStatsLoading}
-              <Skeleton class="h-7 w-24" />
+              <Skeleton class="h-7 w-24" aria-hidden="true" />
             {:else}
               {@render kpi(formatEur(selectedYearStats?.refund_amount), !selectedYearStats)}
             {/if}
@@ -350,7 +382,7 @@
           </CardHeader>
           <CardContent>
             {#if yearStatsLoading}
-              <Skeleton class="h-7 w-24" />
+              <Skeleton class="h-7 w-24" aria-hidden="true" />
             {:else}
               {@render kpi(formatEur(selectedYearStats?.bre_amount), !selectedYearStats)}
             {/if}
@@ -362,6 +394,7 @@
     <!-- Selbstbehalt-Ausschöpfung & Einreich-Ampel — laufendes Leistungsjahr (issue #234) -->
     {#if rollupWarning}
       <ErrorState
+        variant="warning"
         title="Selbstbehalt-Stand unvollständig"
         message={rollupWarning}
         onRetry={loadBase}

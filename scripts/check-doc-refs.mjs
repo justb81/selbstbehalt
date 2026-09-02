@@ -16,7 +16,19 @@
 //      that actually exists in it.
 //   2. No file still points at the doc's former name, docs/design.md.
 //
-// Usage: node scripts/check-doc-refs.mjs
+// Both run code → doc: does every pointer out of the code still land somewhere? The
+// `--affected` mode runs the *other* direction, doc → changed code, and is advisory
+// rather than a gate (issue #463). It exists because that gap is what actually goes
+// stale: a change updates the chapter whose name it shares — the endpoint list for a new
+// endpoint — and silently leaves the cross-cutting chapters that describe the *behaviour*
+// it altered, which name no endpoint and so turn up in no search for the new thing. It
+// cannot be a gate: plenty of changes legitimately need no documentation edit, and a
+// check that cries wolf gets ticked past. So it stays quiet unless a doc passage actually
+// mentions a file the change touched, and then it prints that passage and exits 0.
+//
+// Usage: node scripts/check-doc-refs.mjs             — the gate (both checks above)
+//        node scripts/check-doc-refs.mjs --affected  — advisory reverse index
+//          Compares against DOCS_AFFECTED_BASE (default `origin/main`).
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -49,6 +61,125 @@ const FOREIGN_NAMESPACE = /(data-format\.md|privacy-threat-model\.md)[`)\]]*\s*�
 const STATUTE =
   /§\s?\d+[a-z]?(?!\.\d)(\(\d+\))?[^§\n]{0,20}?\b(GOÄ|GOZ|GOT|EStG|BGB|UrhG|DSGVO|SGB|UStG|Steigerungsfaktor)\b/g;
 
+// ---------------------------------------------------------------------------
+// Advisory reverse index: which documentation describes the code this change touches?
+// ---------------------------------------------------------------------------
+
+// Basenames that identify nothing: every package has an `index.ts` and every route a
+// `+page.svelte`, so matching on them would bury the real hits under every mention.
+const GENERIC_BASENAMES = new Set([
+  'index',
+  'app',
+  'utils',
+  'types',
+  'schema',
+  'config',
+  'client',
+  'constants',
+  'helpers',
+  '+page',
+  '+layout',
+  '+server',
+  '+error',
+  'README',
+  'CHANGELOG',
+  // Root manifests: every doc that mentions tooling names `package.json`, and none
+  // of those lines says anything about the dependency that changed inside it.
+  'package',
+]);
+
+/** Files whose change says nothing about the prose: the prose itself, and lockfiles. */
+const NOT_A_SOURCE = (p) =>
+  p.startsWith('docs/') || p.endsWith('.md') || p.endsWith('lock.yaml') || p.startsWith('data/');
+
+/** `apps/x/src/lib/utils/partial-load.test.ts` → `partial-load`; `ErrorState.svelte` → `ErrorState`. */
+function identifierOf(path) {
+  const base = path.split('/').pop() ?? '';
+  const stem = base.replace(/\.(test|spec)\.[^.]+$/, '').replace(/\.[^.]+$/, '');
+  return GENERIC_BASENAMES.has(stem) ? null : stem;
+}
+
+/** Matches the identifier as its own token, so `stats` does not hit `statsWorker`. */
+function tokenPattern(identifier) {
+  return new RegExp(`(^|[^\\w-])${identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\w-]|$)`);
+}
+
+// Only code-shaped mentions count: a backticked span, a filename, or a path. The domain
+// words double as identifiers here — `invoices`, `insured`, `scan` — so matching plain
+// prose would bury the two lines that actually describe a module under sixty that merely
+// use the German noun. A dump that long gets skimmed, which is the failure this is meant
+// to prevent.
+const CODEISH =
+  /`[^`]+`|[\w./+[\]-]*\.(?:ts|mts|cts|js|mjs|cjs|svelte|json|css|html|ya?ml)\b|\/[\w./+[\]-]+/g;
+
+// Links carry paths that look exactly like repository paths, so a link to
+// docs.github.com/pages/… would "mention" a local pages.ts. Seen in CI on the very
+// first run of this check — stripped before the spans above are extracted.
+const URL_IN_PROSE = /\bhttps?:\/\/\S+/g;
+
+/** Hits beyond this per identifier are counted, not listed. */
+const MAX_HITS = 12;
+
+function reportAffectedDocs() {
+  const base = process.env.DOCS_AFFECTED_BASE || 'origin/main';
+  let changed;
+  try {
+    changed = execFileSync('git', ['diff', '--name-only', `${base}...HEAD`], { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    console.log(
+      `Cannot diff against ${base} (shallow clone or unknown ref) — reverse index skipped.`,
+    );
+    return;
+  }
+
+  const docs = tracked
+    .filter((p) => p.startsWith('docs/') && p.endsWith('.md'))
+    .map((p) => ({ path: p, lines: readFileSync(p, 'utf8').split('\n') }));
+
+  // One identifier can come from several changed files (a module and its test); report
+  // it once, naming the change that introduced it.
+  const seen = new Map();
+  for (const path of changed) {
+    if (NOT_A_SOURCE(path)) continue;
+    const identifier = identifierOf(path);
+    if (identifier && !seen.has(identifier)) seen.set(identifier, path);
+  }
+
+  const findings = [];
+  for (const [identifier, path] of seen) {
+    const pattern = tokenPattern(identifier);
+    const hits = [];
+    for (const doc of docs) {
+      for (const [i, line] of doc.lines.entries()) {
+        const codeish = (line.replace(URL_IN_PROSE, ' ').match(CODEISH) ?? []).join(' ');
+        if (codeish && pattern.test(codeish)) {
+          hits.push(`${doc.path}:${i + 1}: ${line.trim().slice(0, 110)}`);
+        }
+      }
+    }
+    if (hits.length > 0) findings.push({ identifier, path, hits });
+  }
+
+  if (findings.length === 0) {
+    console.log(`No documentation mentions the files changed against ${base}.`);
+    return;
+  }
+
+  console.log(`Documentation that mentions code changed against ${base} — check each passage`);
+  console.log('still describes what the code now does:\n');
+  for (const { identifier, path, hits } of findings) {
+    console.log(`  ${path}  (as "${identifier}")`);
+    for (const hit of hits.slice(0, MAX_HITS)) console.log(`    ${hit}`);
+    if (hits.length > MAX_HITS) console.log(`    … and ${hits.length - MAX_HITS} more`);
+    console.log('');
+  }
+  console.log(
+    `${findings.length} changed file(s) are described somewhere in docs/. Advisory only.`,
+  );
+}
+
 const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
   .split('\n')
   .filter(Boolean)
@@ -67,6 +198,11 @@ function definedSections() {
     }
   }
   return sections;
+}
+
+if (process.argv.includes('--affected')) {
+  reportAffectedDocs();
+  process.exit(0);
 }
 
 const defined = definedSections();

@@ -42,7 +42,8 @@ async function mockApi(page: Page): Promise<{ getPostedInvoice: () => unknown }>
     }),
   );
 
-  await page.route(`**/api/contracts/${CONTRACT_ID}/insured`, (route) =>
+  // One flat read across all contracts (#463).
+  await page.route('**/api/insured', (route) =>
     route.fulfill({
       json: [
         {

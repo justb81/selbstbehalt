@@ -482,13 +482,18 @@ GET    /api/contracts/:id             → Vertragsdetail inkl. versicherter Pers
 PUT    /api/contracts/:id             → Vertrag aktualisieren
 DELETE /api/contracts/:id             → Vertrag löschen
 
+GET    /api/insured                   → Alle versicherten Personen über alle Verträge
+                                         (optional ?contract_id=; ein Request statt einem je Vertrag, Issue #463)
 GET    /api/contracts/:id/insured     → Versicherte Personen eines Vertrags
 POST   /api/contracts/:id/insured     → Versicherte Person hinzufügen (mit KVNR, Tarif, SB, BRE)
 GET    /api/insured/:id               → Detail einer versicherten Person
 PUT    /api/insured/:id               → Versicherte Person aktualisieren
 DELETE /api/insured/:id               → Versicherte Person entfernen
 
-GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params)
+GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params);
+                                         ?include=positions liefert sie inkl. Positionen in einem
+                                         Request — die Günstigerprüfung braucht die Positionen jeder
+                                         Rechnung (Issue #463)
 POST   /api/invoices                  → Neue Rechnung speichern
 GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + abgeleitetem Status
 PUT    /api/invoices/:id              → Rechnung aktualisieren (gesperrt sobald bezahlt oder eingereicht)
@@ -516,8 +521,9 @@ GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup
 POST   /api/import/db?confirm=true    → Datenbank-Wiederherstellung (roher Binär-Body, kein Formular — §7.3)
 ```
 
-Die Lese-Antworten der drei `insured`-Routen (`GET /api/contracts/:id/insured`,
-`GET /api/insured/:id` sowie die Rückgaben von `POST`/`PUT`) tragen zusätzlich zu den Spalten aus
+Die Lese-Antworten der `insured`-Routen (`GET /api/insured`,
+`GET /api/contracts/:id/insured`, `GET /api/insured/:id` sowie die Rückgaben von `POST`/`PUT`)
+tragen zusätzlich zu den Spalten aus
 `insured_persons` das Feld **`person_name`** — der Anzeigename der Person, per Join aus `persons`.
 Eine versicherte Person ist zuerst eine Person; Tarifname und KVNR sind Vertragsdaten und für
 Geschwister im selben Tarif identisch, taugen also nicht als Benennung (Issues #351, #358). Das
@@ -525,6 +531,17 @@ Feld ist ausschließlich lesend: geschrieben wird der Name über `/api/persons/:
 Create-/Update-Schemata weisen ihn zurück. Die UI benennt eine versicherte Person nirgends selbst,
 sondern über `insuredPersonLabel(...)` aus `packages/shared` (Name → Tarif → KVNR → „Versicherte
 Person").
+
+**Konstante Anzahl Requests je Seite.** Die flache Liste `GET /api/insured` und der
+Parameter `?include=positions` existieren genau dafür (Issue #463): eine Einstiegsseite
+holt die versicherten Personen in *einem* Request und gruppiert client-seitig nach
+`contract_id`, statt `GET /api/contracts/:id/insured` je Vertrag zu rufen; wer die
+Positionen jeder Rechnung braucht — Günstigerprüfung und `aggregatePriorClaims` —
+nimmt `?include=positions` statt eines `GET /api/invoices/:id` je Zeile. Das Backend
+lädt die Positionen dabei mit einer einzigen `inArray`-Abfrage nach. Die geschachtelte
+Route bleibt für die Detailansicht *eines* Vertrags, wo sie ohnehin ein Request ist.
+Die Anzahl der Anfragen einer Seite hängt damit nicht an der Zahl der Verträge oder
+Rechnungen.
 
 Authentifizierung und Zugangsschutz sind Betriebsthemen und stehen in Kapitel 7.3.
 
@@ -2036,7 +2053,18 @@ die das Datenmodell für `eligible_amount` bereits kennt (Kapitel 5.5). Fächern
 Seiten über mehrere Ressourcen auf, geschieht das über `Promise.allSettled` und
 `$lib/utils/partial-load.ts`: die erfolgreichen Teile werden angezeigt, die
 fehlenden benannt — statt sie per `Promise.all` mit zu verlieren oder per
-`.catch(() => …)` zu verschlucken.
+`.catch(() => …)` zu verschlucken. `settledValues` deckt den gleichförmigen Fall
+(eine Liste desselben Typs) ab, `settledTuple` das `allSettled` über einen festen
+Satz verschieden typisierter Reads, bei dem jeder Platz seinen Typ behält und
+einzeln `null` werden kann.
+
+Ein **Teilausfall ist kein Totalausfall** und sieht auch nicht so aus: `ErrorState`
+kennt zwei Schweregrade (Issue #463). `variant="error"` ist die rote
+`destructive`-Alert und steht dort, wo der Abschnitt nichts anzuzeigen hat;
+`variant="warning"` ist die gelbe Variante mit dem Titel „Teilweise geladen" und
+steht über echten Daten, denen ein Teil fehlt. Die gelbe Fassung nutzt den vollen
+`text-warning`-Ton — abgeblendet unterschreitet er den AA-Kontrast, was der
+`axe`-Lauf aus Kapitel 8.7 auch prüft.
 
 Der Ablauf eines Schreibvorgangs ohne Verbindung steht in Kapitel 6.4. Push- bzw.
 Betriebssystem-Benachrichtigungen gibt es bewusst **nicht**: es existiert kein
@@ -2088,6 +2116,11 @@ gekennzeichnet.
   ARIA-Rolle bleibt dabei die des umgebenden Musters (`role="menuitem"` in
   einem `role="menu"`): ein `role="link"` darin verletzt die
   ARIA-Pflichtkinder und wäre ein axe-Verstoß.
+- **Ein Idiom je Ladezustand:** `LoadingState` (Spinner mit
+  `role="status" aria-live="polite"`) oder ein `Skeleton`-Block — letzterer immer
+  mit einer eigenen `sr-only`-Live-Region, weil Platzhalterflächen für sich stumm
+  sind. Ein Ladezustand ohne Ansage ist von einer leeren Seite nicht zu
+  unterscheiden (Issue #463).
 - **Erkennbarkeit vor Bequemlichkeit:** Beanstandungen, Nicht-Erstattungsfähigkeit
   und Fälligkeiten werden benannt und begründet, nicht bloß eingefärbt — sonst ist
   das Verdikt nicht überprüfbar (Qualitätsziel 5, Kapitel 1.2).

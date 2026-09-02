@@ -19,7 +19,10 @@
 - [ ] Added/updated tests for the change (domain logic must stay well-covered)
 - [ ] Updated affected docs — no stale references left behind (README,
       [docs/self-hosting.md](../docs/self-hosting.md),
-      [docs/architecture.md](../docs/architecture.md) as applicable)
+      [docs/architecture.md](../docs/architecture.md) as applicable). Ran
+      `pnpm docs:affected` and reviewed every passage it listed: a change usually
+      touches the chapter it shares a name with _and_ the cross-cutting chapter
+      describing the behaviour it altered
 - [ ] Source files carry the SPDX copyright + license header (`pnpm headers:check`)
 - [ ] I did **not** hand-edit the generated `goae.json` / `goz.json` / `got.json`
       tables (data errors are reported as issues, not edited in PRs — see
