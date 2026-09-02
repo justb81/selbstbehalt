@@ -222,9 +222,10 @@ export function createInvoicesRoute(db: Database) {
       );
       const { positions, ...invoiceInput } = input;
 
-      // Invoice + its positions are written in one transaction so a partial
-      // insert can never leave an invoice without its lines. After inserting,
-      // recalculate the derived eligible_amount / self_paid_amount.
+      // Invoice, its positions and the initial status event are written in one
+      // transaction so a partial insert can never leave an invoice without its
+      // lines or without its audit trail. After inserting, recalculate the
+      // derived eligible_amount / self_paid_amount.
       const { invoice, insertedPositions } = db.transaction((tx) => {
         const invoice = tx.insert(invoices).values(toInvoiceInsert(invoiceInput)).returning().get();
         const insertedPositions =
@@ -238,12 +239,11 @@ export function createInvoicesRoute(db: Database) {
         if (insertedPositions.length > 0) {
           recalcInvoiceSums(tx as unknown as Database, invoice.id);
         }
+        // Record the initial review event so the Statusverlauf reflects creation
+        // (the ground state derives correctly with or without it).
+        appendEvent(tx as unknown as Database, invoice.id, 'review', 'neu');
         return { invoice: findInvoice(tx as unknown as Database, invoice.id)!, insertedPositions };
       });
-
-      // Record the initial review event so the Statusverlauf reflects creation
-      // (the ground state derives correctly with or without it).
-      appendEvent(db, invoice.id, 'review', 'neu');
 
       const body: InvoiceWithPositions = {
         ...serializeInvoice(invoice, deriveStatus(db, invoice.id)),
