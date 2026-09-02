@@ -40,7 +40,7 @@ The domain is German and insurance-specific. Keep entity/field names in German w
 
 ## Architecture
 
-Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, `apps/goae-waechter/` (the deployed standalone GOÄ-Wächter demo), `packages/medic-invoice-check/` (the shared scan-and-check engine) and `packages/shared/` (shared Zod schemas, types and domain helpers).
+Monorepo via **pnpm workspaces** — `apps/frontend/`, `apps/backend/`, `apps/goae-waechter/` (the deployed standalone GOÄ-Wächter demo), `packages/medic-invoice-check/` (the shared scan-and-check engine), `packages/ui/` (the shadcn-svelte primitives shared by frontend, demo and check engine, plus `cn()`) and `packages/shared/` (shared Zod schemas, types and domain helpers).
 
 - **Frontend**: SvelteKit (Svelte 5, TypeScript) PWA. Installable, offline-first.
 - **Backend**: Hono (TypeScript) REST API on port 8080, SQLite via Drizzle ORM. Minimal — it is *only* a database + REST layer. No AI/LLM workloads server-side ever.
@@ -93,7 +93,7 @@ Full CRUD over `/api/persons`, `/api/contracts` (+ `/api/contracts/:id/insured` 
 
 ## Conventions
 
-- **UI-Standard: shadcn-svelte + Tailwind CSS v4 (verbindlich)** — Alle UI-Komponenten und Seitenelemente verwenden ausschließlich shadcn-svelte-Komponenten (`$lib/components/ui/`) und Tailwind-CSS-Utilities. Kein Custom-CSS, keine `<style>`-Blöcke in `.svelte`-Dateien, keine eigenen CSS-Klassen für Layout, Karten, Tabellen, Buttons, Badges, Formulare oder Modals. Neue Elemente greifen auf [shadcn-svelte](https://shadcn-svelte.com/docs) zurück und erweitern bei Bedarf mit Tailwind-Klassen.
+- **UI-Standard: shadcn-svelte + Tailwind CSS v4 (verbindlich)** — Alle UI-Komponenten und Seitenelemente verwenden ausschließlich shadcn-svelte-Komponenten und Tailwind-CSS-Utilities. Die von mehr als einem Paket genutzten Primitiven liegen **einmal** in `packages/ui` (`@selbstbehalt/ui/<komponente>`, `cn()` aus `@selbstbehalt/ui/utils`; dort per shadcn-CLI pflegen, Imports danach relativ machen — siehe `packages/ui/README.md`), nur Frontend-eigene unter `apps/frontend/src/lib/components/ui/`; braucht ein zweites Paket eine davon, wandert der Ordner nach `packages/ui` (#438). Jede App registriert das Paket per `@source` in `app.css`. Kein Custom-CSS, keine `<style>`-Blöcke in `.svelte`-Dateien, keine eigenen CSS-Klassen für Layout, Karten, Tabellen, Buttons, Badges, Formulare oder Modals. Neue Elemente greifen auf [shadcn-svelte](https://shadcn-svelte.com/docs) zurück und erweitern bei Bedarf mit Tailwind-Klassen.
 - Validate API payloads and forms with Zod.
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.

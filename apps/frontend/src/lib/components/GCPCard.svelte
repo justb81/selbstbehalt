@@ -9,14 +9,14 @@
 <script lang="ts">
   import { formatEur } from '@selbstbehalt/shared';
   import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
-  import { cn } from '$lib/utils';
-  import { Card, CardHeader, CardContent, CardFooter } from '$lib/components/ui/card';
-  import { Button } from '$lib/components/ui/button';
+  import { cn } from '@selbstbehalt/ui/utils';
+  import { Card, CardHeader, CardContent, CardFooter } from '@selbstbehalt/ui/card';
+  import { Button } from '@selbstbehalt/ui/button';
   import {
     Collapsible,
     CollapsibleTrigger,
     CollapsibleContent,
-  } from '$lib/components/ui/collapsible';
+  } from '@selbstbehalt/ui/collapsible';
 
   let {
     result,

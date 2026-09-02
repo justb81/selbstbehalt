@@ -14,7 +14,7 @@
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '@selbstbehalt/ui/button';
 
   let contracts = $state<Contract[]>([]);
   // `null` = konnte nicht geladen werden — bewusst getrennt von einer echten 0

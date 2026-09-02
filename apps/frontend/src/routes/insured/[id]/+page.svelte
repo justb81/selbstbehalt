@@ -29,8 +29,8 @@
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import { Separator } from '$lib/components/ui/separator';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Separator } from '@selbstbehalt/ui/separator';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
 
   const insuredId = $derived(page.params.id as string);

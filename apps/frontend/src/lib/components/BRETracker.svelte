@@ -16,8 +16,8 @@
     insuredPersonLabel,
     type InsuredPerson,
   } from '@selbstbehalt/shared';
-  import { Progress } from '$lib/components/ui/progress';
-  import { cn } from '$lib/utils';
+  import { Progress } from '@selbstbehalt/ui/progress';
+  import { cn } from '@selbstbehalt/ui/utils';
 
   let {
     insuredPerson,

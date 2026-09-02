@@ -69,15 +69,15 @@
   } from '../ocr/types';
   import LoadingState from './LoadingState.svelte';
   import InvoicePagePreview from './InvoicePagePreview.svelte';
-  import { Button } from './ui/button';
-  import { Progress } from './ui/progress';
-  import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Progress } from '@selbstbehalt/ui/progress';
+  import { Alert, AlertDescription, AlertTitle } from '@selbstbehalt/ui/alert';
   import CameraIcon from '@lucide/svelte/icons/camera';
   import FileIcon from '@lucide/svelte/icons/file';
   import ScanIcon from '@lucide/svelte/icons/scan';
   import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
   import XIcon from '@lucide/svelte/icons/x';
-  import { cn } from '../utils';
+  import { cn } from '@selbstbehalt/ui/utils';
 
   /** Injection points so the scanner can run without a camera/worker (tests). */
   interface ScannerDeps {

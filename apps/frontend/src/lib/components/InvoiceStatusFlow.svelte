@@ -30,13 +30,13 @@
   import { distributeRefundByCategory } from '$lib/utils/refund-distribution';
   import { isNonReimbursable } from '$lib/utils/reimbursability';
   import InvoiceBadge from './InvoiceBadge.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
-  import { Textarea } from '$lib/components/ui/textarea';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Input } from '@selbstbehalt/ui/input';
+  import { Label } from '@selbstbehalt/ui/label';
+  import { Textarea } from '@selbstbehalt/ui/textarea';
   import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Card, CardContent, CardHeader } from '@selbstbehalt/ui/card';
   import {
     AlertDialogRoot,
     AlertDialogContent,

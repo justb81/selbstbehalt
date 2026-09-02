@@ -29,22 +29,16 @@
   import LoadingState from '$lib/components/LoadingState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '@selbstbehalt/ui/button';
   import { Skeleton } from '$lib/components/ui/skeleton';
-  import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-  } from '$lib/components/ui/card';
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@selbstbehalt/ui/card';
   import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-  } from '$lib/components/ui/select';
+  } from '@selbstbehalt/ui/select';
 
   type PersonOption = { id: string; label: string };
 

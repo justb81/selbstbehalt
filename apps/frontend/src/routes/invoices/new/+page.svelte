@@ -19,8 +19,8 @@
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import { consumeSharedFile, SHARE_CACHE_NAME } from '$lib/pwa/share-target';
   import EmptyState from '$lib/components/EmptyState.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
 
   let insuredOptions = $state<InsuredOption[]>([]);
   let loadingPersons = $state(true);

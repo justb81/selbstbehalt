@@ -41,16 +41,16 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
   import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Input } from '@selbstbehalt/ui/input';
+  import { Label } from '@selbstbehalt/ui/label';
   import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-  } from '$lib/components/ui/select';
+  } from '@selbstbehalt/ui/select';
   import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
   import {
     Table,

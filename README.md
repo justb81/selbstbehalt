@@ -77,12 +77,13 @@ follows from each — in [`docs/architecture.md`](docs/architecture.md) §2.2 an
 
 ## Architecture
 
-A pnpm monorepo with five workspaces:
+A pnpm monorepo with six workspaces:
 
 - **`apps/frontend/`** — SvelteKit (Svelte 5, TypeScript) Progressive Web App. Installable on Android/desktop, offline-capable.
 - **`apps/backend/`** — Hono (TypeScript) REST API on port 8080, backed by SQLite via Drizzle ORM.
 - **`apps/goae-waechter/`** — the standalone, backend-free GOÄ-Wächter demo (see [Live demo](#live-demo)).
 - **`packages/medic-invoice-check/`** — the shared scan-and-check engine: on-device OCR in a Web Worker via `ppu-paddle-ocr` (PP-OCRv6 on ONNX Runtime, WebGPU + WASM fallback), the GOÄ/GOZ/GOT parser and rule validation, and the scan/review UI.
+- **`packages/ui/`** — the shadcn-svelte primitives shared by the two apps and the check engine, plus the `cn()` class helper.
 - **`packages/shared/`** — Zod schemas, types and domain helpers used by all of the above.
 
 Deployed via Docker Compose, intended for a home network (Proxmox LXC / NAS) with optional VPN access.
@@ -117,6 +118,7 @@ The repository is a [pnpm workspace](https://pnpm.io/workspaces) monorepo — se
 - [`apps/backend/`](apps/backend/) — Hono REST API + SQLite
 - [`apps/goae-waechter/`](apps/goae-waechter/) — standalone GOÄ-Wächter demo PWA
 - [`packages/medic-invoice-check/`](packages/medic-invoice-check/) — OCR + GOÄ/GOZ/GOT check engine
+- [`packages/ui/`](packages/ui/) — shared shadcn-svelte primitives + `cn()`
 - [`packages/shared/`](packages/shared/) — Zod schemas, types, domain helpers
 
 Tooling is shared from the repo root to stay DRY: a single [`tsconfig.base.json`](tsconfig.base.json) (strict mode), one flat [`eslint.config.js`](eslint.config.js), and one [`.prettierrc.json`](.prettierrc.json). Each package extends/runs these. Unit and component tests use [Vitest](https://vitest.dev/) (with `@testing-library/svelte`); E2E uses [Playwright](https://playwright.dev/). Coverage is enforced via v8 thresholds — the domain-critical helpers under `apps/frontend/src/lib/utils/` (GOÄ parser, Günstigerprüfung) carry a stricter ≥90% bar.
@@ -305,9 +307,10 @@ to reproduce; it is kept to that one line for exactly that reason.
 
 ### Third-party components
 
-The UI primitives under `src/lib/components/ui/` are
-[shadcn-svelte](https://shadcn-svelte.com/) components, added and updated by its
-CLI (see the `ui` alias in each app's `components.json`), and the agent skill
+The UI primitives under `src/lib/components/ui/` — the shared set in
+[`packages/ui/`](packages/ui/) and the frontend-only additions in `apps/frontend/` —
+are [shadcn-svelte](https://shadcn-svelte.com/) components, added and updated by
+its CLI (see the `ui` alias in each package's `components.json`), and the agent skill
 under [`.agents/skills/shadcn/`](.agents/skills/shadcn/) is vendored from
 [shadcn/ui](https://github.com/shadcn-ui/ui) (pinned in
 [`skills-lock.json`](skills-lock.json)). Both remain under their own upstream

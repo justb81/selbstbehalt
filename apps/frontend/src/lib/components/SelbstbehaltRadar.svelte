@@ -15,9 +15,9 @@
 <script lang="ts">
   import { formatEur } from '@selbstbehalt/shared';
   import type { SBRadar, SBRadarState } from '$lib/utils/selbstbehalt-radar';
-  import { cn } from '$lib/utils';
+  import { cn } from '@selbstbehalt/ui/utils';
   import { Badge } from '$lib/components/ui/badge';
-  import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import { Card, CardContent, CardHeader } from '@selbstbehalt/ui/card';
   import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 
   let {

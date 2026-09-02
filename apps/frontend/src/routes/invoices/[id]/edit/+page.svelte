@@ -25,8 +25,8 @@
   import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Card, CardContent } from '@selbstbehalt/ui/card';
 
   const invoiceId = $derived(page.params.id as string);
 

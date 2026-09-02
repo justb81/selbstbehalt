@@ -4,7 +4,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { type Contract, type ContractType } from '@selbstbehalt/shared';
-  import { Card, CardHeader, CardContent, CardFooter } from '$lib/components/ui/card';
+  import { Card, CardHeader, CardContent, CardFooter } from '@selbstbehalt/ui/card';
   import { Badge } from '$lib/components/ui/badge';
 
   let {

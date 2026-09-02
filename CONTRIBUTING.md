@@ -42,12 +42,13 @@ pnpm typecheck      # type-check every workspace package
 
 Copy [`.env.example`](.env.example) to `.env` and adjust it for your setup.
 
-This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with five
+This is a [pnpm workspace](https://pnpm.io/workspaces) monorepo with six
 packages — [`apps/frontend/`](apps/frontend/) (SvelteKit PWA),
 [`apps/backend/`](apps/backend/) (Hono REST API + SQLite),
 [`apps/goae-waechter/`](apps/goae-waechter/) (the standalone GOÄ-Wächter demo),
 [`packages/medic-invoice-check/`](packages/medic-invoice-check/) (on-device OCR +
-GOÄ/GOZ/GOT check engine) and [`packages/shared/`](packages/shared/) (Zod schemas,
+GOÄ/GOZ/GOT check engine), [`packages/ui/`](packages/ui/) (the shared
+shadcn-svelte primitives) and [`packages/shared/`](packages/shared/) (Zod schemas,
 types, domain helpers). See [`README.md`](README.md) and
 [`docs/architecture.md`](docs/architecture.md) for the architecture.
 
@@ -118,8 +119,8 @@ pnpm build
   runs it on every change. Vendored, generated and comment-less files are
   excluded with a documented reason in
   [`scripts/check-spdx-headers.mjs`](scripts/check-spdx-headers.mjs) — notably
-  the shadcn-svelte components under `src/lib/components/ui/`, which stay under
-  their own upstream license. Contributing does not require adding your own
+  the shadcn-svelte components under `src/lib/components/ui/` (in `packages/ui/`
+  and `apps/frontend/`), which stay under their own upstream license. Contributing does not require adding your own
   copyright line: `and contributors` covers it.
 
 ## Privacy constraints (non-negotiable)

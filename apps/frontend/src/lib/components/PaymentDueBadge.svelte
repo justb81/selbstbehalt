@@ -9,7 +9,7 @@
 <script lang="ts">
   import { formatDate, type Invoice, type PaymentDueState } from '@selbstbehalt/shared';
   import { Badge } from '$lib/components/ui/badge';
-  import { cn } from '$lib/utils';
+  import { cn } from '@selbstbehalt/ui/utils';
   import { classifyInvoiceDue, type PaymentDueOptions } from '$lib/utils/payment-reminders';
 
   let {

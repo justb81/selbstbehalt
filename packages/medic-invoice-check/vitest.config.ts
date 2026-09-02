@@ -21,9 +21,6 @@ export default defineConfig({
       exclude: [
         'src/**/*.d.ts',
         'src/lib/index.ts',
-        // shadcn-svelte generated components are vendored UI primitives; they
-        // are not authored here and do not need unit-test coverage.
-        'src/lib/components/ui/**',
         // Test-only harness for InvoiceReview.
         'src/lib/components/InvoiceReviewTestHarness.svelte',
       ],

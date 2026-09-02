@@ -4,7 +4,7 @@
   import type { ComponentProps } from 'svelte';
   import AlertDialogOverlay from './alert-dialog-overlay.svelte';
   import AlertDialogPortal from './alert-dialog-portal.svelte';
-  import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
+  import { cn, type WithoutChildrenOrChild } from '@selbstbehalt/ui/utils';
 
   let {
     ref = $bindable(null),

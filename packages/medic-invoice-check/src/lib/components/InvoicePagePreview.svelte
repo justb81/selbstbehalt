@@ -28,11 +28,11 @@
 -->
 <script lang="ts">
   import { quadBounds, type ScanPreview } from '../ocr/preview';
-  import { Button } from './ui/button';
+  import { Button } from '@selbstbehalt/ui/button';
   import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
   import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
   import FileTextIcon from '@lucide/svelte/icons/file-text';
-  import { cn } from '../utils';
+  import { cn } from '@selbstbehalt/ui/utils';
 
   let {
     preview,
