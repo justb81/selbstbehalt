@@ -16,6 +16,7 @@ Phases 0–3 of `docs/roadmap.md` are substantially done — the app is self-hos
 Reference material:
 
 - `docs/architecture.md` — the complete technical and functional specification (German), structured along the twelve [arc42](https://arc42.org/) chapters. This is the single source of truth; follow it when implementing, and put new architecture content in the chapter it belongs to rather than appending it.
+- `docs/adr/` — the Architecture Decision Records behind `architecture.md` §9 (one file per decision: context, alternatives, consequences). A new architecture decision gets an ADR from `0000-template.md` plus a row in §9; a changed one is superseded by a new ADR, never rewritten.
 - `docs/roadmap.md` — the phased implementation plan, mirroring the GitHub issues (phases, dependencies, label scheme).
 - `data/input/{goae,goz,got}/*.xml` — the official gesetze-im-internet.de legal-text exports of the GOÄ/GOZ/GOT fee schedules; build inputs from which the parser's JSON lookup tables are generated (not hand-maintained).
 
