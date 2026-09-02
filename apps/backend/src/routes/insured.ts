@@ -29,7 +29,7 @@ import {
   toInsuredPersonInsert,
   toInsuredPersonUpdate,
 } from '../lib/serialize.js';
-import { parseJsonBody } from '../lib/validation.js';
+import { jsonBody } from '../lib/validation.js';
 
 // The nested create takes its contract from the path, so the body omits it.
 const nestedCreateSchema = insuredPersonCreateSchema.omit({ contract_id: true });
@@ -89,10 +89,10 @@ export function createInsuredRoute(db: Database) {
       const body: InsuredPerson[] = rows.map(serializeInsuredPerson);
       return c.json(body);
     })
-    .post('/contracts/:contractId/insured', async (c) => {
+    .post('/contracts/:contractId/insured', jsonBody(nestedCreateSchema), (c) => {
       const contractId = c.req.param('contractId');
       assertFkExists(db, contracts, contractId, `Vertrag ${contractId} existiert nicht`);
-      const input = await parseJsonBody(c, nestedCreateSchema);
+      const input = c.req.valid('json');
       assertFkExists(db, persons, input.person_id, `Person ${input.person_id} existiert nicht`);
       assertNoDuplicateInsured(db, contractId, input.person_id);
       const row = db
@@ -112,10 +112,10 @@ export function createInsuredRoute(db: Database) {
       );
       return c.json(serializeInsuredPerson(row));
     })
-    .put('/insured/:id', async (c) => {
+    .put('/insured/:id', jsonBody(insuredPersonUpdateSchema), (c) => {
       const id = c.req.param('id');
       const existing = requireRow(() => findInsured(db, id), 'Versicherte Person nicht gefunden');
-      const input = await parseJsonBody(c, insuredPersonUpdateSchema);
+      const input = c.req.valid('json');
       if (input.contract_id !== undefined)
         assertFkExists(
           db,

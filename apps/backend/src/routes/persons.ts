@@ -15,7 +15,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { Database } from '../db/client.js';
 import { persons } from '../db/schema.js';
 import { serializePerson, toPersonInsert, toPersonUpdate } from '../lib/serialize.js';
-import { parseJsonBody } from '../lib/validation.js';
+import { jsonBody } from '../lib/validation.js';
 
 function findPerson(db: Database, id: string) {
   return db.select().from(persons).where(eq(persons.id, id)).get();
@@ -28,8 +28,8 @@ export function createPersonsRoute(db: Database) {
       const body: Person[] = rows.map(serializePerson);
       return c.json(body);
     })
-    .post('/', async (c) => {
-      const input = await parseJsonBody(c, personCreateSchema);
+    .post('/', jsonBody(personCreateSchema), (c) => {
+      const input = c.req.valid('json');
       const row = db.insert(persons).values(toPersonInsert(input)).returning().get();
       return c.json(serializePerson(row), 201);
     })
@@ -38,10 +38,10 @@ export function createPersonsRoute(db: Database) {
       if (!row) throw new HTTPException(404, { message: 'Person nicht gefunden' });
       return c.json(serializePerson(row));
     })
-    .put('/:id', async (c) => {
+    .put('/:id', jsonBody(personUpdateSchema), (c) => {
       const id = c.req.param('id');
       if (!findPerson(db, id)) throw new HTTPException(404, { message: 'Person nicht gefunden' });
-      const input = await parseJsonBody(c, personUpdateSchema);
+      const input = c.req.valid('json');
       const changes = toPersonUpdate(input);
       const row =
         Object.keys(changes).length > 0

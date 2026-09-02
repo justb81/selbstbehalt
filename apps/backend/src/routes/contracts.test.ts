@@ -78,6 +78,12 @@ describe('GET /api/contracts', () => {
     expect(filtered).toHaveLength(1);
     expect(filtered[0].insurer_name).toBe('DKV');
   });
+
+  it('rejects a malformed policyholder_id filter with 400', async () => {
+    const res = await app.request('/api/contracts?policyholder_id=kein-uuid');
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.message).toContain('policyholder_id');
+  });
 });
 
 describe('GET /api/contracts/:id', () => {
