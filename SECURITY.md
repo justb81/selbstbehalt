@@ -47,6 +47,9 @@ every pull request and push to `main`, plus a weekly schedule:
   retained as a downloadable artifact.
 - **Dependabot** ([`.github/dependabot.yml`](.github/dependabot.yml)) — grouped,
   cooldown-gated updates for npm packages and GitHub Actions.
+- **Workflow hardening** — every action is pinned to a full commit SHA (with the
+  version as a trailing comment), so a re-pointed upstream tag cannot inject
+  code into a run; every workflow declares a minimal `permissions:` block.
 
 These workflows live in [`.github/workflows/`](.github/workflows/) and are
 documented in the [README](README.md#security--supply-chain-automation).

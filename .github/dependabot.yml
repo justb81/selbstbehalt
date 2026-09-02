@@ -33,7 +33,9 @@ updates:
       - dependency-name: typescript
         update-types: [version-update:semver-major]
 
-  # GitHub Actions used by the CI workflows.
+  # GitHub Actions used by the CI workflows. All `uses:` refs are pinned to a
+  # full commit SHA with the version in a trailing comment; Dependabot updates
+  # SHA and comment together.
   - package-ecosystem: github-actions
     directory: /
     schedule:
