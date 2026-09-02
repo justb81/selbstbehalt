@@ -10,6 +10,7 @@
   import { onMount } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import {
+    CONTRACT_TYPE_LABELS,
     contractTypeValues,
     formatDate,
     todayIso,
@@ -30,12 +31,6 @@
     SelectValue,
   } from '@selbstbehalt/ui/select';
   import { Checkbox } from '$lib/components/ui/checkbox';
-
-  const TYPE_LABELS: Record<ContractType, string> = {
-    vollversicherung: 'Vollversicherung',
-    zusatztarif: 'Zusatztarif',
-    beihilfe: 'Beihilfe',
-  };
 
   const personLabel = (person: Person) =>
     `${person.name}${person.birth_date ? ` (geb. ${formatDate(person.birth_date)})` : ''}`;
@@ -154,14 +149,17 @@
                 type="single"
                 value={type}
                 onValueChange={(v: string) => (type = v as ContractType)}
-                items={contractTypeValues.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
+                items={contractTypeValues.map((t) => ({
+                  value: t,
+                  label: CONTRACT_TYPE_LABELS[t],
+                }))}
               >
                 <SelectTrigger id="type" class="w-full">
                   <SelectValue placeholder="Bitte wählen …" />
                 </SelectTrigger>
                 <SelectContent>
                   {#each contractTypeValues as t (t)}
-                    <SelectItem value={t} label={TYPE_LABELS[t]} />
+                    <SelectItem value={t} label={CONTRACT_TYPE_LABELS[t]} />
                   {/each}
                 </SelectContent>
               </Select>

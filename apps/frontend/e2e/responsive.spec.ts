@@ -5,7 +5,7 @@
 // stays reachable at the narrowest supported width.
 import { expect, test } from '@playwright/test';
 
-import { INVOICE_ID, mockBackend } from './fixtures';
+import { CONTRACT_ID, INVOICE_ID, mockBackend } from './fixtures';
 
 const VIEWPORTS = [
   { name: '360×800 (small Android)', width: 360, height: 800 },
@@ -40,6 +40,38 @@ for (const viewport of VIEWPORTS) {
       await page.goto(`/invoices/${INVOICE_ID}`);
       await expect(page.getByRole('table')).toBeVisible();
       await expectNoHorizontalOverflow(page);
+    });
+
+    // The insured-person form carries four repeaters (BRE ladder, Erstattungs-
+    // staffel, Summengrenzen, Aufbaujahre). They are real tables now (issue
+    // #465), so a narrow viewport scrolls them inside their own container
+    // instead of dragging the whole page sideways.
+    test('insured-person form repeaters scroll in their own container', async ({ page }) => {
+      await mockBackend(page, { populated: true });
+      await page.goto(`/contracts/${CONTRACT_ID}`);
+
+      await page.getByRole('button', { name: '+ Person hinzufügen' }).click();
+      await page.getByRole('checkbox', { name: 'BRE-Staffel konfigurieren' }).click();
+      await expect(page.getByRole('columnheader', { name: 'Leistungsfreie Jahre' })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+
+      await page.getByRole('checkbox', { name: 'Enthaltene Leistungen konfigurieren' }).click();
+      await page.getByRole('button', { name: /Leistungsbereich hinzufügen/ }).click();
+      for (const box of ['Erstattungsstaffel', 'Summengrenzen', 'Aufbaujahre (Zahnstaffel)']) {
+        await page.getByRole('checkbox', { name: box }).click();
+      }
+      await expect(page.getByRole('columnheader', { name: 'Bis (€)' })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+
+      // Each table owns its scroll container, so a wide row stays inside it.
+      const containers = page.locator('[data-slot="table-container"]');
+      await expect(containers.first()).toBeVisible();
+      for (const container of await containers.all()) {
+        const overflows = await container.evaluate(
+          (el) => getComputedStyle(el).overflowX === 'auto',
+        );
+        expect(overflows).toBe(true);
+      }
     });
 
     test('bottom nav "Mehr" sheet reaches all overflow items without horizontal scroll', async ({

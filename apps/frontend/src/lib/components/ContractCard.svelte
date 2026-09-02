@@ -3,7 +3,7 @@
 <!-- Contract summary card (docs/architecture.md §5.2, issue #21). -->
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import { type Contract, type ContractType } from '@selbstbehalt/shared';
+  import { CONTRACT_TYPE_LABELS, type Contract } from '@selbstbehalt/shared';
   import { Card, CardHeader, CardContent, CardFooter } from '@selbstbehalt/ui/card';
   import { Badge } from '$lib/components/ui/badge';
 
@@ -19,19 +19,13 @@
      */
     insuredCount?: number | null;
   } = $props();
-
-  const TYPE_LABELS: Record<ContractType, string> = {
-    vollversicherung: 'Vollversicherung',
-    zusatztarif: 'Zusatztarif',
-    beihilfe: 'Beihilfe',
-  };
 </script>
 
 <a href={resolve('/contracts/[id]', { id: contract.id })} class="block no-underline text-inherit">
   <Card class="hover:shadow-md transition-shadow cursor-pointer hover:border-primary">
     <CardHeader class="flex-row items-center justify-between gap-2 flex-wrap">
       <strong class="text-base font-semibold text-foreground">{contract.insurer_name}</strong>
-      <Badge variant="secondary">{TYPE_LABELS[contract.type]}</Badge>
+      <Badge variant="secondary">{CONTRACT_TYPE_LABELS[contract.type]}</Badge>
     </CardHeader>
 
     {#if contract.contract_number}

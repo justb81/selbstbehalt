@@ -13,6 +13,7 @@
   import type { Person } from '$lib/api/resources';
   import { formatDate } from '@selbstbehalt/shared';
   import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
+  import { destructiveOutlineClass } from '$lib/utils/button-variants';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
@@ -192,7 +193,7 @@
             <Button variant="outline" href={resolve('/contracts')}>Verträge anzeigen</Button>
             <Button
               variant="outline"
-              class="border-destructive text-destructive hover:bg-destructive/10"
+              class={destructiveOutlineClass}
               onclick={() => {
                 confirmDelete = true;
               }}
