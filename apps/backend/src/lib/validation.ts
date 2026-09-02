@@ -20,8 +20,23 @@ function formatZodError(error: ZodError): string {
     .join('; ');
 }
 
+/**
+ * `application/json`, with an optional parameter such as `; charset=utf-8`.
+ * Insisting on it makes every write endpoint unreachable for a cross-site
+ * `<form>` post — a form can only send `multipart/form-data`,
+ * `application/x-www-form-urlencoded` or `text/plain` — on top of the CSRF
+ * middleware (#404).
+ */
+const JSON_CONTENT_TYPE = /^application\/json\s*(;|$)/i;
+
 /** Read and validate the JSON request body, throwing a 400 on malformed input. */
 export async function parseJsonBody<T>(c: Context, schema: ZodType<T>): Promise<T> {
+  if (!JSON_CONTENT_TYPE.test(c.req.header('content-type')?.trim() ?? '')) {
+    throw new HTTPException(415, {
+      message: 'Content-Type muss application/json sein',
+    });
+  }
+
   let raw: unknown;
   try {
     raw = await c.req.json();

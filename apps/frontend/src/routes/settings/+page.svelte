@@ -149,13 +149,14 @@
     const file = importConfirmFile;
     importConfirmFile = null;
     try {
-      const url = resolveApiBaseUrl() + '/api/import/db';
-      const formData = new FormData();
-      formData.append('file', file);
-      const headers: Record<string, string> = {};
+      // Raw binary body, not a multipart form: the backend accepts nothing
+      // else, so that no cross-site `<form>` can reach the destructive restore
+      // (#404). `?confirm=true` is the endpoint's second, explicit guard.
+      const url = resolveApiBaseUrl() + '/api/import/db?confirm=true';
+      const headers: Record<string, string> = { 'Content-Type': 'application/octet-stream' };
       const key = resolveApiKey();
       if (key) headers['X-API-Key'] = key;
-      const res = await fetch(url, { method: 'POST', headers, body: formData });
+      const res = await fetch(url, { method: 'POST', headers, body: file });
       const json: unknown = await res.json().catch(() => null);
       if (!res.ok) {
         const msg =

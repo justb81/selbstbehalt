@@ -6,9 +6,11 @@
 //
 //   - GET  /export/db   streams a consistent snapshot of the SQLite database as
 //                       a download (`better-sqlite3` `serialize()`).
-//   - POST /import/db   validates an uploaded SQLite file (size, magic bytes,
-//                       integrity, schema compatibility), backs up the current
-//                       database, then atomically reloads the app tables from it.
+//   - POST /import/db   validates an uploaded SQLite file (content type, size,
+//                       magic bytes, integrity, schema compatibility), backs up
+//                       the current database, then atomically reloads the app
+//                       tables from it. The body is the raw file — see
+//                       IMPORT_CONTENT_TYPES for why no multipart form.
 //
 // The import is destructive, so it is double-guarded: a `?confirm=true` is
 // required, and the current database is snapshotted to a `.bak-<ts>` file before
@@ -76,16 +78,22 @@ function exportFilename(): string {
   return `selbstbehalt-${new Date().toISOString().slice(0, 10)}.sqlite`;
 }
 
-/** Read the uploaded bytes from either a multipart `file` field or a raw body. */
+/**
+ * Content types accepted for an upload. Binary-only on purpose (#404): an HTML
+ * `<form>` can only send `multipart/form-data`, `application/x-www-form-
+ * urlencoded` or `text/plain`, so a cross-site form post cannot even reach the
+ * destructive restore — a second line of defence behind the CSRF middleware.
+ * `application/x-sqlite3` is what `GET /export/db` itself hands out.
+ */
+const IMPORT_CONTENT_TYPES = ['application/octet-stream', 'application/x-sqlite3'];
+
+/** Read the raw uploaded bytes, rejecting anything but a binary body. */
 async function readUpload(c: Context): Promise<Uint8Array> {
-  const contentType = c.req.header('content-type') ?? '';
-  if (contentType.includes('multipart/form-data')) {
-    const body = await c.req.parseBody();
-    const file = body['file'];
-    if (!(file instanceof File)) {
-      throw new HTTPException(400, { message: 'Multipart-Upload ohne Feld "file"' });
-    }
-    return new Uint8Array(await file.arrayBuffer());
+  const contentType = (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+  if (!IMPORT_CONTENT_TYPES.includes(contentType)) {
+    throw new HTTPException(415, {
+      message: `Upload muss als Rohdaten gesendet werden (Content-Type: ${IMPORT_CONTENT_TYPES.join(' oder ')})`,
+    });
   }
   const buffer = await c.req.arrayBuffer();
   return new Uint8Array(buffer);

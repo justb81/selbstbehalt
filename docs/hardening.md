@@ -112,13 +112,50 @@ IP/MagicDNS name; the reverse proxy's Basic Auth still applies unchanged.
    `/api/health` liveness probe.
 3. Set **`CORS_ORIGINS`** to the frontend's exact origin — not `*`, which
    would let any website's script call your API with a stolen or brute-forced
-   key.
+   key. This is required rather than merely advisable: the list doubles as the
+   CSRF write allow-list, so with `*` every cross-site write is rejected with
+   403 (see "CSRF protection" below).
 4. Give the backend's own route HTTPS too (another Traefik label or nginx
    `server` block) — `X-API-Key` is a bearer secret and must never travel over
    plain HTTP.
 
 See [`.env.example`](../.env.example) for where each of these variables is
 wired into `docker-compose.yml`.
+
+## CSRF protection
+
+Nothing to configure, but worth knowing why a misconfigured `CORS_ORIGINS`
+now produces 403s instead of silently working.
+
+Two of the three auth modes authenticate *ambiently*: with `API_KEY` unset
+(the default) the API asks for nothing at all, and behind reverse-proxy Basic
+Auth the browser attaches the cached credentials to every request to that
+origin — no matter which page triggered it. CORS does not help there: a
+`multipart/form-data` POST is a CORS "simple request", so an auto-submitting
+`<form>` on a foreign page reaches the API without a preflight and
+`CORS_ORIGINS` never sees it. That was enough to replace the entire database
+through `POST /api/import/db`.
+
+The backend therefore checks every state-changing request
+(`apps/backend/src/middleware/csrf.ts`):
+
+- `hono/csrf` rejects the form-shaped content types
+  (`multipart/form-data`, `application/x-www-form-urlencoded`, `text/plain`)
+  unless `Origin`/`Sec-Fetch-Site` vouch for the request.
+- A `Sec-Fetch-Site` guard covers every other unsafe method — the JSON writes
+  a preflight would otherwise wave through under `CORS_ORIGINS=*`.
+- Allowed are the API's own origin (`X-Forwarded-Proto` is honoured, so a
+  TLS-terminating proxy is fine) and the origins `CORS_ORIGINS` names
+  **explicitly**. `*` deliberately does not widen this — "any origin may
+  read" is not "any web page may write".
+- Requests with neither `Origin` nor `Sec-Fetch-Site` are not
+  browser-initiated (curl, scripts, your backup cron) and pass through.
+
+Two content-type rules make the endpoints unreachable for a form at all: JSON
+write routes require `Content-Type: application/json`, and
+`POST /api/import/db` takes only a raw binary body
+(`application/octet-stream` or `application/x-sqlite3`) — see the `curl`
+example in [`self-hosting.md`](self-hosting.md#backup--restore).
 
 ## Client-side document parsing: pdf.js
 

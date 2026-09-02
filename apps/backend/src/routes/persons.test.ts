@@ -66,6 +66,20 @@ describe('/api/persons CRUD', () => {
     expect(list).toHaveLength(1);
   });
 
+  it('refuses a write whose Content-Type is not application/json (415, #404)', async () => {
+    // `text/plain` is one of the three types an HTML `<form>` can send, so
+    // insisting on `application/json` keeps every write endpoint out of reach
+    // of a form post — regardless of the CSRF middleware in front of it.
+    const res = await app.request('/api/persons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', 'Sec-Fetch-Site': 'same-origin' },
+      body: JSON.stringify({ name: 'Max Mustermann' }),
+    });
+    expect(res.status).toBe(415);
+    expect((await res.json()).error.message).toContain('application/json');
+    expect(await (await json('GET', '/api/persons')).json()).toHaveLength(0);
+  });
+
   it('returns 404 for an unknown person on GET, PUT and DELETE', async () => {
     expect((await json('GET', '/api/persons/does-not-exist')).status).toBe(404);
     expect((await json('PUT', '/api/persons/does-not-exist', { name: 'X' })).status).toBe(404);
