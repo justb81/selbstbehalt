@@ -14,6 +14,7 @@
   import {
     formatEur,
     insuredPersonLabel,
+    rollupYearToRY,
     type BREHistory,
     type InsuredPerson,
     type PositionYearRollup,
@@ -176,7 +177,7 @@
         radar: computeSelbstbehaltRadar({
           year: currentYear,
           // Safe now: a missing row on a *loaded* roll-up genuinely is R_Y = 0.
-          R_Y: row ? row.eligible_amount + row.refund_amount : 0,
+          R_Y: rollupYearToRY(row),
           alreadyReimbursed: row?.refund_amount ?? 0,
           selbstbehalt: ip.self_retention,
           breStructure: ip.bre_structure ?? null,
