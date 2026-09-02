@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.16.0](https://github.com/justb81/selbstbehalt/compare/v1.15.2...v1.16.0) (2026-09-02)
+
+### Features
+
+- **api:** flat insured list and invoices?include=positions, kill the N+1 fan-outs ([#472](https://github.com/justb81/selbstbehalt/issues/472)) ([ab4651e](https://github.com/justb81/selbstbehalt/commit/ab4651e1db6783f28a6bbefa74c22f5d6f53f5e2))
+- **frontend:** replace raw form controls with shadcn primitives ([#471](https://github.com/justb81/selbstbehalt/issues/471)) ([3a15a84](https://github.com/justb81/selbstbehalt/commit/3a15a84da834e2a7d4d36a90ef6866e53821e73e)), closes [#462](https://github.com/justb81/selbstbehalt/issues/462)
+- **frontend:** split contracts/[id] into shadcn form components ([#476](https://github.com/justb81/selbstbehalt/issues/476)) ([05992c5](https://github.com/justb81/selbstbehalt/commit/05992c5a2e47b8358899626e4b77dfeb64ecd98f)), closes [#445](https://github.com/justb81/selbstbehalt/issues/445) [#465](https://github.com/justb81/selbstbehalt/issues/465)
+- **frontend:** URL-synchronisierter Filterzustand + Nav-/Breadcrumb-Details ([#474](https://github.com/justb81/selbstbehalt/issues/474)) ([f84d7cb](https://github.com/justb81/selbstbehalt/commit/f84d7cbaaddf38e81f1d1c20c1b2bb7d2af5c0a9))
+
 ## [1.15.2](https://github.com/justb81/selbstbehalt/compare/v1.15.1...v1.15.2) (2026-09-02)
 
 ### Bug Fixes
