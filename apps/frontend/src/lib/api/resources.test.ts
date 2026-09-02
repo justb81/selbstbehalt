@@ -120,6 +120,30 @@ describe('createResources', () => {
     expect(calls[4]!.opts).toMatchObject({ method: 'DELETE' });
   });
 
+  it('lists every insured person flat, optionally narrowed to one contract (#463)', async () => {
+    const { request, calls } = stubRequester();
+    const { insured } = createResources(request);
+
+    await insured.listAll();
+    await insured.listAll({ contract_id: UUID });
+
+    expect(calls[0]!).toMatchObject({ path: '/api/insured' });
+    expect(calls[0]!.opts.query).toBeUndefined();
+    expect(calls[1]!.opts.query).toEqual({ contract_id: UUID });
+  });
+
+  it('asks for the invoice list with positions in one request (#463)', async () => {
+    const { request, calls } = stubRequester();
+    const { invoices } = createResources(request);
+
+    await invoices.list({ insured_person_id: UUID });
+    await invoices.listWithPositions({ insured_person_id: UUID });
+
+    expect(calls[0]!.opts.query).toEqual({ insured_person_id: UUID });
+    expect(calls[1]!).toMatchObject({ path: '/api/invoices' });
+    expect(calls[1]!.opts.query).toEqual({ insured_person_id: UUID, include: 'positions' });
+  });
+
   it('percent-encodes path identifiers', async () => {
     const { request, calls } = stubRequester();
     const { contracts } = createResources(request);

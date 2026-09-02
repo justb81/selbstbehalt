@@ -247,6 +247,54 @@ describe('GET /api/invoices', () => {
     expect(paid[0].status.payment).toBe('bezahlt');
   });
 
+  it('omits positions by default and returns them with ?include=positions (#463)', async () => {
+    const position = (goae: string, amount: number) => ({
+      goae_number: goae,
+      treatment_date: '2026-06-01',
+      multiplier: 2.3,
+      base_amount: amount / 2,
+      charged_amount: amount,
+    });
+    await createInvoice({
+      ...baseInvoice(),
+      provider_name: 'Dr. Zwei',
+      positions: [position('0001', 10.72), position('0003', 20.4)],
+    });
+    await createInvoice({ ...baseInvoice(), provider_name: 'Dr. Null' });
+
+    const plain = await (await app.request('/api/invoices')).json();
+    expect(plain).toHaveLength(2);
+    expect(plain.every((inv: { positions?: unknown }) => inv.positions === undefined)).toBe(true);
+
+    const withPositions = await (await app.request('/api/invoices?include=positions')).json();
+    expect(withPositions).toHaveLength(2);
+    const byProvider = Object.fromEntries(
+      withPositions.map((inv: { provider_name: string; positions: unknown[] }) => [
+        inv.provider_name,
+        inv.positions,
+      ]),
+    );
+    // Each invoice keeps its own lines — the single grouped query must not mix them.
+    expect(
+      (byProvider['Dr. Zwei'] as { goae_number: string }[]).map((p) => p.goae_number).sort(),
+    ).toEqual(['0001', '0003']);
+    expect(byProvider['Dr. Null']).toEqual([]);
+  });
+
+  it('combines ?include=positions with the filters', async () => {
+    await createInvoice({ ...baseInvoice(), provider_name: 'Dr. Treffer' });
+    await createInvoice({ ...baseInvoice(), provider_name: 'Dr. Daneben' });
+
+    const filtered = await (await app.request('/api/invoices?q=Treffer&include=positions')).json();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]).toMatchObject({ provider_name: 'Dr. Treffer', positions: [] });
+  });
+
+  it('rejects an unknown include value with 400', async () => {
+    const res = await app.request('/api/invoices?include=alles');
+    expect(res.status).toBe(400);
+  });
+
   it('treats LIKE wildcards in the search term literally', async () => {
     await createInvoice({ ...baseInvoice(), provider_name: 'Dr. 50% Rabatt' });
     await createInvoice({ ...baseInvoice(), provider_name: 'Dr. ohne Sonderzeichen' });

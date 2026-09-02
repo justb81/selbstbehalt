@@ -21,7 +21,6 @@
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
   import { Button } from '@selbstbehalt/ui/button';
 
   let invoices = $state<Invoice[]>([]);
@@ -49,27 +48,23 @@
     error = null;
     filterWarning = null;
     try {
-      const [invoiceList, personList, contractList] = await Promise.all([
+      const [invoiceList, personList] = await Promise.all([
         api.invoices.list(),
         api.persons.list(),
-        api.contracts.list(),
       ]);
       invoices = invoiceList;
       persons = personList;
-      // No "list all insured" endpoint — gather them per contract for the
-      // invoice → person mapping the Person filter needs. Settled and outside
-      // the spine: this feeds the *filter dropdown* only, and a `Promise.all`
-      // here used to take the whole archive down with it — "Rechnungen konnten
-      // nicht geladen werden.", with the invoices already sitting in state
-      // (issue #396).
-      const settled = await Promise.allSettled(contractList.map((c) => api.insured.list(c.id)));
-      const lists = settledValues(settled);
-      insuredPersons = lists.flatMap((list) => list ?? []);
-      filterWarning = partialFailureMessage(
-        lists.filter((l) => l === null).length,
-        lists.length,
-        'Personen-Filter',
-      );
+      // One flat request for the invoice → person mapping the Person filter needs
+      // (#463); it used to be one `insured.list` per contract. Caught separately
+      // because it sits outside the spine: it feeds the *filter dropdown* only, and
+      // letting it reject took the whole archive down with it — "Rechnungen konnten
+      // nicht geladen werden.", with the invoices already in state (issue #396).
+      try {
+        insuredPersons = await api.insured.listAll();
+      } catch {
+        insuredPersons = [];
+        filterWarning = 'Der Personen-Filter konnte nicht geladen werden.';
+      }
     } catch {
       error = 'Rechnungen konnten nicht geladen werden.';
     } finally {
@@ -94,7 +89,12 @@
     <ErrorState title="Fehler beim Laden" message={error} onRetry={load} />
   {:else}
     {#if filterWarning}
-      <ErrorState title="Filter unvollständig" message={filterWarning} onRetry={load} />
+      <ErrorState
+        variant="warning"
+        title="Filter unvollständig"
+        message={filterWarning}
+        onRetry={load}
+      />
     {/if}
     <InvoiceList
       {invoices}

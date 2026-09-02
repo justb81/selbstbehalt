@@ -21,6 +21,19 @@ export function settledValues<T>(results: readonly PromiseSettledResult<T>[]): (
 }
 
 /**
+ * The tuple counterpart of {@link settledValues}, for a `Promise.allSettled` over
+ * a fixed set of *differently typed* reads (e.g. contract + persons + invoices).
+ * Each slot keeps its own type and becomes `null` when that read rejected.
+ */
+export function settledTuple<T extends readonly unknown[]>(results: {
+  readonly [K in keyof T]: PromiseSettledResult<T[K]>;
+}): { [K in keyof T]: T[K] | null } {
+  return results.map((result) => (result.status === 'fulfilled' ? result.value : null)) as {
+    [K in keyof T]: T[K] | null;
+  };
+}
+
+/**
  * German notice for "k of n could not be loaded", or `null` when nothing failed
  * (so it doubles as the render guard).
  */

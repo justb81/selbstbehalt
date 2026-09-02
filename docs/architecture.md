@@ -466,13 +466,18 @@ GET    /api/contracts/:id             → Vertragsdetail inkl. versicherter Pers
 PUT    /api/contracts/:id             → Vertrag aktualisieren
 DELETE /api/contracts/:id             → Vertrag löschen
 
+GET    /api/insured                   → Alle versicherten Personen über alle Verträge
+                                         (optional ?contract_id=; ein Request statt einem je Vertrag, Issue #463)
 GET    /api/contracts/:id/insured     → Versicherte Personen eines Vertrags
 POST   /api/contracts/:id/insured     → Versicherte Person hinzufügen (mit KVNR, Tarif, SB, BRE)
 GET    /api/insured/:id               → Detail einer versicherten Person
 PUT    /api/insured/:id               → Versicherte Person aktualisieren
 DELETE /api/insured/:id               → Versicherte Person entfernen
 
-GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params)
+GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Params);
+                                         ?include=positions liefert sie inkl. Positionen in einem
+                                         Request — die Günstigerprüfung braucht die Positionen jeder
+                                         Rechnung (Issue #463)
 POST   /api/invoices                  → Neue Rechnung speichern
 GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + abgeleitetem Status
 PUT    /api/invoices/:id              → Rechnung aktualisieren (gesperrt sobald bezahlt oder eingereicht)
@@ -500,8 +505,9 @@ GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup
 POST   /api/import/db?confirm=true    → Datenbank-Wiederherstellung (roher Binär-Body, kein Formular — §7.3)
 ```
 
-Die Lese-Antworten der drei `insured`-Routen (`GET /api/contracts/:id/insured`,
-`GET /api/insured/:id` sowie die Rückgaben von `POST`/`PUT`) tragen zusätzlich zu den Spalten aus
+Die Lese-Antworten der `insured`-Routen (`GET /api/insured`,
+`GET /api/contracts/:id/insured`, `GET /api/insured/:id` sowie die Rückgaben von `POST`/`PUT`)
+tragen zusätzlich zu den Spalten aus
 `insured_persons` das Feld **`person_name`** — der Anzeigename der Person, per Join aus `persons`.
 Eine versicherte Person ist zuerst eine Person; Tarifname und KVNR sind Vertragsdaten und für
 Geschwister im selben Tarif identisch, taugen also nicht als Benennung (Issues #351, #358). Das

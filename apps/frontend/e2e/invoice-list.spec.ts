@@ -92,7 +92,8 @@ async function mock(page: Page): Promise<void> {
   await page.route('**/api/contracts', (r) =>
     r.request().method() === 'GET' ? r.fulfill({ json: [CONTRACT] }) : r.fallback(),
   );
-  await page.route('**/api/contracts/*/insured', (r) =>
+  // Flat list across all contracts (#463) — the archive's Person filter reads it.
+  await page.route('**/api/insured', (r) =>
     r.request().method() === 'GET'
       ? r.fulfill({
           json: [insured(IP_A, P_ALICE, ALICE.name), insured(IP_B, P_BOB, BOB.name)],

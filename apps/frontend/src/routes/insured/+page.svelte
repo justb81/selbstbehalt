@@ -20,7 +20,6 @@
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import { Badge } from '$lib/components/ui/badge';
-  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
 
   interface ContractGroup {
     contract: Contract;
@@ -39,21 +38,25 @@
     groupWarning = null;
     try {
       const contracts = await api.contracts.list();
-      // Früher `.catch(() => [])` plus ein `.filter(länge > 0)`: ein
-      // gescheiterter Lookup ließ den **ganzen Vertrag** aus der Liste fallen,
-      // und beim einzigen Vertrag behauptete die Seite, es gäbe keine
-      // versicherten Personen (issue #396).
-      const settled = await Promise.allSettled(contracts.map((c) => api.insured.list(c.id)));
-      const insuredLists = settledValues(settled);
+      // Ein flacher Request über alle Verträge (#463) statt eines Lookups je
+      // Vertrag; gruppiert wird client-seitig. Separat gefangen: scheitert er,
+      // bleiben die Verträge mit `insuredPersons = null` sichtbar — früher ließ
+      // ein `.catch(() => [])` plus `.filter(länge > 0)` den **ganzen Vertrag**
+      // aus der Liste fallen, und beim einzigen Vertrag behauptete die Seite,
+      // es gäbe keine versicherten Personen (issue #396).
+      let insuredByContract: Map<string, InsuredPerson[]> | null = null;
+      try {
+        const insured = await api.insured.listAll();
+        insuredByContract = new Map(
+          contracts.map((c) => [c.id, insured.filter((ip) => ip.contract_id === c.id)] as const),
+        );
+      } catch {
+        groupWarning = 'Die versicherten Personen konnten nicht geladen werden.';
+      }
       groups = contracts
-        .map((c, i) => ({ contract: c, insuredPersons: insuredLists[i] ?? null }))
+        .map((c) => ({ contract: c, insuredPersons: insuredByContract?.get(c.id) ?? null }))
         // Nur wirklich leere Verträge fliegen raus; gescheiterte bleiben sichtbar.
         .filter((g) => g.insuredPersons === null || g.insuredPersons.length > 0);
-      groupWarning = partialFailureMessage(
-        insuredLists.filter((l) => l === null).length,
-        insuredLists.length,
-        'Versicherte je Vertrag',
-      );
     } catch {
       error = 'Versicherte Personen konnten nicht geladen werden.';
     } finally {
@@ -91,7 +94,7 @@
     </EmptyState>
   {:else}
     {#if groupWarning}
-      <ErrorState title="Unvollständig geladen" message={groupWarning} onRetry={load} />
+      <ErrorState variant="warning" message={groupWarning} onRetry={load} />
     {/if}
     <div class="space-y-8">
       {#each groups as group (group.contract.id)}

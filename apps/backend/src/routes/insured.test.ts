@@ -146,6 +146,74 @@ describe('GET /api/contracts/:id/insured', () => {
   });
 });
 
+describe('GET /api/insured', () => {
+  it('lists the insured persons across all contracts in one request (#463)', async () => {
+    await json('POST', `/api/contracts/${contractId}/insured`, baseInsured());
+    const other = handle.db
+      .insert(contracts)
+      .values({
+        policyholderId: personId,
+        insurerName: 'Debeka',
+        type: 'zusatztarif',
+        startDate: '2025-01-01',
+      })
+      .returning()
+      .get().id;
+    const child = handle.db.insert(persons).values({ name: 'Lena' }).returning().get().id;
+    await json('POST', `/api/contracts/${other}/insured`, {
+      person_id: child,
+      monthly_premium: 42,
+    });
+
+    const res = await app.request('/api/insured');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    // The join is there too — the flat list is what the views name people from (#358).
+    expect(body.map((ip: { person_name: string }) => ip.person_name).sort()).toEqual([
+      'Erika Mustermann',
+      'Lena',
+    ]);
+    expect(body.map((ip: { contract_id: string }) => ip.contract_id).sort()).toEqual(
+      [contractId, other].sort(),
+    );
+  });
+
+  it('narrows the list to one contract with ?contract_id=', async () => {
+    await json('POST', `/api/contracts/${contractId}/insured`, baseInsured());
+    const other = handle.db
+      .insert(contracts)
+      .values({
+        policyholderId: personId,
+        insurerName: 'Debeka',
+        type: 'zusatztarif',
+        startDate: '2025-01-01',
+      })
+      .returning()
+      .get().id;
+    const child = handle.db.insert(persons).values({ name: 'Lena' }).returning().get().id;
+    await json('POST', `/api/contracts/${other}/insured`, {
+      person_id: child,
+      monthly_premium: 42,
+    });
+
+    const body = await (await app.request(`/api/insured?contract_id=${other}`)).json();
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({ contract_id: other, person_name: 'Lena' });
+  });
+
+  it('returns an empty list when nobody is insured yet', async () => {
+    const res = await app.request('/api/insured');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+  });
+
+  it('rejects a non-UUID contract_id with 400', async () => {
+    const res = await app.request('/api/insured?contract_id=nope');
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('GET/PUT/DELETE /api/insured/:id', () => {
   async function create() {
     return (await json('POST', `/api/contracts/${contractId}/insured`, baseInsured())).json();

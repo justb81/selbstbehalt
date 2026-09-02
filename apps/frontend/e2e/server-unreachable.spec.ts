@@ -86,11 +86,11 @@ test.describe('Backend nicht erreichbar', () => {
   });
 
   // Issue #396 — dasselbe Muster außerhalb von /stats. Das Prefix trifft
-  // `GET /api/contracts/:id/insured`, aber nicht `GET /api/contracts`: die
-  // Liste lädt, nur der Detail-Lookup fällt aus.
+  // `GET /api/insured`, aber nicht `GET /api/contracts`: die Vertragsliste lädt,
+  // nur die versicherten Personen fallen aus (seit #463 ein Request statt N).
   test('/contracts erfindet keinen Versicherten-Zähler', async ({ page }) => {
     await mockBackend(page, { populated: true });
-    await abortApi(page, '/api/contracts/');
+    await abortApi(page, '/api/insured');
 
     await page.goto('/contracts');
     await expect(page.getByRole('heading', { level: 1, name: 'Verträge' })).toBeVisible();
@@ -100,13 +100,13 @@ test.describe('Backend nicht erreichbar', () => {
     await expect(page.getByText('0 versicherte Personen')).toHaveCount(0);
     await expect(page.getByText('Versicherte: —')).toBeVisible();
     await expect(
-      page.getByText('Versicherten-Zähler: 1 von 1 konnten nicht geladen werden.'),
+      page.getByText('Die Anzahl der versicherten Personen konnte nicht geladen werden.'),
     ).toBeVisible();
   });
 
   test('/insured lässt keinen Vertrag verschwinden', async ({ page }) => {
     await mockBackend(page, { populated: true });
-    await abortApi(page, '/api/contracts/');
+    await abortApi(page, '/api/insured');
 
     await page.goto('/insured');
     await expect(page.getByRole('heading', { level: 1, name: 'Versicherte' })).toBeVisible();
@@ -114,7 +114,7 @@ test.describe('Backend nicht erreichbar', () => {
     // Der Vertrag bleibt gelistet …
     await expect(page.getByText('AOK')).toBeVisible();
     await expect(
-      page.getByText('Versicherte Personen konnten nicht geladen werden.'),
+      page.getByText('Die versicherten Personen konnten nicht geladen werden.'),
     ).toBeVisible();
     // … und die Seite behauptet nicht, es gäbe keine.
     await expect(page.getByText('Noch keine versicherten Personen vorhanden.')).toHaveCount(0);
@@ -122,7 +122,7 @@ test.describe('Backend nicht erreichbar', () => {
 
   test('/invoices behält das Archiv, wenn nur der Personen-Filter scheitert', async ({ page }) => {
     await mockBackend(page, { populated: true });
-    await abortApi(page, '/api/contracts/');
+    await abortApi(page, '/api/insured');
 
     await page.goto('/invoices');
     await expect(page.getByRole('heading', { level: 1, name: 'Rechnungen' })).toBeVisible();
@@ -130,5 +130,6 @@ test.describe('Backend nicht erreichbar', () => {
     // Die Rechnung ist geladen — nur das Filter-Dropdown ist unvollständig.
     await expect(page.getByText('Praxis Dr. med. Mustermann')).toBeVisible();
     await expect(page.getByText('Rechnungen konnten nicht geladen werden.')).toHaveCount(0);
+    await expect(page.getByText('Der Personen-Filter konnte nicht geladen werden.')).toBeVisible();
   });
 });

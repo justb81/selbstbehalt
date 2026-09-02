@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import { partialFailureMessage, settledValues } from './partial-load';
+import { partialFailureMessage, settledTuple, settledValues } from './partial-load';
 
 describe('settledValues', () => {
   it('keeps the successes and marks the failures as null, in input order', async () => {
@@ -22,6 +22,27 @@ describe('settledValues', () => {
 
   it('returns an empty list for no tasks', () => {
     expect(settledValues([])).toEqual([]);
+  });
+});
+
+describe('settledTuple', () => {
+  it("keeps each slot's own type and nulls only the rejected one", async () => {
+    const results = await Promise.allSettled([
+      Promise.resolve({ id: 'c1' }),
+      Promise.reject(new Error('weg')),
+      Promise.resolve([1, 2]),
+    ] as const);
+
+    const [contract, persons, numbers] = settledTuple<[{ id: string }, string[], number[]]>(
+      results as never,
+    );
+    expect(contract).toEqual({ id: 'c1' });
+    expect(persons).toBeNull();
+    expect(numbers).toEqual([1, 2]);
+  });
+
+  it('returns an empty tuple for no tasks', () => {
+    expect(settledTuple<[]>([])).toEqual([]);
   });
 });
 

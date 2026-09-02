@@ -13,7 +13,6 @@
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
-  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
   import { Button } from '@selbstbehalt/ui/button';
 
   let contracts = $state<Contract[]>([]);
@@ -30,20 +29,20 @@
     countWarning = null;
     try {
       const list = await api.contracts.list();
-      // Settled statt eines verschluckenden try/catch: ein gescheiterter Lookup
-      // ergab früher `0` und damit „0 versicherte Personen" für einen Vertrag
-      // mit drei — ununterscheidbar von einem wirklich leeren (issue #396).
-      const settled = await Promise.allSettled(list.map((c) => api.insured.list(c.id)));
-      const values = settledValues(settled);
       contracts = list;
-      insuredCounts = Object.fromEntries(
-        list.map((c, i) => [c.id, values[i]?.length ?? null] as const),
-      );
-      countWarning = partialFailureMessage(
-        values.filter((v) => v === null).length,
-        values.length,
-        'Versicherten-Zähler',
-      );
+      // Ein flacher Request statt eines Lookups je Vertrag (#463); gruppiert wird
+      // client-seitig. Separat gefangen, nicht verschluckt: scheitert er, bleibt
+      // die Zahl `null` und damit „—" — früher stand da `0` und damit „0
+      // versicherte Personen" für einen Vertrag mit drei (issue #396).
+      try {
+        const insured = await api.insured.listAll();
+        insuredCounts = Object.fromEntries(
+          list.map((c) => [c.id, insured.filter((ip) => ip.contract_id === c.id).length] as const),
+        );
+      } catch {
+        insuredCounts = Object.fromEntries(list.map((c) => [c.id, null] as const));
+        countWarning = 'Die Anzahl der versicherten Personen konnte nicht geladen werden.';
+      }
     } catch {
       error = 'Verträge konnten nicht geladen werden.';
     } finally {
@@ -74,7 +73,7 @@
     </EmptyState>
   {:else}
     {#if countWarning}
-      <ErrorState title="Unvollständig geladen" message={countWarning} onRetry={load} />
+      <ErrorState variant="warning" message={countWarning} onRetry={load} />
     {/if}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each contracts as contract (contract.id)}
