@@ -83,6 +83,9 @@ const GENERIC_BASENAMES = new Set([
   '+error',
   'README',
   'CHANGELOG',
+  // Root manifests: every doc that mentions tooling names `package.json`, and none
+  // of those lines says anything about the dependency that changed inside it.
+  'package',
 ]);
 
 /** Files whose change says nothing about the prose: the prose itself, and lockfiles. */
@@ -108,6 +111,11 @@ function tokenPattern(identifier) {
 // to prevent.
 const CODEISH =
   /`[^`]+`|[\w./+[\]-]*\.(?:ts|mts|cts|js|mjs|cjs|svelte|json|css|html|ya?ml)\b|\/[\w./+[\]-]+/g;
+
+// Links carry paths that look exactly like repository paths, so a link to
+// docs.github.com/pages/… would "mention" a local pages.ts. Seen in CI on the very
+// first run of this check — stripped before the spans above are extracted.
+const URL_IN_PROSE = /\bhttps?:\/\/\S+/g;
 
 /** Hits beyond this per identifier are counted, not listed. */
 const MAX_HITS = 12;
@@ -145,7 +153,7 @@ function reportAffectedDocs() {
     const hits = [];
     for (const doc of docs) {
       for (const [i, line] of doc.lines.entries()) {
-        const codeish = (line.match(CODEISH) ?? []).join(' ');
+        const codeish = (line.replace(URL_IN_PROSE, ' ').match(CODEISH) ?? []).join(' ');
         if (codeish && pattern.test(codeish)) {
           hits.push(`${doc.path}:${i + 1}: ${line.trim().slice(0, 110)}`);
         }
