@@ -256,13 +256,15 @@ Der Validator (`scripts/validate-fee-schedules.mjs`, dependency-frei) prüft:
 
 ## 7. Generierung & Tooling
 
-Beides ist dependency-frei (`node`, keine externen Pakete — wie
+Beides läuft auf `node` und nutzt ausschließlich devDependencies (Build-seitig,
+nie ausgeliefert — daher außerhalb des Lizenz-Gates, siehe
 `scripts/check-licenses.mjs`):
 
 - **`scripts/build-fee-schedules.mjs`** (`pnpm fees:build`) parst die CALS-
   Tabellen unter `data/input/` und schreibt `packages/medic-invoice-check/src/lib/data/{goae,goz,
-  got}.json` inkl. `source`-Provenienz. Hilfsmodule: `scripts/lib/mini-xml.mjs`
-  (winziger XML-Parser), `scripts/lib/fee-constraints.mjs` (Constraint-Extraktion).
+  got}.json` inkl. `source`-Provenienz. Hilfsmodule: `scripts/lib/xml.mjs`
+  (Adapter auf `fast-xml-parser`), `scripts/lib/fee-constraints.mjs`
+  (Constraint-Extraktion).
 - **`scripts/validate-fee-schedules.mjs`** (`pnpm fees:validate`) prüft die in
   §6 genannten Regeln.
 

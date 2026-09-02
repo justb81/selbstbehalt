@@ -3,8 +3,9 @@
 //
 // Generates the static fee-schedule lookup tables (packages/medic-invoice-check/src/lib/data/
 // {goae,goz,got}.json) from the official gesetze-im-internet.de XML exports
-// under data/input/. Reproducible and dependency-free (see scripts/check-
-// licenses.mjs for the same convention). The output format is defined in
+// under data/input/. Reproducible build-side tooling: it runs on devDependencies
+// only, which are never shipped (see scripts/check-licenses.mjs). The output
+// format is defined in
 // docs/data-format.md / packages/medic-invoice-check/src/lib/data/fee-schedule.ts and enforced by
 // scripts/validate-fee-schedules.mjs.
 //
@@ -16,7 +17,7 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { parseXml, findAll, findFirst, isElement, text } from './lib/mini-xml.mjs';
+import { parseXml, findAll, findFirst, isElement, text } from './lib/xml.mjs';
 import {
   clean,
   normalizeZiffer,
