@@ -36,10 +36,9 @@ Eigenständige Dokumente, auf die aus den Kapiteln verwiesen wird — sie werden
 | [`hardening.md`](./hardening.md) | CSP/Security-Header, Reverse Proxy, `X-API-Key` | 7.3, 8.1 |
 | [`self-hosting.md`](./self-hosting.md) | Betriebsanleitung: Compose, `.env`, Backup, Proxy, VPN | 7 |
 | [`deploy-goae-waechter.md`](./deploy-goae-waechter.md) | GitHub-Pages-Deployment der GOÄ-Wächter-Demo | 7.4 |
-| [`a11y-audit.md`](./a11y-audit.md) | Barrierefreiheits-Audit (Issue #29) | 8.7 |
 | [`release.md`](./release.md) | Release-Prozess (release-please, GHCR, SBOM) | 2.3 |
 | [`roadmap.md`](./roadmap.md) | Umsetzungsstand und Reihenfolge der Issues | 11 |
-| [`ui-handover.md`](./ui-handover.md) | historisches UI-Handover des Klickprototyps | 5.2 |
+| [`adr/`](./adr/README.md) | Architecture Decision Records — je Entscheidung Kontext, Alternativen, Konsequenzen | 9 |
 
 ***
 ## 1. Einführung und Ziele
@@ -170,29 +169,23 @@ von Art.-9-Daten an Dritte.
 
 ### 3.1 Fachlicher Kontext
 
-```
-        Arzt / Zahnarzt /                                    Versicherer (PKV)
-        Abrechnungsstelle                                    + ggf. Beihilfestelle
-                │                                                    ▲
-                │ Papier- oder PDF-Rechnung                          │ Einreichung
-                │ (GOÄ / GOZ / GOT)                                  │ (Post, Portal,
-                ▼                                                    │  App des
-        ┌───────────────────────────────────────────────┐            │  Versicherers)
-        │                    Nutzer                     │────────────┘
-        │  (Versicherungsnehmer / versicherte Person)   │◀───────────┐
-        └───────────────────────────────────────────────┘  Erstattungs-│
-                │                        ▲                bescheid    │
-                │ fotografiert /         │ Verdikt, Beanstandungen,   │
-                │ wählt PDF, erfasst     │ Erstattungserwartung       │
-                ▼                        │                            │
-        ╔═══════════════════════════════════════════════╗             │
-        ║              selbstbehalt (System)            ║─────────────┘
-        ║   PWA im Browser  +  REST-API  +  SQLite      ║  (Beträge trägt der
-        ╚═══════════════════════════════════════════════╝   Nutzer manuell nach)
-                │
-                │ amtliche Quell-XML, zur Build-Zeit
-                ▼
-        gesetze-im-internet.de  (GOÄ / GOZ / GOT)
+```mermaid
+flowchart TB
+    arzt["Arzt / Zahnarzt /<br/>Abrechnungsstelle"]
+    nutzer(["Nutzer<br/>(Versicherungsnehmer / versicherte Person)"])
+    pkv["Versicherer (PKV)<br/>+ ggf. Beihilfestelle"]
+    gii["gesetze-im-internet.de<br/>(GOÄ / GOZ / GOT)"]
+    subgraph system["selbstbehalt (System)"]
+        pwa["PWA im Browser"]
+        api["REST-API + SQLite"]
+        pwa -- "JSON, nur Metadaten" --> api
+    end
+    arzt -- "Papier- oder PDF-Rechnung<br/>(GOÄ / GOZ / GOT)" --> nutzer
+    nutzer -- "fotografiert / wählt PDF,<br/>erfasst Stammdaten und Erstattungsbeträge" --> pwa
+    pwa -- "Beanstandungen, Erstattungserwartung,<br/>Günstigerprüfungs-Verdikt" --> nutzer
+    nutzer -- "Einreichung (Post, Portal,<br/>App des Versicherers)" --> pkv
+    pkv -- "Erstattungsbescheid<br/>(Beträge trägt der Nutzer manuell nach)" --> nutzer
+    gii -. "amtliche Quell-XML,<br/>nur zur Build-Zeit" .-> api
 ```
 
 | Akteur / Nachbar | Rolle | Was fließt | Richtung |
@@ -275,42 +268,30 @@ Docs-Site (die Struktur zuerst, das Rendering später).
 
 ### 5.1 Ebene 1: Gesamtsystem
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     CLIENT (Browser PWA)                     │
-│                                                              │
-│  ┌──────────┐   ┌────────────────┐   ┌────────────────────┐  │
-│  │ Kamera / │──▶│ PP-OCRv6-tiny  │──▶│ GOÄ/GOZ/GOT-Parser │  │
-│  │ Datei /  │   │ (ppu-paddle-   │   │ + Regelprüfung     │  │
-│  │ PDF      │   │  ocr, ONNX RT) │   │ (Regex + Lookup)   │  │
-│  └──────────┘   │ Web Worker,    │   └─────────┬──────────┘  │
-│       │         │ WebGPU/WASM    │             │             │
-│       │         └────────────────┘             │             │
-│       │  PDF mit Textlayer (pdfjs) ────────────▶│             │
-│       │                                        ▼             │
-│  ┌──────────────────────────────────────────────────────┐    │
-│  │            SvelteKit PWA (apps/frontend)             │    │
-│  │  - Verträge / Versicherte  - Günstigerprüfung        │    │
-│  │  - Rechnungserfassung      - Jahresauswertung        │    │
-│  │  - Service Worker + Offline-Schreib-Queue            │    │
-│  └───────────────────────┬──────────────────────────────┘    │
-│                          │ JSON (nur Metadaten, kein Bild)   │
-└──────────────────────────┼────────────────────────────────────┘
-                           │ HTTPS (Heimnetz / VPN)
-                  ┌────────▼─────────┐
-                  │  Reverse Proxy   │  HTTPS + Basic Auth
-                  │  (nginx/Traefik/ │  (Kapitel 7.3)
-                  │   Caddy)         │
-                  └────────┬─────────┘
-┌──────────────────────────┼────────────────────────────────────┐
-│                  BACKEND (Docker / Proxmox LXC)               │
-│                          ▼                                    │
-│   ┌─────────────────┐        ┌────────────────────────────┐   │
-│   │  Hono REST API  │◀──────▶│  SQLite (Drizzle ORM)      │   │
-│   │  Port 8080      │        │  eine Datei, Volume-Mount  │   │
-│   └─────────────────┘        └────────────────────────────┘   │
-│   RAM: ~128 MB, kein GPU, kein LLM, keine Domänenlogik        │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph client["Client — Browser-PWA (Heimnetz / VPN)"]
+        direction TB
+        input["Kamera / Datei / PDF"]
+        pdf["PDF-Textlayer<br/>(pdfjs)"]
+        ocr["PP-OCRv6-tiny<br/>ppu-paddle-ocr, ONNX Runtime<br/>Web Worker, WebGPU/WASM"]
+        parser["GOÄ/GOZ/GOT-Parser<br/>+ Regelprüfung<br/>(Regex + Lookup)"]
+        app["SvelteKit-PWA (apps/frontend)<br/>Verträge · Versicherte · Rechnungserfassung<br/>Günstigerprüfung · Jahresauswertung<br/>Service Worker + Offline-Schreib-Queue"]
+        input -- "Seite mit Textlayer" --> pdf
+        input -- "Foto / gescannte Seite" --> ocr
+        pdf --> parser
+        ocr --> parser
+        parser --> app
+    end
+    proxy["Reverse Proxy<br/>nginx / Traefik / Caddy<br/>HTTPS + Basic Auth (Kapitel 7.3)"]
+    subgraph backend["Backend — Docker / Proxmox LXC<br/>~128 MB, kein GPU, kein LLM, keine Domänenlogik"]
+        direction LR
+        hono["Hono REST-API<br/>Port 8080"]
+        db[("SQLite (Drizzle ORM)<br/>eine Datei, Volume-Mount")]
+        hono <--> db
+    end
+    app -- "HTTPS · JSON<br/>nur Metadaten, kein Bild" --> proxy
+    proxy --> hono
 ```
 
 Die enthaltenen Bausteine sind die sechs pnpm-Workspaces:
@@ -387,9 +368,8 @@ aggregiert über alle Rechnungen der Person, §8.5). `/invoices/[id]` zeigt nur 
 `InvoiceForm` umschließt das `InvoiceReview` aus
 `packages/medic-invoice-check` (Kapitel 5.3) und ergänzt es um das, was die Demo
 nicht hat: Auswahl der versicherten Person, Notizen, den tarifabhängigen
-`eligible_amount` und das Speichern. Das visuelle System, die Zustände und die
-Copy der Screens sind im historischen [`ui-handover.md`](./ui-handover.md)
-festgehalten.
+`eligible_amount` und das Speichern. Das visuelle System ist das von
+shadcn-svelte und Tailwind (Kapitel 8.7); einen eigenen Styleguide gibt es nicht.
 
 #### Oberfläche der Günstigerprüfung
 
@@ -542,15 +522,97 @@ Domänen-Helfer, die Frontend und Backend gleich benutzen müssen — BRE-Staffe
 
 #### Entitäts-Übersicht
 
+```mermaid
+erDiagram
+    persons ||--o{ contracts : "policyholder_id (Versicherungsnehmer)"
+    persons ||--o{ insured_persons : "person_id"
+    contracts ||--o{ insured_persons : "contract_id"
+    insured_persons ||--o{ invoices : "insured_person_id"
+    insured_persons ||--o{ bre_periods : "insured_person_id"
+    invoices ||--o{ invoice_positions : "invoice_id"
+    invoices ||--o{ invoice_status_events : "invoice_id (append-only)"
+    invoices ||--o{ submissions : "invoice_id (die jüngste zählt)"
+
+    persons {
+        TEXT id PK
+        TEXT name
+        DATE birth_date
+    }
+    contracts {
+        TEXT id PK
+        TEXT policyholder_id FK
+        TEXT insurer_name
+        TEXT contract_number
+        TEXT type "vollversicherung | zusatztarif | beihilfe"
+        DATE start_date
+        DATE end_date
+    }
+    insured_persons {
+        TEXT id PK
+        TEXT contract_id FK
+        TEXT person_id FK
+        TEXT kvnr
+        TEXT tariff_name
+        REAL monthly_premium
+        REAL self_retention
+        JSON bre_structure
+        JSON included_benefits
+    }
+    invoices {
+        TEXT id PK
+        TEXT insured_person_id FK
+        DATE invoice_date
+        DATE payment_due_date
+        TEXT provider_name
+        TEXT provider_type
+        REAL total_amount
+        REAL eligible_amount "Σ Positionen, serverseitig"
+        REAL self_paid_amount "serverseitig"
+    }
+    invoice_positions {
+        TEXT id PK
+        TEXT invoice_id FK
+        TEXT goae_number
+        TEXT goae_category
+        TEXT benefit_category
+        DATE treatment_date
+        REAL multiplier
+        REAL charged_amount
+        REAL eligible_amount
+        REAL refund_amount
+        BOOLEAN is_valid
+        TEXT flag_reason
+    }
+    invoice_status_events {
+        TEXT id PK
+        TEXT invoice_id FK
+        TEXT track "review | payment | submission"
+        TEXT status
+        DATETIME changed_at "bei payment: Zahlungsdatum"
+    }
+    submissions {
+        TEXT id PK
+        TEXT invoice_id FK
+        DATE submitted_at
+        TEXT submitted_via
+        REAL expected_refund
+        DATE refund_date
+    }
+    bre_periods {
+        TEXT id PK
+        TEXT insured_person_id FK
+        INTEGER year
+        INTEGER streak_years
+        REAL bre_amount
+        REAL projected_bre
+    }
 ```
-Person  (1) ──── (n) Vertrag             (als Versicherungsnehmer)
-Vertrag (1) ──── (n) VersichertePerson   (versicherte Person auf dem Vertrag, je eigene KVNR)
-Person  (1) ──── (n) VersichertePerson   (eine Person kann auf mehreren Verträgen versichert sein)
-VersichertePerson (1) ──── (n) Rechnung
-Rechnung (1) ──── (n) Rechnungsposition (GOÄ-Ziffer)
-Rechnung (1) ──── (1) Einreichung (optional)
-VersichertePerson (1) ──── (n) BRE-Periode (Beitragsrückerstattungs-Zeitraum)
-```
+
+Die Attribute sind auf die Schlüssel und fachlich tragenden Spalten gekürzt; die
+vollständigen Spalten stehen in den Tabellenabschnitten unten, maßgeblich ist
+`apps/backend/src/db/schema.ts`. Die View `invoice_current_status` (abgeleitet
+aus `invoice_status_events`, Kapitel 6.2) ist keine Tabelle und daher nicht
+gezeichnet.
 
 Ein **Vertrag** (Hauptvertrag/Versicherungsschein) hat genau einen **Versicherungsnehmer**
 (`persons`-Eintrag, der den Vertrag hält und die Beiträge zahlt) und ein oder mehrere
@@ -910,42 +972,61 @@ die Konzepte in Kapitel 8.
 
 ### 6.1 Rechnung scannen und prüfen
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor N as Nutzer
+    participant S as OCRScanner (UI-Thread)
+    participant P as pdfjs
+    participant Q as Qualitätsprüfung
+    participant W as OCR-Worker<br/>(PP-OCRv6, WebGPU/WASM)
+    participant G as GOÄ-Parser + Regelprüfung
+    participant R as InvoiceReview
+    participant B as Backend
+
+    N->>S: Fotos aufnehmen / PDFs und Bilder wählen (eine Rechnung, n Seiten)
+    loop je Seite
+        alt PDF-Seite mit brauchbarem Textlayer
+            S->>P: getTextContent()
+            P-->>S: Zeilen (confidence = 1)
+        else Foto oder Seite ohne Textlayer
+            S->>Q: Schärfe, Helligkeit, Kontrast, Glanz (256-px-Kopie)
+            Q-->>S: Warnung mit Hinweis — nie blockierend
+            S->>W: ImageData (Transfer, Zero-Copy)
+            W-->>S: Zeilen { text, bbox, confidence }
+        end
+    end
+    S->>G: alle Zeilen aller Seiten
+    G-->>S: Rechnungskopf, Positionen, Beanstandungen, Zeilenzuordnung
+    S->>R: ScanResult + Seitenvorschau
+    N->>R: prüft, korrigiert, bestätigt
+    R->>B: POST /api/invoices — JSON, nur Metadaten, kein Bild
 ```
-1. Nutzer fotografiert die Rechnung (Kamera, mehrere Seiten in Folge) oder
-   wählt PDF(s)/Bild(er) — auch gemischt; alle Seiten bilden **eine** Rechnung
-        ↓
-2a. PDF mit Textlayer (digital erzeugt, z. B. Praxissoftware/"als PDF drucken"):
-    `pdfjs` liest den Textlayer je Seite direkt aus (`getTextContent()`,
-    Issue #278) — kein Rasterisieren, kein OCR nötig. Eine
-    Qualitäts-/Brauchbarkeits-Heuristik (Zeichenzahl, Anteil druckbarer
-    Zeichen, Vorkommen von GOÄ/GOZ-Ziffern/EUR/Datumsmustern) entscheidet je
-    Seite; fällt sie durch (dünn, verrauscht/CID-Font-Müll, reines Scan-PDF),
-    läuft genau diese Seite über Pfad 2b/3.
-        ↓ (nur Seiten ohne brauchbaren Textlayer)
-2b. Aufnahmequalität prüfen (Issue #279), je zu rasterndem Bild auf einer
-    heruntergerechneten Kopie (längste Kante 256 px):
-   - Schärfe (Varianz des Laplace-Operators)
-   - Helligkeit (mittlere Luma) und Kontrast (Luma-Standardabweichung)
-   - Glanz/Überbelichtung (Anteil geclippter Pixel)
-   → bei schlechter Bewertung eine Warnung mit konkreten Hinweisen
-     **vor** dem OCR-Lauf; nie blockierend („Trotzdem erkennen")
-        ↓
-2c. Bildvorverarbeitung (Canvas API):
-   - Graustufen-Konvertierung
-   - Kontrast-Verstärkung
-   - Entzerrung (perspektivische Korrektur via Homographie, optional)
-        ↓
-3. PP-OCRv6 (`ppu-paddle-ocr`, ONNX Runtime, WebGPU/WASM):
-   - Texterkennung → Array von { text, bbox, confidence }
-        ↓
-4. GOÄ-Strukturparser:
-   - Regex-Extraktion der Rechnungsfelder
-   - GOÄ-Ziffer-Lookup
-   - Validierung
-        ↓
-5. Ergebnis-JSON → Review-Screen (mit Seitenvorschau, s. u.)
-   → bei Bestätigung: API POST
-```
+
+1. **Aufnahme.** Der Nutzer fotografiert die Rechnung (Kamera, mehrere Seiten
+   in Folge) oder wählt PDF(s)/Bild(er) — auch gemischt; alle Seiten bilden
+   **eine** Rechnung.
+2. **Textlayer-Pfad** für digital erzeugte PDFs (Praxissoftware, „als PDF
+   drucken"): `pdfjs` liest den Textlayer je Seite direkt aus
+   (`getTextContent()`, Issue #278) — kein Rasterisieren, kein OCR nötig. Eine
+   Brauchbarkeits-Heuristik (Zeichenzahl, Anteil druckbarer Zeichen, Vorkommen
+   von GOÄ/GOZ-Ziffern/EUR/Datumsmustern) entscheidet je Seite; fällt sie
+   durch (dünn, verrauscht/CID-Font-Müll, reines Scan-PDF), läuft genau diese
+   Seite über den Bildpfad.
+3. **Aufnahmequalität** (Issue #279), je zu rasterndem Bild auf einer
+   heruntergerechneten Kopie (längste Kante 256 px): Schärfe (Varianz des
+   Laplace-Operators), Helligkeit (mittlere Luma) und Kontrast
+   (Luma-Standardabweichung), Glanz/Überbelichtung (Anteil geclippter Pixel).
+   Bei schlechter Bewertung eine Warnung mit konkreten Hinweisen **vor** dem
+   OCR-Lauf; nie blockierend („Trotzdem erkennen", ADR-0012).
+4. **Bildvorverarbeitung** (Canvas API): Graustufen, Kontrastverstärkung,
+   optional Entzerrung (perspektivische Korrektur via Homographie).
+5. **Texterkennung** mit PP-OCRv6 (`ppu-paddle-ocr`, ONNX Runtime,
+   WebGPU/WASM) im Web Worker → Array von `{ text, bbox, confidence }`.
+6. **GOÄ-Strukturparser:** Regex-Extraktion der Rechnungsfelder,
+   Ziffern-Lookup, Regelprüfung (Kapitel 8.3).
+7. **Review-Screen** mit Seitenvorschau (s. u.); bei Bestätigung `POST` an die
+   API — ausschließlich strukturierte Metadaten.
 
 **Seitenvorschau im Review (`ocr/preview.ts`, `InvoicePagePreview`).** Der
 Review-Screen zeigt die gescannte Seite und zeichnet jede erkannte Textzeile als
@@ -1061,24 +1142,37 @@ ist das jüngste Ereignis dieses Tracks (`deriveInvoiceStatus` bzw. die View
 `invoice_current_status`). Es gibt keine `status`-Spalte. Die Tabellenform und die
 vollständigen Regeln stehen in Kapitel 5.5; hier der Ablauf:
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "review" as review {
+        [*] --> neu
+        neu --> geprueft : POST /review
+        geprueft --> neu : POST /review (zurück)
+        state "geprüft" as geprueft
+    }
+    state "payment — frei ab review = geprüft" as payment {
+        [*] --> offen
+        offen --> bezahlt : POST /payment (bezahlt, Zahlungsdatum)
+        bezahlt --> offen : POST /payment (offen)
+    }
+    state "submission — frei ab review = geprüft" as submission {
+        [*] --> nicht_eingereicht
+        nicht_eingereicht --> eingereicht : POST /submit
+        eingereicht --> erstattet : PUT /refund (Betrag je Position, 0 = abgelehnt)
+        erstattet --> eingereicht : POST /submission/revert
+        eingereicht --> nicht_eingereicht : POST /submission/revert
+    }
+    note right of payment
+        Edit-Lock: bezahlt ODER eingereicht
+        sperrt die Bearbeitung der Rechnung.
+        „Selbst gezahlt" = bezahlt + nicht_eingereicht.
+    end note
 ```
-  Anlage
-    │
-    ▼
-  review: neu ──────────────► geprüft ◄──────┐  (rückschaltbar)
-                                 │           │
-              ┌──────────────────┴───────┐   │
-              │ erst ab "geprüft"        │   │
-              ▼                          ▼   │
-  payment:  offen ──► bezahlt   submission: nicht_eingereicht
-              ▲         │                     │
-              └─────────┘                     ▼
-           (POST payment                   eingereicht ──► erstattet
-            {status:'offen'})                 ▲               │
-                                              └───────────────┘
-                                            (submission/revert,
-                                             je einen Schritt)
-```
+
+Die drei Tracks laufen nebeneinander; Payment und Submission sind voneinander
+unabhängig und beide erst ab `review = geprüft` schaltbar. Zum Vergleich der
+Alternativen: ADR-0007.
 
 1. **Erfassen** — Rechnung und Positionen werden gespeichert; `review = neu`,
    `payment = offen`, `submission = nicht_eingereicht`. In diesem Zustand zählt die
@@ -1173,6 +1267,26 @@ Single-Origin-Standard (§7.3) routet der Reverse Proxy nur das Frontend; dessen
 nginx leitet `/api` intern an das Backend weiter, daher bleibt `PUBLIC_API_URL`
 leer.
 
+```mermaid
+flowchart LR
+    browser["Browser / PWA<br/>(Heimnetz oder VPN/Tailscale)"]
+    subgraph host["Docker-Host — Proxmox LXC / NAS"]
+        proxy["Reverse Proxy<br/>nginx / Traefik / Caddy<br/>HTTPS, Basic Auth"]
+        subgraph compose["docker compose — gemeinsames Netz, keine Host-Ports"]
+            fe["frontend<br/>nginx, statische PWA<br/>expose 3000"]
+            be["backend<br/>Hono, Node<br/>expose 8080"]
+        end
+        db[("./data/db<br/>pkv.sqlite")]
+        files[("./data/files<br/>Rechnungs-PDFs, optional")]
+    end
+    browser -- "HTTPS 443" --> proxy
+    proxy -- "/" --> fe
+    fe -- "/api → backend:8080<br/>(Single-Origin)" --> be
+    be --- db
+    be --- files
+    proxy -. "nur bei getrennter Origin:<br/>eigene Route + X-API-Key" .-> be
+```
+
 ```yaml
 # docker-compose.yml (Auszug)
 services:
@@ -1245,7 +1359,9 @@ Die Demo (Kapitel 5.6) wird nicht als Container ausgeliefert, sondern als statis
 Seite: ein wiederverwendbarer Workflow baut sie und veröffentlicht sie auf GitHub
 Pages, aufgerufen aus dem release-please-Lauf, damit Demo und Release nicht
 auseinanderlaufen. Der Basispfad wird zur Build-Zeit gesetzt statt hartkodiert.
-Einzelheiten und Begründung: [`deploy-goae-waechter.md`](./deploy-goae-waechter.md).
+Die Begründung der drei Festlegungen steht in ADR-0018, die Betriebsanleitung
+(Pages einschalten, eigene Domain) in
+[`deploy-goae-waechter.md`](./deploy-goae-waechter.md).
 
 ***
 
@@ -1259,7 +1375,7 @@ Datenkategorie verarbeitet wird:
 | Datenkategorie | Verarbeitungsort | Begründung |
 |---|---|---|
 | Rechnungsbilder (Fotos/Scans) | **Nur Client** | Verlassen Gerät nie – OCR läuft im Browser [^6][^10] |
-| OCR-Rohtxt | Client → optional Backend | Kann für Debugging gespeichert werden (opt-in) |
+| OCR-Rohtext | Client → optional Backend | erkannter **Text**, kein Bild; standardmäßig gespeichert, damit sich Positionen später neu einlesen lassen — per Checkbox im Formular abschaltbar |
 | Strukturierte Rechnungsdaten (JSON) | Backend (SQLite) | Keine Bilder, nur Metadaten |
 | GOÄ-Ziffern & Beträge | Backend (SQLite) | Kein direkter Gesundheitsbezug |
 | Vertragsangaben | Backend (SQLite) | Vertragsdaten, kein Art.-9-Bezug |
@@ -1935,8 +2051,12 @@ gekennzeichnet.
   prüft und kaputte Fokus-Flüsse nicht sieht, steuert derselbe Spec zusätzlich per
   Tastatur: Skip-Link, Focus-Trap/Escape/Fokus-Rückgabe des `alertdialog`,
   Tab-Reihenfolge der Formularfelder und das „Mehr"-Sheet der Bottom-Navigation.
-  Befund, behobene Verstöße und die bewusst akzeptierten Abweichungen stehen im
-  [`a11y-audit.md`](./a11y-audit.md).
+  Nicht automatisiert prüfbar und darum bewusst offen: Screenreader-Verhalten
+  (Ansagereihenfolge, Live-Regionen) braucht einen manuellen NVDA-/VoiceOver-
+  Durchgang; die Lade- und Fehlerzustände (`LoadingState`, `ErrorState`) sind
+  nur über ihre gemeinsamen Primitiven abgedeckt. Akzeptierte Abweichung: einige
+  Icon-Buttons in dichten Tabellen liegen unter der 44-px-Touch-Empfehlung — kein
+  WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
 - **Erkennbarkeit vor Bequemlichkeit:** Beanstandungen, Nicht-Erstattungsfähigkeit
   und Fälligkeiten werden benannt und begründet, nicht bloß eingefärbt — sonst ist
   das Verdikt nicht überprüfbar (Qualitätsziel 5, Kapitel 1.2).
@@ -1966,27 +2086,32 @@ Die Entscheidungen, die die Architektur festgelegt haben — mit dem Grund und d
 Stelle, an der sie ausgeführt ist. Wer eine davon umdrehen will, findet hier, was
 sie getragen hat.
 
-| Entscheidung | Grund | Konsequenz | Fundstelle |
-|---|---|---|---|
-| **OCR und Regelprüfung laufen im Client**, nicht auf dem Server | Rechnungsbilder sind Art.-9-Daten; ein Datenfluss, der nicht existiert, muss nicht abgesichert werden | Backend ohne GPU und ohne Modell; die Fachlogik liegt im Bundle und muss dort getestet werden | 2.2, 8.2 |
-| **PP-OCRv6-tiny als `.onnx`**, nicht als `.ort` | browserverifiziert: `.ort` scheitert auf dem WebGPU-/JSEP-Pfad (fehlender NHWC-Layout-Transform), `.onnx` lädt über beide Pfade — bei identischen Gewichten | Modellbudget ~6 MB statt 12,3 MB, WebGPU bleibt nutzbar; Rollback ist ein Ein-Datei-/Zwei-Hash-Change | 8.2 (Issue #317, PR #327) |
-| **Statische, versionierte JSON-Tabellen** statt eines Modells für die Gebührenordnungs-Prüfung | GOÄ/GOZ/GOT sind öffentlich und regelbasiert; eine Tabelle ist prüfbar und reproduzierbar, ein Modell nicht | Tabellen müssen reproduzierbar aus den amtlichen XML erzeugt werden und gehören dem Maintainer | 2.2, 8.3 |
-| **`excludes` und `mutualExclusion` bleiben zwei Formen** | die eine Richtung ist gerichtet, die andere symmetrisch; sie sind nicht ineinander überführbar, ohne Information zu verlieren | der Validator prüft beide Formen getrennt | [`data-format.md`](./data-format.md) §5.2.1 |
-| **Kein §33-EStG-Steuervorteil in der Günstigerprüfung** | der Term hängt von Einkommen und zumutbarer Belastung ab, die das System nicht kennt; eine geratene Größe im Verdikt wäre schlimmer als keine | die Regel ist `max(0, R_Y − S) > NPV(ΔBRE)`, ohne Steuerterm — bewusste Scope-Entscheidung | 8.5.4 (Issue #64, *not planned*) |
-| **Günstigerprüfung pro versicherter Person × Leistungsjahr**, nicht pro Rechnung | Selbstbehalt und BRE sind Jahresgrößen; eine Entscheidung je Rechnung kann den Selbstbehalt nicht richtig anrechnen | All-or-Nothing je Jahr; die Einzelrechnung zeigt nur ihren Beitrag | 8.5.1 (Epic #146) |
-| **Drei abgeleitete Status-Tracks statt einer `status`-Spalte** | Bezahlung und Einreichung laufen real parallel — die Erstattung trifft meist vor der Zahlung ein; ein linearer Status müsste lügen | der Zustand wird aus `invoice_status_events` abgeleitet, es gibt keine denormalisierte Spalte | 5.5, 6.2 |
-| **Ereignis-Reihenfolge nach `rowid`, nicht nach `changed_at`** | `changed_at` eines Zahlungsereignisses trägt das vom Nutzer angegebene Zahlungsdatum und kann in der Zukunft liegen | die Ableitung ist an die Einfügereihenfolge gebunden; Terminüberweisungen sind damit abbildbar | 6.2 |
-| **Hono + SQLite**, nicht FastAPI/PostgreSQL | dieselbe Sprache wie das Frontend (ein Typ-Modell über `packages/shared`); kein separater Datenbankdienst für einen Einzelhaushalt, Backup ist eine Datei | ein Prozess, ~128 MB, Backup und Portabilität über einen Dateiexport | 4.2, 6.5 |
-| **Single-Origin: das Frontend-nginx proxyt `/api`** | die Basic Auth des Reverse Proxy deckt damit die API mit ab, und es entsteht kein CORS | `PUBLIC_API_URL` bleibt leer; der separate-Origin-Betrieb ist die dokumentierte Ausnahme mit `X-API-Key` | 7.3 |
-| **PDF-Textlayer zuerst, OCR nur als Rückfall je Seite** | digital erzeugte Rechnungen brauchen keine Erkennung; eine Heuristik je Seite ist nötig, weil ein PDF beides mischen kann | zwei Pfade münden in derselben Ergebnisform; Parser und Review unterscheiden die Quelle nicht | 6.1 (Issue #278) |
-| **Die Aufnahme-Qualitätswarnung blockiert nie** | die Schwellen sind heuristisch und nicht an einem Referenzkorpus kalibriert; eine falsch-positive Blockade macht die Anwendung unbenutzbar | „Trotzdem erkennen" ist immer möglich; die Warnung nennt die beanstandete Seite | 6.1 (Issue #279) |
-| **Stille Kennzeichnung statt Push-Benachrichtigungen** | es gibt keinen Server, der senden könnte, und ein Push-Dienst wäre ein Laufzeit-Dritter | Fälligkeiten erscheinen nur in der Oberfläche | 8.6 |
-| **Die Prüf-Engine ist ein eigenes Paket** (`medic-invoice-check`) | die GOÄ-Wächter-Demo muss ohne Backend laufen; ein gemeinsames Paket verhindert zwei Parser | Frontend und Demo teilen Scan-, Parser- und Review-Code; das Paket kennt keine Tarife | 5.3, 5.6 |
-| **Die ganze SQLite-Datei als Export/Import**, kein Feld-Export | das ist gleichzeitig Art.-20-Portabilität und das Backup, das ein Selbst-Hoster wirklich anlegt | zwei Endpunkte statt eines Formats je Entität | 6.5 |
+| ADR | Entscheidung | Grund | Konsequenz | Fundstelle |
+|---|---|---|---|---|
+| [0001](./adr/0001-ocr-und-regelpruefung-im-client.md) | **OCR und Regelprüfung laufen im Client**, nicht auf dem Server | Rechnungsbilder sind Art.-9-Daten; ein Datenfluss, der nicht existiert, muss nicht abgesichert werden | Backend ohne GPU und ohne Modell; die Fachlogik liegt im Bundle und muss dort getestet werden | 2.2, 8.2 |
+| [0002](./adr/0002-pp-ocrv6-tiny-als-onnx.md) | **PP-OCRv6-tiny als `.onnx`**, nicht als `.ort` | browserverifiziert: `.ort` scheitert auf dem WebGPU-/JSEP-Pfad (fehlender NHWC-Layout-Transform), `.onnx` lädt über beide Pfade — bei identischen Gewichten | Modellbudget ~6 MB statt 12,3 MB, WebGPU bleibt nutzbar; Rollback ist ein Ein-Datei-/Zwei-Hash-Change | 8.2 (Issue #317, PR #327) |
+| [0003](./adr/0003-statische-tabellen-statt-modell.md) | **Statische, versionierte JSON-Tabellen** statt eines Modells für die Gebührenordnungs-Prüfung | GOÄ/GOZ/GOT sind öffentlich und regelbasiert; eine Tabelle ist prüfbar und reproduzierbar, ein Modell nicht | Tabellen müssen reproduzierbar aus den amtlichen XML erzeugt werden und gehören dem Maintainer | 2.2, 8.3 |
+| [0004](./adr/0004-excludes-und-mutualexclusion.md) | **`excludes` und `mutualExclusion` bleiben zwei Formen** | die eine Richtung ist gerichtet, die andere symmetrisch; sie sind nicht ineinander überführbar, ohne Information zu verlieren | der Validator prüft beide Formen getrennt | [`data-format.md`](./data-format.md) §5.2.1 |
+| [0005](./adr/0005-kein-steuerterm-in-der-guenstigerpruefung.md) | **Kein §33-EStG-Steuervorteil in der Günstigerprüfung** | der Term hängt von Einkommen und zumutbarer Belastung ab, die das System nicht kennt; eine geratene Größe im Verdikt wäre schlimmer als keine | die Regel ist `max(0, R_Y − S) > NPV(ΔBRE)`, ohne Steuerterm — bewusste Scope-Entscheidung | 8.5.4 (Issue #64, *not planned*) |
+| [0006](./adr/0006-guenstigerpruefung-je-person-und-leistungsjahr.md) | **Günstigerprüfung pro versicherter Person × Leistungsjahr**, nicht pro Rechnung | Selbstbehalt und BRE sind Jahresgrößen; eine Entscheidung je Rechnung kann den Selbstbehalt nicht richtig anrechnen | All-or-Nothing je Jahr; die Einzelrechnung zeigt nur ihren Beitrag | 8.5.1 (Epic #146) |
+| [0007](./adr/0007-drei-abgeleitete-status-tracks.md) | **Drei abgeleitete Status-Tracks statt einer `status`-Spalte** | Bezahlung und Einreichung laufen real parallel — die Erstattung trifft meist vor der Zahlung ein; ein linearer Status müsste lügen | der Zustand wird aus `invoice_status_events` abgeleitet, es gibt keine denormalisierte Spalte | 5.5, 6.2 |
+| [0008](./adr/0008-ereignisreihenfolge-nach-rowid.md) | **Ereignis-Reihenfolge nach `rowid`, nicht nach `changed_at`** | `changed_at` eines Zahlungsereignisses trägt das vom Nutzer angegebene Zahlungsdatum und kann in der Zukunft liegen | die Ableitung ist an die Einfügereihenfolge gebunden; Terminüberweisungen sind damit abbildbar | 6.2 |
+| [0009](./adr/0009-hono-und-sqlite.md) | **Hono + SQLite**, nicht FastAPI/PostgreSQL | dieselbe Sprache wie das Frontend (ein Typ-Modell über `packages/shared`); kein separater Datenbankdienst für einen Einzelhaushalt, Backup ist eine Datei | ein Prozess, ~128 MB, Backup und Portabilität über einen Dateiexport | 4.2, 6.5 |
+| [0010](./adr/0010-single-origin.md) | **Single-Origin: das Frontend-nginx proxyt `/api`** | die Basic Auth des Reverse Proxy deckt damit die API mit ab, und es entsteht kein CORS | `PUBLIC_API_URL` bleibt leer; der separate-Origin-Betrieb ist die dokumentierte Ausnahme mit `X-API-Key` | 7.3 |
+| [0011](./adr/0011-pdf-textlayer-zuerst.md) | **PDF-Textlayer zuerst, OCR nur als Rückfall je Seite** | digital erzeugte Rechnungen brauchen keine Erkennung; eine Heuristik je Seite ist nötig, weil ein PDF beides mischen kann | zwei Pfade münden in derselben Ergebnisform; Parser und Review unterscheiden die Quelle nicht | 6.1 (Issue #278) |
+| [0012](./adr/0012-qualitaetswarnung-blockiert-nie.md) | **Die Aufnahme-Qualitätswarnung blockiert nie** | die Schwellen sind heuristisch und nicht an einem Referenzkorpus kalibriert; eine falsch-positive Blockade macht die Anwendung unbenutzbar | „Trotzdem erkennen" ist immer möglich; die Warnung nennt die beanstandete Seite | 6.1 (Issue #279) |
+| [0013](./adr/0013-stille-kennzeichnung-statt-push.md) | **Stille Kennzeichnung statt Push-Benachrichtigungen** | es gibt keinen Server, der senden könnte, und ein Push-Dienst wäre ein Laufzeit-Dritter | Fälligkeiten erscheinen nur in der Oberfläche | 8.6 |
+| [0014](./adr/0014-pruef-engine-als-eigenes-paket.md) | **Die Prüf-Engine ist ein eigenes Paket** (`medic-invoice-check`) | die GOÄ-Wächter-Demo muss ohne Backend laufen; ein gemeinsames Paket verhindert zwei Parser | Frontend und Demo teilen Scan-, Parser- und Review-Code; das Paket kennt keine Tarife | 5.3, 5.6 |
+| [0015](./adr/0015-sqlite-datei-als-export-und-import.md) | **Die ganze SQLite-Datei als Export/Import**, kein Feld-Export | das ist gleichzeitig Art.-20-Portabilität und das Backup, das ein Selbst-Hoster wirklich anlegt | zwei Endpunkte statt eines Formats je Entität | 6.5 |
+| [0016](./adr/0016-monorepo-schnitt.md) | **Monorepo-Schnitt: `apps/*` deploybar, `packages/*` geteilt** | Frontend, Backend und Demo teilen Schemas, Engine und UI-Primitiven; getrennte Repositories hießen Typ-Drift und drei Releases je Schema-Änderung, ein Paket ohne Grenzen zöge Svelte in den Backend-Build | pnpm-Workspaces mit `workspace:*`, Werkzeuge einmal im Root; der Docker-Build-Kontext ist das Repo-Root; geteilter Code wandert nach `packages/*`, nie per Kopie | 5.1 (Issue #446) |
+| [0017](./adr/0017-ui-primitiven-einmal-in-packages-ui.md) | **shadcn-Primitiven einmal in `packages/ui`**, nicht je Konsument kopiert | shadcn vendort Quellcode statt einer Abhängigkeit; mit drei Konsumenten lagen elf Komponenten dreifach vor und drifteten sichtbar | jede von mehr als einem Paket genutzte Primitive liegt in `@selbstbehalt/ui`, per shadcn-CLI dort gepflegt; nur Frontend-eigene bleiben in der App | 8.7 (Issues #438, #446, PR #449) |
+| [0018](./adr/0018-demo-deploy-aus-release-please-mit-build-zeit-basispfad.md) | **Die Demo deployt aus dem release-please-Lauf**, artefaktbasiert, mit Basispfad zur Build-Zeit | ein `release:`-Trigger läuft im Tag-Kontext und wird von der Pages-Umgebungsregel abgewiesen; ein `gh-pages`-Branch wüchse um die Modell-Binaries; ein hartkodierter Basispfad bricht beim Domainwechsel | Demo-Stand = Release-Stand; `BASE_PATH` fließt in Kit, Manifest, Service Worker und OCR-Asset-URLs | 7.4 (Epic #166) |
 
-Neue Architekturentscheidungen gehören ab jetzt in dieses Kapitel. Die Ausarbeitung
-zu einzelnen Architecture Decision Records unter `docs/adr/` — mit Alternativen und
-Status je Entscheidung — ist als Issue #375 vorgemerkt.
+Dieses Kapitel ist die Kurzfassung. Die Ausarbeitung je Entscheidung — Kontext,
+betrachtete Alternativen, Konsequenzen, Status — steht als Architecture Decision
+Record unter [`docs/adr/`](./adr/README.md). Eine neue Entscheidung bekommt ein
+ADR nach der Vorlage dort **und** eine Zeile hier; eine geänderte wird nicht
+umgeschrieben, sondern durch ein neues ADR abgelöst.
 
 ***
 
@@ -2036,7 +2161,7 @@ Qualität
 | Q10 | Funktionale Eignung | Dieselben Rechnungsdaten werden mit demselben Stichtag zweimal bewertet. | Identisches Ergebnis — kein verstecktes `Date.now()`, keine Zufallsgröße. | injizierbarer `asOf` (8.8), Tests mit festem Stichtag |
 | Q11 | Funktionale Eignung | Eine Position gehört zu einem Leistungsbereich, für den der Tarif keinen Baustein hat. | `eligible_amount = 0` mit Begründung; die Kosten bleiben in der Gesamtsumme und im selbst getragenen Anteil, das Jahr wird nicht verfälscht. | Erstattungs-Engine (8.4), Unit-Tests |
 | Q12 | Benutzbarkeit | Der Nutzer zweifelt eine erkannte Position an. | Die Seitenvorschau hebt die Quellzeile hervor — am Bild, bei einer Textlayer-Seite in der Zeilenliste. | `InvoicePagePreview` (5.3, 6.1) |
-| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests, [`a11y-audit.md`](./a11y-audit.md) |
+| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests (8.7) |
 | Q14 | Benutzbarkeit | Ein Domänen-Helfer unter `src/lib/utils/**` wird ergänzt. | Die Abdeckung bleibt ≥ 90 % in allen vier Maßen. | v8-Schranke in der Vitest-Konfiguration, CI |
 
 ***
@@ -2060,11 +2185,9 @@ Qualität
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Rechnungsübergreifende Grenzen bei jahresübergreifenden Rechnungen | ⚠️ eingeschränkt | `priorClaims.jahr` wird gegen **ein** Referenz-Leistungsjahr je Rechnung gemessen (das Jahr mit dem größten Betragsanteil); eine Rechnung, deren Positionen über einen Jahreswechsel verteilt sind, verbraucht das Jahreslimit daher nur eines der beiden Jahre (Issue #391) |
-| E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium; die Baseline arbeitet gegen Mocks statt gegen ein echtes Backend mit Seed-Szenarien (Issues #353, #378) |
+| E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium (Issue #353); die Baseline arbeitet gegen Mocks, nur das Integrationsprofil (`e2e/integration/**`, #378) gegen ein echtes Backend mit Seed-Szenarien |
+| Barrierefreiheit ohne Screenreader-Test | ⚠️ manuell | `axe` und die Tastatur-Tests laufen in CI; Ansagereihenfolge und Live-Regionen sind nur per NVDA/VoiceOver prüfbar (8.7) |
 | Doku-Prüfung in CI | ⚠️ teilweise | `ci.yml` überspringt Doku-Änderungen bewusst (`paths-ignore`); geprüft werden SPDX-Kopfzeilen und die §-Verweise auf dieses Dokument (`pnpm docs:check`) — Rechtschreibung und externe Links nicht |
-| Architekturentscheidungen als ADR-Dateien | ⬜ offen | Kapitel 9 ist das Log; die Ausarbeitung je Entscheidung ist Issue #375 |
-| Diagramme | ⬜ offen | die Sichten sind als ASCII gezeichnet; Mermaid für Kapitel 3/5/6/7 ist Issue #376 |
-| Glossar | ⬜ offen | Kapitel 12 deckt die Kernbegriffe; die vollständige Aufnahme aller Domänenbegriffe ist Issue #377 |
 
 Restrisiken des Datenschutz-Audits — unverschlüsselte SQLite-Datei im Backup,
 optionales SQLCipher, Vertrauensgrenzen im Heimnetz — sind im
@@ -2103,6 +2226,26 @@ Hier stehen die Begriffe, die dieses Dokument voraussetzt.
 | **Zahlungsziel vs. Zahlungsdatum** | das Ziel sagt, **bis wann** die Rechnung zu zahlen ist; das Datum, **wann** sie gezahlt wurde. Eine Terminüberweisung ist bezahlt mit einem Datum in der Zukunft | `invoices.payment_due_date` vs. `status.paid_on` |
 | **Beihilfe** | Zuschuss des öffentlichen Dienstgebers zu Krankheitskosten; ergänzt einen PKV-Resttarif | `included_benefits`, Issue #36 |
 | **Terminüberweisung** | vorgemerkte, noch nicht ausgeführte Zahlung — im Modell `payment = bezahlt` mit `paid_on` in der Zukunft, daher nie überfällig | 6.2, `utils/payment-due.ts` |
+| **Vertrag (Hauptvertrag)** | der Versicherungsschein: Versicherer, Vertragsnummer, Versicherungsnehmer und Laufzeit. Trägt **keine** Tarifdaten — die liegen je versicherter Person | `contracts`, Route `/contracts` |
+| **Vollversicherung / Zusatztarif / Beihilfe** | die drei Vertragstypen: volle Absicherung der Krankheitskosten; Ergänzung einer anderen Absicherung (z. B. Zahn, stationär); Resttarif zum Beihilfe-Zuschuss des öffentlichen Dienstgebers | `contracts.type` |
+| **Tarifbaustein** | ein Leistungsbereich mit Erstattungssatz (und ggf. Staffel, Grenzen) im Tarif einer versicherten Person; der Baustein entscheidet, ob und zu welchem Satz ein Leistungsbereich erstattet wird | `insured_persons.included_benefits.benefits[]` |
+| **Erstattungssatz** | Prozentsatz, zu dem ein Tarifbaustein den erstattungsfähigen Betrag ersetzt (z. B. Zahnersatz 60 %, Zahnstaffel auf 80 %) | `included_benefits.benefits[].pct`, Kapitel 8.4 |
+| **Rechnungsposition** | eine abgerechnete Zeile der Rechnung: Ziffer, Leistungsdatum, Faktor, Betrag — die kleinste Einheit von Prüfung und Erstattung | `invoice_positions` |
+| **Rechnungssteller** (`provider_type`) | Arzt, Zahnarzt, Tierarzt, Heilpraktiker, Krankenhaus usw.; liefert den Standard-Leistungsbereich einer Position, wenn die Gebührentabelle keinen vorgibt | `invoices.provider_type`, `defaultBenefitCategoryForProvider` |
+| **Regelhöchstsatz** | der Steigerungsfaktor, bis zu dem eine Leistung ohne schriftliche Begründung abgerechnet werden darf (§5 GOÄ, je Kategorie) | `multiplierLimits`, Kapitel 8.3 |
+| **Fester Gebührensatz** | Ziffern, die nicht gesteigert werden dürfen — der Faktor muss exakt dem vorgegebenen Satz entsprechen | Constraint-Typ `fixedFactor` in der Gebührentabelle ([`data-format.md`](./data-format.md)) |
+| **Regelverstoß / Beanstandung** | eine Position, die eine Regel der Gebührenordnung verletzt: Faktor, Ausschluss, fehlende Basisleistung, Höchstwert, Häufigkeit, Dauer, Alter. Wird angezeigt, nie stillschweigend korrigiert | `invoice_positions.is_valid = false`, `flag_reason` |
+| **Track** | eine der drei unabhängigen Zustandsachsen einer Rechnung: `review` (neu/geprüft), `payment` (offen/bezahlt), `submission` (nicht eingereicht/eingereicht/erstattet). Es gibt keine Status-Spalte, der Zustand ist abgeleitet | `invoice_status_events.track`, `deriveInvoiceStatus`, Kapitel 6.2 |
+| **Einreichung** | die Übergabe einer Rechnung an den Versicherer — außerhalb des Systems (Post, Portal, App). Im Modell ein Übergang des Submission-Tracks plus Kanal und Datum | `submissions`, `POST /api/invoices/:id/submit` |
+| **Erstattung** (`refund_amount`) | der vom Versicherer tatsächlich gezahlte Betrag je Position; `0` heißt abgelehnt. Ersetzt ab `submission = erstattet` die Schätzung `eligible_amount` in `R_Y` | `invoice_positions.refund_amount`, `PUT /api/invoices/:id/refund` |
+| **Selbst getragener Anteil** (`self_paid_amount`) | Rechnungssumme abzüglich tatsächlicher Erstattung — was der Nutzer am Ende bezahlt; serverseitig berechnet | `invoices.self_paid_amount` |
+| **`R_Y`** | die maßgebliche Erstattungssumme einer versicherten Person im Leistungsjahr `Y`: `refund_amount` bei erstatteten, sonst `eligible_amount` je Position; `review = neu` zählt nicht | `aggregateByYear`, `/api/stats/positions/:id`, Kapitel 8.5.1 |
+| **Kapitalwert / NPV (ΔBRE)** | der auf heute abgezinste Wert der Beitragsrückerstattungen, die durch eine Erstattung im Jahr `Y` verloren gehen — inklusive des Wiederaufstiegs in der Staffel; Standard-Zinssatz 3 % p. a. | `calculateBRELadderNPV`, `breakdown.lostBREValue_NPV`, Kapitel 8.5.2 |
+| **Einreichen / selbst zahlen** | die beiden Verdikte der Günstigerprüfung für ein Leistungsjahr: einreichen, wenn `max(0, R_Y − S) > NPV(ΔBRE)`, sonst selbst zahlen. „Selbst zahlen" ist im Modell `payment = bezahlt` bei `submission = nicht_eingereicht` | `calculateGCP(...).recommendation` |
+| **Selbstbehalt-Radar** | die Alltags-Ampel je versicherter Person: wie weit `R_Y` vom Selbstbehalt bzw. von der Einreichschwelle `S + NPV` entfernt ist. Ein Indikator, kein zweites Verdikt | `utils/selbstbehalt-radar.ts`, `SelbstbehaltRadar` |
+| **Stichtag** (`asOf`) | das injizierte „Heute" aller Datums- und Fristenrechnungen; ersetzt jedes versteckte `Date.now()` und macht Ergebnisse reproduzierbar | `DateInput asOf`, `toCalendarDate`, Kapitel 8.8 |
+| **Vorleistungen** (`priorClaims`) | die bereits verbrauchten Beträge je Grenzfenster (Leistungsjahr, lebenslang, Staffel ab Versicherungsbeginn) und Leistungsbereich aus den **übrigen** Rechnungen der Person — nötig für rechnungsübergreifende Tarifgrenzen | `aggregatePriorClaims`, `ErstattungInput.priorClaims`, Kapitel 8.4 |
+| **GOÄ-Wächter** | die öffentliche, backendfreie Demo der Rechnungsprüfung auf GitHub Pages — dieselbe Engine ohne Tarife und ohne Speicherung | `apps/goae-waechter`, Kapitel 5.6 |
 
 ***
 

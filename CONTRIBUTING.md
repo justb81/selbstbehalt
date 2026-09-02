@@ -69,6 +69,14 @@ Two rules keep it from drifting apart again:
 - **References use the chapter number**, e.g. `docs/architecture.md §8.5`.
   `pnpm docs:check` verifies that every such reference resolves, and runs in CI on
   every change (including docs-only ones).
+- **Architecture decisions get an ADR.** Chapter 9 of the architecture doc is the
+  one-line log; the reasoning — context, alternatives considered, consequences —
+  lives as an Architecture Decision Record under [`docs/adr/`](docs/adr/README.md).
+  Copy [`0000-template.md`](docs/adr/0000-template.md), take the next number, add
+  the row in chapter 9 and the index entry. A decision is never rewritten: a
+  changed one is superseded by a new ADR.
+- **Diagrams are Mermaid**, inline in the document they explain — GitHub renders
+  them, they diff, and they cannot drift away as separate image files.
 
 The deeper operational guides stay separate and are linked from the chapter they
 belong to — [`self-hosting.md`](docs/self-hosting.md),

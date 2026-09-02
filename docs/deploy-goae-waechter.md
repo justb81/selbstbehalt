@@ -8,7 +8,7 @@ published to **GitHub Pages** via GitHub Actions. It is a fully static,
 backend-free build, so nothing but the compiled `apps/goae-waechter/build/`
 directory is served — no server, no database, no CDN (the on-device OCR models
 and ONNX-Runtime WASM are baked into the bundle and served same-origin; see
-CLAUDE.md §2.2/§8).
+[`docs/architecture.md`](architecture.md) §2.2/§8.1).
 
 ## How it deploys
 
@@ -28,37 +28,19 @@ is a **reusable workflow** ([`workflow_call`](https://docs.github.com/actions/us
    (**artifact-based** — there is no `gh-pages` branch, so the repo does not grow
    by the ~50–100 MB of OCR model binaries on every deploy).
 
-### Why release-please calls it (and not a `release:` trigger)
+### Why it is built this way
 
-The `github-pages` environment enforces a **deployment branch protection rule**
-that only allows the repository's default branch (`main`) to deploy. A workflow
-triggered by the `release: published` event runs in the **tag** ref context
-(`refs/tags/vX.Y.Z`), so the deploy was rejected with:
-
-> Tag "vX.Y.Z" is not allowed to deploy to github-pages due to environment
-> protection rules.
-
-Calling this workflow from `release-please.yml` — which runs on `push` to
-`main` — makes the deploy run in the default-branch context, which the rule
-accepts, so no manual environment-settings change is needed. (`release-please`
-tags the merge commit and then, in the same run, calls this workflow gated on
-its `release_created` output, building `main`'s HEAD — the just-tagged commit.)
-
-### Base path (why it is not hardcoded)
-
-A project repo is served under a subpath — `https://<owner>.github.io/<repo>/`,
-i.e. `https://justb81.github.io/selbstbehalt/`. `actions/configure-pages`
-reports that path as `steps.pages.outputs.base_path`, which the build passes as
-`BASE_PATH`. It flows to:
-
-- `svelte.config.js` → `kit.paths.base` (routes + `_app` assets),
-- `vite.config.ts` → the web-app-manifest `start_url`/`scope`/`icons`,
-- the service worker → shell + `models/` paths are derived from its own scope,
-- the shared OCR pipeline → `resolveOcrAssets(base)` prefixes the model + WASM
-  URLs (`apps/goae-waechter/src/routes/+layout.svelte`).
-
-Once a custom domain is configured (below), `base_path` becomes `/`, so the next
-build automatically serves from the root — **no workflow or code change needed**.
+The three decisions behind this setup — calling the workflow from
+`release-please.yml` instead of a `release: published` trigger, the
+artifact-based deploy without a `gh-pages` branch, and the base path taken from
+`configure-pages` at build time instead of being hardcoded — are recorded with
+their alternatives in
+[ADR-0018](adr/0018-demo-deploy-aus-release-please-mit-build-zeit-basispfad.md).
+In short: a tag-context run is rejected by the `github-pages` environment's
+branch rule, a branch deploy would grow the repo by the model binaries on every
+release, and `BASE_PATH` flows into `kit.paths.base`, the manifest, the service
+worker and `resolveOcrAssets(base)` so a custom domain (below) needs no code
+change.
 
 ## Enabling Pages
 

@@ -1,8 +1,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Bastian Rang and contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Privacy-by-Design & DSGVO review — threat model + data-flow audit (issue #32)
+# Privacy by Design & DSGVO — threat model and data-flow audit
 
-A whole-system privacy/security review against the non-negotiable design
+The whole-system privacy/security audit against the non-negotiable design
 principles in [`docs/architecture.md`](architecture.md) §2.2 (Designprinzipien), §8.2
 (client-seitige OCR) and §8.1 (Sicherheit & Datenschutz). It documents the proof
 that
@@ -14,7 +14,9 @@ that
 - **data-subject rights** (erasure per Art. 17, portability per Art. 20) are
   implemented and tested for every entity,
 
-then records the threat model and the Art.-9 processing overview.
+then records the threat model and the Art.-9 processing overview. It was first
+produced for issue #32 and is kept current with the code; the review's own fixes
+have landed and are described here as the guarantees they now provide.
 
 This is the audit companion to the deployment-security guide
 ([`docs/hardening.md`](hardening.md), issue #31) and the automated supply-chain
@@ -59,10 +61,11 @@ file that by construction contains no image data.
 ### 1.2 The invoice payload has no image field, at any layer
 
 `invoiceCreateSchema` (`packages/shared/src/schemas/invoice.ts`) is `.strict()`
-and whitelists exactly: `insured_person_id`, `invoice_date`, `invoice_number`,
-`provider_name`, `provider_type`, `total_amount`, `status`, `file_path`,
-`ocr_raw`, `notes`, plus `positions`. `.strict()` rejects any field outside
-this list. The client builders agree:
+and whitelists exactly: `insured_person_id`, `invoice_date`, `payment_due_date`,
+`invoice_number`, `provider_name`, `provider_type`, `total_amount`, `file_path`,
+`ocr_raw`, `notes`, plus `positions`. There is no status field — the lifecycle is
+derived from `invoice_status_events` (§6.2 of the architecture doc). `.strict()`
+rejects any field outside this list. The client builders agree:
 
 - `InvoiceForm.svelte` (`FormPayload`, `handleSubmit`) sends only metadata +
   `ocr_raw` (recognised **text**) + positions.
@@ -220,10 +223,10 @@ Zero runtime leaks.
   transmits or stores the invoice image. The full-resolution frame is dropped as
   soon as recognition finishes; a downscaled review copy lives in component
   state until the invoice is saved or abandoned.
-- The only opt-in retention is the **recognised text** (`ocr_raw`), saved by
-  default so the user can re-parse later and opt-out-able via the checkbox in
-  `InvoiceForm.svelte`. This matches the §8.1 row "OCR-Rohtxt | Client →
-  optional Backend | opt-in". It is text, not an image.
+- The only optional retention is the **recognised text** (`ocr_raw`), saved by
+  default so the user can re-parse the positions later and switched off via the
+  checkbox in `InvoiceForm.svelte` (`saveOcrRaw`). This matches the §8.1 row
+  "OCR-Rohtext | Client → optional Backend". It is text, not an image.
 - The optional on-disk PDF volume (`file_path`, §7.2) is a *deployment* option;
   no client code populates `file_path` today, and the E2E guard asserts it is
   absent from the save payload (§1.5).
@@ -260,9 +263,9 @@ are meaningless without their parent. The cascade FKs are declared in
 (`ON DELETE cascade`).
 
 `persons` is the DSGVO identity root — the entity an Art. 17 erasure request
-targets — so its cascade is the most important, and until this review it was the
-only DELETE route with **no test at all**. `apps/backend/src/routes/persons.test.ts`
-(added here) exercises the full dual-path erasure end-to-end: a person who is
+targets — so its cascade is the most important.
+`apps/backend/src/routes/persons.test.ts` exercises the full dual-path erasure
+end-to-end: a person who is
 both a policyholder *and* insured on a *second* person's contract is deleted
 through `DELETE /api/persons/:id`, and the test asserts that (a) their contract,
 insured rows, invoices, positions, status-events, submissions and BRE periods
@@ -285,18 +288,13 @@ row and invoice survive untouched (no over-deletion).
   `application/x-sqlite3`) — never a multipart form, the one shape a cross-site
   `<form>` could produce (§6.3, #404).
 
-**Defect found and fixed in this review.** The reload's `APP_TABLES` list
-omitted `invoice_status_events`. Consequences: (1) the invoice status-event
-audit trail was silently dropped on every import — an Art. 20 completeness gap
-against the export, which *does* include it; and (2) importing into any
-API-populated database left the target's own status-event rows dangling (their
-parent invoices were cleared and re-inserted with new IDs), so the final
-`foreign_key_check` failed with a 422 and the whole import was refused. The
-round-trip test masked both because its seed helper inserted rows directly and
-never created a status event, unlike every API-created invoice. `APP_TABLES` now
-includes `invoice_status_events`, and `backup.test.ts` seeds a status event and
-adds a dedicated test asserting the audit trail round-trips without orphaning the
-target (it fails against the old code with the 422).
+**Completeness guard.** The reload's `APP_TABLES` list must name every
+application table, `invoice_status_events` included: leaving the audit trail out
+would silently drop it on import (an Art. 20 completeness gap against the export,
+which does include it) and leave the target's own status-event rows dangling
+once their parent invoices are re-inserted, so the final `foreign_key_check`
+would refuse the import with a 422. `backup.test.ts` therefore seeds a status
+event and asserts that the audit trail round-trips without orphaning the target.
 
 ---
 
@@ -307,7 +305,7 @@ Each row of the architecture doc's data-category table (§8.1), checked against 
 | Datenkategorie | Soll (§8.1) | Ist (verified) |
 |---|---|---|
 | Rechnungsbilder (Fotos/Scans) | Nur Client | ✅ Never leaves the browser; never persisted (§1, §3). Full frame dropped after OCR, downscaled review copy held in component state only. No image column exists; E2E-guarded. |
-| OCR-Rohtext | Client → optional Backend (opt-in) | ✅ `ocr_raw` text column; opt-out checkbox in `InvoiceForm`. No image. |
+| OCR-Rohtext | Client → optional Backend | ✅ `ocr_raw` text column, on by default and switched off per invoice in `InvoiceForm`. No image. |
 | Strukturierte Rechnungsdaten (JSON) | Backend (SQLite), keine Bilder | ✅ `invoices` + `invoice_positions`: metadata/numeric/text only. |
 | GOÄ-Ziffern & Beträge | Backend (SQLite) | ✅ In `invoice_positions`; GOÄ lookup tables are static local JSON. |
 | Vertragsangaben | Backend (SQLite) | ✅ `contracts`, `insured_persons`. |
@@ -388,7 +386,7 @@ and for anyone deploying it for family members.
 
 ## 8. Security-review checklist
 
-Design-principle and DSGVO items verified in this review:
+Design-principle and DSGVO items verified:
 
 - [x] Only structured JSON metadata leaves the browser; images never do (§1),
       E2E-guarded (`scan.spec.ts`).
@@ -397,9 +395,9 @@ Design-principle and DSGVO items verified in this review:
       (`csp.spec.ts`).
 - [x] Images never persisted (full frame dropped after OCR, review copy with the component); only opt-in `ocr_raw` **text** persists (§3).
 - [x] Per-entity DELETE cascade with no orphans; FK enforcement on at runtime
-      (§4.1) — now tested for `persons` too.
+      (§4.1), tested for every entity including `persons`.
 - [x] Whole-DB export + validated, transactional import for portability; the
-      `invoice_status_events` round-trip gap fixed and tested (§4.2).
+      `invoice_status_events` round-trip is tested (§4.2).
 - [x] §8.1 data categories reconciled against the code (§5).
 - [x] Threat model + Art.-9 processing overview documented (§6, §7).
 
@@ -414,12 +412,12 @@ exposing an instance work through [`SECURITY.md`](../SECURITY.md) and
       default; optional SQLCipher, §8.1).
 - [ ] Secret scanning + push protection enabled on the repository.
 
-## 9. Recommendations / follow-ups
+## 9. Open recommendations
 
 - **Constrain or drop `file_path`** on the invoice write path (it is a
   `z.string()` the backend accepts but no client sets) to make "no image bytes
-  in the DB" a hard schema guarantee rather than a convention. Tracked as a
-  hardening follow-up, not a live leak.
+  in the DB" a hard schema guarantee rather than a convention. A hardening
+  follow-up, not a live leak (E2E-guarded absent).
 - **Encryption at rest** (SQLCipher) remains optional (§8.1) — recommend it, or
   disk/volume encryption, for any instance whose host or backups are not
   physically trusted.
