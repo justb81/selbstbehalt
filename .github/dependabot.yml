@@ -11,6 +11,11 @@ updates:
     open-pull-requests-limit: 10
     # Supply-chain cooldown: never adopt a version until it has been published
     # for at least 7 days. Guards against freshly-published compromised releases.
+    # Applies only to version updates and only to the target version — security
+    # updates, and the transitive packages dragged along when the lockfile is
+    # rebuilt, are not covered by it. Those still land too young and fail CI's
+    # `minimumReleaseAge` check; redo such a bump locally instead of widening
+    # any policy (see CLAUDE.md, "Working notes").
     cooldown:
       default-days: 7
     groups:
