@@ -21,12 +21,24 @@
   import { Label } from '@selbstbehalt/ui/label';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Textarea } from '@selbstbehalt/ui/textarea';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '@selbstbehalt/ui/select';
+  import { Checkbox } from '$lib/components/ui/checkbox';
 
   const TYPE_LABELS: Record<ContractType, string> = {
     vollversicherung: 'Vollversicherung',
     zusatztarif: 'Zusatztarif',
     beihilfe: 'Beihilfe',
   };
+
+  const personLabel = (person: Person) =>
+    `${person.name}${person.birth_date ? ` (geb. ${formatDate(person.birth_date)})` : ''}`;
 
   let persons = $state<Person[]>([]);
   let loadingPersons = $state(true);
@@ -138,16 +150,21 @@
 
             <div class="space-y-1">
               <Label for="type">Vertragsart <span class="text-destructive">*</span></Label>
-              <select
-                id="type"
-                bind:value={type}
-                required
-                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              <Select
+                type="single"
+                value={type}
+                onValueChange={(v: string) => (type = v as ContractType)}
+                items={contractTypeValues.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
               >
-                {#each contractTypeValues as t (t)}
-                  <option value={t}>{TYPE_LABELS[t]}</option>
-                {/each}
-              </select>
+                <SelectTrigger id="type" class="w-full">
+                  <SelectValue placeholder="Bitte wählen …" />
+                </SelectTrigger>
+                <SelectContent>
+                  {#each contractTypeValues as t (t)}
+                    <SelectItem value={t} label={TYPE_LABELS[t]} />
+                  {/each}
+                </SelectContent>
+              </Select>
             </div>
 
             <div class="space-y-1">
@@ -174,13 +191,7 @@
 
         <div class="space-y-1">
           <Label for="notes">Notizen</Label>
-          <textarea
-            id="notes"
-            bind:value={notes}
-            rows="3"
-            placeholder="optional"
-            class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-          ></textarea>
+          <Textarea id="notes" bind:value={notes} rows={3} placeholder="optional" />
         </div>
 
         <div class="space-y-3">
@@ -195,56 +206,71 @@
               <AlertDescription>{personError}</AlertDescription>
             </Alert>
           {:else}
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" bind:checked={useNewPerson} class="rounded" />
-              <span>Neue Person anlegen</span>
-            </label>
+            <div class="flex items-center gap-2">
+              <Checkbox
+                id="useNewPerson"
+                bind:checked={useNewPerson}
+                aria-labelledby="useNewPerson-label"
+                aria-controls="policyholder-fields"
+              />
+              <Label
+                id="useNewPerson-label"
+                for="useNewPerson"
+                class="cursor-pointer text-sm font-normal"
+              >
+                Neue Person anlegen
+              </Label>
+            </div>
 
-            {#if useNewPerson}
-              <div class="space-y-1">
-                <Label for="newName">Name <span class="text-destructive">*</span></Label>
-                <Input
-                  id="newName"
-                  type="text"
-                  bind:value={newPersonName}
-                  placeholder="Vollständiger Name"
-                />
-              </div>
-            {:else}
-              <div class="space-y-1">
-                <Label for="person">Person auswählen <span class="text-destructive">*</span></Label>
-                {#if persons.length === 0}
-                  <p class="text-sm text-muted-foreground">
-                    Noch keine Personen vorhanden.
-                    <button
-                      type="button"
-                      class="text-primary underline cursor-pointer bg-transparent border-none p-0 font-inherit"
-                      onclick={() => {
-                        useNewPerson = true;
-                      }}
-                    >
-                      Neue Person anlegen
-                    </button>
-                  </p>
-                {:else}
-                  <select
-                    id="person"
-                    bind:value={policyholderPersonId}
-                    required
-                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            <div id="policyholder-fields">
+              {#if useNewPerson}
+                <div class="space-y-1">
+                  <Label for="newName">Name <span class="text-destructive">*</span></Label>
+                  <Input
+                    id="newName"
+                    type="text"
+                    bind:value={newPersonName}
+                    placeholder="Vollständiger Name"
+                  />
+                </div>
+              {:else}
+                <div class="space-y-1">
+                  <Label for="person"
+                    >Person auswählen <span class="text-destructive">*</span></Label
                   >
-                    <option value="" disabled>Bitte wählen …</option>
-                    {#each persons as person (person.id)}
-                      <option value={person.id}>
-                        {person.name}{person.birth_date
-                          ? ` (geb. ${formatDate(person.birth_date)})`
-                          : ''}
-                      </option>
-                    {/each}
-                  </select>
-                {/if}
-              </div>
-            {/if}
+                  {#if persons.length === 0}
+                    <p class="text-sm text-muted-foreground">
+                      Noch keine Personen vorhanden.
+                      <Button
+                        variant="link"
+                        class="h-auto p-0"
+                        onclick={() => {
+                          useNewPerson = true;
+                        }}
+                      >
+                        Neue Person anlegen
+                      </Button>
+                    </p>
+                  {:else}
+                    <Select
+                      type="single"
+                      value={policyholderPersonId}
+                      onValueChange={(v: string) => (policyholderPersonId = v ?? '')}
+                      items={persons.map((p) => ({ value: p.id, label: personLabel(p) }))}
+                    >
+                      <SelectTrigger id="person" class="w-full">
+                        <SelectValue placeholder="Bitte wählen …" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {#each persons as person (person.id)}
+                          <SelectItem value={person.id} label={personLabel(person)} />
+                        {/each}
+                      </SelectContent>
+                    </Select>
+                  {/if}
+                </div>
+              {/if}
+            </div>
           {/if}
         </div>
 
