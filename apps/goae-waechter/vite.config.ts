@@ -22,6 +22,12 @@ export default defineConfig({
     // apps/frontend: a hand-written service worker (src/service-worker.ts) gets
     // the precache manifest injected, no Workbox runtime is bundled, so nothing
     // is fetched from a CDN at runtime (CLAUDE.md privacy constraint).
+    //
+    // `workbox-window` stays a devDependency even though nothing imports it
+    // (issue #444): vite-plugin-pwa injects `ssr.noExternal: ['workbox-window']`,
+    // and SvelteKit's service-worker build silently produces no output if the
+    // package cannot be resolved from this app — the build then fails with
+    // "The 'swSrc' file can't be read". `workbox-build` needs no such entry.
     SvelteKitPWA({
       strategies: 'injectManifest',
       srcDir: 'src',
