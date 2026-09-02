@@ -34,6 +34,7 @@ import {
   submissionInputSchema,
   submissionStatusValues,
   submissionUpdateSchema,
+  todayIso,
   uuid,
   type InvoiceStatus,
   type InvoiceStatusEvent,
@@ -353,9 +354,7 @@ export function createInvoicesRoute(db: Database) {
       // The payment event's changed_at carries the Zahlungsdatum (paid_on): store it
       // at day granularity so the derived paid_on round-trips exactly (else: now).
       const changedAt =
-        input.status === 'bezahlt'
-          ? `${input.paid_on ?? new Date().toISOString().slice(0, 10)}T00:00:00.000Z`
-          : undefined;
+        input.status === 'bezahlt' ? `${input.paid_on ?? todayIso()}T00:00:00.000Z` : undefined;
       appendEvent(db, id, 'payment', input.status, input.note, changedAt);
       return c.json(serializeInvoice(invoice, deriveStatus(db, id)));
     })

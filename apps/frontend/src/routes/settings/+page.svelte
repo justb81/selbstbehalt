@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { z } from 'zod';
-  import { importResultSchema } from '@selbstbehalt/shared';
+  import { importResultSchema, todayIso } from '@selbstbehalt/shared';
   import { settings, resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -108,7 +108,7 @@
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayIso();
       a.href = blobUrl;
       a.download = `selbstbehalt-backup-${today}.sqlite`;
       a.click();

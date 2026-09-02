@@ -22,7 +22,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
-import type { ImportResult } from '@selbstbehalt/shared';
+import { todayIso, type ImportResult } from '@selbstbehalt/shared';
 import BetterSqlite3 from 'better-sqlite3';
 import { getTableName } from 'drizzle-orm';
 import { Hono, type Context } from 'hono';
@@ -75,7 +75,7 @@ interface BackupDeps {
 
 /** Download filename for an export, stamped with today's date. */
 function exportFilename(): string {
-  return `selbstbehalt-${new Date().toISOString().slice(0, 10)}.sqlite`;
+  return `selbstbehalt-${todayIso()}.sqlite`;
 }
 
 /**

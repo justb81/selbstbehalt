@@ -18,6 +18,7 @@
     formatDate,
     formatEur,
     roundCents,
+    todayIso,
     type BenefitCategory,
     type InvoiceWithPositions,
     type InvoiceStatusEvent,
@@ -125,7 +126,7 @@
   let payDate = $state('');
 
   function openPayForm() {
-    payDate = new Date().toISOString().slice(0, 10);
+    payDate = todayIso();
     actionError = null;
     showPayForm = true;
   }
@@ -277,7 +278,7 @@
       refund_amount: defaultPositionRefund(p, mode),
     }));
     categoryRows = buildCategoryRows(mode);
-    refundDate = new Date().toISOString().slice(0, 10);
+    refundDate = todayIso();
     refundNote = mode === 'edit' ? (events.find((e) => e.status === 'erstattet')?.note ?? '') : '';
     refundError = null;
     refundDateUnknown = false;

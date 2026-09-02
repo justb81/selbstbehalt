@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, formatDateTime, toIsoDate } from './date.js';
+import { formatDate, formatDateTime, toDateTimeLocal, toIsoDate, todayIso } from './date.js';
 
 describe('formatDate', () => {
   it('formats an ISO date as de-DE', () => {
@@ -50,5 +50,28 @@ describe('formatDateTime', () => {
 
   it('passes an unparseable value through unchanged', () => {
     expect(formatDateTime('irgendwann')).toBe('irgendwann');
+  });
+});
+
+describe('todayIso', () => {
+  it('reads the local calendar day of the injected instant', () => {
+    // 23:30 local on 31.12. is already 01.01. in UTC east of the date line —
+    // the stored Kalendertag must stay the local one (issue #440).
+    expect(todayIso(new Date(2026, 11, 31, 23, 30))).toBe('2026-12-31');
+    expect(todayIso(new Date(2026, 0, 1, 0, 15))).toBe('2026-01-01');
+  });
+
+  it('defaults to now', () => {
+    expect(todayIso()).toBe(toIsoDate(new Date()));
+  });
+});
+
+describe('toDateTimeLocal', () => {
+  it('formats a Date for an <input type="datetime-local">', () => {
+    expect(toDateTimeLocal(new Date(2026, 2, 16, 9, 30))).toBe('2026-03-16T09:30');
+  });
+
+  it('keeps the local day and time late in the evening', () => {
+    expect(toDateTimeLocal(new Date(2026, 2, 16, 23, 5))).toBe('2026-03-16T23:05');
   });
 });

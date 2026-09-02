@@ -45,3 +45,26 @@ export function toIsoDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Today as the stored `YYYY-MM-DD`, read from the **local** calendar day.
+ *
+ * The default for every date input that means "heute" (Rechnungsdatum,
+ * Zahlungsdatum, Erstattungsdatum, Backup-Stempel). `new Date().toISOString()`
+ * would yield the *UTC* day and so flip to the wrong calendar day in the
+ * evening west of UTC. `asOf` is injectable per the determinism convention.
+ */
+export function todayIso(asOf: Date = new Date()): string {
+  return toIsoDate(asOf);
+}
+
+/**
+ * Formats a `Date` as the `YYYY-MM-DDTHH:mm` value an
+ * `<input type="datetime-local">` expects — in **local** time, since that is
+ * what such an input displays and returns.
+ */
+export function toDateTimeLocal(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${toIsoDate(date)}T${hours}:${minutes}`;
+}
