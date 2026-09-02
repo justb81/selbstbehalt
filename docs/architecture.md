@@ -516,6 +516,17 @@ Create-/Update-Schemata weisen ihn zurück. Die UI benennt eine versicherte Pers
 sondern über `insuredPersonLabel(...)` aus `packages/shared` (Name → Tarif → KVNR → „Versicherte
 Person").
 
+**Konstante Anzahl Requests je Seite.** Die flache Liste `GET /api/insured` und der
+Parameter `?include=positions` existieren genau dafür (Issue #463): eine Einstiegsseite
+holt die versicherten Personen in *einem* Request und gruppiert client-seitig nach
+`contract_id`, statt `GET /api/contracts/:id/insured` je Vertrag zu rufen; wer die
+Positionen jeder Rechnung braucht — Günstigerprüfung und `aggregatePriorClaims` —
+nimmt `?include=positions` statt eines `GET /api/invoices/:id` je Zeile. Das Backend
+lädt die Positionen dabei mit einer einzigen `inArray`-Abfrage nach. Die geschachtelte
+Route bleibt für die Detailansicht *eines* Vertrags, wo sie ohnehin ein Request ist.
+Die Anzahl der Anfragen einer Seite hängt damit nicht an der Zahl der Verträge oder
+Rechnungen.
+
 Authentifizierung und Zugangsschutz sind Betriebsthemen und stehen in Kapitel 7.3.
 
 ### 5.5 Baustein `packages/shared` und das Datenmodell
@@ -2026,7 +2037,18 @@ die das Datenmodell für `eligible_amount` bereits kennt (Kapitel 5.5). Fächern
 Seiten über mehrere Ressourcen auf, geschieht das über `Promise.allSettled` und
 `$lib/utils/partial-load.ts`: die erfolgreichen Teile werden angezeigt, die
 fehlenden benannt — statt sie per `Promise.all` mit zu verlieren oder per
-`.catch(() => …)` zu verschlucken.
+`.catch(() => …)` zu verschlucken. `settledValues` deckt den gleichförmigen Fall
+(eine Liste desselben Typs) ab, `settledTuple` das `allSettled` über einen festen
+Satz verschieden typisierter Reads, bei dem jeder Platz seinen Typ behält und
+einzeln `null` werden kann.
+
+Ein **Teilausfall ist kein Totalausfall** und sieht auch nicht so aus: `ErrorState`
+kennt zwei Schweregrade (Issue #463). `variant="error"` ist die rote
+`destructive`-Alert und steht dort, wo der Abschnitt nichts anzuzeigen hat;
+`variant="warning"` ist die gelbe Variante mit dem Titel „Teilweise geladen" und
+steht über echten Daten, denen ein Teil fehlt. Die gelbe Fassung nutzt den vollen
+`text-warning`-Ton — abgeblendet unterschreitet er den AA-Kontrast, was der
+`axe`-Lauf aus Kapitel 8.7 auch prüft.
 
 Der Ablauf eines Schreibvorgangs ohne Verbindung steht in Kapitel 6.4. Push- bzw.
 Betriebssystem-Benachrichtigungen gibt es bewusst **nicht**: es existiert kein
@@ -2063,6 +2085,11 @@ gekennzeichnet.
   nur über ihre gemeinsamen Primitiven abgedeckt. Akzeptierte Abweichung: einige
   Icon-Buttons in dichten Tabellen liegen unter der 44-px-Touch-Empfehlung — kein
   WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
+- **Ein Idiom je Ladezustand:** `LoadingState` (Spinner mit
+  `role="status" aria-live="polite"`) oder ein `Skeleton`-Block — letzterer immer
+  mit einer eigenen `sr-only`-Live-Region, weil Platzhalterflächen für sich stumm
+  sind. Ein Ladezustand ohne Ansage ist von einer leeren Seite nicht zu
+  unterscheiden (Issue #463).
 - **Erkennbarkeit vor Bequemlichkeit:** Beanstandungen, Nicht-Erstattungsfähigkeit
   und Fälligkeiten werden benannt und begründet, nicht bloß eingefärbt — sonst ist
   das Verdikt nicht überprüfbar (Qualitätsziel 5, Kapitel 1.2).
