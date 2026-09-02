@@ -10,6 +10,10 @@ import {
 import { get, writable } from 'svelte/store';
 
 import { envApiBaseUrl, FALLBACK_API_BASE_URL } from '$lib/config.js';
+import {
+  DEFAULT_CLAIM_FREE_PROBABILITY,
+  DEFAULT_DISCOUNT_RATE,
+} from '$lib/utils/guenstiger-pruefung.js';
 
 const STORAGE_KEY = 'selbstbehalt:settings';
 
@@ -33,11 +37,12 @@ export interface Settings {
   paymentRemindersEnabled: boolean;
 }
 
-const DEFAULTS: Settings = {
+/** Factory defaults; the starting point when nothing is persisted yet. */
+export const DEFAULT_SETTINGS: Settings = {
   apiUrl: '',
   apiKey: '',
-  discountRate: 0.03,
-  claimFreeProbability: 0.7,
+  discountRate: DEFAULT_DISCOUNT_RATE,
+  claimFreeProbability: DEFAULT_CLAIM_FREE_PROBABILITY,
   defaultPaymentTermDays: DEFAULT_PAYMENT_TERM_DAYS,
   paymentReminderLeadDays: DEFAULT_PAYMENT_REMINDER_LEAD_DAYS,
   paymentRemindersEnabled: true,
@@ -49,14 +54,14 @@ function hasStorage(): boolean {
 }
 
 function load(): Settings {
-  if (!hasStorage()) return { ...DEFAULTS };
+  if (!hasStorage()) return { ...DEFAULT_SETTINGS };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
+    if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { ...DEFAULTS, ...parsed };
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
-    return { ...DEFAULTS };
+    return { ...DEFAULT_SETTINGS };
   }
 }
 
