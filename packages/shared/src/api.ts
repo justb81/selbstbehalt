@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { money, uuid } from './common.js';
 import { goaeCategorySchema } from './enums.js';
+import { roundCents } from './utils/money.js';
 
 /**
  * The unified error envelope the backend returns for every non-2xx response
@@ -79,8 +80,9 @@ export type BREHistory = z.infer<typeof breHistorySchema>;
  * are split by the §8.5.1 status rule: `refund_amount` sums only positions on
  * `erstattet` invoices, `eligible_amount` only positions on `geprüft`/`bezahlt`/
  * `eingereicht` invoices, and `charged_amount` sums across all of those (i.e.
- * everything except `neu`). Summing `eligible_amount + refund_amount` yields the
- * Günstigerprüfung's `R_Y` for that year.
+ * everything except `neu`). The Günstigerprüfung's `R_Y` for that year is
+ * `eligible_amount + refund_amount` — use {@link rollupYearToRY} rather than
+ * adding it up at the call site.
  */
 export const positionYearRollupYearSchema = z.object({
   year: z.number().int(),
@@ -89,6 +91,22 @@ export const positionYearRollupYearSchema = z.object({
   refund_amount: money,
 });
 export type PositionYearRollupYear = z.infer<typeof positionYearRollupYearSchema>;
+
+/**
+ * The Günstigerprüfung's `R_Y` for one roll-up year: `eligible_amount`
+ * (estimates) plus `refund_amount` (realised). The two columns are disjoint by
+ * the §8.5.1 status rule, so the sum never double-counts a position — but a
+ * consumer reading only `eligible_amount` would under-count a year that is
+ * already reimbursed, hence this one place to do the addition.
+ *
+ * A missing row (`undefined`/`null`) is `0`: on a **loaded** roll-up a year
+ * without positions genuinely has no reimbursable amount. Never call this with
+ * a roll-up that failed to load — that is "unknown", not `0` (#381).
+ */
+export function rollupYearToRY(year: PositionYearRollupYear | null | undefined): number {
+  if (!year) return 0;
+  return roundCents(year.eligible_amount + year.refund_amount);
+}
 
 /**
  * Response of `GET /api/stats/positions/:insuredPersonId` (#239): the positions

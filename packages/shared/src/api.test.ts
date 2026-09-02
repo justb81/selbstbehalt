@@ -10,6 +10,7 @@ import {
   multiplierDistributionSchema,
   positionYearRollupSchema,
   reductionRollupSchema,
+  rollupYearToRY,
   validationRollupSchema,
   yearStatsSchema,
 } from './api.js';
@@ -118,6 +119,36 @@ describe('positionYearRollupSchema', () => {
         years: [{ year: 2025, charged_amount: -1, eligible_amount: 0, refund_amount: 0 }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('rollupYearToRY', () => {
+  it('sums the estimate and the realised refund (§8.5.1)', () => {
+    expect(
+      rollupYearToRY({ year: 2025, charged_amount: 300, eligible_amount: 230, refund_amount: 80 }),
+    ).toBe(310);
+  });
+
+  it('counts a fully reimbursed year, which `eligible_amount` alone would miss', () => {
+    expect(
+      rollupYearToRY({ year: 2025, charged_amount: 300, eligible_amount: 0, refund_amount: 210 }),
+    ).toBe(210);
+  });
+
+  it('rounds float drift to whole cents', () => {
+    expect(
+      rollupYearToRY({
+        year: 2025,
+        charged_amount: 0.3,
+        eligible_amount: 0.1,
+        refund_amount: 0.2,
+      }),
+    ).toBe(0.3);
+  });
+
+  it('treats a missing year on a loaded roll-up as 0', () => {
+    expect(rollupYearToRY(undefined)).toBe(0);
+    expect(rollupYearToRY(null)).toBe(0);
   });
 });
 
