@@ -13,9 +13,23 @@ vi.mock('$app/state', () => ({
     },
   },
 }));
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
 import Nav from './Nav.svelte';
+
+// Issue #461: the overflow entries used to be `onclick={() => goto(...)}`, which
+// loses middle-click, "open in new tab", the context menu and prefetch. They are
+// real anchors now; the ARIA role stays `menuitem`, because `role="link"` inside
+// a `role="menu"` breaks axe's `aria-required-children`.
+//
+// Queried with `hidden: true` and keyed by text rather than by accessible name:
+// bits-ui's floating content starts off-screen with `visibility: hidden` in
+// jsdom, which makes the computed accessible name come back empty.
+async function openOverflow() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: /Mehr/i }));
+  const items = await screen.findAllByRole('menuitem', { hidden: true });
+  return new Map(items.map((item) => [item.textContent?.trim() ?? '', item]));
+}
 
 describe('Nav', () => {
   it('renders primary nav links and the overflow trigger', () => {
@@ -53,17 +67,30 @@ describe('Nav', () => {
     expect(screen.getByRole('link', { name: 'Auswertung' })).not.toHaveAttribute('aria-current');
   });
 
-  it('navigates via goto when an overflow menu item is clicked', async () => {
-    const { goto } = await import('$app/navigation');
-    const user = userEvent.setup();
+  it('renders overflow entries as real anchors with an href', async () => {
     nav.pathname = '/';
     render(Nav);
+    const items = await openOverflow();
 
-    await user.click(screen.getByRole('button', { name: /Mehr/i }));
-    const personenItem = screen.queryByRole('menuitem', { name: 'Personen' });
-    if (personenItem) {
-      await user.click(personenItem);
-      expect(goto).toHaveBeenCalled();
+    for (const [label, href] of [
+      ['Personen', '/persons'],
+      ['Verträge', '/contracts'],
+      ['Versicherte', '/insured'],
+      ['Einstellungen', '/settings'],
+    ] as const) {
+      const item = items.get(label);
+      expect(item, `overflow entry ${label}`).toBeDefined();
+      expect(item!.tagName).toBe('A');
+      expect(item!).toHaveAttribute('href', href);
     }
+  });
+
+  it('marks the active overflow entry with aria-current', async () => {
+    nav.pathname = '/contracts/new';
+    render(Nav);
+    const items = await openOverflow();
+
+    expect(items.get('Verträge')).toHaveAttribute('aria-current', 'page');
+    expect(items.get('Personen')).not.toHaveAttribute('aria-current');
   });
 });

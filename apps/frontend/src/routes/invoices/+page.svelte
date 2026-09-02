@@ -14,13 +14,12 @@
     submissionStatusValues,
     type InsuredPerson,
     type Invoice,
-    type PaymentStatus,
     type Person,
-    type SubmissionStatus,
   } from '@selbstbehalt/shared';
   import InvoiceList from '$lib/components/InvoiceList.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
+  import { readParam } from '$lib/utils/url-state';
   import { Button } from '@selbstbehalt/ui/button';
 
   let invoices = $state<Invoice[]>([]);
@@ -32,16 +31,11 @@
 
   // Deep-link filters, e.g. the dashboard's "Ausstehende Einreichungen" tile
   // linking to `?submission=eingereicht` (issue #261), or `?payment=offen`.
-  const initialSubmission = $derived.by(() => {
-    const raw = page.url.searchParams.get('submission');
-    return submissionStatusValues.includes(raw as SubmissionStatus)
-      ? (raw as SubmissionStatus)
-      : undefined;
-  });
-  const initialPayment = $derived.by(() => {
-    const raw = page.url.searchParams.get('payment');
-    return paymentStatusValues.includes(raw as PaymentStatus) ? (raw as PaymentStatus) : undefined;
-  });
+  // Read-only for now — the write-back lands with the InvoiceList rebuild (#466).
+  const initialSubmission = $derived(
+    readParam(page.url, 'submission', submissionStatusValues) ?? undefined,
+  );
+  const initialPayment = $derived(readParam(page.url, 'payment', paymentStatusValues) ?? undefined);
 
   async function load() {
     loading = true;

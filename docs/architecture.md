@@ -332,6 +332,22 @@ die ONNX-Runtime-WASM (`scripts/copy-ort-wasm.mjs`).
 /settings               → Server-URL, Diskontrate, Leistungsfrei-Wahrscheinlichkeit, Zahlungsziel (Standardfrist + Fälligkeits-Hinweise), Datenbankexport
 ```
 
+**Filter in der URL (Deep-Link-Vertrag):** Filterzustand ist Teil der Adresse,
+nicht des Komponenten-States — eine gefilterte Ansicht ist damit verlinkbar und
+übersteht Reload und Zurück-Navigation ([ADR-0019](./adr/0019-filterzustand-in-der-url.md)).
+Diese Parameter sind vergeben; sie umzubenennen bricht bestehende Lesezeichen:
+
+| Route | Parameter | Werte |
+|---|---|---|
+| `/stats` | `year` | Leistungsjahr, vierstellig (nur Jahre mit Rechnungen bzw. das laufende) |
+| `/stats` | `person` | ID der versicherten Person (steuert den BRE-Verlauf) |
+| `/invoices` | `submission` | `nicht_eingereicht` \| `eingereicht` \| `erstattet` |
+| `/invoices` | `payment` | `offen` \| `bezahlt` |
+
+Ein fehlender Parameter heißt „Default", ein unbekannter Wert fällt auf den
+Default zurück, ohne die URL umzuschreiben. Das Dashboard verlinkt darüber auf
+vorgefilterte Listen (z. B. `/invoices?submission=eingereicht`).
+
 **Informationsarchitektur und Rollentrennung:**
 
 - **Dashboard** (`/`) — offene Aktionen (unbearbeitete / eingereichte Rechnungen) und BRE-Schnellstatus (kompakt, verlinkt auf `/insured/[id]`). Keine vollständige Jahresanalyse — das ist Aufgabe der Auswertung.
@@ -2085,6 +2101,21 @@ gekennzeichnet.
   nur über ihre gemeinsamen Primitiven abgedeckt. Akzeptierte Abweichung: einige
   Icon-Buttons in dichten Tabellen liegen unter der 44-px-Touch-Empfehlung — kein
   WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
+- **Zustand, den man verlinken kann, gehört in die URL.** Filter- und
+  Auswahlzustand einer Seite lebt im Query-String und wird ausschließlich über
+  `$lib/utils/url-state.ts` gelesen und geschrieben (`readParam`,
+  `readNumberParam`, `withParam`); die Auswahl ist ein `$derived` über
+  `page.url`, nicht eine zweite Kopie im Komponenten-State. Geschrieben wird mit
+  `replaceState`, `keepFocus` und `noScroll` — ein Filterwechsel ist kein
+  History-Eintrag. Der Deep-Link-Vertrag je Route steht in Kapitel 5.2
+  ([ADR-0019](./adr/0019-filterzustand-in-der-url.md)).
+- **Navigation navigiert per Link, nicht per Klick-Handler.** Auch Einträge in
+  Menüs und Sheets sind echte `<a href>` (bei bits-ui über das
+  `child`-Snippet) — ein `onclick={() => goto(...)}` kostet Mittelklick,
+  „In neuem Tab öffnen", das Kontextmenü und den SvelteKit-Prefetch. Die
+  ARIA-Rolle bleibt dabei die des umgebenden Musters (`role="menuitem"` in
+  einem `role="menu"`): ein `role="link"` darin verletzt die
+  ARIA-Pflichtkinder und wäre ein axe-Verstoß.
 - **Ein Idiom je Ladezustand:** `LoadingState` (Spinner mit
   `role="status" aria-live="polite"`) oder ein `Skeleton`-Block — letzterer immer
   mit einer eigenen `sr-only`-Live-Region, weil Platzhalterflächen für sich stumm
@@ -2139,6 +2170,7 @@ sie getragen hat.
 | [0016](./adr/0016-monorepo-schnitt.md) | **Monorepo-Schnitt: `apps/*` deploybar, `packages/*` geteilt** | Frontend, Backend und Demo teilen Schemas, Engine und UI-Primitiven; getrennte Repositories hießen Typ-Drift und drei Releases je Schema-Änderung, ein Paket ohne Grenzen zöge Svelte in den Backend-Build | pnpm-Workspaces mit `workspace:*`, Werkzeuge einmal im Root; der Docker-Build-Kontext ist das Repo-Root; geteilter Code wandert nach `packages/*`, nie per Kopie | 5.1 (Issue #446) |
 | [0017](./adr/0017-ui-primitiven-einmal-in-packages-ui.md) | **shadcn-Primitiven einmal in `packages/ui`**, nicht je Konsument kopiert | shadcn vendort Quellcode statt einer Abhängigkeit; mit drei Konsumenten lagen elf Komponenten dreifach vor und drifteten sichtbar | jede von mehr als einem Paket genutzte Primitive liegt in `@selbstbehalt/ui`, per shadcn-CLI dort gepflegt; nur Frontend-eigene bleiben in der App | 8.7 (Issues #438, #446, PR #449) |
 | [0018](./adr/0018-demo-deploy-aus-release-please-mit-build-zeit-basispfad.md) | **Die Demo deployt aus dem release-please-Lauf**, artefaktbasiert, mit Basispfad zur Build-Zeit | ein `release:`-Trigger läuft im Tag-Kontext und wird von der Pages-Umgebungsregel abgewiesen; ein `gh-pages`-Branch wüchse um die Modell-Binaries; ein hartkodierter Basispfad bricht beim Domainwechsel | Demo-Stand = Release-Stand; `BASE_PATH` fließt in Kit, Manifest, Service Worker und OCR-Asset-URLs | 7.4 (Epic #166) |
+| [0019](./adr/0019-filterzustand-in-der-url.md) | **Filterzustand lebt in der URL**, ersetzend statt anhängend | ein Filter im Komponenten-State ist nicht verlinkbar und überlebt keinen Reload; ein zweiter Store daneben wäre eine zweite Quelle | Auswahl als `$derived` über `page.url`, geschrieben per `replaceState` (kein History-Eintrag); der Default steht nicht in der URL, ungültige Werte fallen zurück ohne Rewrite; die Parameternamen sind ein öffentlicher Vertrag | 5.2, 8.7 (Issue #461) |
 
 Dieses Kapitel ist die Kurzfassung. Die Ausarbeitung je Entscheidung — Kontext,
 betrachtete Alternativen, Konsequenzen, Status — steht als Architecture Decision

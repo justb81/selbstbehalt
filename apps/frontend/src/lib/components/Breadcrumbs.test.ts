@@ -94,6 +94,13 @@ describe('Breadcrumbs', () => {
     expect(screen.getByText('Neuer Vertrag')).toBeInTheDocument();
   });
 
+  it('carries no "new" label for insured — there is no /insured/new route (issue #461)', () => {
+    nav.pathname = '/insured/new';
+    render(Breadcrumbs);
+    expect(screen.getByRole('link', { name: 'Versicherte' })).toBeInTheDocument();
+    expect(screen.queryByText('Neu')).not.toBeInTheDocument();
+  });
+
   it('shows breadcrumbs for /persons/[id]', () => {
     nav.pathname = '/persons/some-uuid';
     render(Breadcrumbs);

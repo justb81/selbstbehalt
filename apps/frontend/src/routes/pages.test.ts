@@ -98,3 +98,37 @@ describe('error page', () => {
     expect(screen.getByText('Die Seite konnte nicht geladen werden.')).toBeInTheDocument();
   });
 });
+
+// Issue #462: die Formulare benutzen ausschließlich shadcn-svelte-Primitiven —
+// kein rohes <select>/<textarea>/<input type="checkbox"> und kein handgebautes
+// Modal mehr. Switch/Checkbox von bits-ui tragen die passende ARIA-Rolle.
+describe('form primitives (issue #462)', () => {
+  it('renders contracts/new without native select/textarea', () => {
+    const { container } = render(NewContract);
+    expect(container.querySelector('select')).toBeNull();
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    // Notizen laufen über die shadcn-Textarea, nicht über ein rohes <textarea>.
+    expect(container.querySelector('textarea')).toHaveAttribute('data-slot', 'textarea');
+    // Vertragsart als shadcn-Select: Trigger-Button zeigt den gewählten Wert.
+    expect(screen.getByText('Vollversicherung')).toBeInTheDocument();
+  });
+
+  it('renders the Einreichungsweg without a native select', () => {
+    const { container } = render(SubmitInvoice);
+    expect(container.querySelector('select')).toBeNull();
+  });
+
+  it('renders the Fälligkeits-Hinweise as a labelled Switch', () => {
+    const { container } = render(Settings);
+    expect(container.querySelector('select')).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Fälligkeits-Hinweise' })).toBeInTheDocument();
+  });
+
+  it('offers the DB import through a real Button plus an sr-only file input', () => {
+    const { container } = render(Settings);
+    expect(screen.getByRole('button', { name: 'Backup auswählen …' })).toBeInTheDocument();
+    const fileInput = container.querySelector('input[type="file"]');
+    expect(fileInput).toHaveClass('sr-only');
+    expect(fileInput).toHaveAccessibleName('Backup-Datei auswählen');
+  });
+});
