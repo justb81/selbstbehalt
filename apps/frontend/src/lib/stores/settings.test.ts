@@ -8,6 +8,12 @@ const mockedEnv = vi.hoisted(() => ({ PUBLIC_API_URL: undefined as string | unde
 vi.mock('$env/dynamic/public', () => ({ env: mockedEnv }));
 
 import {
+  DEFAULT_CLAIM_FREE_PROBABILITY,
+  DEFAULT_DISCOUNT_RATE,
+} from '$lib/utils/guenstiger-pruefung.js';
+
+import {
+  DEFAULT_SETTINGS,
   resolveApiBaseUrl,
   resolvePaymentReminderLeadDays,
   settings,
@@ -16,15 +22,7 @@ import {
 
 const STORAGE_KEY = 'selbstbehalt:settings';
 
-const defaults: Settings = {
-  apiUrl: '',
-  apiKey: '',
-  discountRate: 0.03,
-  claimFreeProbability: 0.7,
-  defaultPaymentTermDays: 30,
-  paymentReminderLeadDays: 7,
-  paymentRemindersEnabled: true,
-};
+const defaults: Settings = { ...DEFAULT_SETTINGS };
 
 beforeEach(() => {
   localStorage.clear();
@@ -74,6 +72,11 @@ describe('resolvePaymentReminderLeadDays', () => {
 describe('settings store', () => {
   it('starts from defaults', () => {
     expect(get(settings)).toEqual(defaults);
+  });
+
+  it('takes the Günstigerprüfung defaults from the engine constants (#417)', () => {
+    expect(DEFAULT_SETTINGS.discountRate).toBe(DEFAULT_DISCOUNT_RATE);
+    expect(DEFAULT_SETTINGS.claimFreeProbability).toBe(DEFAULT_CLAIM_FREE_PROBABILITY);
   });
 
   it('persists changes to localStorage', () => {
