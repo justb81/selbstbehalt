@@ -112,6 +112,8 @@ describe('renderPdfPage', () => {
     expect(getDocument).toHaveBeenCalledWith({
       data: expect.any(Uint8Array),
       worker: expect.objectContaining({ destroy: expect.any(Function) }),
+      isEvalSupported: false,
+      disableFontFace: true,
     });
     expect(getPage).toHaveBeenCalledWith(1);
     expect(getViewport).toHaveBeenCalledWith({ scale: 2 });

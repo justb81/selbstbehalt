@@ -1256,7 +1256,9 @@ Nachgewiesen und im Einzelnen belegt ist das im
 Bildfeld in irgendeiner Schicht), Netzwerk-Audit (CSP auf `'self'`, Modelle lokal,
 kein Analytics), Bedrohungsmodell mit Restrisiken und die
 Art.-9-Verarbeitungsübersicht. Die ausgelieferten Header, der Reverse-Proxy-Schutz
-und der optionale `X-API-Key` stehen in [`hardening.md`](./hardening.md).
+und der optionale `X-API-Key` stehen in [`hardening.md`](./hardening.md), dort
+auch die Härtung des clientseitigen PDF-Parsings (`isEvalSupported: false`,
+`disableFontFace: true`, Issue #415).
 
 ### 8.2 On-Device-OCR
 
