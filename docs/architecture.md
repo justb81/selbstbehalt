@@ -513,7 +513,7 @@ GET    /api/stats/reductions?group_by=tariff|provider_name|provider_type|goae_nu
 GET    /api/stats/validations         → Beanstandungen nach flag_reason-Kategorie + Steigerungsfaktor-Verteilung (Issue #239)
 
 GET    /api/export/db                 → SQLite-Datenbank-Download (für Backup)
-POST   /api/import/db                 → Datenbank-Wiederherstellung
+POST   /api/import/db?confirm=true    → Datenbank-Wiederherstellung (roher Binär-Body, kein Formular — §7.3)
 ```
 
 Die Lese-Antworten der drei `insured`-Routen (`GET /api/contracts/:id/insured`,
@@ -1213,6 +1213,22 @@ Da die App im Heimnetz betrieben wird, ist eine einfache Lösung ausreichend:
   externen Zugriff via Tailscale. Nur nötig, wenn das Backend auf einer eigenen,
   vom Browser direkt aufgerufenen Origin läuft (dann zusätzlich `CORS_ORIGINS`
   setzen — die SPA sendet Basic Auth nicht cross-origin).
+- **CSRF-Schutz (Pflicht, keine Konfiguration):** Zwei der drei Auth-Varianten
+  authentifizieren *ambient* — ohne `API_KEY` gar nicht, hinter Basic Auth über
+  die vom Browser automatisch angehängten Credentials. CORS schützt dort nicht:
+  ein `multipart/form-data`-POST ist ein CORS-„simple request“, ein
+  auto-submittetes `<form>` einer fremden Seite erreicht die API also ohne
+  Preflight. Deshalb prüft das Backend jede zustandsändernde Anfrage
+  (`middleware/csrf.ts`): `hono/csrf` weist formartige Content-Types ab,
+  ein zusätzlicher `Sec-Fetch-Site`-Check alle übrigen Schreibzugriffe.
+  Erlaubt sind die eigene Origin des Backends (inkl. `X-Forwarded-Proto`) und
+  die in `CORS_ORIGINS` **explizit** genannten Origins; `CORS_ORIGINS=*` weitet
+  das bewusst *nicht* aus („jede Origin darf lesen“ ist nicht „jede Webseite
+  darf schreiben“). Anfragen ohne `Origin` und `Sec-Fetch-Site` (curl, Skripte)
+  passieren. Zwei Ergänzungen machen die Endpunkte für Formulare ganz
+  unerreichbar: JSON-Schreibrouten verlangen `Content-Type: application/json`,
+  `POST /api/import/db` nimmt nur einen rohen Binär-Body
+  (`application/octet-stream` bzw. `application/x-sqlite3`).
 - **HTTPS:** Pflicht – Let's Encrypt via Traefik oder selbstsigniertes Zertifikat im LAN
 
 Fertige Beispiele für nginx, Traefik und Caddy liegen unter `deploy/reverse-proxy/`;

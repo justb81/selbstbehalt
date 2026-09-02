@@ -41,6 +41,13 @@ const TSX_BIN = fileURLToPath(new URL('../../../backend/node_modules/.bin/tsx', 
 /** The localStorage key the settings store persists to (`$lib/stores/settings`). */
 const SETTINGS_STORAGE_KEY = 'selbstbehalt:settings';
 
+/**
+ * Origin the Playwright dev server (and therefore the browser) runs on — see
+ * `baseURL` in playwright.config.ts. The backend has to allow it explicitly:
+ * cross-site writes are rejected unless the origin is on `CORS_ORIGINS` (#404).
+ */
+const DEV_SERVER_ORIGIN = 'http://localhost:5173';
+
 const STARTUP_TIMEOUT_MS = 60_000;
 
 /**
@@ -147,10 +154,12 @@ async function spawnBackend(): Promise<{ backend: Backend; stop: () => Promise<v
       // Ephemeral per process: perfect isolation, nothing to clean up.
       DATABASE_PATH: ':memory:',
       NODE_ENV: 'test',
-      // No API key and no CORS allow-list: the browser talks to this origin
-      // cross-origin, exactly like the documented separate-backend setup (§7.2).
+      // No API key, and the dev server's origin named explicitly: the browser
+      // talks to this backend cross-origin, exactly like the documented
+      // separate-backend setup (§7.2) — where `CORS_ORIGINS` doubles as the
+      // CSRF write allow-list, so `*` would get every write rejected (#404).
       API_KEY: '',
-      CORS_ORIGINS: '*',
+      CORS_ORIGINS: DEV_SERVER_ORIGIN,
     },
   });
 

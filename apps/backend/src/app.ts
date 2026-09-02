@@ -13,6 +13,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import type { Config } from './config.js';
 import type { Database } from './db/client.js';
 import { apiKeyAuth } from './middleware/auth.js';
+import { crossSiteWriteGuard, csrfProtection } from './middleware/csrf.js';
 import { onError, notFound } from './middleware/error.js';
 import { createBackupRoute } from './routes/backup.js';
 import { createContractsRoute } from './routes/contracts.js';
@@ -55,6 +56,12 @@ export function createApp({ db, config }: AppDeps) {
       xFrameOptions: 'DENY',
     }),
   );
+
+  // CSRF protection (§7.3, #404): both layers run before *any* route, so no
+  // state-changing endpoint can be reached by a cross-site form post or fetch.
+  // See middleware/csrf.ts for why CORS alone does not cover this.
+  app.use('*', csrfProtection(config));
+  app.use('*', crossSiteWriteGuard(config));
 
   // Health is unauthenticated for liveness probes — registered before the
   // API-key middleware so the key check never wraps it.

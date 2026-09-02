@@ -84,7 +84,7 @@ and never committed — it's gitignored). Variables map into
 | --- | --- | --- |
 | `DATABASE_PATH` | `data/db/pkv.sqlite` (container: `/app/db/pkv.sqlite`) | Path to the SQLite file, inside the bind-mounted `./data/db` volume. |
 | `PORT` | `8080` | Backend HTTP port (inside the container; not published by default). |
-| `CORS_ORIGINS` | `*` | Allowed CORS origins. Irrelevant for the default single-origin setup; set to the frontend's exact origin if you use a separate backend origin (see `X-API-Key` below). |
+| `CORS_ORIGINS` | `*` | Allowed CORS origins **and** the CSRF write allow-list. Irrelevant for the default single-origin setup; you *must* set it to the frontend's exact origin if you use a separate backend origin (see `X-API-Key` below), because `*` never permits cross-site writes. |
 | `PKV_API_KEY` | _(empty)_ | Wires into the backend as `API_KEY`. Enables `X-API-Key` auth for a **separate backend origin** (VPN/Tailscale case). Leave empty when the reverse proxy's Basic Auth already covers everything (default). |
 | `PUBLIC_API_URL` | _(empty)_ | Base URL the **browser** uses to reach the backend. Leave empty for the recommended single-origin setup (frontend's nginx proxies `/api`). Baked into the frontend bundle at *build time* — changing it requires `docker compose build frontend`. |
 
@@ -167,6 +167,9 @@ remote frontend build calling a Tailscale-only backend). If you need that:
    `X-API-Key` header, except the unauthenticated `/api/health` probe.
 3. Set `CORS_ORIGINS` to the frontend's exact origin — never `*` here, since
    that would let any website call your API with a stolen/brute-forced key.
+   With a separate origin this is *required*, not just advisable: the backend
+   rejects cross-site writes (CSRF protection) unless the calling origin is
+   named here, and `*` deliberately does not count as naming it.
 4. Give the backend's own route HTTPS too — `X-API-Key` is a bearer secret
    and must never travel over plain HTTP.
 
@@ -194,10 +197,14 @@ backend exposes a consistent-snapshot download and a validated restore:
 # Export: downloads the current SQLite database as an attachment
 curl -u <user>:<password> https://pkv.example.com/api/export/db -o backup.sqlite
 
-# Import: uploads a database file to replace the current one.
-# The backend backs up the existing DB before overwriting and rejects
-# schema-incompatible files with a clear error.
-curl -u <user>:<password> -F 'file=@backup.sqlite' https://pkv.example.com/api/import/db
+# Import: uploads a database file to replace the current one, as a raw body
+# (no multipart form — that shape is refused so no foreign web page can reach
+# this endpoint). The backend backs up the existing DB before overwriting and
+# rejects schema-incompatible files with a clear error.
+curl -u <user>:<password> \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @backup.sqlite \
+  'https://pkv.example.com/api/import/db?confirm=true'
 ```
 
 (Drop `-u <user>:<password>` if you're not behind Basic Auth, e.g. calling

@@ -280,7 +280,10 @@ row and invoice survive untouched (no over-deletion).
   `integrity_check`, per-table column-signature match), snapshots the current DB
   to a `.bak-<ts>` file, then atomically reloads the app tables inside one
   transaction with a final `foreign_key_check` that rolls back on any violation.
-  It is double-guarded by a required `?confirm=true`.
+  It is double-guarded by a required `?confirm=true`, and it accepts the file
+  only as a raw binary body (`application/octet-stream` /
+  `application/x-sqlite3`) — never a multipart form, the one shape a cross-site
+  `<form>` could produce (§6.3, #404).
 
 **Defect found and fixed in this review.** The reload's `APP_TABLES` list
 omitted `invoice_status_events`. Consequences: (1) the invoice status-event
@@ -346,6 +349,7 @@ nowhere at all.
 | A malicious/compromised third-party origin | Exfiltrate images or data via a CDN/analytics beacon | No third-party runtime deps; CSP `connect-src/font-src/default-src 'self'` blocks egress; images stay client-side (§1, §2). |
 | A supply-chain-compromised dependency | Inject an exfiltration call | CSP blocks the network egress at runtime; CodeQL/`pnpm audit`/SBOM/Dependabot guard the chain (#6). |
 | Unauthenticated LAN/Internet caller | Read or modify data via the API | Reverse-proxy Basic Auth / `X-API-Key`; `CORS_ORIGINS` must be a specific list, never `*`, when a key is set. |
+| A foreign web page the user visits (CSRF) | Ride the user's ambient auth (no `API_KEY`, or the browser's cached Basic-Auth credentials) to write or wipe data | `hono/csrf` + a `Sec-Fetch-Site` guard on every state-changing request, allowing only the API's own origin and the origins `CORS_ORIGINS` names explicitly (`*` does not count) — `apps/backend/src/middleware/csrf.ts` (§7.3, #404). Writes additionally require a non-form content type (`application/json`, or a raw binary body for `/api/import/db`). |
 | Data-subject request | Cannot erase or export their data | Per-entity cascade DELETE + whole-DB export/import, tested (§4). |
 | Host/backup thief | Read the SQLite file or an exported backup | Residual risk — DB is unencrypted SQLite; see §8. Mitigate with disk/volume encryption; optional SQLCipher (§8.1). |
 | XSS in the SPA | Steal a session / act as the user | Strict CSP (no third-party/inline scripts beyond the build-hashed init); `object-src/base-uri 'none'`; SvelteKit output encoding. |

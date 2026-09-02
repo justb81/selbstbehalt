@@ -174,22 +174,48 @@ describe('POST /api/import/db', () => {
     expect(targetEvents).toEqual(sourceEvents);
   });
 
-  it('accepts a multipart/form-data upload', async () => {
+  it('accepts an application/octet-stream upload', async () => {
     const source = makeApp('source.sqlite');
     seedChain(source.handle, 'DKV');
     const bytes = await exportBytes(source.app);
 
     const target = makeApp('target.sqlite');
+    const res = await target.app.request('/api/import/db?confirm=true', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes,
+    });
+    expect(res.status).toBe(200);
+    const targetContracts = await (await target.app.request('/api/contracts')).json();
+    expect(targetContracts).toHaveLength(1);
+  });
+
+  it('refuses a form upload even from the same origin (#404)', async () => {
+    // A cross-site `<form>` post is already stopped by the CSRF middleware
+    // (403, see middleware/csrf.test.ts). Refusing the content type here too
+    // makes the destructive path unreachable by a form at all — so the header
+    // below, which vouches for the request, does not help it either.
+    const source = makeApp('source.sqlite');
+    seedChain(source.handle, 'DKV');
+    const bytes = await exportBytes(source.app);
+
+    const target = makeApp('target.sqlite');
+    seedChain(target.handle, 'Allianz');
     const form = new FormData();
     form.append('file', new File([bytes], 'backup.sqlite', { type: 'application/x-sqlite3' }));
 
     const res = await target.app.request('/api/import/db?confirm=true', {
       method: 'POST',
+      headers: { 'Sec-Fetch-Site': 'same-origin' },
       body: form,
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(415);
+
+    // The existing data survived the rejected import.
     const targetContracts = await (await target.app.request('/api/contracts')).json();
-    expect(targetContracts).toHaveLength(1);
+    expect(targetContracts.map((c: { insurer_name: string }) => c.insurer_name)).toEqual([
+      'Allianz',
+    ]);
   });
 
   it('refuses without the ?confirm=true guard', async () => {

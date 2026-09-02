@@ -78,7 +78,9 @@ Before exposing an instance beyond your own machine, work through
       already covers the API. See "External access" in
       [`docs/hardening.md`](docs/hardening.md).
 - [ ] **`CORS_ORIGINS`** is a specific origin list, not `*`, whenever
-      `PKV_API_KEY` is set.
+      `PKV_API_KEY` is set. It doubles as the CSRF write allow-list, so a
+      separate-origin deployment _must_ name the frontend's origin here —
+      with `*` every cross-site write is rejected (403).
 - [ ] **Backups are encrypted at rest** if stored off-host (`/api/export/db`
       output, or the host's `./data/db` volume) — the database itself is
       unencrypted SQLite; protect exported copies with disk/volume encryption
