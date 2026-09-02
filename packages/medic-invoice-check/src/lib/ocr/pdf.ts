@@ -70,7 +70,12 @@ export interface PdfWorkerLike {
   destroy(): void;
 }
 export interface PdfJsLike {
-  getDocument(src: { data: ArrayBuffer | Uint8Array; worker?: PdfWorkerLike }): PdfLoadingTaskLike;
+  getDocument(src: {
+    data: ArrayBuffer | Uint8Array;
+    worker?: PdfWorkerLike;
+    isEvalSupported?: boolean;
+    disableFontFace?: boolean;
+  }): PdfLoadingTaskLike;
   PDFWorker?: new (params: { port: Worker }) => PdfWorkerLike;
 }
 
@@ -140,7 +145,18 @@ async function withPdfDocument<T>(
   const data = new Uint8Array(await file.arrayBuffer());
   const worker = createPdfWorker();
   const pdfWorker = pdfjs.PDFWorker ? new pdfjs.PDFWorker({ port: worker }) : undefined;
-  const loadingTask = pdfjs.getDocument({ data, worker: pdfWorker });
+  const loadingTask = pdfjs.getDocument({
+    data,
+    worker: pdfWorker,
+    // Hardening for untrusted third-party documents (issue #415): invoices are
+    // exactly that. `isEvalSupported: false` keeps pdf.js off `new Function(...)`
+    // for PostScript-calculator colour-space functions, and `disableFontFace`
+    // makes it draw glyphs with its built-in path renderer instead of injecting
+    // embedded font data as `@font-face` — the PDF is only ever rasterised for
+    // OCR, never displayed live, so nothing is lost.
+    isEvalSupported: false,
+    disableFontFace: true,
+  });
   try {
     let doc: PdfDocumentLike;
     try {
