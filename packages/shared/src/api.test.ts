@@ -10,6 +10,7 @@ import {
   multiplierDistributionSchema,
   positionYearRollupSchema,
   reductionRollupSchema,
+  rollupYearToRY,
   validationRollupSchema,
   yearStatsSchema,
 } from './api.js';
@@ -121,6 +122,36 @@ describe('positionYearRollupSchema', () => {
   });
 });
 
+describe('rollupYearToRY', () => {
+  it('sums the estimate and the realised refund (§8.5.1)', () => {
+    expect(
+      rollupYearToRY({ year: 2025, charged_amount: 300, eligible_amount: 230, refund_amount: 80 }),
+    ).toBe(310);
+  });
+
+  it('counts a fully reimbursed year, which `eligible_amount` alone would miss', () => {
+    expect(
+      rollupYearToRY({ year: 2025, charged_amount: 300, eligible_amount: 0, refund_amount: 210 }),
+    ).toBe(210);
+  });
+
+  it('rounds float drift to whole cents', () => {
+    expect(
+      rollupYearToRY({
+        year: 2025,
+        charged_amount: 0.3,
+        eligible_amount: 0.1,
+        refund_amount: 0.2,
+      }),
+    ).toBe(0.3);
+  });
+
+  it('treats a missing year on a loaded roll-up as 0', () => {
+    expect(rollupYearToRY(undefined)).toBe(0);
+    expect(rollupYearToRY(null)).toBe(0);
+  });
+});
+
 describe('reductionRollupSchema', () => {
   const valid = {
     group_by: 'tariff',
@@ -198,13 +229,13 @@ describe('validationRollupSchema', () => {
 });
 
 describe('importResultSchema', () => {
-  it('accepts an import result with and without a backup path', () => {
+  it('accepts an import result with and without a backup file', () => {
     expect(
       importResultSchema.safeParse({
         status: 'ok',
         tables_imported: 6,
         rows_imported: 42,
-        backup_path: '/app/db/pkv.sqlite.bak-2026-06-27',
+        backup_file: 'pkv.sqlite.bak-2026-06-27',
       }).success,
     ).toBe(true);
     expect(
@@ -212,7 +243,7 @@ describe('importResultSchema', () => {
         status: 'ok',
         tables_imported: 6,
         rows_imported: 0,
-        backup_path: null,
+        backup_file: null,
       }).success,
     ).toBe(true);
   });
@@ -223,7 +254,7 @@ describe('importResultSchema', () => {
         status: 'failed',
         tables_imported: 6,
         rows_imported: 0,
-        backup_path: null,
+        backup_file: null,
       }).success,
     ).toBe(false);
   });

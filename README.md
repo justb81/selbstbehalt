@@ -168,7 +168,11 @@ automatically. Two workflows run on every push to `main` and every pull request
     generated per build and uploaded as the `sbom-cyclonedx` artifact.
 
 [Dependabot](.github/dependabot.yml) keeps npm packages and GitHub Actions
-patched with grouped, cooldown-gated PRs (see above).
+patched with grouped, cooldown-gated PRs (see above). Every action is pinned to a
+full commit SHA with its version as a trailing comment — a re-pointed upstream
+tag can therefore not change what a workflow runs, and Dependabot keeps the pins
+current. Each workflow also declares the minimal `permissions:` it needs
+(`contents: read` unless it has to write).
 
 **GitHub-side settings** (enable once, in **Settings → Code security**):
 **Secret scanning** and **Push protection** should be on so credentials cannot be

@@ -156,3 +156,19 @@ write routes require `Content-Type: application/json`, and
 `POST /api/import/db` takes only a raw binary body
 (`application/octet-stream` or `application/x-sqlite3`) — see the `curl`
 example in [`self-hosting.md`](self-hosting.md#backup--restore).
+
+## Client-side document parsing: pdf.js
+
+Invoices are untrusted third-party documents, and the PDF path parses them
+directly in the browser. `getDocument(...)` in
+[`packages/medic-invoice-check/src/lib/ocr/pdf.ts`](../packages/medic-invoice-check/src/lib/ocr/pdf.ts)
+therefore overrides two pdf.js defaults (issue #415):
+
+- **`isEvalSupported: false`** — pdf.js otherwise compiles PostScript-calculator
+  colour-space functions with `new Function(...)`. No exploit is known for that
+  path, but a document-driven code-generation primitive is worth closing, and it
+  keeps the parser consistent with the frontend CSP (no `unsafe-eval`).
+- **`disableFontFace: true`** — glyphs are drawn with pdf.js's built-in path
+  renderer instead of installing the document's embedded font data as an
+  `@font-face` rule. The PDF is only ever rasterised for OCR or read via its
+  text layer, never displayed live, so nothing is lost.

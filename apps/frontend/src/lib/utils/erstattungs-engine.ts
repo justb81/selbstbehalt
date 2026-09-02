@@ -48,6 +48,7 @@ import {
   type IncludedBenefit,
   type IncludedBenefits,
 } from '@selbstbehalt/shared';
+import { distributeCentsProportionally } from './proportional-cents';
 
 /** A single invoice position reduced to what the engine needs. */
 export interface ErstattungPosition {
@@ -370,13 +371,16 @@ export function computeErstattung(input: ErstattungInput): ErstattungResult {
       const catResult = computeCategory(category, eligibleCharged, benefit, input);
       byCategory.push({ ...catResult, chargedAmount: totalCharged });
 
-      // Distribute eligible amount proportionally to non-blocked positions.
+      // Distribute eligible amount proportionally to non-blocked positions. The cent
+      // residual is corrected so Σ positions === the category amount shown in the UI.
       if (eligibleCharged > 0 && catResult.eligibleAmount > 0) {
-        for (const entry of eligibleGroup) {
-          byPosition[entry.idx]!.eligible_amount = roundCents(
-            (catResult.eligibleAmount * entry.chargedAmount) / eligibleCharged,
-          );
-        }
+        const parts = distributeCentsProportionally(
+          catResult.eligibleAmount,
+          eligibleGroup.map((entry) => entry.chargedAmount),
+        );
+        eligibleGroup.forEach((entry, i) => {
+          byPosition[entry.idx]!.eligible_amount = parts[i]!;
+        });
       }
     }
   }

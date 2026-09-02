@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { money, uuid } from './common.js';
 import { goaeCategorySchema } from './enums.js';
+import { roundCents } from './utils/money.js';
 
 /**
  * The unified error envelope the backend returns for every non-2xx response
@@ -79,8 +80,9 @@ export type BREHistory = z.infer<typeof breHistorySchema>;
  * are split by the §8.5.1 status rule: `refund_amount` sums only positions on
  * `erstattet` invoices, `eligible_amount` only positions on `geprüft`/`bezahlt`/
  * `eingereicht` invoices, and `charged_amount` sums across all of those (i.e.
- * everything except `neu`). Summing `eligible_amount + refund_amount` yields the
- * Günstigerprüfung's `R_Y` for that year.
+ * everything except `neu`). The Günstigerprüfung's `R_Y` for that year is
+ * `eligible_amount + refund_amount` — use {@link rollupYearToRY} rather than
+ * adding it up at the call site.
  */
 export const positionYearRollupYearSchema = z.object({
   year: z.number().int(),
@@ -89,6 +91,22 @@ export const positionYearRollupYearSchema = z.object({
   refund_amount: money,
 });
 export type PositionYearRollupYear = z.infer<typeof positionYearRollupYearSchema>;
+
+/**
+ * The Günstigerprüfung's `R_Y` for one roll-up year: `eligible_amount`
+ * (estimates) plus `refund_amount` (realised). The two columns are disjoint by
+ * the §8.5.1 status rule, so the sum never double-counts a position — but a
+ * consumer reading only `eligible_amount` would under-count a year that is
+ * already reimbursed, hence this one place to do the addition.
+ *
+ * A missing row (`undefined`/`null`) is `0`: on a **loaded** roll-up a year
+ * without positions genuinely has no reimbursable amount. Never call this with
+ * a roll-up that failed to load — that is "unknown", not `0` (#381).
+ */
+export function rollupYearToRY(year: PositionYearRollupYear | null | undefined): number {
+  if (!year) return 0;
+  return roundCents(year.eligible_amount + year.refund_amount);
+}
 
 /**
  * Response of `GET /api/stats/positions/:insuredPersonId` (#239): the positions
@@ -191,13 +209,15 @@ export type ValidationRollup = z.infer<typeof validationRollupSchema>;
 
 /**
  * Response of `POST /api/import/db` (#14): the result of restoring an uploaded
- * SQLite database. `backup_path` is the server-side path of the pre-overwrite
- * safety backup, or `null` for an ephemeral (`:memory:`) database.
+ * SQLite database. `backup_file` is the *file name* of the pre-overwrite safety
+ * backup written next to the live database, or `null` for an ephemeral
+ * (`:memory:`) database. Deliberately not the full path — the server's
+ * filesystem layout is not the client's business.
  */
 export const importResultSchema = z.object({
   status: z.literal('ok'),
   tables_imported: z.number().int().nonnegative(),
   rows_imported: z.number().int().nonnegative(),
-  backup_path: z.string().nullable(),
+  backup_file: z.string().nullable(),
 });
 export type ImportResult = z.infer<typeof importResultSchema>;

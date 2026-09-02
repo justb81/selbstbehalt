@@ -36,7 +36,7 @@ jobs:
       # the optional RELEASE_PLEASE_TOKEN repo secret (a PAT/GitHub App
       # token) isn't configured — the release PR still opens either way,
       # just without CI status checks. See docs/release.md.
-      - uses: googleapis/release-please-action@v5
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release-please
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
       # versions without running Prettier, so the release PR fails the
       # `format:check` CI gate. Format the generated files and push a fixup
       # commit onto the release PR branch so it stays green.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.release-please.outputs.pr
         with:
           ref: ${{ fromJSON(steps.release-please.outputs.pr).headBranchName }}
@@ -55,11 +55,11 @@ jobs:
 
       - name: Install pnpm
         if: steps.release-please.outputs.pr
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Set up Node
         if: steps.release-please.outputs.pr
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: pnpm

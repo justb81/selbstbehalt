@@ -131,9 +131,11 @@ describe('POST /api/import/db', () => {
     expect(body).toMatchObject({ status: 'ok', tables_imported: 8 });
     expect(body.rows_imported).toBeGreaterThan(0);
 
-    // A safety backup of the pre-import target was written to disk.
-    expect(body.backup_path).toBeTruthy();
-    expect(existsSync(body.backup_path)).toBe(true);
+    // A safety backup of the pre-import target was written next to the live DB —
+    // reported by file name only, never as a server path (#411).
+    expect(body.backup_file).toMatch(/^target\.sqlite\.bak-/);
+    expect(body.backup_file).not.toContain('/');
+    expect(existsSync(join(tmp, body.backup_file))).toBe(true);
 
     // The target now serves exactly the source's data — and only that.
     const sourceContracts = await (await source.app.request('/api/contracts')).json();
