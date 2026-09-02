@@ -283,8 +283,15 @@
       <!-- BRE-Staffel (§8.3) -->
       <div class="space-y-3 rounded-md border border-border bg-muted/30 p-3">
         <div class="flex items-center gap-2">
-          <Checkbox id="ip-has-bre" bind:checked={hasBre} aria-controls="ip-bre" />
-          <Label for="ip-has-bre">BRE-Staffel konfigurieren</Label>
+          <Checkbox
+            id="ip-has-bre"
+            bind:checked={hasBre}
+            aria-labelledby="ip-has-bre-label"
+            aria-controls="ip-bre"
+          />
+          <Label id="ip-has-bre-label" for="ip-has-bre" class="cursor-pointer font-normal">
+            BRE-Staffel konfigurieren
+          </Label>
         </div>
 
         {#if hasBre}

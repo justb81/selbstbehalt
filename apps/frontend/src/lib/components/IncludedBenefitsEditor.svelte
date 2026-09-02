@@ -274,9 +274,16 @@
       id="{idPrefix}-enabled"
       bind:checked={enabled}
       {disabled}
+      aria-labelledby="{idPrefix}-enabled-label"
       aria-controls="{idPrefix}-list"
     />
-    <Label for="{idPrefix}-enabled">Enthaltene Leistungen konfigurieren</Label>
+    <Label
+      id="{idPrefix}-enabled-label"
+      for="{idPrefix}-enabled"
+      class="cursor-pointer font-normal"
+    >
+      Enthaltene Leistungen konfigurieren
+    </Label>
   </div>
 
   {#if enabled}
@@ -365,8 +372,19 @@
           <!-- Erstattungsstaffel -->
           <div class="space-y-2 border-l-2 border-border pl-3">
             <div class="flex items-center gap-2">
-              <Checkbox id="{prefix}-has-tiers" bind:checked={benefit.hasTiers} {disabled} />
-              <Label for="{prefix}-has-tiers">Erstattungsstaffel</Label>
+              <Checkbox
+                id="{prefix}-has-tiers"
+                bind:checked={benefit.hasTiers}
+                {disabled}
+                aria-labelledby="{prefix}-has-tiers-label"
+              />
+              <Label
+                id="{prefix}-has-tiers-label"
+                for="{prefix}-has-tiers"
+                class="cursor-pointer font-normal"
+              >
+                Erstattungsstaffel
+              </Label>
             </div>
             {#if benefit.hasTiers}
               {@const ladderError = messageAt('benefits', i, 'tiers')}
@@ -435,8 +453,19 @@
           <!-- Summengrenzen -->
           <div class="space-y-2 border-l-2 border-border pl-3">
             <div class="flex items-center gap-2">
-              <Checkbox id="{prefix}-has-limits" bind:checked={benefit.hasLimits} {disabled} />
-              <Label for="{prefix}-has-limits">Summengrenzen</Label>
+              <Checkbox
+                id="{prefix}-has-limits"
+                bind:checked={benefit.hasLimits}
+                {disabled}
+                aria-labelledby="{prefix}-has-limits-label"
+              />
+              <Label
+                id="{prefix}-has-limits-label"
+                for="{prefix}-has-limits"
+                class="cursor-pointer font-normal"
+              >
+                Summengrenzen
+              </Label>
             </div>
             {#if benefit.hasLimits}
               <RepeaterTable
@@ -537,8 +566,19 @@
           <!-- Aufbaujahre (Zahnstaffel) -->
           <div class="space-y-2 border-l-2 border-border pl-3">
             <div class="flex items-center gap-2">
-              <Checkbox id="{prefix}-has-staffel" bind:checked={benefit.hasStaffel} {disabled} />
-              <Label for="{prefix}-has-staffel">Aufbaujahre (Zahnstaffel)</Label>
+              <Checkbox
+                id="{prefix}-has-staffel"
+                bind:checked={benefit.hasStaffel}
+                {disabled}
+                aria-labelledby="{prefix}-has-staffel-label"
+              />
+              <Label
+                id="{prefix}-has-staffel-label"
+                for="{prefix}-has-staffel"
+                class="cursor-pointer font-normal"
+              >
+                Aufbaujahre (Zahnstaffel)
+              </Label>
             </div>
             {#if benefit.hasStaffel}
               <RepeaterTable

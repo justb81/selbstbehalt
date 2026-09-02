@@ -25,6 +25,10 @@ import {
 /** The mobile bottom nav is `sm:hidden`, so its tests need a sub-640px viewport. */
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
+// Just enough bytes to look like a SQLite file to the picker; the import itself
+// is never sent — the dialog is closed by Escape.
+const SQLITE = Buffer.from('SQLite format 3\0');
+
 /** Runs an axe scan restricted to WCAG 2.0/2.1 A+AA and asserts zero violations. */
 async function expectNoViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page })
@@ -383,6 +387,25 @@ test.describe('axe: core flows', () => {
     await page.goto('/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeVisible();
     await expectNoViolations(page);
+  });
+
+  // The DB import is the one destructive action in the app; its confirmation
+  // used to be a hand-built `role="alertdialog"` div without a focus trap
+  // (issue #462) and is now the shared AlertDialog.
+  test('settings — the DB import confirmation dialog', async ({ page }) => {
+    await page.goto('/settings');
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({ name: 'backup.sqlite', mimeType: 'application/x-sqlite3', buffer: SQLITE });
+
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+    await expectNoViolations(page);
+
+    // Opening moves focus into the dialog, Escape closes it again.
+    expect(await dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
   });
 });
 
