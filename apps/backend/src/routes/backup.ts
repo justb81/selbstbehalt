@@ -18,7 +18,7 @@
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import type { ImportResult } from '@selbstbehalt/shared';
 import BetterSqlite3 from 'better-sqlite3';
@@ -150,15 +150,16 @@ function assertSchemaCompatible(
 
 /**
  * Snapshot the live database to a `.bak-<timestamp>` file next to it before the
- * destructive overwrite. Returns the backup path, or `null` for an in-memory
- * database (nothing on disk to protect).
+ * destructive overwrite. Returns the backup's *file name* (not its path — the
+ * server's filesystem layout stays server-side, #411), or `null` for an
+ * in-memory database (nothing on disk to protect).
  */
 function backupCurrentDb(raw: BetterSqlite3.Database, config: Config): string | null {
   if (config.databasePath === ':memory:') return null;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupPath = `${config.databasePath}.bak-${stamp}`;
   writeFileSync(backupPath, raw.serialize());
-  return backupPath;
+  return basename(backupPath);
 }
 
 /**
@@ -231,7 +232,7 @@ export function createBackupRoute({ db, config }: BackupDeps) {
           imported.close();
         }
 
-        const backupPath = backupCurrentDb(raw, config);
+        const backupFile = backupCurrentDb(raw, config);
 
         raw.pragma('foreign_keys = OFF');
         raw.prepare('ATTACH DATABASE ? AS importdb').run(tmpPath);
@@ -247,7 +248,7 @@ export function createBackupRoute({ db, config }: BackupDeps) {
           status: 'ok',
           tables_imported: APP_TABLES.length,
           rows_imported: rows,
-          backup_path: backupPath,
+          backup_file: backupFile,
         };
         return c.json(body);
       } finally {

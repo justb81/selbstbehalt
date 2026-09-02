@@ -191,13 +191,15 @@ export type ValidationRollup = z.infer<typeof validationRollupSchema>;
 
 /**
  * Response of `POST /api/import/db` (#14): the result of restoring an uploaded
- * SQLite database. `backup_path` is the server-side path of the pre-overwrite
- * safety backup, or `null` for an ephemeral (`:memory:`) database.
+ * SQLite database. `backup_file` is the *file name* of the pre-overwrite safety
+ * backup written next to the live database, or `null` for an ephemeral
+ * (`:memory:`) database. Deliberately not the full path — the server's
+ * filesystem layout is not the client's business.
  */
 export const importResultSchema = z.object({
   status: z.literal('ok'),
   tables_imported: z.number().int().nonnegative(),
   rows_imported: z.number().int().nonnegative(),
-  backup_path: z.string().nullable(),
+  backup_file: z.string().nullable(),
 });
 export type ImportResult = z.infer<typeof importResultSchema>;

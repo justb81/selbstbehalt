@@ -198,13 +198,13 @@ describe('validationRollupSchema', () => {
 });
 
 describe('importResultSchema', () => {
-  it('accepts an import result with and without a backup path', () => {
+  it('accepts an import result with and without a backup file', () => {
     expect(
       importResultSchema.safeParse({
         status: 'ok',
         tables_imported: 6,
         rows_imported: 42,
-        backup_path: '/app/db/pkv.sqlite.bak-2026-06-27',
+        backup_file: 'pkv.sqlite.bak-2026-06-27',
       }).success,
     ).toBe(true);
     expect(
@@ -212,7 +212,7 @@ describe('importResultSchema', () => {
         status: 'ok',
         tables_imported: 6,
         rows_imported: 0,
-        backup_path: null,
+        backup_file: null,
       }).success,
     ).toBe(true);
   });
@@ -223,7 +223,7 @@ describe('importResultSchema', () => {
         status: 'failed',
         tables_imported: 6,
         rows_imported: 0,
-        backup_path: null,
+        backup_file: null,
       }).success,
     ).toBe(false);
   });
