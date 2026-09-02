@@ -20,6 +20,7 @@
   import {
     formatDate,
     submissionChannelValues,
+    toDateTimeLocal,
     type InvoiceWithPositions,
     type SubmissionChannel,
   } from '@selbstbehalt/shared';
@@ -53,7 +54,7 @@
   );
 
   // ---- Form state ----
-  const nowIso = new Date().toISOString().slice(0, 16); // datetime-local format
+  const nowIso = toDateTimeLocal(new Date());
   let submittedAt = $state(nowIso);
   let submittedVia = $state<SubmissionChannel>('app');
   let expectedRefund = $state<number | null>(null);
@@ -69,7 +70,9 @@
       expectedRefund = invoice.eligible_amount ?? null;
       if (invoice.status.submission === 'eingereicht') {
         const submission = await api.invoices.getSubmission(invoiceId);
-        submittedAt = submission.submitted_at ? submission.submitted_at.slice(0, 16) : nowIso;
+        submittedAt = submission.submitted_at
+          ? toDateTimeLocal(new Date(submission.submitted_at))
+          : nowIso;
         submittedVia = submission.submitted_via ?? 'app';
         expectedRefund = submission.expected_refund ?? null;
       }
@@ -96,7 +99,8 @@
     formError = null;
     try {
       const payload = {
-        submitted_at: submittedAt ? `${submittedAt}:00Z` : null,
+        // Das datetime-local-Feld liefert lokale Zeit; als Instant wird UTC gespeichert.
+        submitted_at: submittedAt ? new Date(submittedAt).toISOString() : null,
         submitted_via: submittedVia,
         expected_refund: expectedRefund,
       };

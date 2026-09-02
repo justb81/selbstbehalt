@@ -10,7 +10,7 @@
 -->
 <script lang="ts">
   import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
-  import type { ProviderType } from '@selbstbehalt/shared';
+  import { todayIso, type ProviderType } from '@selbstbehalt/shared';
   import {
     InvoiceReview,
     type ReviewPositionRow,
@@ -19,10 +19,6 @@
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
-
-  function todayIso(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   let invoiceDate = $state(todayIso());
   let invoiceNumber = $state('');

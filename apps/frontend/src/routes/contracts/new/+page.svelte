@@ -12,6 +12,7 @@
   import {
     contractTypeValues,
     formatDate,
+    todayIso,
     type ContractType,
     type Person,
   } from '@selbstbehalt/shared';
@@ -38,7 +39,7 @@
   let insurerName = $state('');
   let contractNumber = $state('');
   let type = $state<ContractType>('vollversicherung');
-  let startDate = $state(new Date().toISOString().slice(0, 10));
+  let startDate = $state(todayIso());
   let endDate = $state('');
   let notes = $state('');
 

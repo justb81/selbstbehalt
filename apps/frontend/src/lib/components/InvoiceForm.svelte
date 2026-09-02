@@ -23,6 +23,7 @@
     formatEur,
     isNonScheduleCategory,
     roundCents,
+    todayIso,
     type BenefitCategory,
     type InvoicePositionInput,
     type InvoiceWithPositions,
@@ -133,9 +134,7 @@
   );
   let notes = $state(untrack(() => initialData?.notes ?? ''));
 
-  let invoiceDate = $state(
-    untrack(() => initialData?.invoice_date ?? new Date().toISOString().slice(0, 10)),
-  );
+  let invoiceDate = $state(untrack(() => initialData?.invoice_date ?? todayIso()));
   // Empty in create mode: <InvoiceReview> then prefills it from the Rechnungsdatum
   // plus the configured Standard-Zahlungsfrist (issue #288).
   let paymentDueDate = $state(untrack(() => initialData?.payment_due_date ?? ''));
