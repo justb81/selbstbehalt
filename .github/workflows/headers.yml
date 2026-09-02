@@ -53,5 +53,10 @@ jobs:
       - name: Documentation describing the changed code
         if: github.event_name == 'pull_request'
         env:
-          DOCS_AFFECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          # `HEAD^1`, not `pull_request.base.sha`: on a pull_request event checkout
+          # resolves refs/pull/N/merge — this branch merged into the *current* main —
+          # whose first parent is that main. `base.sha` still names the base the PR was
+          # opened against, so diffing against it drags in every unrelated file main
+          # gained meanwhile (observed: a component from another merged PR).
+          DOCS_AFFECTED_BASE: HEAD^1
         run: node scripts/check-doc-refs.mjs --affected | tee -a "$GITHUB_STEP_SUMMARY"
