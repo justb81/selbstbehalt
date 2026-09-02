@@ -9,7 +9,9 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import { api, ApiError, serverStatus } from '$lib/api';
   import {
     formatEur,
@@ -23,6 +25,7 @@
   import { settings } from '$lib/stores/settings';
   import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
   import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
+  import { readNumberParam, readParam, withParam } from '$lib/utils/url-state';
   import CostsRefundsChart from '$lib/components/CostsRefundsChart.svelte';
   import BreProgressionChart from '$lib/components/BreProgressionChart.svelte';
   import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
@@ -55,8 +58,30 @@
   let rollupResults = $state<{ id: string; rollup: PositionYearRollup | null }[]>([]);
   let availableYears = $state<number[]>([currentYear]);
 
-  let selectedYear = $state(currentYear);
-  let selectedPersonId = $state('');
+  // Filterzustand lebt in der URL (issue #461): Reload und Zurück-Navigation
+  // behalten die Auswahl, und die Ansicht ist deep-linkbar. Ungültige oder
+  // (noch) unbekannte Werte fallen auf den heutigen Default zurück.
+  const selectedYear = $derived(readNumberParam(page.url, 'year', availableYears) ?? currentYear);
+  const selectedPersonId = $derived(
+    readParam(
+      page.url,
+      'person',
+      personOptions.map((o) => o.id),
+    ) ??
+      personOptions[0]?.id ??
+      '',
+  );
+
+  // `replaceState`: ein Filterwechsel ist kein History-Eintrag — Zurück soll auf
+  // die vorige Seite führen, nicht durch die Filterhistorie zurückspulen.
+  function setFilter(key: string, value: string | number | null) {
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query-string update
+    void goto(withParam(page.url, key, value), {
+      replaceState: true,
+      keepFocus: true,
+      noScroll: true,
+    });
+  }
 
   // ---- Year-window costs/refunds chart ----
   let yearStats = $state<YearStats[]>([]);
@@ -102,7 +127,6 @@
       const flat = personLists.flat();
       insuredPersons = flat.map((entry) => entry.person);
       personOptions = flat.map((entry) => ({ id: entry.person.id, label: entry.label }));
-      selectedPersonId = personOptions[0]?.id ?? '';
 
       // Positions roll-up per person (architecture §8.5.1, #239) for the Selbstbehalt radar.
       // Settled, not `all`: one person's failure must not lose the others — and
@@ -251,7 +275,7 @@
         type="single"
         value={String(selectedYear)}
         onValueChange={(v: string) => {
-          if (v) selectedYear = Number(v);
+          if (v) setFilter('year', v);
         }}
         items={availableYears.map((y) => ({ value: String(y), label: String(y) }))}
       >
@@ -393,7 +417,7 @@
               type="single"
               value={selectedPersonId}
               onValueChange={(v: string) => {
-                if (v) selectedPersonId = v;
+                if (v) setFilter('person', v);
               }}
               items={personOptions.map((o) => ({ value: o.id, label: o.label }))}
             >

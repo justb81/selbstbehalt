@@ -95,6 +95,13 @@ Full CRUD over `/api/persons`, `/api/contracts` (+ `/api/contracts/:id/insured` 
 ## Conventions
 
 - **UI-Standard: shadcn-svelte + Tailwind CSS v4 (verbindlich)** — Alle UI-Komponenten und Seitenelemente verwenden ausschließlich shadcn-svelte-Komponenten und Tailwind-CSS-Utilities. Die von mehr als einem Paket genutzten Primitiven liegen **einmal** in `packages/ui` (`@selbstbehalt/ui/<komponente>`, `cn()` aus `@selbstbehalt/ui/utils`; dort per shadcn-CLI pflegen, Imports danach relativ machen — siehe `packages/ui/README.md`), nur Frontend-eigene unter `apps/frontend/src/lib/components/ui/`; braucht ein zweites Paket eine davon, wandert der Ordner nach `packages/ui` (#438). Jede App registriert das Paket per `@source` in `app.css`. Kein Custom-CSS, keine `<style>`-Blöcke in `.svelte`-Dateien, keine eigenen CSS-Klassen für Layout, Karten, Tabellen, Buttons, Badges, Formulare oder Modals. Neue Elemente greifen auf [shadcn-svelte](https://shadcn-svelte.com/docs) zurück und erweitern bei Bedarf mit Tailwind-Klassen.
+- **Verlinkbarer Zustand gehört in die URL** — Filter- und Auswahlzustand einer Seite lebt im
+  Query-String, gelesen/geschrieben ausschließlich über `$lib/utils/url-state.ts` (`readParam`,
+  `readNumberParam`, `withParam`); die Auswahl ist ein `$derived` über `page.url`, keine zweite
+  Kopie im State, und geschrieben wird mit `replaceState`/`keepFocus`/`noScroll` (ein
+  Filterwechsel ist kein History-Eintrag). Die vergebenen Parameter je Route stehen in
+  `docs/architecture.md` §5.2 und sind ein öffentlicher Vertrag (ADR-0019). Navigationseinträge
+  sind echte `<a href>` — bei bits-ui über das `child`-Snippet, nie `onclick={() => goto(...)}`.
 - Validate API payloads and forms with Zod.
 - Date/BRE-streak math uses `date-fns`.
 - OCR must not block the UI thread — always run it in a Web Worker.
