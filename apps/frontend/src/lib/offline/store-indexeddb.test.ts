@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
+// jsdom ships no IndexedDB; `/auto` installs the fake globals (IDBRequest,
+// IDBTransaction, …) that `idb` type-checks against. Each test still gets its
+// own IDBFactory below for isolation.
+import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OfflineQueue, type QueuedWrite } from './queue.js';
 import { createIndexedDbStore } from './store-indexeddb.js';
@@ -15,6 +19,9 @@ describe('createIndexedDbStore', () => {
   beforeEach(() => {
     // A fresh in-memory IndexedDB per test for full isolation.
     factory = new IDBFactory();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('round-trips writes in FIFO (insertion) order', async () => {
@@ -72,7 +79,8 @@ describe('createIndexedDbStore', () => {
   });
 
   it('rejects store operations when no IndexedDB factory is available', async () => {
-    const store = createIndexedDbStore(undefined);
+    vi.stubGlobal('indexedDB', undefined);
+    const store = createIndexedDbStore();
     await expect(store.all()).rejects.toThrow(/IndexedDB is unavailable/);
   });
 });
