@@ -56,6 +56,7 @@
     SelectValue,
   } from '@selbstbehalt/ui/select';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Checkbox } from '$lib/components/ui/checkbox';
   import ErrorState from '$lib/components/ErrorState.svelte';
 
   // ---------------------------------------------------------------------------
@@ -470,10 +471,20 @@
 
   <!-- OCR opt-in checkbox (create mode only, after a scan) -->
   {#if mode === 'create' && hasScan}
-    <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-      <input type="checkbox" bind:checked={saveOcrRaw} class="rounded border-border" />
-      <span>OCR-Rohtext speichern (ermöglicht späteres Neu-Einlesen; abwählen zum Verwerfen)</span>
-    </label>
+    <div class="flex items-center gap-2">
+      <Checkbox
+        id="field-save-ocr-raw"
+        aria-labelledby="field-save-ocr-raw-label"
+        bind:checked={saveOcrRaw}
+      />
+      <Label
+        id="field-save-ocr-raw-label"
+        for="field-save-ocr-raw"
+        class="cursor-pointer text-sm font-normal text-muted-foreground"
+      >
+        OCR-Rohtext speichern (ermöglicht späteres Neu-Einlesen; abwählen zum Verwerfen)
+      </Label>
+    </div>
   {/if}
 
   {#if displayError}

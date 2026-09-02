@@ -32,6 +32,13 @@
   import { Label } from '@selbstbehalt/ui/label';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '@selbstbehalt/ui/select';
 
   const CHANNEL_LABELS: Record<SubmissionChannel, string> = {
     app: 'App',
@@ -118,9 +125,6 @@
       saving = false;
     }
   }
-
-  const selectClass =
-    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 </script>
 
 <svelte:head
@@ -176,11 +180,24 @@
 
               <div class="space-y-1">
                 <Label for="submitted-via">Einreichungsweg</Label>
-                <select id="submitted-via" bind:value={submittedVia} class={selectClass}>
-                  {#each submissionChannelValues as ch (ch)}
-                    <option value={ch}>{CHANNEL_LABELS[ch]}</option>
-                  {/each}
-                </select>
+                <Select
+                  type="single"
+                  value={submittedVia}
+                  onValueChange={(v: string) => (submittedVia = v as SubmissionChannel)}
+                  items={submissionChannelValues.map((ch) => ({
+                    value: ch,
+                    label: CHANNEL_LABELS[ch],
+                  }))}
+                >
+                  <SelectTrigger id="submitted-via" class="w-full">
+                    <SelectValue placeholder="Bitte wählen …" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {#each submissionChannelValues as ch (ch)}
+                      <SelectItem value={ch} label={CHANNEL_LABELS[ch]} />
+                    {/each}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div class="space-y-1">
@@ -188,11 +205,7 @@
                 <Input
                   id="expected-refund"
                   type="number"
-                  value={expectedRefund ?? ''}
-                  oninput={(e) => {
-                    const v = (e.target as HTMLInputElement).value;
-                    expectedRefund = v ? parseFloat(v) : null;
-                  }}
+                  bind:value={expectedRefund}
                   min="0"
                   step="0.01"
                   placeholder="optional"

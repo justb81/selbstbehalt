@@ -14,16 +14,17 @@
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import { Separator } from '@selbstbehalt/ui/separator';
+  import { Switch } from '$lib/components/ui/switch';
   import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from '@selbstbehalt/ui/select';
-
-  const ON = 'ein';
-  const OFF = 'aus';
+    AlertDialogRoot,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+    AlertDialogCancel,
+  } from '$lib/components/ui/alert-dialog';
 
   const settingsSchema = z.object({
     apiUrl: z.string(),
@@ -52,12 +53,7 @@
   let claimFreeProbabilityPct = $state($settings.claimFreeProbability * 100);
   let defaultPaymentTermDays = $state($settings.defaultPaymentTermDays);
   let paymentReminderLeadDays = $state($settings.paymentReminderLeadDays);
-  let remindersMode = $state($settings.paymentRemindersEnabled ? ON : OFF);
-
-  const remindersItems = [
-    { value: ON, label: 'Ein' },
-    { value: OFF, label: 'Aus' },
-  ];
+  let remindersEnabled = $state($settings.paymentRemindersEnabled);
 
   let saveError = $state<string | null>(null);
   let savedOk = $state(false);
@@ -85,7 +81,7 @@
       claimFreeProbability: claimFreeProbabilityPct / 100,
       defaultPaymentTermDays,
       paymentReminderLeadDays,
-      paymentRemindersEnabled: remindersMode === ON,
+      paymentRemindersEnabled: remindersEnabled,
     }));
     savedOk = true;
     setTimeout(() => (savedOk = false), 3000);
@@ -125,6 +121,8 @@
   let importing = $state(false);
   let importError = $state<string | null>(null);
   let importResult = $state<{ tables_imported: number; rows_imported: number } | null>(null);
+
+  let fileInput = $state<HTMLInputElement | null>(null);
 
   function onFileChosen(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -292,22 +290,17 @@
             </div>
 
             <div class="space-y-1">
-              <Label for="paymentReminders">Fälligkeits-Hinweise</Label>
-              <Select
-                type="single"
-                value={remindersMode}
-                onValueChange={(v: string) => {
-                  if (v) remindersMode = v;
-                }}
-                items={remindersItems}
-              >
-                <SelectTrigger id="paymentReminders" class="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {#each remindersItems as item (item.value)}
-                    <SelectItem value={item.value} label={item.label} />
-                  {/each}
-                </SelectContent>
-              </Select>
+              <Label id="paymentReminders-label" for="paymentReminders">Fälligkeits-Hinweise</Label>
+              <div class="flex h-8 items-center gap-2">
+                <Switch
+                  id="paymentReminders"
+                  aria-labelledby="paymentReminders-label"
+                  bind:checked={remindersEnabled}
+                />
+                <span class="text-sm text-muted-foreground">
+                  {remindersEnabled ? 'Ein' : 'Aus'}
+                </span>
+              </div>
               <p class="text-xs text-muted-foreground">
                 Markiert fällige und überfällige Rechnungen in Listen und im Dashboard. „Aus"
                 deaktiviert jede Fälligkeits-Markierung.
@@ -323,7 +316,7 @@
                 min="0"
                 max="365"
                 step="1"
-                disabled={remindersMode === OFF}
+                disabled={!remindersEnabled}
                 required
               />
               <p class="text-xs text-muted-foreground">
@@ -395,34 +388,53 @@
             </Alert>
           {/if}
         </div>
-        <label class="cursor-pointer">
-          <span
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground px-4 py-2 cursor-pointer"
-            >Backup auswählen …</span
-          >
-          <input type="file" accept=".sqlite,.db,.sqlite3" onchange={onFileChosen} class="hidden" />
-        </label>
+        <div>
+          <Button variant="outline" onclick={() => fileInput?.click()}>Backup auswählen …</Button>
+          <!--
+            Rohes <input type="file">: die shadcn-Input-Komponente bindet auch im
+            file-Zweig `value`, und ein Datei-Input lässt sich programmatisch nur
+            auf "" setzen — Svelte wirft beim Zurückschreiben. Bedient wird es
+            ohnehin über den Button, es bleibt nur als sr-only-Fallback im
+            Fokus-/A11y-Baum.
+          -->
+          <input
+            bind:this={fileInput}
+            type="file"
+            accept=".sqlite,.db,.sqlite3"
+            onchange={onFileChosen}
+            class="sr-only"
+            tabindex={-1}
+            aria-label="Backup-Datei auswählen"
+          />
+        </div>
       </div>
 
-      {#if importConfirmFile}
-        <div
-          class="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3"
-          role="alertdialog"
-          aria-modal="true"
-        >
-          <p class="text-sm leading-relaxed">
-            <strong>Wirklich importieren?</strong><br />
-            Die Datei <code class="font-mono">{importConfirmFile.name}</code> überschreibt alle aktuellen
-            Daten unwiderruflich.
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <Button variant="destructive" onclick={confirmImport} disabled={importing}>
+      <AlertDialogRoot
+        open={importConfirmFile !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) cancelImport();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Wirklich importieren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Die Datei <code class="font-mono">{importConfirmFile?.name}</code> überschreibt alle aktuellen
+              Daten unwiderruflich.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={importing}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onclick={() => void confirmImport()}
+              disabled={importing}
+            >
               {importing ? 'Wird importiert …' : 'Ja, jetzt importieren'}
-            </Button>
-            <Button variant="outline" onclick={cancelImport} disabled={importing}>Abbrechen</Button>
-          </div>
-        </div>
-      {/if}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogRoot>
     </CardContent>
   </Card>
 </div>
