@@ -9,7 +9,7 @@
  * Leistungsjahr — which drives the Günstigerprüfung and BRE — hangs on each position's
  * `treatment_date`. This helper bridges the two: it spreads each category's entered
  * amount across that category's positions proportionally, the inverse of the estimate
- * distribution in `erstattungs-engine.ts`.
+ * distribution in `erstattungs-engine.ts` (both share `proportional-cents.ts`).
  *
  * Weighting: proportional to each position's `eligible_amount` (the tariff estimate) when
  * the category has a positive eligible sum, otherwise to `charged_amount`; if all weights
@@ -20,6 +20,7 @@
  * Pure and injection-free so it is unit-testable in isolation.
  */
 import { roundCents, type BenefitCategory } from '@selbstbehalt/shared';
+import { distributeCentsProportionally } from './proportional-cents';
 
 /** One invoice position reduced to what the distribution needs. */
 export interface DistributablePosition {
@@ -68,29 +69,8 @@ function distributeInto(
   const eligibleSum = group.reduce((s, p) => s + eligibleWeight(p), 0);
 
   // Weights: eligible amounts if any are positive, else charged amounts, else even split.
-  const rawWeights = group.map((p) =>
-    eligibleSum > 0 ? eligibleWeight(p) : Math.max(p.charged_amount, 0),
-  );
-  const rawSum = rawWeights.reduce((a, b) => a + b, 0);
-  const weights = rawSum > 0 ? rawWeights : group.map(() => 1);
-  const weightSum = rawSum > 0 ? rawSum : group.length;
-
-  let allocated = 0;
-  const parts = weights.map((w) => {
-    const part = roundCents((total * w) / weightSum);
-    allocated += part;
-    return part;
-  });
-
-  // Push the cent residual onto the largest-weight position so Σ parts === total exactly.
-  const residual = roundCents(total - allocated);
-  if (residual !== 0 && parts.length > 0) {
-    let maxIdx = 0;
-    for (let i = 1; i < weights.length; i++) {
-      if (weights[i]! > weights[maxIdx]!) maxIdx = i;
-    }
-    parts[maxIdx] = roundCents(parts[maxIdx]! + residual);
-  }
+  const weights = group.map((p) => (eligibleSum > 0 ? eligibleWeight(p) : p.charged_amount));
+  const parts = distributeCentsProportionally(total, weights);
 
   group.forEach((p, i) => result.set(p.id, parts[i]!));
 }

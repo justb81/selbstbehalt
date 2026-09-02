@@ -474,3 +474,51 @@ describe('computeErstattung — benefit areas the tariff does not cover', () => 
     });
   });
 });
+
+describe('computeErstattung — Cent-Verteilung auf Positionen (#409)', () => {
+  it('keeps Σ byPosition equal to the category amount in a capped category', () => {
+    const result = computeErstattung(
+      input({
+        positions: [
+          { category: 'heilmittel', chargedAmount: 100 },
+          { category: 'heilmittel', chargedAmount: 100 },
+          { category: 'heilmittel', chargedAmount: 100 },
+        ],
+        benefits: {
+          benefits: [
+            {
+              category: 'heilmittel',
+              tiers: [{ up_to: null, pct: 100 }],
+              limits: [{ scope: 'jahr', max_amount: 100 }],
+            },
+          ],
+        },
+      }),
+    );
+    // 300 € charged, capped to 100 € → 3 × 33,33… : the residual cent must not be lost.
+    expect(result.byCategory[0]?.eligibleAmount).toBe(100);
+    expect(result.byPosition.map((p) => p.eligible_amount)).toEqual([33.34, 33.33, 33.33]);
+    const positionSum = result.byPosition.reduce((s, p) => s + p.eligible_amount, 0);
+    expect(Math.round(positionSum * 100) / 100).toBe(result.eligibleAmount);
+  });
+
+  it('skips waiting-period positions when distributing the residual', () => {
+    const result = computeErstattung(
+      input({
+        positions: [
+          { category: 'kieferorthopaedie', chargedAmount: 1000, treatmentDate: '2030-06-01' },
+          { category: 'kieferorthopaedie', chargedAmount: 1000, treatmentDate: '2030-06-02' },
+          { category: 'kieferorthopaedie', chargedAmount: 1000, treatmentDate: '2024-03-01' },
+        ],
+        benefits: KFO_BENEFITS,
+        coverageStart: '2024-01-01',
+        invoiceDate: '2030-06-01',
+        patientAge: 10,
+      }),
+    );
+    // Third position inside the 8-month Wartezeit, so only 2000 € run through the tiers:
+    // 500 × 100 % + 1500 × 70 % = 1550, split evenly, nothing leaking onto the blocked one.
+    expect(result.byCategory[0]?.eligibleAmount).toBe(1550);
+    expect(result.byPosition.map((p) => p.eligible_amount)).toEqual([775, 775, 0]);
+  });
+});
