@@ -465,6 +465,8 @@ und keine Gesundheitsdaten interpretieren muss.
 
 Aufbau: `src/app.ts` (Hono-App, Security-Header), `src/config.ts` (Konfiguration aus
 Umgebungsvariablen), `src/middleware/auth.ts` (optionaler `X-API-Key`),
+`src/lib/validation.ts` (Body-/Query-Validierung als Middleware über
+`@hono/zod-validator`, deutsche Fehlermeldungen über deren Hook),
 `src/db/schema.ts` + `src/db/migrations/` (Drizzle, Kapitel 5.5), `src/routes/*.ts`.
 
 #### REST-Endpunkte

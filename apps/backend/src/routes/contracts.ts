@@ -23,7 +23,7 @@ import type { Database } from '../db/client.js';
 import { contracts, persons } from '../db/schema.js';
 import { assertFkExists, requireRow, updateOrReturn } from '../lib/db-helpers.js';
 import { serializeContract, toContractInsert, toContractUpdate } from '../lib/serialize.js';
-import { parseJsonBody, parseQuery } from '../lib/validation.js';
+import { jsonBody, queryParams } from '../lib/validation.js';
 
 const listQuerySchema = z.object({ policyholder_id: uuid.optional() });
 
@@ -34,8 +34,8 @@ function findContract(db: Database, id: string) {
 
 export function createContractsRoute(db: Database) {
   return new Hono()
-    .get('/', (c) => {
-      const { policyholder_id } = parseQuery(c, listQuerySchema);
+    .get('/', queryParams(listQuerySchema), (c) => {
+      const { policyholder_id } = c.req.valid('query');
       const rows = db
         .select()
         .from(contracts)
@@ -44,8 +44,8 @@ export function createContractsRoute(db: Database) {
       const body: Contract[] = rows.map(serializeContract);
       return c.json(body);
     })
-    .post('/', async (c) => {
-      const input = await parseJsonBody(c, contractCreateSchema);
+    .post('/', jsonBody(contractCreateSchema), (c) => {
+      const input = c.req.valid('json');
       assertFkExists(
         db,
         persons,
@@ -59,10 +59,10 @@ export function createContractsRoute(db: Database) {
       const row = requireRow(() => findContract(db, c.req.param('id')), 'Vertrag nicht gefunden');
       return c.json(serializeContract(row));
     })
-    .put('/:id', async (c) => {
+    .put('/:id', jsonBody(contractUpdateSchema), (c) => {
       const id = c.req.param('id');
       const existing = requireRow(() => findContract(db, id), 'Vertrag nicht gefunden');
-      const input = await parseJsonBody(c, contractUpdateSchema);
+      const input = c.req.valid('json');
       if (input.policyholder_id !== undefined)
         assertFkExists(
           db,

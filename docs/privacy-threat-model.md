@@ -50,7 +50,7 @@ file that by construction contains no image data.
   (`apps/frontend/src/lib/api/resources.ts`, `invoices.create`) sends an
   `InvoiceCreatePayload` — the metadata-only type defined in
   `packages/shared/src/schemas/invoice.ts`.
-- The backend accepts the payload with `parseJsonBody(c, invoiceCreatePayloadSchema)`
+- The backend accepts the payload with `jsonBody(invoiceCreatePayloadSchema)`
   (`apps/backend/src/routes/invoices.ts`, `POST /`). It reads a JSON body only —
   no multipart, no file handling. The only file I/O anywhere under
   `apps/backend/src/routes/` is `backup.ts` (SQLite import/export), which

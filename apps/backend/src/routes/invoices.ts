@@ -66,7 +66,7 @@ import {
   toSubmissionInsert,
   toSubmissionUpdate,
 } from '../lib/serialize.js';
-import { parseJsonBody, parseQuery } from '../lib/validation.js';
+import { jsonBody, queryParams } from '../lib/validation.js';
 
 const listQuerySchema = z.object({
   insured_person_id: uuid.optional(),
@@ -176,8 +176,8 @@ function recalcInvoiceSums(db: Database, invoiceId: string): void {
 
 export function createInvoicesRoute(db: Database) {
   return new Hono()
-    .get('/', (c) => {
-      const f = parseQuery(c, listQuerySchema);
+    .get('/', queryParams(listQuerySchema), (c) => {
+      const f = c.req.valid('query');
       const conditions: (SQL | undefined)[] = [
         f.insured_person_id ? eq(invoices.insuredPersonId, f.insured_person_id) : undefined,
         f.review ? eq(invoiceCurrentStatus.review, f.review) : undefined,
@@ -212,8 +212,8 @@ export function createInvoicesRoute(db: Database) {
         ),
       );
     })
-    .post('/', async (c) => {
-      const input = await parseJsonBody(c, invoiceCreatePayloadSchema);
+    .post('/', jsonBody(invoiceCreatePayloadSchema), (c) => {
+      const input = c.req.valid('json');
       assertFkExists(
         db,
         insuredPersons,
@@ -263,7 +263,7 @@ export function createInvoicesRoute(db: Database) {
       return c.json(rows.map(serializeStatusEvent));
     })
     .get('/:id', (c) => c.json(invoiceWithPositions(db, c.req.param('id'))))
-    .put('/:id', async (c) => {
+    .put('/:id', jsonBody(invoiceUpdatePayloadSchema), (c) => {
       const id = c.req.param('id');
       requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
 
@@ -275,7 +275,7 @@ export function createInvoicesRoute(db: Database) {
         });
       }
 
-      const input = await parseJsonBody(c, invoiceUpdatePayloadSchema);
+      const input = c.req.valid('json');
       if (input.insured_person_id !== undefined)
         assertFkExists(
           db,
@@ -315,10 +315,10 @@ export function createInvoicesRoute(db: Database) {
       if (!deleted) throw new HTTPException(404, { message: 'Rechnung nicht gefunden' });
       return c.body(null, 204);
     })
-    .post('/:id/review', async (c) => {
+    .post('/:id/review', jsonBody(invoiceReviewChangeSchema), (c) => {
       const id = c.req.param('id');
       const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-      const input = await parseJsonBody(c, invoiceReviewChangeSchema);
+      const input = c.req.valid('json');
       const status = deriveStatus(db, id);
       if (status.review === input.status) {
         throw new HTTPException(409, {
@@ -337,10 +337,10 @@ export function createInvoicesRoute(db: Database) {
       appendEvent(db, id, 'review', input.status, input.note);
       return c.json(serializeInvoice(invoice, deriveStatus(db, id)));
     })
-    .post('/:id/payment', async (c) => {
+    .post('/:id/payment', jsonBody(invoicePaymentChangeSchema), (c) => {
       const id = c.req.param('id');
       const invoice = requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-      const input = await parseJsonBody(c, invoicePaymentChangeSchema);
+      const input = c.req.valid('json');
       const status = deriveStatus(db, id);
       if (status.payment === input.status) {
         throw new HTTPException(409, { message: `Zahlungsstatus ist bereits '${input.status}'` });
@@ -359,7 +359,7 @@ export function createInvoicesRoute(db: Database) {
       appendEvent(db, id, 'payment', input.status, input.note, changedAt);
       return c.json(serializeInvoice(invoice, deriveStatus(db, id)));
     })
-    .post('/:id/submit', async (c) => {
+    .post('/:id/submit', jsonBody(submissionInputSchema), (c) => {
       const id = c.req.param('id');
       requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       const status = deriveStatus(db, id);
@@ -374,7 +374,7 @@ export function createInvoicesRoute(db: Database) {
         });
       }
 
-      const input = await parseJsonBody(c, submissionInputSchema);
+      const input = c.req.valid('json');
       const submission = db.transaction((tx) => {
         const row = tx
           .insert(submissions)
@@ -399,7 +399,7 @@ export function createInvoicesRoute(db: Database) {
       );
       return c.json(serializeSubmission(submission));
     })
-    .put('/:id/submission', async (c) => {
+    .put('/:id/submission', jsonBody(submissionUpdateSchema), (c) => {
       // Corrects the submission captured by /submit in place (issue #230
       // "Bearbeiten") — the submission track stays 'eingereicht', no new event.
       const id = c.req.param('id');
@@ -415,7 +415,7 @@ export function createInvoicesRoute(db: Database) {
         'Für diese Rechnung liegt keine Einreichung vor',
       );
 
-      const input = await parseJsonBody(c, submissionUpdateSchema);
+      const input = c.req.valid('json');
       const changes = toSubmissionUpdate(input);
       const updated = updateOrReturn(
         changes,
@@ -430,7 +430,7 @@ export function createInvoicesRoute(db: Database) {
       );
       return c.json(serializeSubmission(updated));
     })
-    .put('/:id/refund', async (c) => {
+    .put('/:id/refund', jsonBody(invoiceRefundPayloadSchema), (c) => {
       const id = c.req.param('id');
       requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
       const status = deriveStatus(db, id);
@@ -444,7 +444,7 @@ export function createInvoicesRoute(db: Database) {
         });
       }
 
-      const input = await parseJsonBody(c, invoiceRefundPayloadSchema);
+      const input = c.req.valid('json');
 
       db.transaction((tx) => {
         // Update refund_amount per position.
@@ -472,7 +472,7 @@ export function createInvoicesRoute(db: Database) {
 
       return c.json(invoiceWithPositions(db, id));
     })
-    .post('/:id/submission/revert', async (c) => {
+    .post('/:id/submission/revert', jsonBody(invoiceRevertSchema), (c) => {
       // Steps the submission track back one level (issue #230 "Löschen"),
       // discarding the data that step captured.
       const id = c.req.param('id');
@@ -483,7 +483,7 @@ export function createInvoicesRoute(db: Database) {
           message: 'Für diese Rechnung liegt keine Einreichung vor, die zurückgenommen werden kann',
         });
       }
-      const input = await parseJsonBody(c, invoiceRevertSchema);
+      const input = c.req.valid('json');
 
       db.transaction((tx) => {
         if (status.submission === 'erstattet') {
