@@ -5,7 +5,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-  import { cn } from '$lib/utils';
+  import { cn } from '@selbstbehalt/ui/utils';
   import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
   import ScanLineIcon from '@lucide/svelte/icons/scan-line';
 

@@ -9,8 +9,8 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { formatEur } from '@selbstbehalt/shared';
-  import { cn } from '$lib/utils';
-  import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import { cn } from '@selbstbehalt/ui/utils';
+  import { Card, CardContent, CardHeader } from '@selbstbehalt/ui/card';
   import { Badge } from '$lib/components/ui/badge';
   import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 

@@ -32,8 +32,7 @@ export default defineConfig({
       include: ['src/**/*.{ts,svelte}'],
       // Generated declarations and route page components (a thin integration
       // point, mostly wiring @selbstbehalt/medic-invoice-check together) carry
-      // no meaningful unit coverage on their own; shadcn-svelte generated UI
-      // primitives are vendored, not authored here. service-worker.ts is a thin
+      // no meaningful unit coverage on their own. service-worker.ts is a thin
       // wiring layer over the well-tested lib/pwa/strategies.ts (see its own
       // header comment) and only runs in a real SW context — exercised by the
       // Playwright PWA checks (e2e/pwa.spec.ts), not unit tests.
@@ -41,7 +40,6 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/routes/**/+layout.ts',
         'src/routes/**/*.svelte',
-        'src/lib/components/ui/**',
         'src/service-worker.ts',
       ],
       thresholds: {

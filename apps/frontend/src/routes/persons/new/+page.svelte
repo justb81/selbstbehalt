@@ -7,11 +7,11 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { api, ApiError } from '$lib/api';
-  import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
-  import { Card, CardContent } from '$lib/components/ui/card';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Input } from '@selbstbehalt/ui/input';
+  import { Label } from '@selbstbehalt/ui/label';
+  import { Card, CardContent } from '@selbstbehalt/ui/card';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
 
   let name = $state('');
   let birthDate = $state('');

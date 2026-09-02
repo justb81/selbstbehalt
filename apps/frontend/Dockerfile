@@ -30,9 +30,10 @@ WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/medic-invoice-check/package.json packages/medic-invoice-check/package.json
+COPY packages/ui/package.json packages/ui/package.json
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/frontend/package.json apps/frontend/package.json
-# Install only the frontend's subtree (frontend + the shared and
+# Install only the frontend's subtree (frontend + the shared, ui and
 # medic-invoice-check packages it needs — the latter pulls in onnxruntime-web,
 # which copy-ort-wasm.mjs resolves from it below).
 # --ignore-scripts: only the manifests have been copied so far, so the
@@ -43,12 +44,13 @@ COPY apps/frontend/package.json apps/frontend/package.json
 RUN --mount=type=cache,id=pnpm-store-frontend,target=/pnpm/store \
   pnpm install --frozen-lockfile --filter "@selbstbehalt/frontend..." --ignore-scripts
 
-# Sources for the frontend and its shared/medic-invoice-check dependencies.
+# Sources for the frontend and its shared/ui/medic-invoice-check dependencies.
 # `scripts/` holds the OCR asset helpers (ocr:models, copy-ort-wasm) the
 # frontend build invokes.
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY packages/medic-invoice-check packages/medic-invoice-check
+COPY packages/ui packages/ui
 COPY apps/frontend apps/frontend
 COPY scripts scripts
 

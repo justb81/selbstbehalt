@@ -22,10 +22,9 @@
   "dependencies": {
     "@selbstbehalt/medic-invoice-check": "workspace:*",
     "@selbstbehalt/shared": "workspace:*",
+    "@selbstbehalt/ui": "workspace:*",
     "bits-ui": "^2.19.0",
-    "clsx": "^2.1.1",
     "date-fns": "4.4.0",
-    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

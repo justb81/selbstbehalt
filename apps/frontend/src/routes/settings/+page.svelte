@@ -8,19 +8,19 @@
   import { z } from 'zod';
   import { importResultSchema } from '@selbstbehalt/shared';
   import { settings, resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings';
-  import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
-  import { Card, CardContent } from '$lib/components/ui/card';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { Separator } from '$lib/components/ui/separator';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Input } from '@selbstbehalt/ui/input';
+  import { Label } from '@selbstbehalt/ui/label';
+  import { Card, CardContent } from '@selbstbehalt/ui/card';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Separator } from '@selbstbehalt/ui/separator';
   import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-  } from '$lib/components/ui/select';
+  } from '@selbstbehalt/ui/select';
 
   const ON = 'ein';
   const OFF = 'aus';

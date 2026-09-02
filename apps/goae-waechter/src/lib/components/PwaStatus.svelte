@@ -8,8 +8,8 @@
 -->
 <script lang="ts">
   import { initPwa } from '$lib/pwa/register.js';
-  import { Alert, AlertAction, AlertDescription } from '$lib/components/ui/alert';
-  import { Button } from '$lib/components/ui/button';
+  import { Alert, AlertAction, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
 
   const { needRefresh, offlineReady, updateServiceWorker } = initPwa();
 </script>

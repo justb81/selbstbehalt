@@ -44,17 +44,17 @@
     referenceLeistungsjahr,
     type PriorClaimsInvoice,
   } from '$lib/utils/prior-claims';
-  import { Button } from '$lib/components/ui/button';
-  import { Label } from '$lib/components/ui/label';
-  import { Textarea } from '$lib/components/ui/textarea';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Label } from '@selbstbehalt/ui/label';
+  import { Textarea } from '@selbstbehalt/ui/textarea';
   import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-  } from '$lib/components/ui/select';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  } from '@selbstbehalt/ui/select';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import ErrorState from '$lib/components/ErrorState.svelte';
 
   // ---------------------------------------------------------------------------

@@ -146,9 +146,10 @@ nicht per Hand in die JSON geschrieben.
 - **Sprache:** Domänen- und Feldnamen bleiben deutsch, wo dieses Dokument sie
   deutsch nennt (`selbstbehalt`, `bre_structure`, `eligible_amount`); die
   Oberfläche ist durchgehend `de-DE`. Quellcode-Kommentare sind englisch.
-- **UI-Standard:** ausschließlich shadcn-svelte-Komponenten
-  (`$lib/components/ui/`) und Tailwind-CSS-Utilities — kein Custom-CSS, keine
-  `<style>`-Blöcke in `.svelte`-Dateien (Kapitel 8.7).
+- **UI-Standard:** ausschließlich shadcn-svelte-Komponenten (gemeinsam in
+  `packages/ui`, Frontend-eigene unter `$lib/components/ui/`) und
+  Tailwind-CSS-Utilities — kein Custom-CSS, keine `<style>`-Blöcke in
+  `.svelte`-Dateien (Kapitel 8.7).
 - **Commits und Releases:** Conventional Commits (commitlint) treiben Changelog
   und Versionsanhebung über release-please; siehe [`release.md`](./release.md).
 - **Review:** jeder Pull Request braucht die Freigabe des Maintainers
@@ -312,7 +313,7 @@ Docs-Site (die Struktur zuerst, das Rendering später).
 └───────────────────────────────────────────────────────────────┘
 ```
 
-Die enthaltenen Bausteine sind die fünf pnpm-Workspaces:
+Die enthaltenen Bausteine sind die sechs pnpm-Workspaces:
 
 | Workspace | Paketname | Verantwortung | Kapitel |
 |---|---|---|---|
@@ -321,6 +322,7 @@ Die enthaltenen Bausteine sind die fünf pnpm-Workspaces:
 | `apps/goae-waechter/` | `@selbstbehalt/goae-waechter` | eigenständige, backendfreie Demo der Rechnungsprüfung (GitHub Pages) | 5.6 |
 | `packages/medic-invoice-check/` | `@selbstbehalt/medic-invoice-check` | On-Device-OCR, Gebührenordnungs-Parser und Regelprüfung, Scan-/Review-Oberfläche — von Frontend **und** Demo genutzt | 5.3 |
 | `packages/shared/` | `@selbstbehalt/shared` | Zod-Schemas und abgeleitete Typen aller Entitäten, gemeinsame Enums, Domänen-Helfer (BRE-Staffel, Leistungsbereich, Zahlungsziel, Statusableitung) | 5.5 |
+| `packages/ui/` | `@selbstbehalt/ui` | die von mehr als einem Paket genutzten shadcn-svelte-Primitiven (je Komponente ein Subpath-Export, z. B. `@selbstbehalt/ui/button`) und der `cn()`-Klassenhelfer — **eine** vendored Kopie statt dreier driftender | 8.7 |
 
 Werkzeuge liegen im Repo-Wurzelverzeichnis und werden geteilt: eine
 `tsconfig.base.json` (strict), eine flache `eslint.config.js`, eine
@@ -1910,10 +1912,17 @@ gekennzeichnet.
 
 ### 8.7 Bedienoberfläche und Barrierefreiheit
 
-- **Komponentenbasis:** ausschließlich shadcn-svelte (`$lib/components/ui/`) und
-  Tailwind-CSS-Utilities. Kein Custom-CSS, keine `<style>`-Blöcke, keine eigenen
-  Layout-Klassen — neue Elemente greifen auf die Vorlage zurück und erweitern sie
-  per Utility-Klasse. Das hält das Erscheinungsbild ohne Design-Review zusammen.
+- **Komponentenbasis:** ausschließlich shadcn-svelte und Tailwind-CSS-Utilities.
+  Kein Custom-CSS, keine `<style>`-Blöcke, keine eigenen Layout-Klassen — neue
+  Elemente greifen auf die Vorlage zurück und erweitern sie per Utility-Klasse.
+  Das hält das Erscheinungsbild ohne Design-Review zusammen.
+- **Eine Kopie je Primitive:** Komponenten, die mehr als ein Paket benutzt
+  (Frontend, Demo, `medic-invoice-check`), liegen genau einmal in `packages/ui`
+  (`@selbstbehalt/ui/<komponente>`, `cn()` unter `@selbstbehalt/ui/utils`) und
+  werden dort mit der shadcn-svelte-CLI gepflegt; nur das Frontend hält
+  zusätzlich eigene unter `$lib/components/ui/`. Braucht ein zweites Paket eine
+  davon, wandert der Ordner nach `packages/ui`. Jede App registriert das Paket
+  per `@source` in ihrer `app.css`, sonst sieht Tailwind dessen Klassen nicht.
 - **Sprache:** durchgehend `de-DE`; Fachbegriffe bleiben deutsch und werden in
   Kapitel 12 definiert. Die begriffliche Trennung Person / Versicherungsnehmer /
   versicherte Person ist verbindlich für UI-Labels (Kapitel 5.2).

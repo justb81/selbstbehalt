@@ -10,7 +10,7 @@
   },
   "aliases": {
     "components": "$lib/components",
-    "utils": "$lib/utils",
+    "utils": "@selbstbehalt/ui/utils",
     "ui": "$lib/components/ui",
     "hooks": "$lib/hooks"
   }

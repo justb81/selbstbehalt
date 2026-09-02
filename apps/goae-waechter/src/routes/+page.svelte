@@ -16,9 +16,9 @@
     type ReviewPositionRow,
     type ScanResult,
   } from '@selbstbehalt/medic-invoice-check';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Card, CardContent } from '@selbstbehalt/ui/card';
 
   function todayIso(): string {
     return new Date().toISOString().slice(0, 10);

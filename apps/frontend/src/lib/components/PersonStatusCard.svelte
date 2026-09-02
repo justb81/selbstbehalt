@@ -15,7 +15,7 @@
   import type { SBRadar } from '$lib/utils/selbstbehalt-radar';
   import SelbstbehaltRadar from './SelbstbehaltRadar.svelte';
   import BRETracker from './BRETracker.svelte';
-  import { Separator } from '$lib/components/ui/separator';
+  import { Separator } from '@selbstbehalt/ui/separator';
 
   let {
     insuredPerson,

@@ -2,8 +2,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Reusable error panel with an optional retry action. -->
 <script lang="ts">
-  import { Alert, AlertTitle, AlertDescription } from '$lib/components/ui/alert';
-  import { Button } from '$lib/components/ui/button';
+  import { Alert, AlertTitle, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
 
   let {
     title = 'Etwas ist schiefgelaufen',

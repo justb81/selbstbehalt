@@ -43,9 +43,9 @@
   import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { Card, CardContent, CardDescription, CardHeader } from '$lib/components/ui/card';
-  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Card, CardContent, CardDescription, CardHeader } from '@selbstbehalt/ui/card';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import {
     AlertDialogRoot,
     AlertDialogContent,
@@ -56,7 +56,7 @@
     AlertDialogAction,
     AlertDialogCancel,
   } from '$lib/components/ui/alert-dialog';
-  import { Separator } from '$lib/components/ui/separator';
+  import { Separator } from '@selbstbehalt/ui/separator';
   import { HoverCard, HoverCardContent, HoverCardTrigger } from '$lib/components/ui/hover-card';
   import {
     Table,

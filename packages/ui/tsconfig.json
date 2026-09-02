@@ -1,0 +1,17 @@
+{
+  // Inherit the repo-wide strictness from ../../tsconfig.base.json; the
+  // components are browser code, so they need the DOM libs.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": [],
+    // `$lib` exists only for the shadcn-svelte CLI (components.json aliases), so
+    // it can place new components. The files themselves import relatively —
+    // they are compiled inside the consuming app, where `$lib` means *its* lib.
+    "paths": {
+      "$lib": ["./src/lib"],
+      "$lib/*": ["./src/lib/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte"]
+}

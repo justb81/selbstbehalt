@@ -5,7 +5,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import * as Sheet from '$lib/components/ui/sheet';
-  import { cn } from '$lib/utils';
+  import { cn } from '@selbstbehalt/ui/utils';
   import ChartBarIcon from '@lucide/svelte/icons/chart-bar';
   import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
   import FileBadgeIcon from '@lucide/svelte/icons/file-badge';

@@ -58,12 +58,11 @@ export default tseslint.config(
 
   // shadcn-svelte generated UI components use plain <a href> links rather than
   // SvelteKit's goto(); suppress the navigation rule for those directories only
-  // (each app's own set and the subset vendored into @selbstbehalt/medic-invoice-check).
+  // (the shared set in @selbstbehalt/ui and apps/frontend's own additions).
   {
     files: [
+      'packages/ui/src/lib/components/ui/**/*.svelte',
       'apps/frontend/src/lib/components/ui/**/*.svelte',
-      'apps/goae-waechter/src/lib/components/ui/**/*.svelte',
-      'packages/medic-invoice-check/src/lib/components/ui/**/*.svelte',
     ],
     rules: {
       'svelte/no-navigation-without-resolve': 'off',

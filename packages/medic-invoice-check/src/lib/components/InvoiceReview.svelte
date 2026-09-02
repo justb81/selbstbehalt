@@ -68,22 +68,28 @@
   import InvoicePagePreview from './InvoicePagePreview.svelte';
   import { isImagePagePreview, type ScanPreview } from '../ocr/preview';
   import OCRScanner from './OCRScanner.svelte';
-  import { Button } from './ui/button';
-  import { Input } from './ui/input';
-  import { Label } from './ui/label';
-  import { Textarea } from './ui/textarea';
-  import { Card, CardContent, CardHeader } from './ui/card';
-  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-  import { Alert, AlertDescription } from './ui/alert';
-  import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-  import { Collapsible, CollapsibleContent } from './ui/collapsible';
+  import { Button } from '@selbstbehalt/ui/button';
+  import { Input } from '@selbstbehalt/ui/input';
+  import { Label } from '@selbstbehalt/ui/label';
+  import { Textarea } from '@selbstbehalt/ui/textarea';
+  import { Card, CardContent, CardHeader } from '@selbstbehalt/ui/card';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '@selbstbehalt/ui/select';
+  import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { DialogRoot, DialogContent, DialogHeader, DialogTitle } from '@selbstbehalt/ui/dialog';
+  import { Collapsible, CollapsibleContent } from '@selbstbehalt/ui/collapsible';
   import InfoIcon from '@lucide/svelte/icons/info';
   import PlusIcon from '@lucide/svelte/icons/plus';
   import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
   import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
   import ChevronsDownUpIcon from '@lucide/svelte/icons/chevrons-down-up';
   import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
-  import { cn } from '../utils';
+  import { cn } from '@selbstbehalt/ui/utils';
 
   // ---------------------------------------------------------------------------
   // Props — the header/positions state is owned by the parent via bind:, so the

@@ -22,7 +22,7 @@
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '@selbstbehalt/ui/button';
 
   let invoices = $state<Invoice[]>([]);
   let persons = $state<Person[]>([]);

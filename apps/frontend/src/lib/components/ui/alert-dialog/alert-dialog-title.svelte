@@ -1,6 +1,6 @@
 <script lang="ts">
   import { AlertDialog } from 'bits-ui';
-  import { cn } from '$lib/utils.js';
+  import { cn } from '@selbstbehalt/ui/utils';
 
   let { ref = $bindable(null), class: className, ...restProps }: AlertDialog.TitleProps = $props();
 </script>

@@ -13,7 +13,7 @@
   import LoadingState from '$lib/components/LoadingState.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '@selbstbehalt/ui/button';
 
   let persons = $state<Person[]>([]);
   let loading = $state(true);
