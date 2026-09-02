@@ -5,13 +5,14 @@
 // creation, detail-with-positions, the filter query, and the two independent
 // lifecycle tracks (review / payment / submission) derived from the event log.
 
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.js';
 import { loadConfig } from '../config.js';
 import { createDb, type DbHandle } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
-import { contracts, insuredPersons, invoicePositions, persons } from '../db/schema.js';
+import { contracts, insuredPersons, invoicePositions, persons, submissions } from '../db/schema.js';
 
 let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
@@ -320,6 +321,20 @@ describe('PUT /api/invoices/:id', () => {
     const res = await json('PUT', `/api/invoices/${body.id}`, { notes: 'zu spät' });
     expect(res.status).toBe(422);
   });
+
+  // #407: the Editier-Sperre is evaluated inside the write transaction, so two
+  // requests arriving together (Doppelklick, zwei Tabs) cannot both slip past it.
+  it('holds the Editier-Sperre for two parallel edits (422 each)', async () => {
+    const { body } = await createInvoice();
+    await review(body.id);
+    await pay(body.id);
+    const results = await Promise.all([
+      json('PUT', `/api/invoices/${body.id}`, { notes: 'a', positions: [] }),
+      json('PUT', `/api/invoices/${body.id}`, { notes: 'b', positions: [] }),
+    ]);
+    expect(results.map((r) => r.status)).toEqual([422, 422]);
+    expect((await getDetail(body.id)).notes).toBeNull();
+  });
 });
 
 describe('DELETE /api/invoices/:id', () => {
@@ -445,6 +460,29 @@ describe('POST /api/invoices/:id/submit', () => {
   it('returns 404 when submitting an unknown invoice', async () => {
     const res = await json('POST', `/api/invoices/${crypto.randomUUID()}/submit`, {});
     expect(res.status).toBe(404);
+  });
+
+  // #407: the 'nicht_eingereicht' guard runs inside the write transaction, so two
+  // parallel submits produce exactly one submission and one 'eingereicht' event.
+  it('submits only once when two requests arrive in parallel', async () => {
+    const { body } = await createInvoice();
+    await review(body.id);
+    const results = await Promise.all([
+      json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'email' }),
+      json('POST', `/api/invoices/${body.id}/submit`, { submitted_via: 'post' }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+
+    const rows = handle.db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.invoiceId, body.id))
+      .all();
+    expect(rows).toHaveLength(1);
+    const events = await (await app.request(`/api/invoices/${body.id}/events`)).json();
+    expect(
+      events.filter((e: { track: string; status: string }) => e.status === 'eingereicht'),
+    ).toHaveLength(1);
   });
 });
 

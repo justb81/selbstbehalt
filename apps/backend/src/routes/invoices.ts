@@ -15,6 +15,12 @@
 // An invoice is locked for editing once it is paid or submitted. `eligible_amount` and
 // `self_paid_amount` are server-computed from positions on every write.
 //
+// Every lifecycle guard is evaluated in the same synchronous step as the write it
+// protects — for the endpoints that write more than one row, inside the very
+// `db.transaction` that writes them (issue #407). With a suspension point in
+// between, two requests arriving together (Doppelklick, zwei Tabs) would both pass
+// the check and, say, submit the same invoice twice.
+//
 // Stepping back (issue #230): reverting a payment is POST /:id/payment {status:'offen'};
 // POST /:id/submission/revert steps the submission track back one level, discarding the
 // data that step captured. PUT /:id/submission and PUT /:id/refund correct that data in
@@ -266,44 +272,46 @@ export function createInvoicesRoute(db: Database) {
     .get('/:id', (c) => c.json(invoiceWithPositions(db, c.req.param('id'))))
     .put('/:id', jsonBody(invoiceUpdatePayloadSchema), (c) => {
       const id = c.req.param('id');
-      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-
-      // Editier-Sperre: once paid or submitted, the invoice is immutable.
-      const status = deriveStatus(db, id);
-      if (status.payment === 'bezahlt' || status.submission !== 'nicht_eingereicht') {
-        throw new HTTPException(422, {
-          message: 'Bezahlte oder eingereichte Rechnungen können nicht mehr bearbeitet werden',
-        });
-      }
-
       const input = c.req.valid('json');
-      if (input.insured_person_id !== undefined)
-        assertFkExists(
-          db,
-          insuredPersons,
-          input.insured_person_id,
-          `Versicherte Person ${input.insured_person_id} existiert nicht`,
-        );
-
       const { positions, ...invoiceInput } = input;
       const changes = toInvoiceUpdate(invoiceInput);
 
-      if (positions !== undefined) {
-        db.transaction((tx) => {
-          if (Object.keys(changes).length > 0) {
-            tx.update(invoices).set(changes).where(eq(invoices.id, id)).run();
-          }
+      // Existence check, Editier-Sperre and write share ONE transaction (#407):
+      // evaluated before it, the guard could be passed by two concurrent requests
+      // and the loser would still edit an already paid/submitted invoice.
+      db.transaction((tx) => {
+        const t = tx as unknown as Database;
+        requireRow(() => findInvoice(t, id), 'Rechnung nicht gefunden');
+
+        // Editier-Sperre: once paid or submitted, the invoice is immutable.
+        const status = deriveStatus(t, id);
+        if (status.payment === 'bezahlt' || status.submission !== 'nicht_eingereicht') {
+          throw new HTTPException(422, {
+            message: 'Bezahlte oder eingereichte Rechnungen können nicht mehr bearbeitet werden',
+          });
+        }
+
+        if (input.insured_person_id !== undefined)
+          assertFkExists(
+            t,
+            insuredPersons,
+            input.insured_person_id,
+            `Versicherte Person ${input.insured_person_id} existiert nicht`,
+          );
+
+        if (Object.keys(changes).length > 0) {
+          tx.update(invoices).set(changes).where(eq(invoices.id, id)).run();
+        }
+        if (positions !== undefined) {
           tx.delete(invoicePositions).where(eq(invoicePositions.invoiceId, id)).run();
           if (positions.length > 0) {
             tx.insert(invoicePositions)
               .values(positions.map((p) => toPositionInsert(id, p)))
               .run();
           }
-          recalcInvoiceSums(tx as unknown as Database, id);
-        });
-      } else if (Object.keys(changes).length > 0) {
-        db.update(invoices).set(changes).where(eq(invoices.id, id)).run();
-      }
+          recalcInvoiceSums(t, id);
+        }
+      });
       return c.json(invoiceWithPositions(db, id));
     })
     .delete('/:id', (c) => {
@@ -360,21 +368,23 @@ export function createInvoicesRoute(db: Database) {
     })
     .post('/:id/submit', jsonBody(submissionInputSchema), (c) => {
       const id = c.req.param('id');
-      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-      const status = deriveStatus(db, id);
-      if (status.review !== 'geprüft') {
-        throw new HTTPException(409, {
-          message: "Die Rechnung muss vor der Einreichung geprüft sein (Status 'geprüft')",
-        });
-      }
-      if (status.submission !== 'nicht_eingereicht') {
-        throw new HTTPException(409, {
-          message: `Rechnung ist bereits '${status.submission}' und kann nicht erneut eingereicht werden`,
-        });
-      }
-
       const input = c.req.valid('json');
+      // Guards and write share ONE transaction (#407) so two concurrent submits
+      // cannot both see 'nicht_eingereicht' and write two submissions / events.
       const submission = db.transaction((tx) => {
+        const t = tx as unknown as Database;
+        requireRow(() => findInvoice(t, id), 'Rechnung nicht gefunden');
+        const status = deriveStatus(t, id);
+        if (status.review !== 'geprüft') {
+          throw new HTTPException(409, {
+            message: "Die Rechnung muss vor der Einreichung geprüft sein (Status 'geprüft')",
+          });
+        }
+        if (status.submission !== 'nicht_eingereicht') {
+          throw new HTTPException(409, {
+            message: `Rechnung ist bereits '${status.submission}' und kann nicht erneut eingereicht werden`,
+          });
+        }
         const row = tx
           .insert(submissions)
           .values({
@@ -383,7 +393,7 @@ export function createInvoicesRoute(db: Database) {
           })
           .returning()
           .get();
-        appendEvent(tx as unknown as Database, id, 'submission', 'eingereicht');
+        appendEvent(t, id, 'submission', 'eingereicht');
         return row;
       });
 
@@ -431,21 +441,22 @@ export function createInvoicesRoute(db: Database) {
     })
     .put('/:id/refund', jsonBody(invoiceRefundPayloadSchema), (c) => {
       const id = c.req.param('id');
-      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-      const status = deriveStatus(db, id);
-      // From 'eingereicht' this captures the refund for the first time and advances
-      // the submission track to 'erstattet'; from 'erstattet' it corrects the
-      // already-recorded amounts in place (issue #230 "Bearbeiten").
-      const isFirstCapture = status.submission === 'eingereicht';
-      if (!isFirstCapture && status.submission !== 'erstattet') {
-        throw new HTTPException(409, {
-          message: `Erstattung nur für eingereichte oder bereits erstattete Rechnungen möglich (Status: '${status.submission}')`,
-        });
-      }
-
       const input = c.req.valid('json');
 
       db.transaction((tx) => {
+        const t = tx as unknown as Database;
+        requireRow(() => findInvoice(t, id), 'Rechnung nicht gefunden');
+        const status = deriveStatus(t, id);
+        // From 'eingereicht' this captures the refund for the first time and advances
+        // the submission track to 'erstattet'; from 'erstattet' it corrects the
+        // already-recorded amounts in place (issue #230 "Bearbeiten").
+        const isFirstCapture = status.submission === 'eingereicht';
+        if (!isFirstCapture && status.submission !== 'erstattet') {
+          throw new HTTPException(409, {
+            message: `Erstattung nur für eingereichte oder bereits erstattete Rechnungen möglich (Status: '${status.submission}')`,
+          });
+        }
+
         // Update refund_amount per position.
         for (const p of input.positions) {
           tx.update(invoicePositions)
@@ -455,7 +466,7 @@ export function createInvoicesRoute(db: Database) {
         }
         // Update submission refund_date if provided.
         if (input.refund_date) {
-          const latest = findLatestSubmission(tx as unknown as Database, id);
+          const latest = findLatestSubmission(t, id);
           if (latest) {
             tx.update(submissions)
               .set({ refundDate: input.refund_date })
@@ -463,9 +474,9 @@ export function createInvoicesRoute(db: Database) {
               .run();
           }
         }
-        recalcInvoiceSums(tx as unknown as Database, id);
+        recalcInvoiceSums(t, id);
         if (isFirstCapture) {
-          appendEvent(tx as unknown as Database, id, 'submission', 'erstattet', input.note);
+          appendEvent(t, id, 'submission', 'erstattet', input.note);
         }
       });
 
@@ -475,16 +486,18 @@ export function createInvoicesRoute(db: Database) {
       // Steps the submission track back one level (issue #230 "Löschen"),
       // discarding the data that step captured.
       const id = c.req.param('id');
-      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
-      const status = deriveStatus(db, id);
-      if (status.submission === 'nicht_eingereicht') {
-        throw new HTTPException(409, {
-          message: 'Für diese Rechnung liegt keine Einreichung vor, die zurückgenommen werden kann',
-        });
-      }
       const input = c.req.valid('json');
 
       db.transaction((tx) => {
+        const t = tx as unknown as Database;
+        requireRow(() => findInvoice(t, id), 'Rechnung nicht gefunden');
+        const status = deriveStatus(t, id);
+        if (status.submission === 'nicht_eingereicht') {
+          throw new HTTPException(409, {
+            message:
+              'Für diese Rechnung liegt keine Einreichung vor, die zurückgenommen werden kann',
+          });
+        }
         if (status.submission === 'erstattet') {
           // Discard the refund captured by eingereicht → erstattet.
           tx.update(invoicePositions)
@@ -495,12 +508,12 @@ export function createInvoicesRoute(db: Database) {
             .set({ refundDate: null })
             .where(eq(submissions.invoiceId, id))
             .run();
-          recalcInvoiceSums(tx as unknown as Database, id);
-          appendEvent(tx as unknown as Database, id, 'submission', 'eingereicht', input.note);
+          recalcInvoiceSums(t, id);
+          appendEvent(t, id, 'submission', 'eingereicht', input.note);
         } else {
           // eingereicht → nicht_eingereicht: discard the submission row entirely.
           tx.delete(submissions).where(eq(submissions.invoiceId, id)).run();
-          appendEvent(tx as unknown as Database, id, 'submission', 'nicht_eingereicht', input.note);
+          appendEvent(t, id, 'submission', 'nicht_eingereicht', input.note);
         }
       });
 
