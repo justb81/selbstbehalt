@@ -7,9 +7,10 @@
 > prüft. Ergänzt `docs/architecture.md` §8.3 und ist die maßgebliche Spezifikation
 > für Issue #15.
 >
-> **Status:** Format-Definition. Das Extraktionsskript (XML → JSON) und der
-> CI-Validator sind die nächsten Teilaufgaben von #15; sie erzeugen bzw. prüfen
-> Tabellen in genau diesem Format.
+> **Status:** umgesetzt. Extraktionsskript (`pnpm fees:build`) und CI-Validator
+> (`pnpm fees:validate`) erzeugen bzw. prüfen die Tabellen in genau diesem Format
+> (§7). Die Entscheidung für Tabellen statt Modell ist ADR-0003, die für die zwei
+> Ausschluss-Formen ADR-0004 (`docs/adr/`).
 
 Kanonische Definitionen:
 

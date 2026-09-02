@@ -50,9 +50,9 @@ hardcoded hash would eventually go stale and silently break the app under this
 CSP. [`scripts/generate-frontend-security-headers.mjs`](../scripts/generate-frontend-security-headers.mjs)
 computes it fresh from the actual built `index.html` as part of the frontend
 Docker build, and [`apps/frontend/e2e/csp.spec.ts`](../apps/frontend/e2e/csp.spec.ts)
-exercises that same script in CI. Real-browser verification of the WebGPU
-execution path specifically remains tracked under issue #27, same as before
-this change — that's an OCR-correctness concern rather than a CSP one.
+exercises that same script in CI. The WebGPU execution path itself was verified
+in a real browser separately (issue #317, PR #327) — an OCR-correctness concern
+rather than a CSP one.
 
 ## Reverse proxy: HTTPS + HTTP Basic Auth
 

@@ -33,3 +33,4 @@ sondern durch ein neues ADR **abgelöst** (Status beider anpassen).
 | [0015](./0015-sqlite-datei-als-export-und-import.md) | Die ganze SQLite-Datei als Export/Import, kein Feld-Export | akzeptiert |
 | [0016](./0016-monorepo-schnitt.md) | Monorepo-Schnitt — `apps/*` deploybar, `packages/*` geteilt | akzeptiert |
 | [0017](./0017-ui-primitiven-einmal-in-packages-ui.md) | shadcn-Primitiven einmal in `packages/ui`, nicht je Konsument kopiert | akzeptiert |
+| [0018](./0018-demo-deploy-aus-release-please-mit-build-zeit-basispfad.md) | Die Demo deployt aus dem release-please-Lauf, artefaktbasiert, mit Basispfad zur Build-Zeit | akzeptiert |

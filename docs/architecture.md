@@ -36,10 +36,8 @@ Eigenständige Dokumente, auf die aus den Kapiteln verwiesen wird — sie werden
 | [`hardening.md`](./hardening.md) | CSP/Security-Header, Reverse Proxy, `X-API-Key` | 7.3, 8.1 |
 | [`self-hosting.md`](./self-hosting.md) | Betriebsanleitung: Compose, `.env`, Backup, Proxy, VPN | 7 |
 | [`deploy-goae-waechter.md`](./deploy-goae-waechter.md) | GitHub-Pages-Deployment der GOÄ-Wächter-Demo | 7.4 |
-| [`a11y-audit.md`](./a11y-audit.md) | Barrierefreiheits-Audit (Issue #29) | 8.7 |
 | [`release.md`](./release.md) | Release-Prozess (release-please, GHCR, SBOM) | 2.3 |
 | [`roadmap.md`](./roadmap.md) | Umsetzungsstand und Reihenfolge der Issues | 11 |
-| [`ui-handover.md`](./ui-handover.md) | historisches UI-Handover des Klickprototyps | 5.2 |
 | [`adr/`](./adr/README.md) | Architecture Decision Records — je Entscheidung Kontext, Alternativen, Konsequenzen | 9 |
 
 ***
@@ -370,9 +368,8 @@ aggregiert über alle Rechnungen der Person, §8.5). `/invoices/[id]` zeigt nur 
 `InvoiceForm` umschließt das `InvoiceReview` aus
 `packages/medic-invoice-check` (Kapitel 5.3) und ergänzt es um das, was die Demo
 nicht hat: Auswahl der versicherten Person, Notizen, den tarifabhängigen
-`eligible_amount` und das Speichern. Das visuelle System, die Zustände und die
-Copy der Screens sind im historischen [`ui-handover.md`](./ui-handover.md)
-festgehalten.
+`eligible_amount` und das Speichern. Das visuelle System ist das von
+shadcn-svelte und Tailwind (Kapitel 8.7); einen eigenen Styleguide gibt es nicht.
 
 #### Oberfläche der Günstigerprüfung
 
@@ -1362,7 +1359,9 @@ Die Demo (Kapitel 5.6) wird nicht als Container ausgeliefert, sondern als statis
 Seite: ein wiederverwendbarer Workflow baut sie und veröffentlicht sie auf GitHub
 Pages, aufgerufen aus dem release-please-Lauf, damit Demo und Release nicht
 auseinanderlaufen. Der Basispfad wird zur Build-Zeit gesetzt statt hartkodiert.
-Einzelheiten und Begründung: [`deploy-goae-waechter.md`](./deploy-goae-waechter.md).
+Die Begründung der drei Festlegungen steht in ADR-0018, die Betriebsanleitung
+(Pages einschalten, eigene Domain) in
+[`deploy-goae-waechter.md`](./deploy-goae-waechter.md).
 
 ***
 
@@ -1376,7 +1375,7 @@ Datenkategorie verarbeitet wird:
 | Datenkategorie | Verarbeitungsort | Begründung |
 |---|---|---|
 | Rechnungsbilder (Fotos/Scans) | **Nur Client** | Verlassen Gerät nie – OCR läuft im Browser [^6][^10] |
-| OCR-Rohtxt | Client → optional Backend | Kann für Debugging gespeichert werden (opt-in) |
+| OCR-Rohtext | Client → optional Backend | erkannter **Text**, kein Bild; standardmäßig gespeichert, damit sich Positionen später neu einlesen lassen — per Checkbox im Formular abschaltbar |
 | Strukturierte Rechnungsdaten (JSON) | Backend (SQLite) | Keine Bilder, nur Metadaten |
 | GOÄ-Ziffern & Beträge | Backend (SQLite) | Kein direkter Gesundheitsbezug |
 | Vertragsangaben | Backend (SQLite) | Vertragsdaten, kein Art.-9-Bezug |
@@ -2052,8 +2051,12 @@ gekennzeichnet.
   prüft und kaputte Fokus-Flüsse nicht sieht, steuert derselbe Spec zusätzlich per
   Tastatur: Skip-Link, Focus-Trap/Escape/Fokus-Rückgabe des `alertdialog`,
   Tab-Reihenfolge der Formularfelder und das „Mehr"-Sheet der Bottom-Navigation.
-  Befund, behobene Verstöße und die bewusst akzeptierten Abweichungen stehen im
-  [`a11y-audit.md`](./a11y-audit.md).
+  Nicht automatisiert prüfbar und darum bewusst offen: Screenreader-Verhalten
+  (Ansagereihenfolge, Live-Regionen) braucht einen manuellen NVDA-/VoiceOver-
+  Durchgang; die Lade- und Fehlerzustände (`LoadingState`, `ErrorState`) sind
+  nur über ihre gemeinsamen Primitiven abgedeckt. Akzeptierte Abweichung: einige
+  Icon-Buttons in dichten Tabellen liegen unter der 44-px-Touch-Empfehlung — kein
+  WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
 - **Erkennbarkeit vor Bequemlichkeit:** Beanstandungen, Nicht-Erstattungsfähigkeit
   und Fälligkeiten werden benannt und begründet, nicht bloß eingefärbt — sonst ist
   das Verdikt nicht überprüfbar (Qualitätsziel 5, Kapitel 1.2).
@@ -2102,6 +2105,7 @@ sie getragen hat.
 | [0015](./adr/0015-sqlite-datei-als-export-und-import.md) | **Die ganze SQLite-Datei als Export/Import**, kein Feld-Export | das ist gleichzeitig Art.-20-Portabilität und das Backup, das ein Selbst-Hoster wirklich anlegt | zwei Endpunkte statt eines Formats je Entität | 6.5 |
 | [0016](./adr/0016-monorepo-schnitt.md) | **Monorepo-Schnitt: `apps/*` deploybar, `packages/*` geteilt** | Frontend, Backend und Demo teilen Schemas, Engine und UI-Primitiven; getrennte Repositories hießen Typ-Drift und drei Releases je Schema-Änderung, ein Paket ohne Grenzen zöge Svelte in den Backend-Build | pnpm-Workspaces mit `workspace:*`, Werkzeuge einmal im Root; der Docker-Build-Kontext ist das Repo-Root; geteilter Code wandert nach `packages/*`, nie per Kopie | 5.1 (Issue #446) |
 | [0017](./adr/0017-ui-primitiven-einmal-in-packages-ui.md) | **shadcn-Primitiven einmal in `packages/ui`**, nicht je Konsument kopiert | shadcn vendort Quellcode statt einer Abhängigkeit; mit drei Konsumenten lagen elf Komponenten dreifach vor und drifteten sichtbar | jede von mehr als einem Paket genutzte Primitive liegt in `@selbstbehalt/ui`, per shadcn-CLI dort gepflegt; nur Frontend-eigene bleiben in der App | 8.7 (Issues #438, #446, PR #449) |
+| [0018](./adr/0018-demo-deploy-aus-release-please-mit-build-zeit-basispfad.md) | **Die Demo deployt aus dem release-please-Lauf**, artefaktbasiert, mit Basispfad zur Build-Zeit | ein `release:`-Trigger läuft im Tag-Kontext und wird von der Pages-Umgebungsregel abgewiesen; ein `gh-pages`-Branch wüchse um die Modell-Binaries; ein hartkodierter Basispfad bricht beim Domainwechsel | Demo-Stand = Release-Stand; `BASE_PATH` fließt in Kit, Manifest, Service Worker und OCR-Asset-URLs | 7.4 (Epic #166) |
 
 Dieses Kapitel ist die Kurzfassung. Die Ausarbeitung je Entscheidung — Kontext,
 betrachtete Alternativen, Konsequenzen, Status — steht als Architecture Decision
@@ -2157,7 +2161,7 @@ Qualität
 | Q10 | Funktionale Eignung | Dieselben Rechnungsdaten werden mit demselben Stichtag zweimal bewertet. | Identisches Ergebnis — kein verstecktes `Date.now()`, keine Zufallsgröße. | injizierbarer `asOf` (8.8), Tests mit festem Stichtag |
 | Q11 | Funktionale Eignung | Eine Position gehört zu einem Leistungsbereich, für den der Tarif keinen Baustein hat. | `eligible_amount = 0` mit Begründung; die Kosten bleiben in der Gesamtsumme und im selbst getragenen Anteil, das Jahr wird nicht verfälscht. | Erstattungs-Engine (8.4), Unit-Tests |
 | Q12 | Benutzbarkeit | Der Nutzer zweifelt eine erkannte Position an. | Die Seitenvorschau hebt die Quellzeile hervor — am Bild, bei einer Textlayer-Seite in der Zeilenliste. | `InvoicePagePreview` (5.3, 6.1) |
-| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests, [`a11y-audit.md`](./a11y-audit.md) |
+| Q13 | Benutzbarkeit | Eine Hauptroute wird mit einem Barrierefreiheits-Audit geprüft. | Keine `axe`-Verstöße; Tastaturbedienung der Dialoge und Formulare intakt. | `e2e/a11y.spec.ts` über alle Routen und Zustände plus Tastatur-/Fokus-Tests (8.7) |
 | Q14 | Benutzbarkeit | Ein Domänen-Helfer unter `src/lib/utils/**` wird ergänzt. | Die Abdeckung bleibt ≥ 90 % in allen vier Maßen. | v8-Schranke in der Vitest-Konfiguration, CI |
 
 ***
@@ -2181,7 +2185,8 @@ Qualität
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Rechnungsübergreifende Grenzen bei jahresübergreifenden Rechnungen | ⚠️ eingeschränkt | `priorClaims.jahr` wird gegen **ein** Referenz-Leistungsjahr je Rechnung gemessen (das Jahr mit dem größten Betragsanteil); eine Rechnung, deren Positionen über einen Jahreswechsel verteilt sind, verbraucht das Jahreslimit daher nur eines der beiden Jahre (Issue #391) |
-| E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium; die Baseline arbeitet gegen Mocks statt gegen ein echtes Backend mit Seed-Szenarien (Issues #353, #378) |
+| E2E-Abdeckung | ⚠️ eingeschränkt | nur Chromium (Issue #353); die Baseline arbeitet gegen Mocks, nur das Integrationsprofil (`e2e/integration/**`, #378) gegen ein echtes Backend mit Seed-Szenarien |
+| Barrierefreiheit ohne Screenreader-Test | ⚠️ manuell | `axe` und die Tastatur-Tests laufen in CI; Ansagereihenfolge und Live-Regionen sind nur per NVDA/VoiceOver prüfbar (8.7) |
 | Doku-Prüfung in CI | ⚠️ teilweise | `ci.yml` überspringt Doku-Änderungen bewusst (`paths-ignore`); geprüft werden SPDX-Kopfzeilen und die §-Verweise auf dieses Dokument (`pnpm docs:check`) — Rechtschreibung und externe Links nicht |
 
 Restrisiken des Datenschutz-Audits — unverschlüsselte SQLite-Datei im Backup,
