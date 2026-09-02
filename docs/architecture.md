@@ -376,7 +376,10 @@ aggregiert über alle Rechnungen der Person, §8.5). `/invoices/[id]` zeigt nur 
 | `InvoicePagePreview` | `packages/medic-invoice-check/src/lib/components/InvoicePagePreview.svelte` | Seitenvorschau je Dokumentseite (§6.1): gescannte Seite mit eingezeichneten erkannten Textzeilen, Textlayer-Seite als benannter Zustand ohne Bild; hebt in beiden Fällen die Quellzeile der geprüften Position hervor |
 | `GCPCard` | `lib/components/GCPCard.svelte` | Günstigerprüfungs-Verdikt je Leistungsjahr (auf `/insured/[id]`) |
 | `GCPContributionCard` | `lib/components/GCPContributionCard.svelte` | Marginalanzeige auf der Einzelrechnung (Beitrag je Leistungsjahr) |
-| `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Status-Workflow + Erstattungs-Erfassung je Position + „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
+| `InvoiceStatusFlow` | `lib/components/InvoiceStatusFlow.svelte` | Orchestriert den Status-Workflow: eine Karte je Track, das Erstattungsformular und den Statusverlauf; hält das gemeinsame `busy` und lädt die Status-Events nach jeder Aktion neu (Issue #419) |
+| `InvoiceReviewTrack` / `InvoicePaymentTrack` / `InvoiceSubmissionTrack` | `lib/components/Invoice{Review,Payment,Submission}Track.svelte` | Je eine Karte der drei unabhängigen Lifecycle-Tracks (Kapitel 6.2); der Submission-Track enthält „Letzter Schritt" (Löschen/Bearbeiten, Issue #230) |
+| `InvoiceRefundForm` | `lib/components/InvoiceRefundForm.svelte` | Erstattungs-Erfassung je Leistungsbereich (Default) oder je Position; Zeilenaufbau und Payload in `lib/utils/refund-rows.ts` |
+| `InvoiceStatusHistory` | `lib/components/InvoiceStatusHistory.svelte` | Statusverlauf: alle Events der drei Tracks in Aufzeichnungsreihenfolge |
 | `ContractCard` | `lib/components/ContractCard.svelte` | Vertragszusammenfassung |
 | `BRETracker` | `lib/components/BRETracker.svelte` | BRE-Staffel-Fortschrittsanzeige; `compact` + optionaler `href` für verlinkte Kompaktkarten (Dashboard, Vertragsdetail) |
 | `InvoiceBadge` | `lib/components/InvoiceBadge.svelte` | Status-Badge für Rechnungen |

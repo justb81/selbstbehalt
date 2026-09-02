@@ -14,7 +14,8 @@
  *    or the user pinned manually — always wins. Otherwise Auslagen Sammelpositionen
  *    derive it from the honorar positions (issue #251) and a bare fee-schedule
  *    position falls back to the provider default. The resolved value is persisted.
- *  - **Refund time** ({@link benefitCategoryForPosition}, used by `InvoiceStatusFlow`):
+ *  - **Refund time** ({@link benefitCategoryForPosition}, used by `refund-rows.ts` for
+ *    the `InvoiceRefundForm`):
  *    the persisted position already carries the resolved `benefit_category`, so it is
  *    used directly. Legacy rows that predate the stored column fall back to the
  *    invoice's provider type — precise for every newly saved invoice, coarse only for
