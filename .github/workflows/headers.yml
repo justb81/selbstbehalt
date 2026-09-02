@@ -26,6 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The reverse index below diffs against the PR's base commit, which the
+          # default shallow clone does not contain.
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -41,3 +45,13 @@ jobs:
       # that no file points at its former name. Also dependency-free.
       - name: Check architecture-doc references
         run: node scripts/check-doc-refs.mjs
+
+      # The other direction (issue #463): which documented passages describe code this
+      # PR changed? Advisory — it prints the passages and always succeeds, because most
+      # changes need no documentation edit and a gate that cries wolf gets ticked past.
+      # The point is that the list is impossible to miss, not that it blocks.
+      - name: Documentation describing the changed code
+        if: github.event_name == 'pull_request'
+        env:
+          DOCS_AFFECTED_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-doc-refs.mjs --affected | tee -a "$GITHUB_STEP_SUMMARY"

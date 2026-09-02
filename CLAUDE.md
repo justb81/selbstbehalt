@@ -127,6 +127,7 @@ Hard-won specifics that save a round-trip next time:
 ## Repository hygiene & change policy
 
 - **No outdated content in the repo.** Code, docs, comments, examples, and configuration must always reflect the current state. When you change something, update everything it touches in the same change — never leave stale references, dead code, obsolete docs, or superseded files behind. If you find existing content that is out of date, fix or remove it.
+- **Finding the docs a change touches is mechanical, not a judgement call** (#463): run `pnpm docs:affected` before committing and read every passage it prints. Searching the docs for the *new* names only finds the chapter that catalogues them (a new endpoint → §5.4) and never the cross-cutting chapter that describes the *behaviour* you changed — §8.6 documents `partial-load.ts`, §8.7 documents `LoadingState`/`ErrorState`, and neither names an endpoint. That is exactly how #463 shipped with half its documentation. The same holds for the issue itself: its „Umsetzung"-Liste is a floor, not a ceiling — it was written before the code and cannot know which chapters the implementation ends up touching.
 - **No backward-compatibility guarantee by default.** When changing an interface, API, schema, data format, or config, prefer the clean, correct result over preserving the old shape. Do not add compatibility shims, deprecation layers, dual-path handling, or migration fallbacks unless backward compatibility is explicitly requested. Update all call sites and consumers directly instead.
 
 ## Issue & PR workflow

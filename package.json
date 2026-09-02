@@ -35,6 +35,7 @@
     "audit": "pnpm audit --prod --audit-level high",
     "headers:check": "node scripts/check-spdx-headers.mjs",
     "docs:check": "node scripts/check-doc-refs.mjs",
+    "docs:affected": "node scripts/check-doc-refs.mjs --affected",
     "licenses:check": "node scripts/check-licenses.mjs",
     "fees:build": "node scripts/build-fee-schedules.mjs",
     "fees:validate": "node scripts/validate-fee-schedules.mjs",
