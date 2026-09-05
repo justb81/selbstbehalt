@@ -28,13 +28,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.34.0",
+    "@lucide/svelte": "^1.37.0",
     "@selbstbehalt/shared": "workspace:*",
     "@selbstbehalt/ui": "workspace:*",
     "onnxruntime-web": "1.29.0",
-    "pdfjs-dist": "^6.2.108",
-    "ppu-paddle-ocr": "6.4.2",
-    "zod": "^4.4.3"
+    "pdfjs-dist": "^6.3.289",
+    "ppu-paddle-ocr": "6.4.3",
+    "zod": "^4.5.4"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
