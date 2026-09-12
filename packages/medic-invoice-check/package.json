@@ -28,7 +28,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.37.0",
+    "@lucide/svelte": "^1.41.0",
     "@selbstbehalt/shared": "workspace:*",
     "@selbstbehalt/ui": "workspace:*",
     "onnxruntime-web": "1.29.0",
