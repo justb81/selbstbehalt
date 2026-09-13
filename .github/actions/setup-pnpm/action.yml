@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
+# SPDX-License-Identifier: Apache-2.0
+name: 'Setup pnpm + Node'
+
+description: |
+  Installs pnpm, sets up Node using the version from .nvmrc, configures pnpm cache,
+  and optionally runs `pnpm install --frozen-lockfile`. Designed to be the single
+  source of truth for all CI jobs that need a Node/pnpm environment.
+
+inputs:
+  install:
+    description: 'Whether to run `pnpm install --frozen-lockfile` after setup'
+    required: false
+    default: 'true'
+  cache:
+    description: 'Whether to enable pnpm cache in actions/setup-node'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+    - name: Set up Node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version-file: '.nvmrc'
+        cache: ${{ inputs.cache == 'true' && 'pnpm' || '' }}
+
+    - name: Install dependencies
+      if: ${{ inputs.install == 'true' }}
+      run: pnpm install --frozen-lockfile
+      shell: bash
+      env:
+        HUSKY: '0'

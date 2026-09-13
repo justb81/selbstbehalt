@@ -26,10 +26,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Git hooks are pointless in CI and `prepare` would try to install them.
-  HUSKY: '0'
-
 # Least privilege: the pipeline only reads the checkout. Set explicitly so the
 # repo-/org-wide GITHUB_TOKEN default can never widen it (fork PRs included).
 permissions:
@@ -39,25 +35,14 @@ jobs:
   build:
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Active Node LTS line(s). Extend the matrix as new LTS versions land.
-        node-version: ['24']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Setup pnpm + Node
+        uses: ./.github/actions/setup-pnpm
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          install: 'true'
+          cache: 'true'
 
       - name: Lint
         run: pnpm lint
@@ -85,7 +70,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: coverage-node-${{ matrix.node-version }}
+          name: coverage
           path: '**/coverage/'
           if-no-files-found: ignore
           retention-days: 7
@@ -96,17 +81,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Setup pnpm + Node
+        uses: ./.github/actions/setup-pnpm
         with:
-          node-version: '24'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          install: 'true'
+          cache: 'true'
 
       - name: Install Playwright browser (Chromium)
         run: pnpm --filter @selbstbehalt/frontend exec playwright install --with-deps chromium

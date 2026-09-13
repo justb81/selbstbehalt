@@ -31,25 +31,20 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze (javascript-typescript)
     runs-on: ubuntu-latest
     permissions:
       # Required to upload results to the code-scanning dashboard.
       security-events: write
       actions: read
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        # JavaScript and TypeScript share a single CodeQL extractor.
-        language: [javascript-typescript]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript-typescript
           # `security-and-quality` adds maintainability/quality queries on top of
           # the default security suite. Drop to `security-extended` if too noisy.
           queries: security-and-quality
@@ -58,4 +53,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
-          category: '/language:${{ matrix.language }}'
+          category: '/language:javascript-typescript'

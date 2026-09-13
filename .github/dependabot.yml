@@ -40,7 +40,7 @@ updates:
 
   # GitHub Actions used by the CI workflows. All `uses:` refs are pinned to a
   # full commit SHA with the version in a trailing comment; Dependabot updates
-  # SHA and comment together.
+  # SHA and comment together. Includes the composite action under .github/actions/.
   - package-ecosystem: github-actions
     directory: /
     schedule:
