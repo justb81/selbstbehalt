@@ -23,14 +23,14 @@
     "@selbstbehalt/medic-invoice-check": "workspace:*",
     "@selbstbehalt/shared": "workspace:*",
     "@selbstbehalt/ui": "workspace:*",
-    "bits-ui": "^2.19.0",
+    "bits-ui": "^2.19.2",
     "date-fns": "4.4.0",
     "idb": "^8.0.3",
-    "zod": "^4.5.4"
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@lucide/svelte": "^1.41.0",
+    "@lucide/svelte": "^1.45.0",
     "@playwright/test": "^1.63.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.70.3",

@@ -35,8 +35,8 @@
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.41.0",
-    "bits-ui": "^2.19.0",
+    "@lucide/svelte": "^1.45.0",
+    "bits-ui": "^2.19.2",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.6.0",
     "tailwind-variants": "^3.3.1"
