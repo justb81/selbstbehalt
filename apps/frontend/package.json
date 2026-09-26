@@ -26,11 +26,11 @@
     "bits-ui": "^2.19.2",
     "date-fns": "4.4.0",
     "idb": "^8.0.3",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@lucide/svelte": "^1.45.0",
+    "@lucide/svelte": "^1.47.0",
     "@playwright/test": "^1.63.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.70.3",
