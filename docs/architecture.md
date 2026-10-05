@@ -500,6 +500,8 @@ GET    /api/invoices                  → Alle Rechnungen (mit Filter-Query-Para
 POST   /api/invoices                  → Neue Rechnung speichern
 GET    /api/invoices/:id              → Rechnungsdetail inkl. Positionen + abgeleitetem Status
 PUT    /api/invoices/:id              → Rechnung aktualisieren (gesperrt sobald bezahlt oder eingereicht)
+PUT    /api/invoices/:id/insured      → Rechnung einer anderen versicherten Person zuordnen, inkl. neu
+                                         geschätztem eligible_amount je Position (nicht gesperrt, #533)
 DELETE /api/invoices/:id              → Rechnung löschen
 
 POST   /api/invoices/:id/review       → Prüf-Track schalten (neu ↔ geprüft)
@@ -1228,7 +1230,10 @@ Alternativen: ADR-0007.
    editierbar. Korrigieren geht über den jeweiligen Track: `PUT .../submission` und
    erneutes `PUT .../refund` ändern Werte ohne Track-Wechsel,
    `POST .../submission/revert` nimmt den Submission-Track einen Schritt zurück und
-   verwirft dessen Zusatzdaten (Issue #230).
+   verwirft dessen Zusatzdaten (Issue #230). Eine verwechselte Person korrigiert
+   `PUT .../insured` („Person ändern" auf `/invoices/[id]`, Issue #533) auch an gesperrten
+   Rechnungen: Beträge, Events und Einreichung bleiben, nur `eligible_amount` je Position
+   wird im Client nach dem Tarif der neuen Person neu geschätzt.
 
 Die Ereignisse werden nach `rowid` geordnet, nicht nach `changed_at` — der
 Zeitstempel eines Zahlungsereignisses trägt das vom Nutzer angegebene

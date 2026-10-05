@@ -592,6 +592,83 @@ describe('PUT /api/invoices/:id/refund', () => {
   });
 });
 
+describe('PUT /api/invoices/:id/insured', () => {
+  function otherInsuredPerson() {
+    const db = handle.db;
+    const personId = db.insert(persons).values({ name: 'Max' }).returning().get().id;
+    const contractId = db.select().from(insuredPersons).get()!.contractId;
+    return db
+      .insert(insuredPersons)
+      .values({ contractId, personId, monthlyPremium: 210 })
+      .returning()
+      .get().id;
+  }
+
+  async function paidWithPosition() {
+    const { body } = await createInvoice({
+      ...baseInvoice(),
+      positions: [
+        {
+          goae_number: '0001',
+          treatment_date: '2026-06-01',
+          multiplier: 2.3,
+          base_amount: 4.66,
+          charged_amount: 10.72,
+          eligible_amount: 10.72,
+        },
+      ],
+    });
+    await review(body.id);
+    await pay(body.id);
+    return { invoiceId: body.id as string, positionId: body.positions[0].id as string };
+  }
+
+  it('moves a locked (paid) invoice to another person and re-estimates its positions', async () => {
+    const { invoiceId, positionId } = await paidWithPosition();
+    const target = otherInsuredPerson();
+    const res = await json('PUT', `/api/invoices/${invoiceId}/insured`, {
+      insured_person_id: target,
+      positions: [{ id: positionId, eligible_amount: 8 }],
+    });
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail.insured_person_id).toBe(target);
+    expect(detail.positions[0].eligible_amount).toBe(8);
+    expect(detail.eligible_amount).toBe(8);
+    // Status tracks stay untouched.
+    expect(detail.status.payment).toBe('bezahlt');
+    expect(detail.status.review).toBe('geprüft');
+  });
+
+  it('ignores positions that belong to another invoice', async () => {
+    const { invoiceId } = await paidWithPosition();
+    const other = await paidWithPosition();
+    await json('PUT', `/api/invoices/${invoiceId}/insured`, {
+      insured_person_id: otherInsuredPerson(),
+      positions: [{ id: other.positionId, eligible_amount: 0 }],
+    });
+    expect((await getDetail(other.invoiceId)).positions[0].eligible_amount).toBe(10.72);
+  });
+
+  it('rejects an unknown insured person with 400', async () => {
+    const { invoiceId } = await paidWithPosition();
+    const res = await json('PUT', `/api/invoices/${invoiceId}/insured`, {
+      insured_person_id: '00000000-0000-4000-8000-000000000000',
+      positions: [],
+    });
+    expect(res.status).toBe(400);
+    expect((await getDetail(invoiceId)).insured_person_id).toBe(insuredPersonId);
+  });
+
+  it('returns 404 for an unknown invoice', async () => {
+    const res = await json('PUT', '/api/invoices/00000000-0000-4000-8000-000000000000/insured', {
+      insured_person_id: insuredPersonId,
+      positions: [],
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('GET/PUT /api/invoices/:id/submission', () => {
   async function submittedInvoice() {
     const { body } = await createInvoice();
