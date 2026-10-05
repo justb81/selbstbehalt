@@ -12,7 +12,11 @@
   import { onMount } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
   import { api, ApiError } from '$lib/api';
-  import { loadInvoiceHistory } from '$lib/api/invoice-form-data';
+  import {
+    loadInsuredOptions,
+    loadInvoiceHistory,
+    type InsuredOption,
+  } from '$lib/api/invoice-form-data';
   import {
     BENEFIT_CATEGORY_LABELS,
     formatDate,
@@ -46,6 +50,14 @@
   import { Button } from '@selbstbehalt/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
+  import { Label } from '@selbstbehalt/ui/label';
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '@selbstbehalt/ui/select';
   import {
     AlertDialogRoot,
     AlertDialogContent,
@@ -114,9 +126,18 @@
   // the engine stays the single source of the decision.
   // ---------------------------------------------------------------------------
 
-  const erstattung = $derived.by(() => {
-    if (!invoice || !insuredPerson?.included_benefits || !insuredPerson.start_date) return null;
-    const inv = invoice;
+  /**
+   * The engine run over `inv`'s stored positions under `ip`'s tariff — shared by the
+   * explanation below and the re-estimate when the invoice moves to another person
+   * (issue #533). `null` when the tariff is not configured (estimate unknown).
+   */
+  function estimateErstattung(
+    inv: InvoiceWithPositions,
+    ip: InsuredPerson,
+    birthDate: string | null | undefined,
+    history: InvoiceWithPositions[],
+  ) {
+    if (!ip.included_benefits || !ip.start_date) return null;
     // Resolve categories exactly as InvoiceForm did when it computed the stored
     // amounts — including the Auslagen honorar dominance for legacy rows that have no
     // persisted benefit_category — so the comparison below is apples to apples.
@@ -132,20 +153,26 @@
         chargedAmount: pos.charged_amount,
         treatmentDate: pos.treatment_date || inv.invoice_date,
       })),
-      benefits: insuredPerson.included_benefits,
+      benefits: ip.included_benefits,
       invoiceDate: inv.invoice_date,
-      coverageStart: insuredPerson.start_date,
+      coverageStart: ip.start_date,
       // Caps that span invoices (jahr/lebenslang limits, Zahnstaffel) are shared with
       // the person's other invoices; this one must not be measured on its own (#370).
       priorClaims: aggregatePriorClaims({
-        invoices: allPersonInvoices,
+        invoices: history,
         excludeInvoiceId: inv.id,
         year: referenceLeistungsjahr(inv.positions, inv.invoice_date),
-        coverageStart: insuredPerson.start_date,
+        coverageStart: ip.start_date,
       }),
-      patientAge: patientAgeAt(person?.birth_date, inv.invoice_date),
+      patientAge: patientAgeAt(birthDate, inv.invoice_date),
     });
-  });
+  }
+
+  const erstattung = $derived(
+    invoice && insuredPerson
+      ? estimateErstattung(invoice, insuredPerson, person?.birth_date, allPersonInvoices)
+      : null,
+  );
 
   /** Benefit areas on this invoice the tariff reimburses nothing for. */
   const nonReimbursableCategories = $derived(
@@ -218,6 +245,57 @@
       });
   });
 
+  // ---------------------------------------------------------------------------
+  // Person ändern (issue #533): correct a mixed-up Rechnungsempfänger — also for
+  // paid or submitted invoices, which the edit form locks.
+  // ---------------------------------------------------------------------------
+
+  let reassignOpen = $state(false);
+  let reassignOptions = $state<InsuredOption[]>([]);
+  let reassignTargetId = $state('');
+  let reassigning = $state(false);
+  let reassignError = $state<string | null>(null);
+
+  async function openReassign() {
+    reassignError = null;
+    reassignTargetId = '';
+    reassignOpen = true;
+    try {
+      reassignOptions = (await loadInsuredOptions()).filter(
+        (o) => o.id !== invoice?.insured_person_id,
+      );
+    } catch (e) {
+      reassignError =
+        e instanceof ApiError || e instanceof Error ? e.message : 'Laden fehlgeschlagen.';
+    }
+  }
+
+  async function reassign() {
+    const target = reassignOptions.find((o) => o.id === reassignTargetId);
+    if (!invoice || !target) return;
+    reassigning = true;
+    reassignError = null;
+    try {
+      // Re-estimate under the new person's tariff, measured against their history.
+      const history = await loadInvoiceHistory(target.id);
+      const result = estimateErstattung(invoice, target.insuredPerson, target.birthDate, history);
+      await api.invoices.reassign(invoice.id, {
+        insured_person_id: target.id,
+        positions: invoice.positions.map((pos, i) => ({
+          id: pos.id,
+          eligible_amount: result?.byPosition[i]?.eligible_amount ?? null,
+        })),
+      });
+      reassignOpen = false;
+      await load();
+    } catch (e) {
+      reassignError =
+        e instanceof ApiError || e instanceof Error ? e.message : 'Umhängen fehlgeschlagen.';
+    } finally {
+      reassigning = false;
+    }
+  }
+
   let deletingInvoice = $state(false);
   let confirmDeleteInvoice = $state(false);
   let deleteError = $state<string | null>(null);
@@ -284,6 +362,7 @@
             Bearbeiten
           </Button>
         {/if}
+        <Button variant="outline" size="sm" onclick={openReassign}>Person ändern</Button>
         <Button
           variant="outline"
           size="sm"
@@ -324,6 +403,49 @@
             disabled={deletingInvoice}
           >
             {deletingInvoice ? 'Wird gelöscht …' : 'Ja, löschen'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialogRoot>
+
+    <!-- Person ändern (issue #533) -->
+    <AlertDialogRoot bind:open={reassignOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Rechnung einer anderen Person zuordnen</AlertDialogTitle>
+          <AlertDialogDescription>
+            Beträge, Status und Einreichung bleiben erhalten. Der erstattungsfähige Betrag wird nach
+            dem Tarif der neuen Person neu geschätzt.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div class="space-y-1.5">
+          <Label for="field-reassign">Versicherte Person</Label>
+          <Select
+            type="single"
+            value={reassignTargetId}
+            onValueChange={(v: string) => (reassignTargetId = v ?? '')}
+            disabled={reassignOptions.length === 0}
+            items={reassignOptions.map((o) => ({ value: o.id, label: o.label }))}
+          >
+            <SelectTrigger id="field-reassign" class="w-full">
+              <SelectValue placeholder="Bitte wählen …" />
+            </SelectTrigger>
+            <SelectContent>
+              {#each reassignOptions as opt (opt.id)}
+                <SelectItem value={opt.id} label={opt.label} />
+              {/each}
+            </SelectContent>
+          </Select>
+        </div>
+        {#if reassignError}
+          <Alert variant="destructive">
+            <AlertDescription>{reassignError}</AlertDescription>
+          </Alert>
+        {/if}
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction onclick={reassign} disabled={reassigning || !reassignTargetId}>
+            {reassigning ? 'Wird geändert …' : 'Person ändern'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

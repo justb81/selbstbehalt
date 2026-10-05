@@ -24,6 +24,7 @@ import {
   deriveInvoiceStatus,
   invoiceCreatePayloadSchema,
   invoicePaymentChangeSchema,
+  invoiceReassignPayloadSchema,
   invoiceRefundPayloadSchema,
   invoiceReviewChangeSchema,
   invoiceRevertSchema,
@@ -495,6 +496,37 @@ export function createInvoicesRoute(db: Database) {
         if (isFirstCapture) {
           appendEvent(tx as unknown as Database, id, 'submission', 'erstattet', input.note);
         }
+      });
+
+      return c.json(invoiceWithPositions(db, id));
+    })
+    .put('/:id/insured', jsonBody(invoiceReassignPayloadSchema), (c) => {
+      // Reassigns the invoice to another versicherte Person (issue #533) — a data
+      // correction, so it is deliberately exempt from the Editier-Sperre: amounts,
+      // status events and the submission stay as they are. Only the tariff-dependent
+      // estimate per position follows the new person's tariff.
+      const id = c.req.param('id');
+      requireRow(() => findInvoice(db, id), 'Rechnung nicht gefunden');
+      const input = c.req.valid('json');
+      assertFkExists(
+        db,
+        insuredPersons,
+        input.insured_person_id,
+        `Versicherte Person ${input.insured_person_id} existiert nicht`,
+      );
+
+      db.transaction((tx) => {
+        tx.update(invoices)
+          .set({ insuredPersonId: input.insured_person_id })
+          .where(eq(invoices.id, id))
+          .run();
+        for (const p of input.positions) {
+          tx.update(invoicePositions)
+            .set({ eligibleAmount: p.eligible_amount })
+            .where(and(eq(invoicePositions.id, p.id), eq(invoicePositions.invoiceId, id)))
+            .run();
+        }
+        recalcInvoiceSums(tx as unknown as Database, id);
       });
 
       return c.json(invoiceWithPositions(db, id));

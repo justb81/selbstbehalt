@@ -31,6 +31,7 @@ import {
   type Invoice,
   type InvoiceCreatePayload,
   type InvoicePaymentChange,
+  type InvoiceReassignPayload,
   type InvoiceRefundPayload,
   type InvoiceReviewChange,
   type InvoiceRevert,
@@ -177,6 +178,12 @@ export function createResources(request: ApiRequester) {
         body: data,
         schema: invoiceWithPositionsSchema,
       }),
+    reassign: (invoiceId: string, data: InvoiceReassignPayload) =>
+      request(`/api/invoices/${id(invoiceId)}/insured`, {
+        method: 'PUT',
+        body: data,
+        schema: invoiceWithPositionsSchema,
+      }),
     revertSubmission: (invoiceId: string, data: InvoiceRevert) =>
       request(`/api/invoices/${id(invoiceId)}/submission/revert`, {
         method: 'POST',
@@ -215,6 +222,7 @@ export type {
   InsuredPerson,
   Invoice,
   InvoicePaymentChange,
+  InvoiceReassignPayload,
   InvoiceRefundPayload,
   InvoiceReviewChange,
   InvoiceStatusEvent,

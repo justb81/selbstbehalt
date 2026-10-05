@@ -112,6 +112,20 @@ export const invoiceRefundPayloadSchema = z
   .strict();
 
 /**
+ * `PUT /api/invoices/:id/insured` body (issue #533): reassigns the invoice to another
+ * versicherte Person — the correction for a mixed-up Rechnungsempfänger. Exempt from
+ * the Editier-Sperre: amounts, status events and the submission stay untouched; only
+ * the tariff-dependent `eligible_amount` per position is replaced by the client's
+ * re-estimate under the new person's tariff (`null` = unknown, e.g. no tariff).
+ */
+export const invoiceReassignPayloadSchema = z
+  .object({
+    insured_person_id: uuid,
+    positions: z.array(z.object({ id: uuid, eligible_amount: money.nullable() }).strict()),
+  })
+  .strict();
+
+/**
  * `POST /api/invoices/:id/submission/revert` body (issue #230 "Löschen"): steps the
  * submission track back one level (`erstattet → eingereicht`, `eingereicht →
  * nicht_eingereicht`) by appending a ground-state event, and discards the data that
@@ -134,4 +148,5 @@ export type InvoiceUpdatePayload = z.infer<typeof invoiceUpdatePayloadSchema>;
 export type InvoiceReviewChange = z.infer<typeof invoiceReviewChangeSchema>;
 export type InvoicePaymentChange = z.infer<typeof invoicePaymentChangeSchema>;
 export type InvoiceRefundPayload = z.infer<typeof invoiceRefundPayloadSchema>;
+export type InvoiceReassignPayload = z.infer<typeof invoiceReassignPayloadSchema>;
 export type InvoiceRevert = z.infer<typeof invoiceRevertSchema>;
