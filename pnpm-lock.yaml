@@ -6,7 +6,7 @@ settings:
 
 overrides:
   adm-zip@<0.6.1: '>=0.6.1'
-  devalue@<5.9.3: '>=5.9.3'
+  devalue@<5.9.3: '>=5.9.3 <6.0.0'
   source-map-js@<1.2.2: '>=1.2.2'
   postcss@<8.5.26: '>=8.5.26'
 

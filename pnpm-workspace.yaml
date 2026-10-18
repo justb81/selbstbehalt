@@ -17,7 +17,7 @@ overrides:
   # devalue (transitive via bits-ui > runed > @sveltejs/kit) has high-severity
   # advisories in 5.9.2 (GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32,
   # GHSA-x5rw-q4pp-hg5g, GHSA-r9w8-h9r3-54w4); patched in >=5.9.3.
-  devalue@<5.9.3: '>=5.9.3'
+  devalue@<5.9.3: '>=5.9.3 <6.0.0'
 
   # source-map-js (transitive via bits-ui > runed > @sveltejs/kit > vite >
   # postcss) has a high-severity DoS advisory (GHSA-68fv-2mgg-jv7q) in
