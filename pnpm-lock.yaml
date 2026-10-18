@@ -5,7 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  adm-zip@<0.6.0: '>=0.6.0'
+  adm-zip@<0.6.1: '>=0.6.1'
+  devalue@<5.9.3: '>=5.9.3'
+  source-map-js@<1.2.2: '>=1.2.2'
   postcss@<8.5.26: '>=8.5.26'
 
 importers:
