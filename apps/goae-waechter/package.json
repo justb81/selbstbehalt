@@ -24,7 +24,7 @@
     "@selbstbehalt/medic-invoice-check": "workspace:*",
     "@selbstbehalt/shared": "workspace:*",
     "@selbstbehalt/ui": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

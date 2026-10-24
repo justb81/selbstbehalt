@@ -34,7 +34,7 @@
     "onnxruntime-web": "1.30.0",
     "pdfjs-dist": "^6.3.289",
     "ppu-paddle-ocr": "6.6.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
