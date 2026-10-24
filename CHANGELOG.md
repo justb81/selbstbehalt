@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.1](https://github.com/justb81/selbstbehalt/compare/v1.16.0...v1.16.1) (2026-10-24)
+
+### Bug Fixes
+
+- resolve dependabot PR check failures ([#541](https://github.com/justb81/selbstbehalt/issues/541)) ([02a99f7](https://github.com/justb81/selbstbehalt/commit/02a99f7759997347595c6fcdab2b9d017d68f43c))
+
 ## [1.16.0](https://github.com/justb81/selbstbehalt/compare/v1.15.2...v1.16.0) (2026-09-02)
 
 ### Features
