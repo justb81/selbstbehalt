@@ -28,7 +28,7 @@
     "@selbstbehalt/shared": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.13.11",
+    "hono": "^4.13.14",
     "zod": "^4.6.6"
   },
   "devDependencies": {
