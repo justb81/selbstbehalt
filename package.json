@@ -43,8 +43,8 @@
     "ocr:wasm": "node scripts/copy-ort-wasm.mjs"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.3",
-    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.13.0",
@@ -57,7 +57,7 @@
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.2",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^4.1.11"
   }
 }
