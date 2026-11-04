@@ -454,7 +454,7 @@
               }}
               items={personOptions.map((o) => ({ value: o.id, label: o.label }))}
             >
-              <SelectTrigger class="w-full sm:w-72">
+              <SelectTrigger aria-label="Versicherte Person" class="w-full sm:w-72">
                 <SelectValue placeholder="Versicherte Person wählen …" />
               </SelectTrigger>
               <SelectContent>
