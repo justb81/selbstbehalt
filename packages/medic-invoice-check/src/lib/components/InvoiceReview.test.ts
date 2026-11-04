@@ -357,7 +357,10 @@ describe('InvoiceReview — edit mode', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Position 1 minimieren' }));
-    expect(screen.queryByRole('textbox', { name: 'Ziffer' })).not.toBeInTheDocument();
+    // bits-ui's presence manager unmounts the collapsed content asynchronously.
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Ziffer' })).not.toBeInTheDocument(),
+    );
     // Header stays visible while collapsed.
     expect(screen.getByText('Position 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Position 1 entfernen/i })).toBeInTheDocument();
@@ -412,7 +415,7 @@ describe('InvoiceReview — edit mode', () => {
       expect(screen.getByRole('button', { name: 'Position 1 einblenden' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Position 2 minimieren' })).toBeInTheDocument();
     });
-    expect(screen.getAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(1));
   });
 
   it('"Alle einklappen"/"Alle ausklappen" toggle every position at once, including flagged ones (issue #207)', async () => {
@@ -424,7 +427,9 @@ describe('InvoiceReview — edit mode', () => {
     await waitFor(() => expect(screen.getAllByText(EXCLUDES_605_612_MESSAGE)).toHaveLength(2));
 
     await user.click(screen.getByRole('button', { name: 'Alle einklappen' }));
-    expect(screen.queryAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(0);
+    await waitFor(() =>
+      expect(screen.queryAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(0),
+    );
 
     await user.click(screen.getByRole('button', { name: 'Alle ausklappen' }));
     expect(screen.getAllByRole('textbox', { name: 'Ziffer' })).toHaveLength(2);
