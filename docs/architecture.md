@@ -2109,7 +2109,7 @@ gekennzeichnet.
   `$lib/utils/url-state.ts` gelesen und geschrieben (`readParam`,
   `readNumberParam`, `withParam`); die Auswahl ist ein `$derived` über
   `page.url`, nicht eine zweite Kopie im Komponenten-State. Geschrieben wird mit
-  `replaceState`, `keepFocus` und `noScroll` — ein Filterwechsel ist kein
+  `replaceState` und `reset: false` — ein Filterwechsel ist kein
   History-Eintrag. Der Deep-Link-Vertrag je Route steht in Kapitel 5.2
   ([ADR-0019](./adr/0019-filterzustand-in-der-url.md)).
 - **Navigation navigiert per Link, nicht per Klick-Handler.** Auch Einträge in

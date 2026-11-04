@@ -74,7 +74,7 @@ describe('InsuredPersonForm', () => {
     expect(screen.getByLabelText('Jährlicher Selbstbehalt (€)')).toBeInTheDocument();
     expect(screen.getByLabelText('Notizen')).toBeInTheDocument();
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: /Person/ }));
+      expect(document.activeElement).toBe(screen.getByRole('combobox', { name: /Person/ }));
     });
   });
 

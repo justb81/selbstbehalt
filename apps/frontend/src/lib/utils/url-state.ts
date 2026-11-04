@@ -1,5 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
+import type { ReadonlyURL } from '$app/state';
+
+/** Kit 3's `page.url` is a `ReadonlyURL`, not a `URL`. */
+type UrlLike = URL | ReadonlyURL;
+
 /**
  * URL-synchronisierter Filterzustand (issue #461).
  *
@@ -8,7 +13,7 @@
  *
  * ```ts
  * const year = $derived(readParam(page.url, 'year', years) ?? currentYear);
- * goto(withParam(page.url, 'year', y), { replaceState: true, keepFocus: true, noScroll: true });
+ * goto(withParam(page.url, 'year', y), { replaceState: true, reset: false });
  * ```
  *
  * `replaceState`, weil ein Filterwechsel kein History-Eintrag ist: Zurück soll
@@ -21,7 +26,7 @@
  * fällt damit auf seinen Default zurück.
  */
 export function readParam<T extends string>(
-  url: URL,
+  url: UrlLike,
   key: string,
   allowed?: readonly T[],
 ): T | null {
@@ -35,7 +40,11 @@ export function readParam<T extends string>(
  * Wie {@link readParam}, nur für numerische Parameter (Jahr): nicht-ganzzahlige
  * oder nicht erlaubte Werte ergeben `null`.
  */
-export function readNumberParam(url: URL, key: string, allowed?: readonly number[]): number | null {
+export function readNumberParam(
+  url: UrlLike,
+  key: string,
+  allowed?: readonly number[],
+): number | null {
   const raw = readParam(url, key);
   if (raw === null) return null;
   const value = Number(raw);
@@ -51,11 +60,11 @@ export function readNumberParam(url: URL, key: string, allowed?: readonly number
  * Die übrigen Parameter bleiben in ihrer Reihenfolge erhalten.
  */
 export function withParam(
-  url: URL,
+  url: UrlLike,
   key: string,
   value: string | number | null | undefined,
 ): string {
-  const params = new URLSearchParams(url.searchParams);
+  const params = new URLSearchParams(url.searchParams.toString());
   const next = value === null || value === undefined ? '' : String(value);
   if (next === '') params.delete(key);
   else params.set(key, next);

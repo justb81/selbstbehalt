@@ -52,7 +52,7 @@ describe('IncludedBenefitsEditor', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Enthaltene Leistungen konfigurieren' }),
     ).toBeChecked();
-    expect(screen.getByRole('button', { name: 'Leistungsbereich' })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: 'Leistungsbereich' })).toHaveTextContent(
       'Kieferorthopädie',
     );
     expect(lastChange(onchange)).toEqual([KFO, true]);
