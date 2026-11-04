@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 import tailwindcss from '@tailwindcss/vite';
+import kitConfig from './kit.config.js';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
@@ -21,7 +22,7 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    sveltekit(),
+    sveltekit(kitConfig),
     // PWA layer (docs/architecture.md §8.6, issue #27). `injectManifest` lets us ship a
     // hand-written service worker (src/service-worker.ts) that implements the
     // three caching strategies from §8.6 — Workbox is not pulled into the SW

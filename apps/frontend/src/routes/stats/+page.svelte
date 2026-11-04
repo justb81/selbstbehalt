@@ -79,8 +79,7 @@
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query-string update
     void goto(withParam(page.url, key, value), {
       replaceState: true,
-      keepFocus: true,
-      noScroll: true,
+      reset: false,
     });
   }
 

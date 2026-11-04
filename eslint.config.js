@@ -7,7 +7,7 @@ import globals from 'globals';
 import svelte from 'eslint-plugin-svelte';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
-import svelteConfig from './apps/frontend/svelte.config.js';
+import svelteConfig from './apps/frontend/kit.config.js';
 
 export default tseslint.config(
   // Globally ignored paths — generated output, dependencies, lockfile, source data.

@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Bastian Rang and contributors
 // SPDX-License-Identifier: Apache-2.0
 import tailwindcss from '@tailwindcss/vite';
+import kitConfig from './kit.config.js';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
-// Must mirror svelte.config.js's `paths.base`: on GitHub Pages the app is served
+// Must mirror kit.config.js's `paths.base`: on GitHub Pages the app is served
 // under a subpath (/<repo>/), so the web-app-manifest URLs (start_url, scope,
 // icons) are prefixed with the same BASE_PATH (issue #171). Unset (custom domain
 // at the root) → base "" → the manifest points at "/" as before.
@@ -17,7 +18,7 @@ export default defineConfig({
   // unlike apps/frontend it never talks to a server at all.
   plugins: [
     tailwindcss(),
-    sveltekit(),
+    sveltekit(kitConfig),
     // PWA layer (docs/architecture.md §8.6), reusing the same `injectManifest` setup as
     // apps/frontend: a hand-written service worker (src/service-worker.ts) gets
     // the precache manifest injected, no Workbox runtime is bundled, so nothing

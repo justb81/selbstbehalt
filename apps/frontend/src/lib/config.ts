@@ -5,7 +5,7 @@
 // PUBLIC_API_URL environment variable (see .env.example); a user can override
 // it at runtime through the settings store.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_API_URL } from '$app/env/public';
 
 /**
  * Default when neither a saved setting nor PUBLIC_API_URL is set: the empty
@@ -20,6 +20,6 @@ export const FALLBACK_API_BASE_URL = '';
 
 /** The PUBLIC_API_URL value, or `undefined` when empty/unset. */
 export function envApiBaseUrl(): string | undefined {
-  const value = env.PUBLIC_API_URL?.trim();
+  const value = PUBLIC_API_URL?.trim();
   return value ? value : undefined;
 }
