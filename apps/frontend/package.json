@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@lucide/svelte": "^1.61.0",
+    "@lucide/svelte": "^1.66.0",
     "@playwright/test": "^1.64.1",
     "@sveltejs/adapter-static": "4.0.1",
     "@sveltejs/kit": "^2.70.3",
