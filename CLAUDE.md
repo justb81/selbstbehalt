@@ -98,7 +98,7 @@ Full CRUD over `/api/persons`, `/api/contracts` (+ `/api/contracts/:id/insured` 
 - **Verlinkbarer Zustand gehört in die URL** — Filter- und Auswahlzustand einer Seite lebt im
   Query-String, gelesen/geschrieben ausschließlich über `$lib/utils/url-state.ts` (`readParam`,
   `readNumberParam`, `withParam`); die Auswahl ist ein `$derived` über `page.url`, keine zweite
-  Kopie im State, und geschrieben wird mit `replaceState`/`keepFocus`/`noScroll` (ein
+  Kopie im State, und geschrieben wird mit `replaceState`/`reset: false` (ein
   Filterwechsel ist kein History-Eintrag). Die vergebenen Parameter je Route stehen in
   `docs/architecture.md` §5.2 und sind ein öffentlicher Vertrag (ADR-0019). Navigationseinträge
   sind echte `<a href>` — bei bits-ui über das `child`-Snippet, nie `onclick={() => goto(...)}`.

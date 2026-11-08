@@ -9,7 +9,7 @@
  * can't reach the page's queue/base-URL when fired headless, so it would be dead
  * weight here.)
  */
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { writable, type Readable } from 'svelte/store';
 
 import type { ApiRequester } from '$lib/api/client.js';

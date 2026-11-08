@@ -15,7 +15,7 @@ vi.mock('@selbstbehalt/medic-invoice-check', async () => ({
 
 // The form reads the Standard-Zahlungsfrist from the settings store, which
 // resolves the API base URL from this env module.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$app/env/public', () => ({ PUBLIC_API_URL: undefined }));
 
 import InvoiceForm from './InvoiceForm.svelte';
 import type { FormPayload } from './InvoiceForm.svelte';

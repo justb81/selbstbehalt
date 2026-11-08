@@ -5,7 +5,7 @@
 // the configured backend base URL, plus the building blocks for ad-hoc clients
 // (e.g. tests) and the error type.
 
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 
 import {
   OfflineQueue,

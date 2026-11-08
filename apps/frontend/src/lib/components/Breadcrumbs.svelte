@@ -10,10 +10,13 @@
   fallback covers the brief window before that.
 -->
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { breadcrumbEntity, type BreadcrumbEntity } from '$lib/stores/breadcrumb';
   import * as Breadcrumb from '$lib/components/ui/breadcrumb';
+
+  // Kit 3 dropped `base`; derive it from the resolved root ("/" → "", "/x/" → "/x").
+  const base = resolve('/').slice(0, -1);
 
   type Crumb = { label: string; href?: string };
 
