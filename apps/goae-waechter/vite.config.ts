@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import tailwindcss from '@tailwindcss/vite';
 import kitConfig from './kit.config.js';
-import { sveltekit } from '@sveltejs/kit/vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import { withPwa } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
 // Must mirror kit.config.js's `paths.base`: on GitHub Pages the app is served
@@ -18,7 +17,6 @@ export default defineConfig({
   // unlike apps/frontend it never talks to a server at all.
   plugins: [
     tailwindcss(),
-    sveltekit(kitConfig),
     // PWA layer (docs/architecture.md §8.6), reusing the same `injectManifest` setup as
     // apps/frontend: a hand-written service worker (src/service-worker.ts) gets
     // the precache manifest injected, no Workbox runtime is bundled, so nothing
@@ -29,10 +27,13 @@ export default defineConfig({
     // and SvelteKit's service-worker build silently produces no output if the
     // package cannot be resolved from this app — the build then fails with
     // "The 'swSrc' file can't be read". `workbox-build` needs no such entry.
-    SvelteKitPWA({
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'service-worker.ts',
+    withPwa(kitConfig, {
+      strategies: 'buildSW',
+      // The largest precached asset is the GOÄ table chunk; raise the limit so
+      // it is not silently dropped from the precache.
+      maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+      // Source (TypeScript) and emitted worker; SvelteKit 3 serves it at /service-worker.js.
+      filename: 'service-worker.js',
       registerType: 'prompt',
       injectRegister: null,
       manifest: {
@@ -58,14 +59,14 @@ export default defineConfig({
           },
         ],
       },
-      injectManifest: {
+      buildSW: {
+        swSrc: 'src/service-worker.ts',
+        // SPA without prerendered pages: the plugin's default `prerendered/**` glob matches nothing.
+        globStrict: false,
         // App shell + bundled GOÄ/GOZ/GOT data. The OCR models (~50–100 MB) are
         // deliberately excluded from the precache and cached on first use instead.
         globPatterns: ['**/*.{js,mjs,css,html,svg,ico,png,webp,woff,woff2,json,txt}'],
         globIgnores: ['**/models/**'],
-        // The largest precached asset is the GOÄ table chunk; raise the limit so
-        // it is not silently dropped from the precache.
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
       // adapter-static emits an SPA fallback (index.html); tell the plugin so it
       // precaches that entry document and navigations resolve offline.

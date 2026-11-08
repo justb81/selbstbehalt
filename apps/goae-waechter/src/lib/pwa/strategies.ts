@@ -55,7 +55,7 @@ export function classifyRequest(
 
 /** The slice of the Cache API the strategy needs (so tests can fake it). */
 export interface CacheLike {
-  match(request: Request | string): Promise<Response | undefined>;
+  match(request: Request | string, options?: CacheQueryOptions): Promise<Response | undefined>;
   put(request: Request | string, response: Response): Promise<void>;
 }
 
@@ -84,7 +84,9 @@ export async function cacheFirst(
   options: CacheFirstOptions = {},
 ): Promise<Response> {
   const cache = await deps.openCache(deps.cacheName);
-  const cached = await cache.match(request);
+  // Module scripts send `Origin`, while the install-time precache fetch does not; a
+  // `Vary: Origin` response (e.g. `vite preview`) would otherwise never match offline.
+  const cached = await cache.match(request, { ignoreVary: true });
   if (cached) return cached;
 
   const response = await deps.fetch(request);
