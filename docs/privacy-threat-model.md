@@ -185,7 +185,7 @@ with CORP.
   copies the ONNX Runtime WASM from the local `onnxruntime-web` package into
   `static/models/ort/`; `pnpm ocr:models` (`scripts/fetch-ocr-models.mjs`)
   populates `static/models/ocr/` with SHA-256-pinned model files at build time.
-- The service worker (`@vite-pwa/sveltekit` in `injectManifest` mode) precaches
+- The service worker (`@vite-pwa/sveltekit` in `buildSW` mode) precaches
   only same-origin build assets (`globIgnores: ['**/models/**']` keeps the large
   models out of precache; they are `cacheFirst`-cached on first use). Its
   request classifier (`apps/frontend/src/lib/pwa/strategies.ts`) leaves every

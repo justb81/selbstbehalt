@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Control PUBLIC_API_URL so base-URL precedence is deterministic.
 const mockedEnv = vi.hoisted(() => ({ PUBLIC_API_URL: undefined as string | undefined }));
-vi.mock('$env/dynamic/public', () => ({ env: mockedEnv }));
+vi.mock('$app/env/public', () => ({
+  get PUBLIC_API_URL() {
+    return mockedEnv.PUBLIC_API_URL;
+  },
+}));
 
 import {
   DEFAULT_CLAIM_FREE_PROBABILITY,

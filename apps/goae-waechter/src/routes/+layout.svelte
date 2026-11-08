@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { configureOcr, resolveOcrAssets } from '@selbstbehalt/medic-invoice-check';
   import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
   import LockIcon from '@lucide/svelte/icons/lock';
@@ -15,7 +15,7 @@
   // fetches them from the right subpath. At the domain root `base` is '' and
   // this resolves to the same defaults apps/frontend uses. Runs once (the
   // layout mounts once) and before any scan spins up the OCR worker.
-  configureOcr(resolveOcrAssets(base));
+  configureOcr(resolveOcrAssets(resolve('/')));
 
   let { children }: { children: Snippet } = $props();
 </script>

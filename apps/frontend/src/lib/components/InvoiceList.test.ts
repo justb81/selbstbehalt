@@ -13,7 +13,7 @@ vi.mock('$app/paths', () => ({
 
 // The Fälligkeits-Badge reads the settings store, which resolves the API base
 // URL from this env module.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$app/env/public', () => ({ PUBLIC_API_URL: undefined }));
 
 import InvoiceList from './InvoiceList.svelte';
 

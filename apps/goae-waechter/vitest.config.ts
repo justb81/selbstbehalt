@@ -6,11 +6,13 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vitest/config';
 
+import kitConfig from './kit.config.js';
+
 export default defineConfig({
   // The SvelteKit plugin gives tests the same `$lib`, `$app/*` and `$env/*`
   // module resolution as the app, so components can be imported exactly as they
   // are at runtime.
-  plugins: [sveltekit(), svelteTesting()],
+  plugins: [sveltekit(kitConfig), svelteTesting()],
   resolve: {
     alias: {
       // The PWA register hook is a virtual module that only exists when

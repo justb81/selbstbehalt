@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Control the PUBLIC_API_URL env exposed via SvelteKit's $env/dynamic/public.
+// Control the PUBLIC_API_URL env exposed via SvelteKit's $app/env/public.
 const mockedEnv = vi.hoisted(() => ({ PUBLIC_API_URL: undefined as string | undefined }));
-vi.mock('$env/dynamic/public', () => ({ env: mockedEnv }));
+vi.mock('$app/env/public', () => ({
+  get PUBLIC_API_URL() {
+    return mockedEnv.PUBLIC_API_URL;
+  },
+}));
 
 import { envApiBaseUrl } from './config';
 

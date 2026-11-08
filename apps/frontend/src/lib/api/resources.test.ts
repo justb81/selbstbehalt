@@ -3,8 +3,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 // The default `api` instance resolves its base URL via the settings store, which
-// reads SvelteKit's $env/dynamic/public — stub it so the import graph loads.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+// reads SvelteKit's $app/env/public — stub it so the import graph loads.
+vi.mock('$app/env/public', () => ({ PUBLIC_API_URL: undefined }));
 
 import { createApi } from './index';
 import type { ApiRequester } from './client';

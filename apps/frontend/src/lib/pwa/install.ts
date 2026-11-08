@@ -16,7 +16,7 @@
  * doesn't reappear on every reload within the same browser session; a new app
  * update (see `resetInstallDismissal`) clears it so the ask can resurface.
  */
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { writable, type Readable } from 'svelte/store';
 
 /**
