@@ -4,9 +4,9 @@ import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet, type Component } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 
-// The settings page reads SvelteKit's $env/dynamic/public (via the settings
+// The settings page reads SvelteKit's $app/env/public (via the settings
 // store) — stub it so the import graph loads under vitest.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$app/env/public', () => ({ PUBLIC_API_URL: undefined }));
 
 // Shared mock of SvelteKit's $app/state for route components that read it.
 const state = vi.hoisted(() => ({

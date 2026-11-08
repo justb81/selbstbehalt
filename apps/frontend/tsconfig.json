@@ -3,14 +3,11 @@
   // let SvelteKit's generated config own module/moduleResolution/paths/target/lib
   // (extended last, so those win). Strict flags are intentionally NOT re-listed
   // here so any future tightening in tsconfig.base.json reaches the frontend.
-  "extends": ["../../tsconfig.base.json", "./.svelte-kit/tsconfig.json"],
+  "extends": ["../../tsconfig.base.json", "$app/tsconfig"],
   // Extend (rather than replace) SvelteKit's generated include with the root
   // config/test-setup files it leaves out, so they are type-checked too.
   // vitest-setup.ts registers the jest-dom matcher types used in component tests.
   "include": [
-    ".svelte-kit/ambient.d.ts",
-    ".svelte-kit/env.d.ts",
-    ".svelte-kit/non-ambient.d.ts",
     ".svelte-kit/types/**/$types.d.ts",
     "vite.config.ts",
     "vitest.config.ts",
@@ -20,5 +17,7 @@
     "src/**/*.ts",
     "src/**/*.svelte",
     "e2e/**/*.ts"
-  ]
+  ],
+  // Kit 3 requires the service worker out of the app project (WebWorker lib, not DOM).
+  "exclude": ["src/service-worker.ts"]
 }

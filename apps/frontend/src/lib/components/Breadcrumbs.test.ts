@@ -11,7 +11,7 @@ vi.mock('$app/state', () => ({
     },
   },
 }));
-vi.mock('$app/paths', () => ({ base: '' }));
+vi.mock('$app/paths', () => ({ resolve: () => '/' }));
 
 import Breadcrumbs from './Breadcrumbs.svelte';
 import { breadcrumbEntity, setBreadcrumbEntity } from '$lib/stores/breadcrumb';
