@@ -14,7 +14,7 @@ vi.mock('$app/env/public', () => ({
 import {
   DEFAULT_CLAIM_FREE_PROBABILITY,
   DEFAULT_DISCOUNT_RATE,
-} from '$lib/utils/guenstiger-pruefung.js';
+} from '#lib/utils/guenstiger-pruefung.js';
 
 import {
   DEFAULT_SETTINGS,

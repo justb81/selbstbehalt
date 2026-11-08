@@ -6,7 +6,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Input } from '@selbstbehalt/ui/input';
   import { Label } from '@selbstbehalt/ui/label';

@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     type BRELevel,
     type BREStructure,
@@ -36,7 +36,7 @@
     SelectValue,
   } from '@selbstbehalt/ui/select';
   import { Textarea } from '@selbstbehalt/ui/textarea';
-  import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Checkbox } from '#lib/components/ui/checkbox/index.js';
   import IncludedBenefitsEditor from './IncludedBenefitsEditor.svelte';
   import RepeaterTable, { type RepeaterColumn } from './RepeaterTable.svelte';
 

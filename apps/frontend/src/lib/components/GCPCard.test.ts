@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 
 import GCPCard from './GCPCard.svelte';
-import type { GCP_Result } from '$lib/utils/guenstiger-pruefung';
+import type { GCP_Result } from '#lib/utils/guenstiger-pruefung.js';
 
 const BREAKDOWN: GCP_Result['breakdown'] = {
   year: 2024,

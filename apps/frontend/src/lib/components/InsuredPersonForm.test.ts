@@ -8,7 +8,7 @@ import type { InsuredPerson, Person } from '@selbstbehalt/shared';
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock('svelte-sonner', () => ({ toast }));
 
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api/index.js', () => ({
   api: { insured: { create: vi.fn(), update: vi.fn() } },
   ApiError: class ApiError extends Error {
     constructor(
@@ -21,7 +21,7 @@ vi.mock('$lib/api', () => ({
 }));
 
 import InsuredPersonForm from './InsuredPersonForm.svelte';
-import { api } from '$lib/api';
+import { api } from '#lib/api/index.js';
 
 const PERSONS: Person[] = [
   { id: 'p-1', name: 'Anna Muster', birth_date: '1985-04-12', created_at: '2020-01-01' },

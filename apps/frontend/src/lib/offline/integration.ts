@@ -6,8 +6,8 @@
  * {@link OfflineQueuedError} is thrown so the UI can say "saved, will sync"
  * rather than show a hard failure. Reads are never queued.
  */
-import { ApiError } from '$lib/api/errors.js';
-import type { ApiRequester, RequestOptions } from '$lib/api/client.js';
+import { ApiError } from '#lib/api/errors.js';
+import type { ApiRequester, RequestOptions } from '#lib/api/client.js';
 
 import { OfflineQueue, type FlushResult, type QueuedWrite } from './queue.js';
 

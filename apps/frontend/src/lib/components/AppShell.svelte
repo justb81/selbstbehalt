@@ -8,7 +8,7 @@
   import Breadcrumbs from './Breadcrumbs.svelte';
   import Nav from './Nav.svelte';
   import PwaStatus from './PwaStatus.svelte';
-  import { Toaster } from '$lib/components/ui/sonner/index.js';
+  import { Toaster } from '#lib/components/ui/sonner/index.js';
 
   let { children }: { children: Snippet } = $props();
 </script>

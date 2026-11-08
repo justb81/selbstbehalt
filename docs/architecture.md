@@ -146,7 +146,7 @@ nicht per Hand in die JSON geschrieben.
   deutsch nennt (`selbstbehalt`, `bre_structure`, `eligible_amount`); die
   Oberfläche ist durchgehend `de-DE`. Quellcode-Kommentare sind englisch.
 - **UI-Standard:** ausschließlich shadcn-svelte-Komponenten (gemeinsam in
-  `packages/ui`, Frontend-eigene unter `$lib/components/ui/`) und
+  `packages/ui`, Frontend-eigene unter `#lib/components/ui/`) und
   Tailwind-CSS-Utilities — kein Custom-CSS, keine `<style>`-Blöcke in
   `.svelte`-Dateien (Kapitel 8.7).
 - **Commits und Releases:** Conventional Commits (commitlint) treiben Changelog
@@ -2026,9 +2026,9 @@ Service Worker Strategie:
 Browser meldet nur das erste (`navigator.onLine`); fällt allein das Backend aus,
 bleibt es `true`. Beides ist deshalb getrennt modelliert:
 
-- **`isOnline`** (`$lib/offline/sync.ts`) spiegelt `navigator.onLine` — hat das
+- **`isOnline`** (`#lib/offline/sync.ts`) spiegelt `navigator.onLine` — hat das
   Gerät überhaupt eine Verbindung.
-- **`serverStatus`** (`$lib/api/reachability.ts`) beantwortet, ob das Backend
+- **`serverStatus`** (`#lib/api/reachability.ts`) beantwortet, ob das Backend
   geantwortet hat. Der Zustand wird passiv aus echtem Verkehr abgeleitet — kein
   Poll, kein Timer — über eine Dekorator-Schicht um den API-Client
   (`ApiRequester → ApiRequester`, dieselbe Form wie die Schreib-Queue):
@@ -2054,7 +2054,7 @@ Wert, der nicht geladen werden konnte, erscheint als „—" (mit einer für
 Screenreader ausgeschriebenen Begründung), nicht als Null — dieselbe Trennung,
 die das Datenmodell für `eligible_amount` bereits kennt (Kapitel 5.5). Fächern
 Seiten über mehrere Ressourcen auf, geschieht das über `Promise.allSettled` und
-`$lib/utils/partial-load.ts`: die erfolgreichen Teile werden angezeigt, die
+`#lib/utils/partial-load.ts`: die erfolgreichen Teile werden angezeigt, die
 fehlenden benannt — statt sie per `Promise.all` mit zu verlieren oder per
 `.catch(() => …)` zu verschlucken. `settledValues` deckt den gleichförmigen Fall
 (eine Liste desselben Typs) ab, `settledTuple` das `allSettled` über einen festen
@@ -2085,7 +2085,7 @@ gekennzeichnet.
   (Frontend, Demo, `medic-invoice-check`), liegen genau einmal in `packages/ui`
   (`@selbstbehalt/ui/<komponente>`, `cn()` unter `@selbstbehalt/ui/utils`) und
   werden dort mit der shadcn-svelte-CLI gepflegt; nur das Frontend hält
-  zusätzlich eigene unter `$lib/components/ui/`. Braucht ein zweites Paket eine
+  zusätzlich eigene unter `#lib/components/ui/`. Braucht ein zweites Paket eine
   davon, wandert der Ordner nach `packages/ui`. Jede App registriert das Paket
   per `@source` in ihrer `app.css`, sonst sieht Tailwind dessen Klassen nicht.
 - **Sprache:** durchgehend `de-DE`; Fachbegriffe bleiben deutsch und werden in
@@ -2106,7 +2106,7 @@ gekennzeichnet.
   WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
 - **Zustand, den man verlinken kann, gehört in die URL.** Filter- und
   Auswahlzustand einer Seite lebt im Query-String und wird ausschließlich über
-  `$lib/utils/url-state.ts` gelesen und geschrieben (`readParam`,
+  `#lib/utils/url-state.ts` gelesen und geschrieben (`readParam`,
   `readNumberParam`, `withParam`); die Auswahl ist ein `$derived` über
   `page.url`, nicht eine zweite Kopie im Komponenten-State. Geschrieben wird mit
   `replaceState` und `reset: false` — ein Filterwechsel ist kein

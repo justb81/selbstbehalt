@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Contract } from '@selbstbehalt/shared';
 
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api/index.js', () => ({
   api: { contracts: { update: vi.fn() } },
   ApiError: class ApiError extends Error {
     constructor(
@@ -18,7 +18,7 @@ vi.mock('$lib/api', () => ({
 }));
 
 import ContractEditDialog from './ContractEditDialog.svelte';
-import { api } from '$lib/api';
+import { api } from '#lib/api/index.js';
 
 const CONTRACT: Contract = {
   id: 'c-1',

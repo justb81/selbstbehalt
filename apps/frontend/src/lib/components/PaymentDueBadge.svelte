@@ -8,9 +8,9 @@
 -->
 <script lang="ts">
   import { formatDate, type Invoice, type PaymentDueState } from '@selbstbehalt/shared';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import { cn } from '@selbstbehalt/ui/utils';
-  import { classifyInvoiceDue, type PaymentDueOptions } from '$lib/utils/payment-reminders';
+  import { classifyInvoiceDue, type PaymentDueOptions } from '#lib/utils/payment-reminders.js';
 
   let {
     invoice,

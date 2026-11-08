@@ -15,8 +15,6 @@ const base = /** @type {any} */ (rawBase.endsWith('/') ? rawBase.slice(0, -1) : 
 /** @type {import('@sveltejs/kit/vite').Config} */
 export default {
   preprocess: vitePreprocess(),
-  // Kit 3 dropped the built-in $lib alias; keep the familiar import path.
-  alias: { $lib: 'src/lib' },
   // GOÄ-Wächter is a standalone, backend-free static PWA (issue #170): no
   // server, no API — adapter-static emits a plain SPA shell any static host
   // (GitHub Pages, issue #171) can serve.

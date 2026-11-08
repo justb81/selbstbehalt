@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiError } from '$lib/api/errors.js';
-import type { ApiRequester } from '$lib/api/client.js';
+import { ApiError } from '#lib/api/errors.js';
+import type { ApiRequester } from '#lib/api/client.js';
 
 import {
   OfflineQueuedError,

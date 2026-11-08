@@ -35,12 +35,12 @@
     type ProviderType,
     type SubmissionStatus,
   } from '@selbstbehalt/shared';
-  import { isNonReimbursable } from '$lib/utils/reimbursability';
-  import InvoiceBadge, { type InvoiceBadgeStatus } from '$lib/components/InvoiceBadge.svelte';
-  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
-  import { Badge } from '$lib/components/ui/badge';
+  import { isNonReimbursable } from '#lib/utils/reimbursability.js';
+  import InvoiceBadge, { type InvoiceBadgeStatus } from '#lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '#lib/components/PaymentDueBadge.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
+  import { resolvePaymentReminderLeadDays, settings } from '#lib/stores/settings.js';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Input } from '@selbstbehalt/ui/input';
   import { Label } from '@selbstbehalt/ui/label';
@@ -51,7 +51,7 @@
     SelectTrigger,
     SelectValue,
   } from '@selbstbehalt/ui/select';
-  import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+  import { Tabs, TabsList, TabsTrigger } from '#lib/components/ui/tabs/index.js';
   import {
     Table,
     TableBody,
@@ -59,7 +59,7 @@
     TableHead,
     TableHeader,
     TableRow,
-  } from '$lib/components/ui/table';
+  } from '#lib/components/ui/table/index.js';
 
   let {
     invoices,

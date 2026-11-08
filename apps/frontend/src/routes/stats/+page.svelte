@@ -12,7 +12,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { api, ApiError, serverStatus } from '$lib/api';
+  import { api, ApiError, serverStatus } from '#lib/api/index.js';
   import {
     formatEur,
     insuredPersonLabel,
@@ -22,18 +22,18 @@
     type PositionYearRollup,
     type YearStats,
   } from '@selbstbehalt/shared';
-  import { settings } from '$lib/stores/settings';
-  import { computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
-  import { partialFailureMessage, settledTuple, settledValues } from '$lib/utils/partial-load';
-  import { readNumberParam, readParam, withParam } from '$lib/utils/url-state';
-  import CostsRefundsChart from '$lib/components/CostsRefundsChart.svelte';
-  import BreProgressionChart from '$lib/components/BreProgressionChart.svelte';
-  import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  import { settings } from '#lib/stores/settings.js';
+  import { computeSelbstbehaltRadar } from '#lib/utils/selbstbehalt-radar.js';
+  import { partialFailureMessage, settledTuple, settledValues } from '#lib/utils/partial-load.js';
+  import { readNumberParam, readParam, withParam } from '#lib/utils/url-state.js';
+  import CostsRefundsChart from '#lib/components/CostsRefundsChart.svelte';
+  import BreProgressionChart from '#lib/components/BreProgressionChart.svelte';
+  import SelbstbehaltRadar from '#lib/components/SelbstbehaltRadar.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
-  import { Skeleton } from '$lib/components/ui/skeleton';
+  import { Skeleton } from '#lib/components/ui/skeleton/index.js';
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@selbstbehalt/ui/card';
   import {
     Select,

@@ -9,9 +9,9 @@
     "prefix": ""
   },
   "aliases": {
-    "components": "$lib/components",
+    "components": "#lib/components",
     "utils": "@selbstbehalt/ui/utils",
-    "ui": "$lib/components/ui",
-    "hooks": "$lib/hooks"
+    "ui": "#lib/components/ui",
+    "hooks": "#lib/hooks"
   }
 }

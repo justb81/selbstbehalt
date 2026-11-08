@@ -9,7 +9,7 @@ vi.mock('$app/state', () => ({
   page: { url: new URL('http://localhost/') },
 }));
 
-// PwaStatus reads the server-reachability state (#381) from $lib/api, which
+// PwaStatus reads the server-reachability state (#381) from #lib/api, which
 // resolves the backend base URL from $app/env/public — stub it so the
 // import graph loads under vitest.
 vi.mock('$app/env/public', () => ({ PUBLIC_API_URL: undefined }));

@@ -5,7 +5,7 @@
   import { resolve } from '$app/paths';
   import { CONTRACT_TYPE_LABELS, type Contract } from '@selbstbehalt/shared';
   import { Card, CardHeader, CardContent, CardFooter } from '@selbstbehalt/ui/card';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Badge } from '#lib/components/ui/badge/index.js';
 
   let {
     contract,

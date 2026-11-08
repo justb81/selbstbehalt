@@ -7,7 +7,7 @@
   plain Alert banner is enough.
 -->
 <script lang="ts">
-  import { initPwa } from '$lib/pwa/register.js';
+  import { initPwa } from '#lib/pwa/register.js';
   import { Alert, AlertAction, AlertDescription } from '@selbstbehalt/ui/alert';
   import { Button } from '@selbstbehalt/ui/button';
 

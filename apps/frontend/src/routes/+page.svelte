@@ -10,7 +10,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { api, serverStatus } from '$lib/api';
+  import { api, serverStatus } from '#lib/api/index.js';
   import {
     formatDate,
     formatEur,
@@ -20,18 +20,18 @@
     type Invoice,
     type PositionYearRollup,
   } from '@selbstbehalt/shared';
-  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
-  import { ampelPriority, computeSelbstbehaltRadar } from '$lib/utils/selbstbehalt-radar';
-  import { summarizeDueInvoices } from '$lib/utils/payment-reminders';
-  import { partialFailureMessage, settledValues } from '$lib/utils/partial-load';
-  import PersonStatusCard from '$lib/components/PersonStatusCard.svelte';
-  import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
-  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  import { resolvePaymentReminderLeadDays, settings } from '#lib/stores/settings.js';
+  import { ampelPriority, computeSelbstbehaltRadar } from '#lib/utils/selbstbehalt-radar.js';
+  import { summarizeDueInvoices } from '#lib/utils/payment-reminders.js';
+  import { partialFailureMessage, settledValues } from '#lib/utils/partial-load.js';
+  import PersonStatusCard from '#lib/components/PersonStatusCard.svelte';
+  import InvoiceBadge from '#lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '#lib/components/PaymentDueBadge.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '@selbstbehalt/ui/card';
-  import { Skeleton } from '$lib/components/ui/skeleton';
+  import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 
   // ---- State ----
   let invoices = $state<Invoice[]>([]);

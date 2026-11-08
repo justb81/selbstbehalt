@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { InvoiceStatus, InvoiceWithPositions, InvoiceStatusEvent } from '@selbstbehalt/shared';
 
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api/index.js', () => ({
   api: {
     invoices: {
       events: vi.fn().mockResolvedValue([]),
@@ -38,7 +38,7 @@ vi.mock('$app/paths', () => ({
 }));
 
 import InvoiceStatusFlow from './InvoiceStatusFlow.svelte';
-import { api, ApiError } from '$lib/api';
+import { api, ApiError } from '#lib/api/index.js';
 import { goto } from '$app/navigation';
 
 const GROUND: InvoiceStatus = {

@@ -6,8 +6,8 @@
   import { configureOcr, resolveOcrAssets } from '@selbstbehalt/medic-invoice-check';
   import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
   import LockIcon from '@lucide/svelte/icons/lock';
-  import GithubIcon from '$lib/components/icons/GithubIcon.svelte';
-  import PwaStatus from '$lib/components/PwaStatus.svelte';
+  import GithubIcon from '#lib/components/icons/GithubIcon.svelte';
+  import PwaStatus from '#lib/components/PwaStatus.svelte';
   import '../app.css';
 
   // GitHub Pages serves the demo under /<repo>/ (issue #171); point the

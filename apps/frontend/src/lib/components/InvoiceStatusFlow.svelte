@@ -17,15 +17,15 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import type {
     InvoiceWithPositions,
     InvoiceStatusEvent,
     PaymentStatus,
     ReviewStatus,
   } from '@selbstbehalt/shared';
-  import { isNonReimbursable } from '$lib/utils/reimbursability';
-  import type { RefundFormMode } from '$lib/utils/refund-rows';
+  import { isNonReimbursable } from '#lib/utils/reimbursability.js';
+  import type { RefundFormMode } from '#lib/utils/refund-rows.js';
   import InvoiceReviewTrack from './InvoiceReviewTrack.svelte';
   import InvoicePaymentTrack from './InvoicePaymentTrack.svelte';
   import InvoiceSubmissionTrack from './InvoiceSubmissionTrack.svelte';

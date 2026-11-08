@@ -11,7 +11,7 @@
 -->
 <script lang="ts">
   import type { InvoiceStatusEventValue } from '@selbstbehalt/shared';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import { cn } from '@selbstbehalt/ui/utils';
 
   /** A real event value, or the derived display-only "nothing to submit" state. */

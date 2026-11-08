@@ -9,16 +9,16 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     loadInsuredOptions,
     loadInvoiceHistory,
     type InsuredOption,
-  } from '$lib/api/invoice-form-data';
-  import InvoiceForm from '$lib/components/InvoiceForm.svelte';
-  import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
-  import { consumeSharedFile, SHARE_CACHE_NAME } from '$lib/pwa/share-target';
-  import EmptyState from '$lib/components/EmptyState.svelte';
+  } from '#lib/api/invoice-form-data.js';
+  import InvoiceForm from '#lib/components/InvoiceForm.svelte';
+  import type { FormPayload } from '#lib/components/InvoiceForm.svelte';
+  import { consumeSharedFile, SHARE_CACHE_NAME } from '#lib/pwa/share-target.js';
+  import EmptyState from '#lib/components/EmptyState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
 

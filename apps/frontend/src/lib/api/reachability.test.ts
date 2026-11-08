@@ -4,7 +4,7 @@ import { get } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from './errors.js';
-import { CACHED_AT_HEADER, STALE_HEADER } from '$lib/pwa/strategies.js';
+import { CACHED_AT_HEADER, STALE_HEADER } from '#lib/pwa/strategies.js';
 import {
   noteApiResponse,
   resetServerStatus,

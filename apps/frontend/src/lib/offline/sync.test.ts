@@ -3,7 +3,7 @@
 import { get } from 'svelte/store';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ApiRequester } from '$lib/api/client.js';
+import type { ApiRequester } from '#lib/api/client.js';
 
 import { OfflineQueue, createMemoryStore } from './queue.js';
 import { initOfflineSync, isOnline, notifyEnqueued, pendingWrites } from './sync.js';

@@ -11,7 +11,7 @@
   import { formatEur } from '@selbstbehalt/shared';
   import { cn } from '@selbstbehalt/ui/utils';
   import { Card, CardContent, CardHeader } from '@selbstbehalt/ui/card';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
   interface YearContribution {

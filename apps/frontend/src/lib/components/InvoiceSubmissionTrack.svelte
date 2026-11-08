@@ -11,7 +11,7 @@
   back up — both live outside this card.
 -->
 <script lang="ts">
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import type { InvoiceStatus } from '@selbstbehalt/shared';
   import InvoiceBadge from './InvoiceBadge.svelte';
   import { Button } from '@selbstbehalt/ui/button';
@@ -25,7 +25,7 @@
     AlertDialogDescription,
     AlertDialogAction,
     AlertDialogCancel,
-  } from '$lib/components/ui/alert-dialog';
+  } from '#lib/components/ui/alert-dialog/index.js';
 
   let {
     invoiceId,

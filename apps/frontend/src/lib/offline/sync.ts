@@ -12,7 +12,7 @@
 import { browser } from '$app/env';
 import { writable, type Readable } from 'svelte/store';
 
-import type { ApiRequester } from '$lib/api/client.js';
+import type { ApiRequester } from '#lib/api/client.js';
 
 import { replayQueue } from './integration.js';
 import type { OfflineQueue } from './queue.js';

@@ -12,7 +12,7 @@
  *   - On-device OCR models               → Cache After First Load (immutable)
  *
  * Writes are intentionally NOT handled here: they go through the app-layer
- * offline queue (`$lib/offline`), which owns replay order. Replay is driven from
+ * offline queue (`#lib/offline`), which owns replay order. Replay is driven from
  * the page (the `online` event + an on-load flush), so it is not duplicated in
  * the worker.
  *

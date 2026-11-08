@@ -7,14 +7,14 @@
 <script lang="ts">
   import { z } from 'zod';
   import { importResultSchema, todayIso } from '@selbstbehalt/shared';
-  import { settings, resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings';
+  import { settings, resolveApiBaseUrl, resolveApiKey } from '#lib/stores/settings.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Input } from '@selbstbehalt/ui/input';
   import { Label } from '@selbstbehalt/ui/label';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import { Separator } from '@selbstbehalt/ui/separator';
-  import { Switch } from '$lib/components/ui/switch';
+  import { Switch } from '#lib/components/ui/switch/index.js';
   import {
     AlertDialogRoot,
     AlertDialogContent,
@@ -24,7 +24,7 @@
     AlertDialogDescription,
     AlertDialogAction,
     AlertDialogCancel,
-  } from '$lib/components/ui/alert-dialog';
+  } from '#lib/components/ui/alert-dialog/index.js';
 
   const settingsSchema = z.object({
     apiUrl: z.string(),

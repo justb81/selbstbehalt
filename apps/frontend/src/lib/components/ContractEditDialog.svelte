@@ -10,7 +10,7 @@
   construction; closing (Escape, the ✕ or "Abbrechen") flips the bound `open`.
 -->
 <script lang="ts">
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     CONTRACT_TYPE_LABELS,
     contractTypeValues,

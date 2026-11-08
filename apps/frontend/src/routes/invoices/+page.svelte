@@ -8,7 +8,7 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { api } from '$lib/api';
+  import { api } from '#lib/api/index.js';
   import {
     paymentStatusValues,
     submissionStatusValues,
@@ -16,10 +16,10 @@
     type Invoice,
     type Person,
   } from '@selbstbehalt/shared';
-  import InvoiceList from '$lib/components/InvoiceList.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
-  import { readParam } from '$lib/utils/url-state';
+  import InvoiceList from '#lib/components/InvoiceList.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
+  import { readParam } from '#lib/utils/url-state.js';
   import { Button } from '@selbstbehalt/ui/button';
 
   let invoices = $state<Invoice[]>([]);

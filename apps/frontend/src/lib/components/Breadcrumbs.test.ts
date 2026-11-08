@@ -14,7 +14,7 @@ vi.mock('$app/state', () => ({
 vi.mock('$app/paths', () => ({ resolve: () => '/' }));
 
 import Breadcrumbs from './Breadcrumbs.svelte';
-import { breadcrumbEntity, setBreadcrumbEntity } from '$lib/stores/breadcrumb';
+import { breadcrumbEntity, setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
 
 // The entity label is a module singleton — reset it so state can't leak between tests.
 afterEach(() => breadcrumbEntity.set(null));

@@ -7,12 +7,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { api } from '$lib/api';
-  import type { Person } from '$lib/api/resources';
+  import { api } from '#lib/api/index.js';
+  import type { Person } from '#lib/api/resources.js';
   import { formatDate } from '@selbstbehalt/shared';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
 
   let persons = $state<Person[]>([]);

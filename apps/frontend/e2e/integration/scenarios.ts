@@ -34,7 +34,7 @@ function lastYear(monthDay: string): string {
   return `${CURRENT_YEAR - 1}-${monthDay}`;
 }
 
-/** The four Ampel labels of `SelbstbehaltRadar` (`$lib/utils/selbstbehalt-radar`). */
+/** The four Ampel labels of `SelbstbehaltRadar` (`#lib/utils/selbstbehalt-radar`). */
 export type AmpelLabel =
   'Unter Selbstbehalt' | 'SB erreicht' | 'Einreichen lohnt' | 'Staffel gerissen';
 
