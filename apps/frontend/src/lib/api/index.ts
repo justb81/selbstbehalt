@@ -12,8 +12,8 @@ import {
   createIndexedDbStore,
   notifyEnqueued,
   wrapWithOfflineQueue,
-} from '$lib/offline/index.js';
-import { resolveApiBaseUrl, resolveApiKey } from '$lib/stores/settings.js';
+} from '#lib/offline/index.js';
+import { resolveApiBaseUrl, resolveApiKey } from '#lib/stores/settings.js';
 
 import { createApiClient } from './client.js';
 import { noteApiResponse, wrapWithReachability } from './reachability.js';

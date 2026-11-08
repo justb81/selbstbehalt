@@ -8,7 +8,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     CONTRACT_TYPE_LABELS,
     contractTypeValues,
@@ -30,7 +30,7 @@
     SelectTrigger,
     SelectValue,
   } from '@selbstbehalt/ui/select';
-  import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 
   const personLabel = (person: Person) =>
     `${person.name}${person.birth_date ? ` (geb. ${formatDate(person.birth_date)})` : ''}`;

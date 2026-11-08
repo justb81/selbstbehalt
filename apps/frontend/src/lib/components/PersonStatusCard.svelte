@@ -12,7 +12,7 @@
 -->
 <script lang="ts">
   import { insuredPersonLabel, type InsuredPerson } from '@selbstbehalt/shared';
-  import type { SBRadar } from '$lib/utils/selbstbehalt-radar';
+  import type { SBRadar } from '#lib/utils/selbstbehalt-radar.js';
   import SelbstbehaltRadar from './SelbstbehaltRadar.svelte';
   import BRETracker from './BRETracker.svelte';
   import { Separator } from '@selbstbehalt/ui/separator';

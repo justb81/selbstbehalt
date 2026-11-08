@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import PwaStatus from './PwaStatus.svelte';
-import { initPwa } from '$lib/pwa/register.js';
+import { initPwa } from '#lib/pwa/register.js';
 
 // `initPwa()` memoises a single controller module-wide; reset both flags before
 // each test so state set by one test can't leak into the next.

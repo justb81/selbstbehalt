@@ -9,7 +9,7 @@ import { defineConfig } from 'vitest/config';
 import kitConfig from './kit.config.js';
 
 export default defineConfig({
-  // The SvelteKit plugin gives tests the same `$lib`, `$app/*` and `$env/*`
+  // The SvelteKit plugin gives tests the same `#lib`, `$app/*` and `$env/*`
   // module resolution as the app, so components and the API client can be
   // imported exactly as they are at runtime.
   plugins: [sveltekit(kitConfig), svelteTesting()],

@@ -8,18 +8,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { api } from '$lib/api';
+  import { api } from '#lib/api/index.js';
   import {
     formatEur,
     insuredPersonLabel,
     type Contract,
     type InsuredPerson,
   } from '@selbstbehalt/shared';
-  import BRETracker from '$lib/components/BRETracker.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
-  import { Badge } from '$lib/components/ui/badge';
+  import BRETracker from '#lib/components/BRETracker.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
+  import { Badge } from '#lib/components/ui/badge/index.js';
 
   interface ContractGroup {
     contract: Contract;

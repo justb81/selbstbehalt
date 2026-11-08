@@ -9,13 +9,13 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
-  import type { Person } from '$lib/api/resources';
+  import { api, ApiError } from '#lib/api/index.js';
+  import type { Person } from '#lib/api/resources.js';
   import { formatDate } from '@selbstbehalt/shared';
-  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import { destructiveOutlineClass } from '$lib/utils/button-variants';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  import { setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import { destructiveOutlineClass } from '#lib/utils/button-variants.js';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
   import { Input } from '@selbstbehalt/ui/input';
   import { Label } from '@selbstbehalt/ui/label';
@@ -30,7 +30,7 @@
     AlertDialogDescription,
     AlertDialogAction,
     AlertDialogCancel,
-  } from '$lib/components/ui/alert-dialog';
+  } from '#lib/components/ui/alert-dialog/index.js';
 
   const personId = $derived(page.params.id as string);
 

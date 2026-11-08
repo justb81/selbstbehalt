@@ -39,7 +39,7 @@
     SelectTrigger,
     SelectValue,
   } from '@selbstbehalt/ui/select';
-  import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Checkbox } from '#lib/components/ui/checkbox/index.js';
   import RepeaterTable, { type RepeaterColumn } from './RepeaterTable.svelte';
 
   type Props = {

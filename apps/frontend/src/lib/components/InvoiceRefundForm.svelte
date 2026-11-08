@@ -6,14 +6,14 @@
   usually reports one amount per Leistungsbereich, so „je Kategorie" (default) captures a
   single amount per category and distributes it across that category's positions, while
   „je Position" keeps the granular entry for itemised statements. Row building and the
-  payload for both modes live in `$lib/utils/refund-rows.ts`.
+  payload for both modes live in `#lib/utils/refund-rows.ts`.
 
   Mounting the component opens the form; `pending` is bound so the lifecycle tracks
   disable while the save runs.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import { formatEur, todayIso, type InvoiceWithPositions } from '@selbstbehalt/shared';
   import {
     buildCategoryRows,
@@ -23,12 +23,12 @@
     type RefundEntryMode,
     type RefundFormMode,
     type RefundRow,
-  } from '$lib/utils/refund-rows';
+  } from '#lib/utils/refund-rows.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Input } from '@selbstbehalt/ui/input';
   import { Label } from '@selbstbehalt/ui/label';
   import { Textarea } from '@selbstbehalt/ui/textarea';
-  import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+  import { Tabs, TabsList, TabsTrigger } from '#lib/components/ui/tabs/index.js';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import {
     Table,
@@ -37,7 +37,7 @@
     TableHead,
     TableHeader,
     TableRow,
-  } from '$lib/components/ui/table';
+  } from '#lib/components/ui/table/index.js';
 
   let {
     invoice,

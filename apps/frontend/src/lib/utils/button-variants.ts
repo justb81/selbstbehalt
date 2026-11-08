@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Tailwind class add-ons for the vendored shadcn `Button` variants. The
-// vendored component under `$lib/components/ui/button` is maintained by the
+// vendored component under `#lib/components/ui/button` is maintained by the
 // shadcn-svelte CLI and must not be patched (CLAUDE.md / issue #438), so a
 // recurring look that shadcn has no variant for lives here instead of being
 // copy-pasted per call site.

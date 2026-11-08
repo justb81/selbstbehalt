@@ -3,7 +3,7 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 
-import type { SBRadar } from '$lib/utils/selbstbehalt-radar';
+import type { SBRadar } from '#lib/utils/selbstbehalt-radar.js';
 import SelbstbehaltRadar from './SelbstbehaltRadar.svelte';
 
 /** Build an SBRadar fixture; `gcp` is unused by the component, so `null` is fine. */

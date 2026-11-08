@@ -4,7 +4,7 @@
   import { afterNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import * as Sheet from '$lib/components/ui/sheet';
+  import * as Sheet from '#lib/components/ui/sheet/index.js';
   import { cn } from '@selbstbehalt/ui/utils';
   import ChartBarIcon from '@lucide/svelte/icons/chart-bar';
   import EllipsisIcon from '@lucide/svelte/icons/ellipsis';

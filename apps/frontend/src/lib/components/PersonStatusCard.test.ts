@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import type { InsuredPerson } from '@selbstbehalt/shared';
 
-import type { SBRadar } from '$lib/utils/selbstbehalt-radar';
+import type { SBRadar } from '#lib/utils/selbstbehalt-radar.js';
 import PersonStatusCard from './PersonStatusCard.svelte';
 
 const INSURED_PERSON: InsuredPerson = {

@@ -39,7 +39,7 @@
     TableHead,
     TableHeader,
     TableRow,
-  } from '$lib/components/ui/table';
+  } from '#lib/components/ui/table/index.js';
 
   type Props = {
     /** Screen-reader-only caption naming what the rows are. */

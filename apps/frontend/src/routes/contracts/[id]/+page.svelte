@@ -13,7 +13,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     CONTRACT_TYPE_LABELS,
     formatDate,
@@ -23,18 +23,18 @@
     type InsuredPerson,
     type Person,
   } from '@selbstbehalt/shared';
-  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import { destructiveOutlineClass } from '$lib/utils/button-variants';
-  import BRETracker from '$lib/components/BRETracker.svelte';
-  import ContractEditDialog from '$lib/components/ContractEditDialog.svelte';
-  import InsuredPersonForm from '$lib/components/InsuredPersonForm.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
-  import EmptyState from '$lib/components/EmptyState.svelte';
+  import { setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import { destructiveOutlineClass } from '#lib/utils/button-variants.js';
+  import BRETracker from '#lib/components/BRETracker.svelte';
+  import ContractEditDialog from '#lib/components/ContractEditDialog.svelte';
+  import InsuredPersonForm from '#lib/components/InsuredPersonForm.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
+  import EmptyState from '#lib/components/EmptyState.svelte';
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import Trash2Icon from '@lucide/svelte/icons/trash-2';
   import { Button } from '@selbstbehalt/ui/button';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
   import {
@@ -46,7 +46,7 @@
     AlertDialogDescription,
     AlertDialogAction,
     AlertDialogCancel,
-  } from '$lib/components/ui/alert-dialog';
+  } from '#lib/components/ui/alert-dialog/index.js';
 
   const contractId = $derived(page.params.id as string);
 

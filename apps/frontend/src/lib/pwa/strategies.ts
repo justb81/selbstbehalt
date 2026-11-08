@@ -37,7 +37,7 @@ export interface ClassifyContext {
  * (passed straight to the network by the SW).
  *
  * Only GET is handled: writes flow through the app-layer offline queue
- * (`$lib/offline`), which owns replay order, so the SW never caches or
+ * (`#lib/offline`), which owns replay order, so the SW never caches or
  * intercepts them.
  */
 export function classifyRequest(

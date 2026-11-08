@@ -35,16 +35,16 @@
     type ReviewPositionRow,
     type ScanResult,
   } from '@selbstbehalt/medic-invoice-check';
-  import { settings } from '$lib/stores/settings';
-  import { computeErstattung, type ErstattungPosition } from '$lib/utils/erstattungs-engine';
-  import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
-  import { resolveBenefitCategory } from '$lib/utils/benefit-category';
+  import { settings } from '#lib/stores/settings.js';
+  import { computeErstattung, type ErstattungPosition } from '#lib/utils/erstattungs-engine.js';
+  import { type AuslagenDerivationPosition } from '#lib/utils/auslagen-benefit-category.js';
+  import { resolveBenefitCategory } from '#lib/utils/benefit-category.js';
   import {
     aggregatePriorClaims,
     patientAgeAt,
     referenceLeistungsjahr,
     type PriorClaimsInvoice,
-  } from '$lib/utils/prior-claims';
+  } from '#lib/utils/prior-claims.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Label } from '@selbstbehalt/ui/label';
   import { Textarea } from '@selbstbehalt/ui/textarea';
@@ -56,8 +56,8 @@
     SelectValue,
   } from '@selbstbehalt/ui/select';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
-  import { Checkbox } from '$lib/components/ui/checkbox';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+  import ErrorState from '#lib/components/ErrorState.svelte';
 
   // ---------------------------------------------------------------------------
   // Types

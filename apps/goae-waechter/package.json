@@ -5,6 +5,9 @@
   "description": "GOÄ-Wächter: standalone, backend-free demo PWA for the GOÄ/GOZ invoice check (issue #166). Scan or upload an invoice, review it against the full GOÄ/GOZ rule set — §5 Steigerungsfaktor limits, code exclusions, Höchstwerte, frequency limits, and more — entirely on-device, nothing is stored or sent anywhere.",
   "license": "Apache-2.0",
   "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "node ../../scripts/copy-ort-wasm.mjs && vite build",

@@ -11,8 +11,8 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
-  import { api, ApiError } from '$lib/api';
-  import { loadInvoiceHistory } from '$lib/api/invoice-form-data';
+  import { api, ApiError } from '#lib/api/index.js';
+  import { loadInvoiceHistory } from '#lib/api/invoice-form-data.js';
   import {
     BENEFIT_CATEGORY_LABELS,
     formatDate,
@@ -24,25 +24,25 @@
     type InvoiceWithPositions,
     type Person,
   } from '@selbstbehalt/shared';
-  import { aggregateByYear } from '$lib/utils/guenstiger-pruefung';
-  import { type AuslagenDerivationPosition } from '$lib/utils/auslagen-benefit-category';
-  import { resolveBenefitCategory } from '$lib/utils/benefit-category';
-  import { computeErstattung } from '$lib/utils/erstattungs-engine';
-  import { refundStatus } from '$lib/utils/position-refund';
+  import { aggregateByYear } from '#lib/utils/guenstiger-pruefung.js';
+  import { type AuslagenDerivationPosition } from '#lib/utils/auslagen-benefit-category.js';
+  import { resolveBenefitCategory } from '#lib/utils/benefit-category.js';
+  import { computeErstattung } from '#lib/utils/erstattungs-engine.js';
+  import { refundStatus } from '#lib/utils/position-refund.js';
   import {
     aggregatePriorClaims,
     patientAgeAt,
     referenceLeistungsjahr,
-  } from '$lib/utils/prior-claims';
-  import { isNonReimbursable } from '$lib/utils/reimbursability';
-  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import { resolvePaymentReminderLeadDays, settings } from '$lib/stores/settings';
-  import InvoiceBadge from '$lib/components/InvoiceBadge.svelte';
-  import PaymentDueBadge from '$lib/components/PaymentDueBadge.svelte';
-  import InvoiceStatusFlow from '$lib/components/InvoiceStatusFlow.svelte';
-  import GCPContributionCard from '$lib/components/GCPContributionCard.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  } from '#lib/utils/prior-claims.js';
+  import { isNonReimbursable } from '#lib/utils/reimbursability.js';
+  import { setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import { resolvePaymentReminderLeadDays, settings } from '#lib/stores/settings.js';
+  import InvoiceBadge from '#lib/components/InvoiceBadge.svelte';
+  import PaymentDueBadge from '#lib/components/PaymentDueBadge.svelte';
+  import InvoiceStatusFlow from '#lib/components/InvoiceStatusFlow.svelte';
+  import GCPContributionCard from '#lib/components/GCPContributionCard.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
   import { Card, CardContent, CardDescription, CardHeader } from '@selbstbehalt/ui/card';
   import { Alert, AlertDescription } from '@selbstbehalt/ui/alert';
@@ -55,9 +55,13 @@
     AlertDialogDescription,
     AlertDialogAction,
     AlertDialogCancel,
-  } from '$lib/components/ui/alert-dialog';
+  } from '#lib/components/ui/alert-dialog/index.js';
   import { Separator } from '@selbstbehalt/ui/separator';
-  import { HoverCard, HoverCardContent, HoverCardTrigger } from '$lib/components/ui/hover-card';
+  import {
+    HoverCard,
+    HoverCardContent,
+    HoverCardTrigger,
+  } from '#lib/components/ui/hover-card/index.js';
   import {
     Table,
     TableBody,
@@ -65,7 +69,7 @@
     TableHead,
     TableHeader,
     TableRow,
-  } from '$lib/components/ui/table';
+  } from '#lib/components/ui/table/index.js';
 
   const invoiceId = $derived(page.params.id as string);
 

@@ -5,6 +5,9 @@
   "description": "SvelteKit PWA for selbstbehalt (PKV Manager).",
   "license": "Apache-2.0",
   "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "node ../../scripts/copy-ort-wasm.mjs && vite build",

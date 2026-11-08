@@ -9,16 +9,16 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner';
   import { formatDateTime } from '@selbstbehalt/shared';
-  import { api, serverStatus } from '$lib/api';
-  import { isOnline, pendingWrites } from '$lib/offline/index.js';
+  import { api, serverStatus } from '#lib/api/index.js';
+  import { isOnline, pendingWrites } from '#lib/offline/index.js';
   import {
     installAvailable,
     initInstallPrompt,
     promptInstall,
     dismissInstall,
     resetInstallDismissal,
-  } from '$lib/pwa/install.js';
-  import { initPwa } from '$lib/pwa/register.js';
+  } from '#lib/pwa/install.js';
+  import { initPwa } from '#lib/pwa/register.js';
 
   const { needRefresh, offlineReady, updateServiceWorker } = initPwa();
   initInstallPrompt();
@@ -40,7 +40,7 @@
     if ($needRefresh) {
       // A new app update is available — let a "Nicht jetzt" from an earlier
       // version ask again instead of staying silenced for the rest of the
-      // session (see $lib/pwa/install.ts).
+      // session (see #lib/pwa/install.ts).
       resetInstallDismissal();
       toast('Eine neue Version ist verfügbar.', {
         id: 'pwa-update',

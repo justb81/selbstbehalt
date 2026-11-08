@@ -38,7 +38,7 @@ import type {
 const BACKEND_DIR = fileURLToPath(new URL('../../../backend', import.meta.url));
 const TSX_BIN = fileURLToPath(new URL('../../../backend/node_modules/.bin/tsx', import.meta.url));
 
-/** The localStorage key the settings store persists to (`$lib/stores/settings`). */
+/** The localStorage key the settings store persists to (`#lib/stores/settings`). */
 const SETTINGS_STORAGE_KEY = 'selbstbehalt:settings';
 
 /**

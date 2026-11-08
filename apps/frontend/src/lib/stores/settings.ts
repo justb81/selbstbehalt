@@ -9,11 +9,11 @@ import {
 } from '@selbstbehalt/shared';
 import { get, writable } from 'svelte/store';
 
-import { envApiBaseUrl, FALLBACK_API_BASE_URL } from '$lib/config.js';
+import { envApiBaseUrl, FALLBACK_API_BASE_URL } from '#lib/config.js';
 import {
   DEFAULT_CLAIM_FREE_PROBABILITY,
   DEFAULT_DISCOUNT_RATE,
-} from '$lib/utils/guenstiger-pruefung.js';
+} from '#lib/utils/guenstiger-pruefung.js';
 
 const STORAGE_KEY = 'selbstbehalt:settings';
 

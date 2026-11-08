@@ -12,8 +12,8 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { breadcrumbEntity, type BreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import * as Breadcrumb from '$lib/components/ui/breadcrumb';
+  import { breadcrumbEntity, type BreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import * as Breadcrumb from '#lib/components/ui/breadcrumb/index.js';
 
   // Kit 3 dropped `base`; derive it from the resolved root ("/" → "", "/x/" → "/x").
   const base = resolve('/').slice(0, -1);

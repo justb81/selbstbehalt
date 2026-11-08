@@ -3,7 +3,7 @@
 /**
  * Server reachability as a first-class state (issue #381).
  *
- * `navigator.onLine` (`$lib/offline` → {@link isOnline}) answers "does this
+ * `navigator.onLine` (`#lib/offline` → {@link isOnline}) answers "does this
  * device have a link?", not "did the backend answer?". With the backend down
  * and the WLAN up it stays `true`, so the offline hint never fires and the app
  * degrades silently — stale service-worker data next to values that failed to
@@ -23,7 +23,7 @@
  */
 import { writable, type Readable } from 'svelte/store';
 
-import { CACHED_AT_HEADER, STALE_HEADER } from '$lib/pwa/strategies.js';
+import { CACHED_AT_HEADER, STALE_HEADER } from '#lib/pwa/strategies.js';
 
 import type { ApiRequester, RequestOptions } from './client.js';
 import { ApiError } from './errors.js';

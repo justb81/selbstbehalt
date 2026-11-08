@@ -30,7 +30,7 @@ import {
   calculateBRELadderNPV,
   calculateGCP,
   type GCP_Result,
-} from '$lib/utils/guenstiger-pruefung';
+} from '#lib/utils/guenstiger-pruefung.js';
 
 /**
  * The four everyday states of the Ampel (architecture §8.5.1 / §8.5.3):

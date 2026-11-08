@@ -13,18 +13,18 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     loadInsuredOptions,
     loadInvoiceHistory,
     type InsuredOption,
-  } from '$lib/api/invoice-form-data';
+  } from '#lib/api/invoice-form-data.js';
   import type { InvoiceWithPositions } from '@selbstbehalt/shared';
-  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import InvoiceForm from '$lib/components/InvoiceForm.svelte';
-  import type { FormPayload } from '$lib/components/InvoiceForm.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
+  import { setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import InvoiceForm from '#lib/components/InvoiceForm.svelte';
+  import type { FormPayload } from '#lib/components/InvoiceForm.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
   import { Button } from '@selbstbehalt/ui/button';
   import { Card, CardContent } from '@selbstbehalt/ui/card';
 

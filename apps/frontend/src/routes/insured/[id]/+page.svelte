@@ -9,7 +9,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { api, ApiError } from '$lib/api';
+  import { api, ApiError } from '#lib/api/index.js';
   import {
     formatDate,
     formatEur,
@@ -19,20 +19,24 @@
     type InvoiceWithPositions,
     type Person,
   } from '@selbstbehalt/shared';
-  import { settings } from '$lib/stores/settings';
-  import { aggregateByYear, calculateGCP, type GCP_Result } from '$lib/utils/guenstiger-pruefung';
-  import { computeSelbstbehaltRadar, currentLeistungsjahr } from '$lib/utils/selbstbehalt-radar';
-  import BRETracker from '$lib/components/BRETracker.svelte';
-  import SelbstbehaltRadar from '$lib/components/SelbstbehaltRadar.svelte';
-  import GCPCard from '$lib/components/GCPCard.svelte';
-  import InvoiceList from '$lib/components/InvoiceList.svelte';
-  import LoadingState from '$lib/components/LoadingState.svelte';
-  import ErrorState from '$lib/components/ErrorState.svelte';
-  import { Badge } from '$lib/components/ui/badge';
+  import { settings } from '#lib/stores/settings.js';
+  import {
+    aggregateByYear,
+    calculateGCP,
+    type GCP_Result,
+  } from '#lib/utils/guenstiger-pruefung.js';
+  import { computeSelbstbehaltRadar, currentLeistungsjahr } from '#lib/utils/selbstbehalt-radar.js';
+  import BRETracker from '#lib/components/BRETracker.svelte';
+  import SelbstbehaltRadar from '#lib/components/SelbstbehaltRadar.svelte';
+  import GCPCard from '#lib/components/GCPCard.svelte';
+  import InvoiceList from '#lib/components/InvoiceList.svelte';
+  import LoadingState from '#lib/components/LoadingState.svelte';
+  import ErrorState from '#lib/components/ErrorState.svelte';
+  import { Badge } from '#lib/components/ui/badge/index.js';
   import { Button } from '@selbstbehalt/ui/button';
   import { Separator } from '@selbstbehalt/ui/separator';
-  import { setBreadcrumbEntity } from '$lib/stores/breadcrumb';
-  import { partialFailureMessage, settledTuple } from '$lib/utils/partial-load';
+  import { setBreadcrumbEntity } from '#lib/stores/breadcrumb.js';
+  import { partialFailureMessage, settledTuple } from '#lib/utils/partial-load.js';
 
   const insuredId = $derived(page.params.id as string);
 
