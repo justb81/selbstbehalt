@@ -22,6 +22,19 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// jsdom ≥31 renders <canvas> through @napi-rs/canvas whenever that package is
+// resolvable — and it is, as a transitive dependency of ppu-paddle-ocr (→ ppu-ocv).
+// Its 2D context then rejects the structural ImageData fixtures the component tests
+// hand to InvoicePagePreview (`putImageData: parameter 1 is not of type
+// 'ImageData'`). Those tests assert markup and accessibility, never pixels, and were
+// written for a canvas-less jsdom, so restore that contract: `getContext` yields no
+// context, and the component's own `if (!context) return` guard takes over — the same
+// path a browser without a 2D context takes.
+if (typeof window !== 'undefined') {
+  window.HTMLCanvasElement.prototype.getContext = (() =>
+    null) as typeof HTMLCanvasElement.prototype.getContext;
+}
+
 // JSDOM does not implement window.matchMedia; some bits-ui primitives read it in an
 // effect. Provide a minimal stub so component tests don't blow up on mount.
 if (typeof window !== 'undefined' && !window.matchMedia) {
