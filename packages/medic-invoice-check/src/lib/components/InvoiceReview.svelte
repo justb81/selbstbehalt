@@ -717,6 +717,9 @@
         type="text"
         bind:value={invoiceNumber}
         placeholder="optional"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
         {disabled}
       />
     </div>
@@ -928,6 +931,9 @@
                             bind:value={pos.goae_number}
                             onchange={() => void recalcBaseAmount(i)}
                             placeholder="z.B. 1"
+                            autocapitalize="none"
+                            autocorrect="off"
+                            spellcheck="false"
                             required
                             {disabled}
                           />

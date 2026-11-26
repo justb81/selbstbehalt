@@ -326,7 +326,7 @@ export async function filesToAllPages(
  * drag-and-drop order alone, since that one the user chose.
  */
 export function sortFilesByName(files: readonly File[]): File[] {
-  return [...files].sort((a, b) => FILENAME_COLLATOR.compare(a.name, b.name));
+  return files.toSorted((a, b) => FILENAME_COLLATOR.compare(a.name, b.name));
 }
 
 /**

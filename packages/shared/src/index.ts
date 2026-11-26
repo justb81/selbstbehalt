@@ -25,5 +25,6 @@ export * from './utils/derive-invoice-status.js';
 export * from './utils/included-benefits.js';
 export * from './utils/insured-person-label.js';
 export * from './utils/money.js';
+export * from './utils/number.js';
 export * from './utils/date.js';
 export * from './utils/payment-due.js';

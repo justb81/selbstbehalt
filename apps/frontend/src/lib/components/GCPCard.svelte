@@ -7,7 +7,7 @@
   renders the result and calls back.
 -->
 <script lang="ts">
-  import { formatEur } from '@selbstbehalt/shared';
+  import { formatEur, formatPercent } from '@selbstbehalt/shared';
   import type { GCP_Result } from '#lib/utils/guenstiger-pruefung.js';
   import { cn } from '@selbstbehalt/ui/utils';
   import { Card, CardHeader, CardContent, CardFooter } from '@selbstbehalt/ui/card';
@@ -164,7 +164,7 @@
 
           <dt class="text-muted-foreground">Diskontrate</dt>
           <dd class="text-right font-medium tabular-nums">
-            {(result.breakdown.discountRate * 100).toFixed(1)} %
+            {formatPercent(result.breakdown.discountRate)}
           </dd>
         </dl>
       </CollapsibleContent>

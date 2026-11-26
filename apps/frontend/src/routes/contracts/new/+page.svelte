@@ -172,6 +172,9 @@
                 type="text"
                 bind:value={contractNumber}
                 placeholder="optional"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
               />
             </div>
 

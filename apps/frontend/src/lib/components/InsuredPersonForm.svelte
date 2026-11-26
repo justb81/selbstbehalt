@@ -233,7 +233,16 @@
 
         <div class="space-y-1">
           <Label for="ip-kvnr">KVNR</Label>
-          <Input id="ip-kvnr" type="text" bind:value={kvnr} placeholder="optional" />
+          <!-- A KVNR is one capital letter + 9 digits: suggest capitals, never autocorrect. -->
+          <Input
+            id="ip-kvnr"
+            type="text"
+            bind:value={kvnr}
+            placeholder="optional"
+            autocapitalize="characters"
+            autocorrect="off"
+            spellcheck="false"
+          />
         </div>
 
         <div class="space-y-1">

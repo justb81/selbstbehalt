@@ -67,6 +67,15 @@
     ueber_schwelle: 'bg-emerald-500',
     bereits_gebrochen: 'bg-emerald-500',
   };
+  // Forced Colors Mode (Windows High Contrast) replaces every author background
+  // with the system `Canvas` colour, so fill, Selbstbehalt marker and legend dots
+  // would vanish into the track. They carry the data, so they opt out of the
+  // override and switch to system colours: fill = Highlight, marker = CanvasText,
+  // threshold = the (already surviving) dashed border, drawn as a hollow dot.
+  const FORCED_FILL = 'forced-colors:bg-[color:Highlight] forced-colors:forced-color-adjust-none';
+  const FORCED_MARKER =
+    'forced-colors:bg-[color:CanvasText] forced-colors:forced-color-adjust-none';
+  const FORCED_THRESHOLD_DOT = 'forced-colors:border forced-colors:border-[color:CanvasText]';
 
   const restBisSB = $derived(Math.max(0, radar.selbstbehalt - radar.R_Y));
   const exhaustionPct = $derived(Math.round(radar.sbExhaustion * 100));
@@ -104,7 +113,11 @@
 
 {#snippet thermometer(trackHeight: string)}
   <div
-    class={cn('bg-muted relative w-full overflow-hidden rounded-full', trackHeight)}
+    class={cn(
+      'bg-muted relative w-full overflow-hidden rounded-full',
+      'forced-colors:border forced-colors:border-[color:CanvasText]',
+      trackHeight,
+    )}
     role="progressbar"
     aria-label={`Selbstbehalt-Ausschöpfung ${radar.year}`}
     aria-valuenow={exhaustionPct}
@@ -113,12 +126,16 @@
     aria-valuetext={`${formatEur(radar.R_Y)} von ${formatEur(radar.selbstbehalt)} Selbstbehalt`}
   >
     <div
-      class={cn('absolute inset-y-0 left-0 rounded-full transition-all', STATE_FILL[radar.state])}
+      class={cn(
+        'absolute inset-y-0 left-0 rounded-full transition-all motion-reduce:transition-none',
+        STATE_FILL[radar.state],
+        FORCED_FILL,
+      )}
       style="width: {fillPct}%"
     ></div>
     <!-- Selbstbehalt marker -->
     <div
-      class="bg-foreground/70 absolute inset-y-0 w-0.5"
+      class={cn('bg-foreground/70 absolute inset-y-0 w-0.5', FORCED_MARKER)}
       style="left: {sbPct}%"
       aria-hidden="true"
     ></div>
@@ -160,9 +177,15 @@
   <!-- Compact markers have no room for the full legend — a minimal one-line
        explanation still beats an undocumented dash/dashed marker (issue #261). -->
   <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-    {@render legendDot('bg-foreground/70', `Selbstbehalt ${formatEur(radar.selbstbehalt)}`)}
+    {@render legendDot(
+      cn('bg-foreground/70', FORCED_MARKER),
+      `Selbstbehalt ${formatEur(radar.selbstbehalt)}`,
+    )}
     {#if showThresholdMarker}
-      {@render legendDot('bg-primary', `Einreichen ab ${formatEur(radar.gcpThreshold)}`)}
+      {@render legendDot(
+        cn('bg-primary', FORCED_THRESHOLD_DOT),
+        `Einreichen ab ${formatEur(radar.gcpThreshold)}`,
+      )}
     {/if}
   </div>
   <span class="text-muted-foreground text-xs">{statusText}</span>
@@ -198,10 +221,19 @@
       {@render thermometer('h-3')}
 
       <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        {@render legendDot(STATE_FILL[radar.state], `Erstattungsfähig: ${formatEur(radar.R_Y)}`)}
-        {@render legendDot('bg-foreground/70', `Selbstbehalt: ${formatEur(radar.selbstbehalt)}`)}
+        {@render legendDot(
+          cn(STATE_FILL[radar.state], FORCED_FILL),
+          `Erstattungsfähig: ${formatEur(radar.R_Y)}`,
+        )}
+        {@render legendDot(
+          cn('bg-foreground/70', FORCED_MARKER),
+          `Selbstbehalt: ${formatEur(radar.selbstbehalt)}`,
+        )}
         {#if showThresholdMarker}
-          {@render legendDot('bg-primary', `Einreich-Schwelle: ${formatEur(radar.gcpThreshold)}`)}
+          {@render legendDot(
+            cn('bg-primary', FORCED_THRESHOLD_DOT),
+            `Einreich-Schwelle: ${formatEur(radar.gcpThreshold)}`,
+          )}
         {/if}
         <span class="text-muted-foreground ml-auto tabular-nums">
           {exhaustionPct} % ausgeschöpft
