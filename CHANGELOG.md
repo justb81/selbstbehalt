@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.16.2](https://github.com/justb81/selbstbehalt/compare/v1.16.1...v1.16.2) (2026-11-26)
+
+### Miscellaneous
+
+- combine dependabot PRs and fix supply-chain policy ([#555](https://github.com/justb81/selbstbehalt/issues/555)) ([408179b](https://github.com/justb81/selbstbehalt/commit/408179b2e792ce01f7786de86e2b469c0f066f4f))
+- release 1.16.2 ([#587](https://github.com/justb81/selbstbehalt/issues/587)) ([f113686](https://github.com/justb81/selbstbehalt/commit/f113686e51918b538a053c16c6d9997c1ce05d9e))
+- release-please-config to show hidden types ([1c78572](https://github.com/justb81/selbstbehalt/commit/1c78572200e96df8b2c76d1fe90834e4096fbfe7))
+
+### Refactoring
+
+- replace deprecated $lib alias with #lib subpath imports ([#571](https://github.com/justb81/selbstbehalt/issues/571)) ([3873983](https://github.com/justb81/selbstbehalt/commit/38739839e581c3c288e0df06c8c1252f7e178756))
+
+### Build System
+
+- **deps-dev:** bump @sveltejs/kit to 3.0.0 ([#566](https://github.com/justb81/selbstbehalt/issues/566)) ([882ce58](https://github.com/justb81/selbstbehalt/commit/882ce588137cb93d8599a494a6cfa1b781607615))
+- **deps-dev:** bump the dev-dependencies group across 1 directory with 22 updates ([#548](https://github.com/justb81/selbstbehalt/issues/548)) ([61dd677](https://github.com/justb81/selbstbehalt/commit/61dd6770850e6779e20e325a22322335cd646fac))
+- **deps-dev:** bump the dev-dependencies group with 5 updates ([#561](https://github.com/justb81/selbstbehalt/issues/561)) ([a281a82](https://github.com/justb81/selbstbehalt/commit/a281a825280d11346e0cf32d0c2ddb83ac3b5d52))
+- **deps-dev:** bump the dev-dependencies group with 8 updates ([#567](https://github.com/justb81/selbstbehalt/issues/567)) ([3a9b9d4](https://github.com/justb81/selbstbehalt/commit/3a9b9d473b16e0d355884dca07ed046210dd0dc3))
+- **deps:** bump codeql-action, bits-ui and @lucide/svelte ([#565](https://github.com/justb81/selbstbehalt/issues/565)) ([ca9ec5f](https://github.com/justb81/selbstbehalt/commit/ca9ec5f531dfe133488bc4541f0e7e1879537d1e))
+- **deps:** bump docker/login-action from 4.6.0 to 4.7.0 ([#559](https://github.com/justb81/selbstbehalt/issues/559)) ([3f3f9b2](https://github.com/justb81/selbstbehalt/commit/3f3f9b29427bdea73e6e8327e2e3119024b3d66e))
+- **deps:** bump docker/login-action from 4.7.0 to 4.8.0 ([#577](https://github.com/justb81/selbstbehalt/issues/577)) ([2e1f5cc](https://github.com/justb81/selbstbehalt/commit/2e1f5ccb606843643caa588c559492490784bdf1))
+- **deps:** bump sigstore/cosign-installer from 4.1.2 to 4.1.3 ([#576](https://github.com/justb81/selbstbehalt/issues/576)) ([9b8626a](https://github.com/justb81/selbstbehalt/commit/9b8626a8ce652b8a34174e56ff843906fe368359))
+- **deps:** bump tailwind-variants from 3.3.1 to 4.0.1 ([#569](https://github.com/justb81/selbstbehalt/issues/569)) ([88d7f07](https://github.com/justb81/selbstbehalt/commit/88d7f079aed2fc0e9947a83a2a200ad4761df3ef))
+- **deps:** bump the prod-dependencies group across 1 directory with 3 updates ([#568](https://github.com/justb81/selbstbehalt/issues/568)) ([7c05b3c](https://github.com/justb81/selbstbehalt/commit/7c05b3cda17c5d3727bf7fda7454e8a2af68f61e))
+- **deps:** bump the prod-dependencies group across 1 directory with 4 updates ([#557](https://github.com/justb81/selbstbehalt/issues/557)) ([c752636](https://github.com/justb81/selbstbehalt/commit/c752636e08a8e669179dcf76dfb456fa189f61bd))
+- **deps:** bump the prod-dependencies group with 5 updates ([#581](https://github.com/justb81/selbstbehalt/issues/581)) ([814647a](https://github.com/justb81/selbstbehalt/commit/814647a42f7dc929691770c25f6ec133d343919a))
+- **deps:** bundle open dependabot updates ([#586](https://github.com/justb81/selbstbehalt/issues/586)) ([1c9e51d](https://github.com/justb81/selbstbehalt/commit/1c9e51d3e2c7c694d3e22e717612ae7bd19889da))
+
 ## [1.16.1](https://github.com/justb81/selbstbehalt/compare/v1.16.0...v1.16.1) (2026-10-24)
 
 ### Bug Fixes
