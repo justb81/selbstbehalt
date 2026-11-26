@@ -41,6 +41,15 @@ overrides:
   # exception here rather than drift.
   postcss@<8.5.26: '>=8.5.26'
 
+  # @sveltejs/kit >=2.42.0 <=3.1.0 carries a high-severity DoS advisory
+  # (GHSA-3r8g-jcqq-3p5j: crafted form data to a remote function `form`). The
+  # apps depend on kit 3 directly, but packages/ui reaches a second copy through
+  # bits-ui → runed (and bits-ui → svelte-toolbelt → runed), whose *optional*
+  # peer range `^2.21.0` resolves to the latest 2.x — and no 2.x is patched. runed
+  # only touches kit for SvelteKit-specific helpers packages/ui never calls, so
+  # the patched 3.x line is forced here.
+  '@sveltejs/kit@<3.1.1': '>=3.1.1'
+
 allowBuilds:
   esbuild: true
   better-sqlite3: true
