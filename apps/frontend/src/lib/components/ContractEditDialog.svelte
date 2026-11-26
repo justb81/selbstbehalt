@@ -132,7 +132,14 @@
         </div>
         <div class="space-y-1">
           <Label for="contract-number">Vertragsnummer</Label>
-          <Input id="contract-number" type="text" bind:value={contractNumber} />
+          <Input
+            id="contract-number"
+            type="text"
+            bind:value={contractNumber}
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+          />
         </div>
         <div class="space-y-1">
           <Label for="contract-start">Beginn</Label>

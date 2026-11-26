@@ -2090,7 +2090,12 @@ gekennzeichnet.
   per `@source` in ihrer `app.css`, sonst sieht Tailwind dessen Klassen nicht.
 - **Sprache:** durchgehend `de-DE`; Fachbegriffe bleiben deutsch und werden in
   Kapitel 12 definiert. Die begriffliche Trennung Person / Versicherungsnehmer /
-  versicherte Person ist verbindlich für UI-Labels (Kapitel 5.2).
+  versicherte Person ist verbindlich für UI-Labels (Kapitel 5.2). Zahlen
+  erscheinen nur über die `de-DE`-Formatierer aus `@selbstbehalt/shared`
+  (`formatEur`, `formatDecimal`, `formatPercent`, `formatDate`) — `toFixed()`
+  kennt kein Gebietsschema und zeigt `2.30` neben `2,30 €`. Felder für
+  Kennungen (KVNR, Vertrags-/Rechnungsnummer, Ziffer) schalten
+  Autokorrektur, Rechtschreibprüfung und Auto-Großschreibung ab.
 - **Barrierefreiheit:** Zielniveau WCAG 2.1 AA. `axe` läuft im E2E-Test über alle
   Routen und ihre Zustände — leer, befüllt, Formular-Fehlerzustand, offener Dialog
   bzw. offenes Sheet (`e2e/a11y.spec.ts`) — und schlägt Verstöße fehl; jede
@@ -2104,6 +2109,12 @@ gekennzeichnet.
   nur über ihre gemeinsamen Primitiven abgedeckt. Akzeptierte Abweichung: einige
   Icon-Buttons in dichten Tabellen liegen unter der 44-px-Touch-Empfehlung — kein
   WCAG-2.1-AA-Kriterium, und die Tabellen blieben sonst nicht dicht.
+  Fortschrittsbalken (`Progress`, das Selbstbehalt-Thermometer) tragen ihre
+  Aussage über Hintergrundfarben, die der Forced-Colors-Modus
+  (Kontrastdesign unter Windows) durch `Canvas` ersetzt; Füllung, Marker und Legendenpunkte schalten
+  darum per `forced-colors:` auf Systemfarben (`Highlight`, `CanvasText`) um, und
+  animierte Füllungen tragen `motion-reduce:transition-none`. Prüfbar ist das nur
+  manuell (DevTools → Rendering → `forced-colors: active`).
 - **Zustand, den man verlinken kann, gehört in die URL.** Filter- und
   Auswahlzustand einer Seite lebt im Query-String und wird ausschließlich über
   `#lib/utils/url-state.ts` gelesen und geschrieben (`readParam`,

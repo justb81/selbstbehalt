@@ -44,7 +44,7 @@ export function toCalendarDate(value: DateInput): Date {
 
 /** Levels sorted by their `claim_free_years` threshold, ascending. */
 function sortedLevels(breStructure: BREStructure): BRELevel[] {
-  return [...breStructure.levels].sort((a, b) => a.claim_free_years - b.claim_free_years);
+  return breStructure.levels.toSorted((a, b) => a.claim_free_years - b.claim_free_years);
 }
 
 /**

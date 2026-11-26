@@ -131,7 +131,7 @@
 
   const yearVerdicts = $derived.by(() => {
     if (!insuredPerson || aggregates.length === 0) return [];
-    const sorted = [...aggregates].sort((a, b) => b.year - a.year); // most recent first
+    const sorted = aggregates.toSorted((a, b) => b.year - a.year); // most recent first
 
     // The streak is broken only once realised reimbursements exceed the deductible.
     const selbstbehalt = insuredPerson.self_retention;

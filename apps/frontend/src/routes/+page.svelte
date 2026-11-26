@@ -184,7 +184,7 @@
   // Most actionable person first — "Einreichen lohnt" must not sit below two
   // cards where submitting is currently inconsequential (#261).
   const personCards = $derived(
-    [...personRadars].sort((a, b) => ampelPriority(a.radar.state) - ampelPriority(b.radar.state)),
+    personRadars.toSorted((a, b) => ampelPriority(a.radar.state) - ampelPriority(b.radar.state)),
   );
 
   const invoiceRowClass =

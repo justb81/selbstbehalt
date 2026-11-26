@@ -16,6 +16,7 @@
   import {
     BENEFIT_CATEGORY_LABELS,
     formatDate,
+    formatDecimal,
     formatEur,
     insuredPersonLabel,
     resolvePaymentDueDate,
@@ -460,7 +461,7 @@
                       {/if}
                     </div>
                   </TableCell>
-                  <TableCell class="text-right">{pos.multiplier.toFixed(2)}</TableCell>
+                  <TableCell class="text-right">{formatDecimal(pos.multiplier)}</TableCell>
                   <TableCell class="text-right tabular-nums">
                     <div class="flex flex-col items-end gap-0.5">
                       <HoverCard>
@@ -480,7 +481,9 @@
                             <dt class="text-muted-foreground">Basis (1,0×)</dt>
                             <dd class="text-right tabular-nums">{formatEur(pos.base_amount)}</dd>
                             <dt class="text-muted-foreground">Faktor</dt>
-                            <dd class="text-right tabular-nums">× {pos.multiplier.toFixed(2)}</dd>
+                            <dd class="text-right tabular-nums">
+                              × {formatDecimal(pos.multiplier)}
+                            </dd>
                             <dt class="text-muted-foreground">Anzahl</dt>
                             <dd class="text-right tabular-nums">× {pos.quantity}</dd>
                           </dl>
