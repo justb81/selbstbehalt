@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.3](https://github.com/justb81/selbstbehalt/compare/v1.16.2...v1.16.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* **frontend:** apply modern-web-guidance audit fixes ([#590](https://github.com/justb81/selbstbehalt/issues/590)) ([59c02ee](https://github.com/justb81/selbstbehalt/commit/59c02eee86712731eca05cfd939e04b3d5efcb8f))
+
 ## [1.16.2](https://github.com/justb81/selbstbehalt/compare/v1.16.1...v1.16.2) (2026-11-26)
 
 ### Miscellaneous
