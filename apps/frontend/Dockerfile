@@ -20,7 +20,13 @@
 # rebuild. Users can also override it at runtime via the in-app settings.
 
 # ---- Stage 1: build the static PWA bundle ----
-FROM node:24-bookworm-slim AS build
+# Pinned to the *build* platform: everything this stage emits (the static
+# bundle, the OCR models, the ONNX-Runtime WASM, the nginx header config) is
+# architecture-independent, so a multi-arch release builds it once, natively,
+# and only the nginx runtime stage below is per-platform. Building it under
+# QEMU for linux/arm64 instead hung `pnpm --filter @selbstbehalt/frontend build`
+# until the job timed out (the v1.16.1 and v1.16.2 releases).
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable

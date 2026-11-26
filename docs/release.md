@@ -22,7 +22,10 @@ no manual version bumping, changelog editing, or tagging.
    `vX.Y.Z`, updates [`CHANGELOG.md`](../CHANGELOG.md), and publishes a GitHub
    Release with the generated notes.
 4. **`release.yml`** triggers on the `vX.Y.Z` tag push. It builds multi-arch
-   (`linux/amd64` + `linux/arm64`) images for both services, pushes them to
+   (`linux/amd64` + `linux/arm64`) images for both services (the backend
+   compiles `better-sqlite3` per platform under QEMU; the frontend's
+   architecture-independent static bundle is built once on the native build
+   platform and only its nginx runtime layer is per-platform), pushes them to
    GHCR as `ghcr.io/justb81/selbstbehalt-backend` and
    `ghcr.io/justb81/selbstbehalt-frontend` tagged `X.Y.Z`, `X.Y`, and
    `latest`, signs them keylessly with [cosign](https://github.com/sigstore/cosign)
