@@ -2,11 +2,10 @@
 
 ## [1.16.4](https://github.com/justb81/selbstbehalt/compare/v1.16.3...v1.16.4) (2026-11-28)
 
-
 ### Build System
 
-* **deps-dev:** bump @testing-library/jest-dom from 7.0.1 to 8.0.0 ([#596](https://github.com/justb81/selbstbehalt/issues/596)) ([84c5a56](https://github.com/justb81/selbstbehalt/commit/84c5a56ebe6d35bd3c84d5b54922121c31d8b430))
-* **deps:** bump the prod-dependencies group with 3 updates ([#595](https://github.com/justb81/selbstbehalt/issues/595)) ([2fdbed2](https://github.com/justb81/selbstbehalt/commit/2fdbed2236e338458ec25b736bc2142d5fd58d79))
+- **deps-dev:** bump @testing-library/jest-dom from 7.0.1 to 8.0.0 ([#596](https://github.com/justb81/selbstbehalt/issues/596)) ([84c5a56](https://github.com/justb81/selbstbehalt/commit/84c5a56ebe6d35bd3c84d5b54922121c31d8b430))
+- **deps:** bump the prod-dependencies group with 3 updates ([#595](https://github.com/justb81/selbstbehalt/issues/595)) ([2fdbed2](https://github.com/justb81/selbstbehalt/commit/2fdbed2236e338458ec25b736bc2142d5fd58d79))
 
 ## [1.16.3](https://github.com/justb81/selbstbehalt/compare/v1.16.2...v1.16.3) (2026-11-26)
 
