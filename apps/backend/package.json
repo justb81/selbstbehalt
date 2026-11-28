@@ -23,7 +23,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.8",
+    "@hono/node-server": "^2.1.11",
     "@hono/zod-validator": "^0.9.1",
     "@selbstbehalt/shared": "workspace:*",
     "better-sqlite3": "^13.2.0",
