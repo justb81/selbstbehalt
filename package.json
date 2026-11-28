@@ -53,9 +53,9 @@
     "fast-xml-parser": "^5.12.1",
     "globals": "^17.14.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
+    "lint-staged": "^17.6.1",
     "prettier": "^3.10.1",
-    "prettier-plugin-svelte": "^4.1.1",
+    "prettier-plugin-svelte": "^4.2.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "vitest": "^4.1.11"
